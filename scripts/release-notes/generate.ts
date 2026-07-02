@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Fetches merged PRs from the past week (or --days=N) and writes a
-// friendly markdown summary bucketed by state to docs/release-notes/YYYY-MM-DD.md.
+// Fetches merged PRs from the past week (or --days=N) and writes a release-notes-style
+// markdown summary bucketed by state to scripts/release-notes/output/YYYY-MM-DD.md.
 //
 // Requires the `gh` CLI to be installed and authenticated (`gh auth login`).
 // Run via: pnpm release-notes:generate
@@ -15,6 +15,13 @@ interface PullRequest {
   title: string
   labels: { name: string }[]
   mergedAt: string
+  author: { login: string }
+  url: string
+}
+
+interface TicketRef {
+  ref: string
+  jiraUrl: string
 }
 
 function parseDaysArg(argv: string[]): number {
@@ -25,63 +32,103 @@ function parseDaysArg(argv: string[]): number {
   return n
 }
 
+// Labels auto-applied from branch prefixes by the PR labeler — reliable for bucketing.
+const CHORE_LABELS = new Set([
+  'chore',
+  'dependabot',
+  'infrastructure',
+  'security',
+  'documentation',
+  'refactor',
+])
+
+function isChore(pr: PullRequest): boolean {
+  return pr.labels.some((l) => CHORE_LABELS.has(l.name.toLowerCase()))
+}
+
+// Label-first; falls back to word-boundary title match.
+// \bCO\b matches standalone "CO" but not "Consolidate", "Connect", etc.
 function isColorado(pr: PullRequest): boolean {
-  const text = (pr.title + ' ' + pr.labels.map((l) => l.name).join(' ')).toLowerCase()
-  return text.includes('co') || text.includes('colorado')
+  if (pr.labels.some((l) => l.name.toLowerCase() === 'co')) return true
+  return /\bCO\b/.test(pr.title) || /colorado/i.test(pr.title)
 }
 
+// Label-only — "DC-NNN" ticket prefixes in titles don't mean DC-only.
 function isDC(pr: PullRequest): boolean {
-  const text = (pr.title + ' ' + pr.labels.map((l) => l.name).join(' ')).toLowerCase()
-  return text.includes(' dc') || text.includes('district of columbia') || text.includes('[dc]')
+  return pr.labels.some((l) => l.name.toLowerCase() === 'dc')
 }
 
-function friendlyTitle(title: string): string {
-  return title
-    .replace(/^\[?(fix|feat|chore|refactor|hotfix|bug|update|wip)\]?:?\s*/i, '')
-    .replace(/\(#\d+\)/g, '')
-    .replace(/#\d+/g, '')
-    .replace(/\[CO\]|\[DC\]|\[co\]|\[dc\]/gi, '')
-    .trim()
+function extractTicketRef(title: string): TicketRef | null {
+  const match = title.match(/DC-\d+/)
+  if (!match) return null
+  return {
+    ref: match[0],
+    jiraUrl: `https://codeforamerica.atlassian.net/browse/${match[0]}`,
+  }
 }
 
-function buildMarkdown(mergedPRs: PullRequest[], weekStart: string, today: string): string {
-  const colorado: string[] = []
+function formatEntry(pr: PullRequest): string {
+  const ticket = extractTicketRef(pr.title)
+  // Strip the raw ticket reference from the title so it isn't shown twice.
+  const cleanTitle = ticket ? pr.title.replace(/\[?DC-\d+\]?:?[-\s]*/i, '').trim() : pr.title
+  const ticketPrefix = ticket ? `[${ticket.ref}](${ticket.jiraUrl}) ` : ''
+  return `* ${ticketPrefix}${cleanTitle} by @${pr.author.login} in ${pr.url}`
+}
+
+function getPreviousWeeklyTag(): string | null {
+  const raw = execSync('gh release list --json tagName --limit 20', { encoding: 'utf8' })
+  const releases = JSON.parse(raw) as { tagName: string }[]
+  return releases.find((r) => r.tagName.startsWith('weekly-'))?.tagName ?? null
+}
+
+function buildMarkdown(
+  mergedPRs: PullRequest[],
+  weekStart: string,
+  today: string,
+  repoUrl: string,
+  prevTag: string | null,
+): string {
+  const co: string[] = []
   const dc: string[] = []
   const both: string[] = []
+  const chores: string[] = []
 
   for (const pr of mergedPRs) {
-    const co = isColorado(pr)
-    const d = isDC(pr)
-    const entry = `- ${friendlyTitle(pr.title)}`
-    if (co && !d) colorado.push(entry)
-    else if (d && !co) dc.push(entry)
-    else both.push(entry)
+    const entry = formatEntry(pr)
+    if (isChore(pr)) {
+      chores.push(entry)
+    } else if (isColorado(pr) && !isDC(pr)) {
+      co.push(entry)
+    } else if (isDC(pr) && !isColorado(pr)) {
+      dc.push(entry)
+    } else {
+      both.push(entry)
+    }
   }
 
-  let md = `# SEBT Self-Service Portal — Weekly Update\n`
-  md += `**${weekStart} through ${today}**\n\n`
-  md += `Here's a summary of what changed in the portal this week.\n\n`
-
-  if (both.length > 0) {
-    md += `## 🌐 Updates for All States\n\n`
-    md += both.join('\n') + '\n\n'
-  }
-
-  if (colorado.length > 0) {
-    md += `## 🏔️ Colorado-Specific Updates\n\n`
-    md += colorado.join('\n') + '\n\n'
-  }
-
-  if (dc.length > 0) {
-    md += `## 🏛️ Washington DC-Specific Updates\n\n`
-    md += dc.join('\n') + '\n\n'
-  }
+  let md = `## What's Changed\n`
 
   if (mergedPRs.length === 0) {
-    md += `_No updates were released this week._\n\n`
+    md += `\n_No pull requests were merged between ${weekStart} and ${today}._\n`
+    return md
   }
 
-  md += `---\n_This update was generated automatically. Questions? Reach out to the engineering team._\n`
+  if (co.length > 0) {
+    md += `\n## CO\n${co.join('\n')}\n`
+  }
+  if (dc.length > 0) {
+    md += `\n## DC\n${dc.join('\n')}\n`
+  }
+  if (both.length > 0) {
+    md += `\n## Both\n${both.join('\n')}\n`
+  }
+  if (chores.length > 0) {
+    md += `\n## Chores\n${chores.join('\n')}\n`
+  }
+
+  if (prevTag && repoUrl) {
+    md += `\n**Full Changelog**: ${repoUrl}/compare/${prevTag}...weekly-${today}\n`
+  }
 
   return md
 }
@@ -97,14 +144,17 @@ async function main(): Promise<void> {
 
   // gh resolves owner/repo from the current git remote and handles auth automatically.
   const raw = execSync(
-    `gh pr list --state merged --json number,title,labels,mergedAt --limit 100`,
+    `gh pr list --state merged --json number,title,labels,mergedAt,author,url --limit 100`,
     { encoding: 'utf8' },
   )
 
   const allPRs: PullRequest[] = JSON.parse(raw)
   const mergedPRs = allPRs.filter((pr) => pr.mergedAt && new Date(pr.mergedAt) >= since)
 
-  const md = buildMarkdown(mergedPRs, weekStart, today)
+  const repoUrl = mergedPRs.length > 0 ? mergedPRs[0].url.replace(/\/pull\/\d+$/, '') : ''
+  const prevTag = getPreviousWeeklyTag()
+
+  const md = buildMarkdown(mergedPRs, weekStart, today, repoUrl, prevTag)
 
   // scripts/release-notes/generate.ts → up 3 levels → repo root
   const repoRoot = resolve(fileURLToPath(import.meta.url), '../../..')
