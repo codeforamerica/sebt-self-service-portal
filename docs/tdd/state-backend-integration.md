@@ -37,7 +37,11 @@ Portal (BFF)
 
 ### The optional middleware layer
 
-States may not be able to implement the full spec precisely. If/when needed, CFA builds a thin microservice as an anticorruption layer: it translates the state's existing CMS API into our spec. It has no database. It deploys on state-owned SEBT portal infra (separate container sitting alongside core portal components) — not CFA-managed infra. It is a last resort, not the default.
+States may not be able to implement the full spec precisely. If/when needed, CFA builds a thin microservice as an anticorruption layer: it calls the state's existing CMS API and exposes the SEBT REST spec outward. It has no database. It deploys on state-owned SEBT portal infra (separate container alongside core portal components) — not CFA-managed infra. It is a last resort, not the default.
+
+Middleware lives in this repo under `src/` (consistent with the monorepo direction). Each state that needs one gets its own project (e.g., `src/SEBT.StateMiddleware.CO/`). The CO proof-of-concept (see Phase 1) is the first instance and serves as the reference implementation template.
+
+Middleware handles auth on both sides: inbound OAuth2/API key validation from the portal; outbound auth to the state's CMS using whatever the CMS requires. It is a full re-implementation against the CMS API — not a wrapper of the existing connector DLL. This produces a self-contained, readable reference that state CMS vendors can use when implementing their own conformant endpoints.
 
 ### Co-loading as a signal-based identity match
 
@@ -292,7 +296,7 @@ Existing interfaces (`IAddressUpdateService`, `ICardReplacementService`, `IEnrol
 - Implement auth strategy infrastructure (OAuth2 + ApiKey)
 - Extend `ISelfServiceEvaluator` to consume `IStateCapabilityService`
 - Wire new interfaces into portal use cases; existing plugins still load via the plugin path
-- **CO proof-of-concept middleware** — build a thin .NET middleware microservice that wraps the CO connector's logic and exposes the SEBT REST spec. This does not need to be deployed to production; its purpose is to validate the architecture, stress-test the spec against a real integration, and build team + stakeholder confidence. The PoC becomes the template for future middleware layers.
+- **CO proof-of-concept middleware** (`src/SEBT.StateMiddleware.CO/`) — a full re-implementation of CO's CBMS integration that exposes the SEBT REST spec, written from scratch against the spec (not a wrapper of the existing CO connector DLL). Does not need to deploy to production; its purpose is to validate the architecture, stress-test the spec shape against a real integration, and produce a reference implementation that state CMS vendors can read. Becomes the template for future middleware projects in this repo.
 
 **Phase 2 — DC/CO interface cleanup**
 
@@ -329,5 +333,3 @@ The spec (`docs/openapi.yaml`) is rendered via Redoc deployed to GitHub Pages on
 |---|---|---|
 | OI-1 | CO co-loading: which `IdentitySignalType` values does CO plan to use? | Drives which signal types are documented as well-known in v1 of the spec |
 | OI-2 | Default Polly thresholds (timeout, retry count, circuit breaker window) — validate against real CO connector latency profile before hardcoding | Resilience config defaults |
-| OI-3 | Should the middleware microservice template live in this repo (as a `src/SEBT.StateMiddleware/` project) or a separate repo? | PoC scope |
-| OI-4 | For the CO PoC middleware: does it wrap the existing CO connector DLL directly, or re-implement the CBMS calls from scratch? Wrapping is faster; re-implementing produces a cleaner template. | PoC build approach |
