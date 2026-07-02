@@ -255,3 +255,27 @@ variable "hosted_zone_id" {
   default     = ""
 }
 
+variable "redis_node_type" {
+  type        = string
+  description = "ElastiCache node instance type for the Valkey cache."
+  default     = "cache.t4g.micro"
+}
+
+variable "redis_num_cache_clusters" {
+  type        = number
+  description = "Number of nodes in the Redis replication group (1 primary + N-1 replicas)."
+  default     = 2
+}
+
+variable "redis_multi_az_enabled" {
+  type        = bool
+  description = "Spread the Redis primary and replica across Availability Zones."
+  default     = true
+}
+
+variable "redis_automatic_failover_enabled" {
+  type        = bool
+  description = "Promote a Redis replica to primary automatically on primary failure."
+  default     = true
+}
+
