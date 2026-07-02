@@ -405,8 +405,8 @@ Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente
 Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
 Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo."
 S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Card order summary,Resumen del pedido de tarjetas,Resumen del pedido de tarjetas
-S6 - Confirm Request Replacement Card - Summary Address,A new card will be mailed to the following address:,A new card will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:
-S6 - Confirm Request Replacement Card - Action,Order card,Order card,Pedir tarjetas,Pedir tarjetas
+S6 - Confirm Request Replacement Card - Summary Address,A new card will be mailed to the following address:,A new card will be mailed to the following address:,Una nueva tarjeta se enviará por correo a la siguiente dirección:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:
+S6 - Confirm Request Replacement Card - Action,Order card,Order card,Pedir tarjeta,Pedir tarjetas
 S7 - Pin Card - Title,Activate a card,Activate a card,Activar una tarjeta,Activar una tarjeta
 S7 - Pin Card - Body,"Your child's card is active when it's mailed to you. To make purchases, you will need to set the card's PIN number. You may call EBT Customer Service at (888) 328-2656 and follow the instructions to set the PIN number.
 
@@ -488,6 +488,8 @@ pasaporte extranjero
 u otra identificación con foto"
 S8 - Off-boarding - Body 3,!N/A!,You may be able to skip this step by going back and typing in an ID number instead.,!N/A!,Es posible que puedas saltarte este paso si regresas a la página anterior y escribes un número de identificación en su lugar.
 S8 - Off-boarding - Action,!N/A!,Enter an ID number,!N/A!,Ingresa un número de identificación 
+S8 - Off-boarding - Doc Verification Failed Title,We couldn't verify your identity,We couldn't verify your identity,No pudimos verificar tu identidad,No pudimos verificar tu identidad
+S8 - Off-boarding - Doc Verification Failed Body,"Your document couldn't be verified. You can try again with a different ID, or contact us if you need help.","Your document couldn't be verified. You can try again with a different ID, or contact us if you need help.","No se pudo verificar tu documento. Puedes intentarlo de nuevo con una identificación diferente, o contactarnos si necesitas ayuda.","No se pudo verificar tu documento. Puedes intentarlo de nuevo con una identificación diferente, o contactarnos si necesitas ayuda."
 S8 - Co-loaded Off-boarding - Title,"We're sorry, we aren't able to show your Summer EBT information ","We're sorry, we aren't able to show your DC SUN Bucks information ","Lo sentimos, no podemos mostrar tu información de Summer EBT","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks"
 S8 - Co-loaded Off-boarding - Body 1,You can contact us if you need more help.,"You can go back to enter an ID number, or contact us if you need more help.",Puedes contactarnos si necesitas más ayuda.,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda
 S8 - Co-loaded Off-boarding - Action 1,Contact us,Contact us,Contáctanos,Contáctanos
@@ -687,9 +689,10 @@ GLOBAL - Label - Suggested Address,Suggested address,Suggested address,Direcció
 GLOBAL - Label - Address Entered,Address you entered,Address you entered,La dirección que ingresaste,La dirección que ingresaste
 GLOBAL - Label - Select All,Select all that apply,Select all that apply,Selecciona todas las que correspondan,Selecciona todas las que correspondan
 GLOBAL - Text,Text,Text,Texto,Texto
-GLOBAL - Link FAQs,!N/A!,FAQs,!N/A!,Preguntas frecuentes
+GLOBAL - Title FAQs,Frequently asked questions about Summer EBT,Frequently asked questions about Summer EBT,Preguntas frecuentes sobre Summer EBT,Preguntas frecuentes sobre Summer EBT
+GLOBAL - Link FAQs,Learn more about Summer EBT and how to use the Summer EBT Online Portal.,FAQs,Aprende más sobre Summer EBT y cómo usar el portal en línea de Summer EBT,Preguntas frecuentes
 GLOBAL - Title Contact Us, ,Summer EBT Help Desk ,Línea de ayuda de Summer EBT
-GLOBAL - Link Contact Us, , ,
+GLOBAL - Link Contact Us,Summer EBT Help Desk,Summer EBT Help Desk,Línea de ayuda de Summer EBT,Línea de ayuda de Summer EBT
 GLOBAL - Link Contact Us 2,,, ,
 GLOBAL - Link Public Notices,General Notices,Public Notifications,Avisos generales,Notificaciones públicas
 GLOBAL - Title Accessibility,Accessibility at CDHS,Accessibility at CDHS,Accesibilidad en CDHS,Accesibilidad en CDHS
@@ -700,8 +703,7 @@ GLOBAL - Link Google Translate,!N/A!,Google Translate Disclaimer,!N/A!,Aviso leg
 GLOBAL - Link About,!N/A!,About DC.GOV,!N/A!,Acerca de DC.GOV
 GLOBAL - Link Terms,!N/A!,Terms and Conditions,!N/A!,Términos y condiciones
 GLOBAL - Copyrite,© 2026 State of Colorado,© [YYYY] District of Columbia,© 2026 Estado de Colorado,© [YYYY] Distrito de Columbia
-GLOBAL - Alert Sitewide,"The S-EBT Portal will be unavailable on Saturday, June 13 from 7:00 a.m. to 3:00 p.m. due to system maintenance.
-",,El portal de Summer EBT no estará disponible el sábado 13 de junio de 7:00 a.m. a 3:00 p.m. debido a mantenimiento del sistema.,
+GLOBAL - Alert Sitewide,We are currently experiencing delays in issuing new and replacement cards. Please allow 30 days for your card to arrive before requesting another. We apologize for the inconvenience.,,"Actualmente tenemos demoras en la emisión de tarjetas nuevas y de reemplazo. Por favor, espere 30 días para recibir su tarjeta antes de solicitar otra. Disculpe las molestias.",
 GLOBAL - Alert Beta,This site is currently in beta. Some features may be incomplete or missing.,This site is currently in beta. Some features may be incomplete or missing.,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.,Este sitio está actualmente en versión beta. Es posible que algunas funciones estén incompletas o no disponibles.
 GLOBAL - Alert Issue Pending,Benefits will be issued in late May. Check back then for details regarding your enrolled children and their Summer EBT cards.,Benefits will be issued in late May. Check back then for details regarding your enrolled children and their Summer EBT cards.,Los beneficios serán emitidos a finales de mayo. Vuelve a revisar el portal en esas fechas para ver los detalles sobre tus niños inscritos y sus tarjetas de Summer EBT.,Los beneficios serán emitidos a finales de mayo. Vuelve a revisar el portal en esas fechas para ver los detalles sobre tus niños inscritos y sus tarjetas de Summer EBT.
 GLOBAL - Remove,Remove,Remove,Eliminar,Eliminar

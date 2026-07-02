@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { trackCardReplacementSubmit } from '@/lib/analytics-helpers'
 import { useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState, RichText } from '@sebt/design-system'
+import { Alert, Button, getState, RichText, SummaryBox } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
 
@@ -17,8 +17,25 @@ interface ConfirmRequestProps {
   onBack: () => void
 }
 
+// Copy templates use bracket placeholders (e.g. "[First name]", "[9999]") from
+// the CSV-driven content pipeline. The case model has no child middle name, so
+// "[M.]" is dropped along with its leading space. Returns null when a
+// placeholder can't be filled (e.g. a card-number template without a known
+// last 4), so callers can skip the line rather than show a raw placeholder.
+function fillCardPlaceholders(template: string, ebtCase: SummerEbtCase): string | null {
+  let filled = template
+    .replace(/\s*\[M\.\]/, '')
+    .replace('[First name]', ebtCase.childFirstName)
+    .replace('[Last name]', ebtCase.childLastName)
+  if (ebtCase.ebtCardLastFour) {
+    filled = filled.replace('[9999]', ebtCase.ebtCardLastFour)
+  }
+  return filled.includes('[') ? null : filled
+}
+
 export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) {
   const { t } = useTranslation('result')
+  const { t: tOptional } = useTranslation('optionalId')
   const { t: tDev } = useTranslation('dev')
   const { t: tCommon } = useTranslation('common')
   const { t: tDashboard } = useTranslation('dashboard')
@@ -56,11 +73,24 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
     )
   }
 
-  // t('body') is \n-delimited list items — split and filter empties
-  const replacingCards = t('body').split('\n').filter(Boolean)
+  // The single-card (S6) and bulk (S5) confirm screens share this layout but
+  // differ in copy ("Order card" vs "Order cards", singular vs plural body and
+  // address line). The bulk strings are generated into the optionalId
+  // namespace, the single-card ones into result; both expose the same key
+  // names. The H1 always comes from result — the bulk title is identical per
+  // state and its generated key is shadowed by the card-selection screen's.
+  const isMultiCardOrder = cases.length > 1
+  const tOrder = isMultiCardOrder ? tOptional : t
+
+  const singleCase = isMultiCardOrder ? undefined : cases[0]
+  const preTitle = singleCase ? fillCardPlaceholders(t('pre-title'), singleCase) : null
+
+  // tOrder('body') is \n-delimited list items — split and filter empties
+  const replacingCards = tOrder('body').split('\n').filter(Boolean)
 
   return (
     <div>
+      {preTitle && <p className="margin-bottom-0">{preTitle}</p>}
       <h1 className="font-sans-xl text-primary">{t('title')}</h1>
 
       <div className="margin-top-05">
@@ -73,45 +103,36 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
         </ul>
       </div>
 
-      <div className="usa-card__container margin-top-3">
-        <div className="usa-card__body">
-          <h2 className="usa-card__heading font-sans-md">{t('summaryTitle')}</h2>
+      <SummaryBox className="margin-top-3">
+        <h2 className="font-sans-md margin-0">{tOrder('summaryTitle')}</h2>
 
-          <ul className="usa-list usa-list--unstyled">
-            {cases.map((c) => (
-              <li
-                key={c.summerEBTCaseID}
-                className="margin-bottom-1"
-              >
-                <span className="text-bold">
-                  {/* TODO update */}
-                  {c.childFirstName} {c.childLastName}&apos;s card
+        <ul className="usa-list margin-0">
+          {cases.map((c) => (
+            <li key={c.summerEBTCaseID}>
+              {fillCardPlaceholders(tOptional("who'sCard"), c)}
+              {currentState === 'co' && c.ebtCardLastFour && (
+                <span className="display-block">
+                  {fillCardPlaceholders(tOptional('cardNumber'), c)}
                 </span>
-                {currentState === 'co' && c.ebtCardLastFour && (
-                  <span className="display-block text-base-dark">
-                    {/* TODO: Use t('pre-title') once key is updated in CSV */}
-                    Card number: {c.ebtCardLastFour} (last 4 digits)
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+              )}
+            </li>
+          ))}
+        </ul>
 
-          <p className="margin-top-2">{t('summaryAddress')}</p>
+        <p className="margin-0 margin-top-1">{tOrder('summaryAddress')}</p>
 
-          <address className="margin-top-1 font-sans-sm">
-            {address.streetAddress1 && (
-              <span className="display-block">{address.streetAddress1}</span>
-            )}
-            {address.streetAddress2 && (
-              <span className="display-block">{address.streetAddress2}</span>
-            )}
-            <span className="display-block">
-              {address.city}, {address.state} {address.postalCode}
-            </span>
-          </address>
-        </div>
-      </div>
+        <address className="font-sans-sm">
+          {address.streetAddress1 && (
+            <span className="display-block">{address.streetAddress1}</span>
+          )}
+          {address.streetAddress2 && (
+            <span className="display-block">{address.streetAddress2}</span>
+          )}
+          <span className="display-block">
+            {address.city}, {address.state} {address.postalCode}
+          </span>
+        </address>
+      </SummaryBox>
 
       {errorKey && (
         <Alert
@@ -136,7 +157,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           onClick={handleSubmit}
           disabled={mutation.isPending}
         >
-          {mutation.isPending ? tDev('loading') : t('action')}
+          {mutation.isPending ? tDev('loading') : tOrder('action')}
         </Button>
       </div>
     </div>

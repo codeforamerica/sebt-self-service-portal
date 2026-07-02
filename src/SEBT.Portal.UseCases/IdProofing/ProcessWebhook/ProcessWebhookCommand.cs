@@ -60,4 +60,10 @@ public class ProcessWebhookCommand : ICommand
     /// Placeholder validation in dev; enforced in non-dev.
     /// </summary>
     public string? WebhookSignature { get; init; }
+
+    /// <summary>
+    /// Socure DocV reason codes from the documentVerification enrichment, when present.
+    /// Used to detect egregious failures that trigger immediate rejection without DocV step-up.
+    /// </summary>
+    public IReadOnlyList<string>? DocumentVerificationReasonCodes { get; init; }
 }

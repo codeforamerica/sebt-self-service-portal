@@ -180,11 +180,11 @@ public static class Dependencies
     }
 
     /// <summary>
-    /// Registers caching services. When a Redis connection string is configured,
-    /// uses Redis as the distributed cache (L2) backing HybridCache.
-    /// Otherwise, falls back to in-memory caching only — except in non-Development
-    /// environments with OIDC configured, where Redis is required for cross-container
-    /// session lookup and startup fails fast.
+    /// Registers caching services. When Redis is configured (via structured settings
+    /// or legacy connection string), uses Redis as the distributed cache (L2) backing
+    /// HybridCache. Otherwise, falls back to in-memory caching only — except in
+    /// non-Development environments with OIDC configured, where Redis is required for
+    /// cross-container session lookup and startup fails fast.
     /// Call this before AddPlugins — plugins may depend on HybridCache.
     /// </summary>
     public static IServiceCollection AddCaching(
@@ -192,13 +192,13 @@ public static class Dependencies
         IConfiguration? configuration,
         IHostEnvironment environment)
     {
-        var redisConnectionString = configuration?.GetConnectionString("Redis");
+        var redisOptions = ResolveRedisConfigurationOptions(configuration, environment);
 
-        if (!string.IsNullOrEmpty(redisConnectionString))
+        if (redisOptions != null)
         {
             services.AddStackExchangeRedisCache(options =>
             {
-                options.Configuration = redisConnectionString;
+                options.ConfigurationOptions = redisOptions;
             });
         }
         else if (!environment.IsDevelopment()
@@ -210,14 +210,14 @@ public static class Dependencies
             // Fail fast at startup instead of silently shipping a broken login flow.
             throw new InvalidOperationException(
                 "Redis is required when OIDC is configured outside Development: " +
-                "set ConnectionStrings:Redis. Cross-container session lookup " +
-                "depends on a shared distributed cache.");
+                "set Redis:Host (or legacy ConnectionStrings:Redis). " +
+                "Cross-container session lookup depends on a shared distributed cache.");
         }
         else
         {
             // Fallback so IDistributedCache is always resolvable (PreAuthSessionStore
             // depends on it). Used for local dev without Redis and for integration tests
-            // that set ConnectionStrings:Redis empty.
+            // that omit Redis config.
             services.AddDistributedMemoryCache();
         }
 
@@ -231,20 +231,22 @@ public static class Dependencies
     }
 
     /// <summary>
-    /// Registers a distributed lock provider. Uses Redis when a Redis connection
-    /// string is configured; otherwise falls back to SQL Server application locks.
+    /// Registers a distributed lock provider. Uses Redis when Redis is configured
+    /// (via structured settings or legacy connection string); otherwise falls back
+    /// to SQL Server application locks.
     /// </summary>
     public static IServiceCollection AddDistributedLocking(
         this IServiceCollection services,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
-        var redisConnectionString = configuration.GetConnectionString("Redis");
+        var redisOptions = ResolveRedisConfigurationOptions(configuration, environment);
 
-        if (!string.IsNullOrEmpty(redisConnectionString))
+        if (redisOptions != null)
         {
             services.AddSingleton<IDistributedLockProvider>(_ =>
             {
-                var connection = ConnectionMultiplexer.Connect(redisConnectionString);
+                var connection = ConnectionMultiplexer.Connect(redisOptions);
                 return new RedisDistributedSynchronizationProvider(connection.GetDatabase());
             });
         }
@@ -258,6 +260,57 @@ public static class Dependencies
         }
 
         return services;
+    }
+
+    /// <summary>
+    /// Resolves Redis configuration from settings. Structured Redis:* settings take
+    /// precedence; falls back to the legacy ConnectionStrings:Redis connection string.
+    /// Returns null when neither is configured.
+    /// </summary>
+    internal static ConfigurationOptions? ResolveRedisConfigurationOptions(
+        IConfiguration? configuration,
+        IHostEnvironment environment)
+    {
+        var settings = configuration?.GetSection(RedisSettings.SectionName).Get<RedisSettings>();
+        if (settings?.IsConfigured == true)
+        {
+            if (settings.AcceptSelfSignedCertificates && !environment.IsDevelopment())
+            {
+                throw new InvalidOperationException(
+                    "Redis:AcceptSelfSignedCertificates must only be true " +
+                    "when ASPNETCORE_ENVIRONMENT == Development. " +
+                    "Remove it from configuration — Elasticache presents an AWS-signed cert " +
+                    "that .NET trusts natively.");
+            }
+
+            var options = new ConfigurationOptions();
+            options.EndPoints.Add(settings.Host!, settings.Port);
+            if (!string.IsNullOrEmpty(settings.Password))
+            {
+                options.Password = settings.Password;
+            }
+            options.Ssl = settings.Ssl;
+            if (!string.IsNullOrEmpty(settings.SslHost))
+            {
+                options.SslHost = settings.SslHost;
+            }
+            if (settings.AcceptSelfSignedCertificates)
+            {
+                // Bypasses TLS cert validation for local dev with self-signed certs.
+                // In production, Elasticache presents an AWS-signed cert that .NET
+                // trusts without this — AcceptSelfSignedCertificates must be false.
+                options.CertificateValidation += (_, _, _, _) => true;
+            }
+            return options;
+        }
+
+        var legacyConnectionString = configuration?.GetConnectionString("Redis");
+        if (!string.IsNullOrEmpty(legacyConnectionString))
+        {
+            return ConfigurationOptions.Parse(legacyConnectionString);
+        }
+
+        return null;
     }
 
     /// <summary>
@@ -376,6 +429,9 @@ public static class Dependencies
             .BindConfiguration(AddressValidationPolicySettings.SectionName);
         services.AddOptions<AddressValidationDataSettings>()
             .BindConfiguration(AddressValidationDataSettings.SectionName);
+
+        services.AddOptions<RedisSettings>()
+            .BindConfiguration(RedisSettings.SectionName);
 
         // Outage schedule windows. IOptionsMonitor so AppConfig updates hot-reload without a redeploy.
         services.AddOptions<OutageScheduleSettings>()

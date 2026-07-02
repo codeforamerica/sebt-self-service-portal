@@ -63,6 +63,10 @@ module "api" {
     DB_HOST                                      = module.database.endpoint
     DB_NAME                                      = "SebtPortal"
     DB_PORT                                      = "1433"
+    "Redis__Host"                                = module.redis.primary_endpoint
+    "Redis__Port"                                = tostring(module.redis.port)
+    "Redis__Ssl"                                 = "true"
+    "Redis__SslHost"                             = module.redis.primary_endpoint
     "PluginAssemblyPaths__0"                     = "plugins-${lower(var.state)}"
     "SmtpClientSettings__SmtpServer"             = module.ses.smtp_server
     "SmtpClientSettings__SmtpPort"               = "587"
@@ -84,6 +88,7 @@ module "api" {
   environment_secrets = merge({
     DB_USER                        = "${module.database.secret_arn}:username"
     DB_PASSWORD                    = "${module.database.secret_arn}:password"
+    "Redis__Password"              = "${module.redis.auth_token_secret_arn}:auth_token"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
     "JwtSettings__SecretKey"       = "${module.secrets.secrets["auth"].secret_arn}:jwt_secret_key"
@@ -91,6 +96,15 @@ module "api" {
     "Smarty__AuthId"               = "${module.secrets.secrets["smarty"].secret_arn}:auth_id"
     "Smarty__AuthToken"            = "${module.secrets.secrets["smarty"].secret_arn}:auth_token"
   }, var.state_api_environment_secrets)
+
+  # Forward application traces to Datadog APM when the integration API key is
+  # available. Metrics pipelines are unchanged from the default ADOT config.
+  otel_collector_version = "v0.47.0"
+  otel_config = local.otel_override_config ? templatefile("${path.module}/templates/otel-config.yaml.tftpl", {
+    app_namespace = "${var.project}-${var.state}/api"
+    environment   = var.environment
+  }) : null
+  otel_secrets = local.otel_secrets
 }
 
 # Create the Web service. This is a public-facing Next.js application served                                                                      
@@ -180,6 +194,29 @@ module "database" {
 
   skip_final_snapshot = var.skip_final_snapshot
   apply_immediately   = var.apply_immediately
+}
+
+# Create the ElastiCache (Valkey) replication group. Provides the shared
+# distributed cache that backs HybridCache (L2) and distributed locking, and —
+# critically — the cross-container OIDC pre-auth session store.
+module "redis" {
+  source = "../sebt_redis"
+
+  project       = "${var.project}-${var.state}"
+  project_short = "sebt"
+  environment   = var.environment
+  vpc_id        = var.vpc_id
+  subnets       = var.private_subnets
+
+  ingress_security_groups = [module.api.security_group_id]
+
+  node_type                  = var.redis_node_type
+  num_cache_clusters         = var.redis_num_cache_clusters
+  multi_az_enabled           = var.redis_multi_az_enabled
+  automatic_failover_enabled = var.redis_automatic_failover_enabled
+
+  secret_recovery_period = var.secret_recovery_period
+  apply_immediately      = var.apply_immediately
 }
 
 # Create the SES domain identity, DNS records, and SMTP credentials.

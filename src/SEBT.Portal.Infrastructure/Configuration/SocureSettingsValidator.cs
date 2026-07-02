@@ -19,6 +19,8 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
             return ValidateOptionsResult.Fail("Socure configuration section is not present.");
         }
 
+        MergeLegacyEgregiousReasonRejection(options);
+
         if (!options.Enabled)
         {
             return ValidateOptionsResult.Success;
@@ -34,6 +36,13 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
         {
             return ValidateOptionsResult.Fail(
                 "Socure:DocvTransactionTokenTtlMinutes must be between 1 and 120.");
+        }
+
+        if (options.DocvEgregiousReasonRejection.Enabled
+            && options.DocvEgregiousReasonRejection.ReasonCodes.Count == 0)
+        {
+            return ValidateOptionsResult.Fail(
+                "Socure:DocvEgregiousReasonRejection:ReasonCodes must contain at least one code when Enabled is true.");
         }
 
         // UseStub bypasses webhook signature validation — only safe in Development
@@ -61,5 +70,30 @@ public class SocureSettingsValidator(IHostEnvironment environment) : IValidateOp
         }
 
         return ValidateOptionsResult.Success;
+    }
+
+    /// <summary>
+    /// Adopts <c>Socure:DocvEgregiousReasonCooldown</c> when the renamed
+    /// <c>Socure:DocvEgregiousReasonRejection</c> section was not configured in deployed AppConfig.
+    /// </summary>
+    internal static void MergeLegacyEgregiousReasonRejection(SocureSettings options)
+    {
+        var legacy = options.DocvEgregiousReasonCooldown;
+        if (legacy == null)
+        {
+            return;
+        }
+
+        var current = options.DocvEgregiousReasonRejection;
+        if (!current.Enabled && legacy.Enabled)
+        {
+            options.DocvEgregiousReasonRejection = legacy;
+            return;
+        }
+
+        if (legacy.ReasonCodes.Count > 0 && current.ReasonCodes.Count == 0)
+        {
+            current.ReasonCodes = legacy.ReasonCodes;
+        }
     }
 }
