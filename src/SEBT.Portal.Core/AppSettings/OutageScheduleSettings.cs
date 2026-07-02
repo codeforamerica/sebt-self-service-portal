@@ -32,4 +32,27 @@ public sealed class OutageWindow
     public string Start { get; set; } = string.Empty;
 
     public string End { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Which surface(s) this window applies to: "Portal", "EnrollmentChecker", or "Both"
+    /// (case-insensitive). Empty or missing means "Both" — a scheduled backend outage takes
+    /// down the shared data source, so every surface is affected unless the window says
+    /// otherwise. Kept as a string rather than <see cref="OutageTarget"/> so a typo in
+    /// hand-edited configuration cannot fail options binding; the evaluator parses it
+    /// defensively and skips windows it cannot understand.
+    /// </summary>
+    public string Target { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Surfaces an outage window can apply to. Window <see cref="OutageWindow.Target"/> strings
+/// parse to these values. When querying outage state, pass the asking surface
+/// (<see cref="Portal"/> or <see cref="EnrollmentChecker"/>); <see cref="Both"/> is a
+/// window-level value meaning the window applies to every surface.
+/// </summary>
+public enum OutageTarget
+{
+    Portal,
+    EnrollmentChecker,
+    Both
 }

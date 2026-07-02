@@ -57,6 +57,11 @@ public static class Dependencies
         // Auto-enables the outage page during configured outage windows (drives outage_page_enabled).
         services.AddSingleton<IOutageScheduleEvaluator, Services.OutageScheduleEvaluator>();
 
+        // Combines the outage schedule with the per-surface manual flag ("schedule wins when
+        // windows target the surface, else the manual flag decides"). Scoped because it consumes
+        // the scoped IFeatureManager.
+        services.AddScoped<IOutagePageStateResolver, Services.OutagePageStateResolver>();
+
         // Household identifier resolution (state-configurable preferred household ID type)
         services.AddTransient<IHouseholdIdentifierResolver, HouseholdIdentifierResolver>();
 

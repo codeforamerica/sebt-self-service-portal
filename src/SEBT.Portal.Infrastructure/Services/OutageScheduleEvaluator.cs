@@ -8,10 +8,11 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// <summary>
 /// Evaluates the configured <see cref="OutageScheduleSettings"/> against the current time so the
 /// outage page can auto-enable during scheduled (state-backend) maintenance windows without a
-/// manual flag toggle. Reads the schedule via <see cref="IOptionsMonitor{TOptions}"/> so AWS
-/// AppConfig updates take effect without a redeploy. Defensive by design: bad configuration
-/// (unknown timezone, unparseable window) is logged and skipped rather than thrown, so the
-/// feature-flags endpoint can never break.
+/// manual flag toggle. Windows apply per-surface via <see cref="OutageWindow.Target"/>. Reads the
+/// schedule via <see cref="IOptionsMonitor{TOptions}"/> so AWS AppConfig updates take effect
+/// without a redeploy. Defensive by design: bad configuration (unknown timezone, unparseable
+/// window, unrecognized target) is logged and skipped rather than thrown, so the feature-flags
+/// endpoints can never break.
 /// </summary>
 public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
 {
@@ -29,7 +30,7 @@ public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
         _logger = logger;
     }
 
-    public bool IsOutageActive()
+    public bool IsOutageActive(OutageTarget surface)
     {
         var settings = _options.CurrentValue;
         if (settings.Windows.Count == 0)
@@ -55,6 +56,22 @@ public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
 
         foreach (var window in settings.Windows)
         {
+            if (!TryParseTarget(window.Target, out var target))
+            {
+                _logger.LogWarning(
+                    "Skipping OutageSchedule window with unrecognized Target '{Target}' " +
+                    "(Start='{Start}' End='{End}'); expected Portal, EnrollmentChecker, or Both",
+                    window.Target,
+                    window.Start,
+                    window.End);
+                continue;
+            }
+
+            if (!AppliesTo(target, surface))
+            {
+                continue;
+            }
+
             if (!TryParseLocal(window.Start, out var start) || !TryParseLocal(window.End, out var end))
             {
                 _logger.LogWarning(
@@ -72,6 +89,41 @@ public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
         }
 
         return false;
+    }
+
+    public bool HasScheduledWindows(OutageTarget surface)
+    {
+        foreach (var window in _options.CurrentValue.Windows)
+        {
+            // Unrecognized targets are excluded (IsOutageActive logs them; logging here too
+            // would double the warning on every request). Malformed dates still count: a window
+            // scheduled for a surface signals "the schedule is the authority for that surface"
+            // even when its dates fail to parse.
+            if (TryParseTarget(window.Target, out var target) && AppliesTo(target, surface))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool AppliesTo(OutageTarget windowTarget, OutageTarget surface) =>
+        windowTarget == OutageTarget.Both || windowTarget == surface;
+
+    /// <summary>
+    /// Parses a window's Target string case-insensitively. Empty or whitespace means "Both" —
+    /// a scheduled backend outage affects every surface unless the window says otherwise.
+    /// </summary>
+    private static bool TryParseTarget(string value, out OutageTarget target)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            target = OutageTarget.Both;
+            return true;
+        }
+
+        return Enum.TryParse(value, ignoreCase: true, out target) && Enum.IsDefined(target);
     }
 
     /// <summary>

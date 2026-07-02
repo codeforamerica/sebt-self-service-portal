@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel.Services;
@@ -17,25 +16,21 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
 {
     private readonly IFeatureManager _featureManager;
     private readonly IOutageScheduleEvaluator _outageScheduleEvaluator;
-    private readonly IOptionsMonitor<OutageScheduleSettings> _outageScheduleOptions;
     private readonly ILogger<FeatureFlagQueryService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FeatureFlagQueryService"/> class.
     /// </summary>
     /// <param name="featureManager">The feature manager from Microsoft.FeatureManagement.</param>
-    /// <param name="outageScheduleEvaluator">Evaluates whether a scheduled outage window is active.</param>
-    /// <param name="outageScheduleOptions">Outage schedule configuration (windows and timezone).</param>
+    /// <param name="outageScheduleEvaluator">Evaluates outage windows per surface.</param>
     /// <param name="logger">The logger.</param>
     public FeatureFlagQueryService(
         IFeatureManager featureManager,
         IOutageScheduleEvaluator outageScheduleEvaluator,
-        IOptionsMonitor<OutageScheduleSettings> outageScheduleOptions,
         ILogger<FeatureFlagQueryService> logger)
     {
         _featureManager = featureManager;
         _outageScheduleEvaluator = outageScheduleEvaluator;
-        _outageScheduleOptions = outageScheduleOptions;
         _logger = logger;
     }
 
@@ -87,32 +82,40 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
             throw;
         }
 
-        ApplyOutagePageFlag(flags);
+        ApplyOutagePageFlags(flags);
 
         return flags;
     }
 
     /// <summary>
-    /// Resolves <see cref="FeatureFlags.OutagePageEnabled"/> after feature-manager values are loaded.
-    /// When <see cref="OutageScheduleSettings.Windows"/> is non-empty, the outage page follows the
-    /// schedule only (inside window = on, outside = off) so a manual/AppConfig "true" cannot bypass
-    /// the maintenance calendar. When no windows are configured, the feature-manager value is kept
-    /// and an active window (if any) can still force the flag on.
+    /// Resolves the outage page flags after feature-manager values are loaded, independently per
+    /// surface. When any schedule windows target a surface, that surface's flag follows the
+    /// schedule only (inside window = on, outside = off) so a manual/AppConfig "true" cannot
+    /// bypass the maintenance calendar — but windows targeting one surface never disable the
+    /// other surface's manual toggle. With no windows targeting a surface, the feature-manager
+    /// value is kept (or stays absent when unconfigured, preserving the configured-flags-only
+    /// contract of this service).
     /// </summary>
-    private void ApplyOutagePageFlag(Dictionary<string, bool> flags)
+    private void ApplyOutagePageFlags(Dictionary<string, bool> flags)
     {
-        var scheduleActive = _outageScheduleEvaluator.IsOutageActive();
+        ApplySurfaceOutageFlag(flags, OutageTarget.Portal, FeatureFlags.OutagePageEnabled);
+        ApplySurfaceOutageFlag(flags, OutageTarget.EnrollmentChecker, FeatureFlags.CheckerOutagePageEnabled);
+    }
 
-        if (_outageScheduleOptions.CurrentValue.Windows.Count > 0)
+    private void ApplySurfaceOutageFlag(Dictionary<string, bool> flags, OutageTarget surface, string flagName)
+    {
+        if (!_outageScheduleEvaluator.HasScheduledWindows(surface))
         {
-            flags[FeatureFlags.OutagePageEnabled] = scheduleActive;
             return;
         }
 
-        if (scheduleActive)
-        {
-            flags[FeatureFlags.OutagePageEnabled] = true;
-        }
+        var scheduleActive = _outageScheduleEvaluator.IsOutageActive(surface);
+        flags[flagName] = scheduleActive;
+        _logger.LogDebug(
+            "Outage flag {FlagName} forced to {Value} by schedule (windows target {Surface})",
+            flagName,
+            scheduleActive,
+            surface);
     }
 
     /// <summary>
