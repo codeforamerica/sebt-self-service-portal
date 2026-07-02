@@ -45,7 +45,7 @@ Middleware handles auth on both sides: inbound OAuth2/API key validation from th
 
 ### Co-loading as a signal-based identity match
 
-DC's co-loading methods (`TryMatchCoLoadedGuardianByBenefitIdAndDobAsync`, `GetHouseholdByBenefitIdentifierAndDobAsync`) prescribe a specific matching algorithm: benefit identifier + date of birth against DC's warehouse stored procedure. CO's planned co-loading may use different identifiers (e.g., a MyColorado-confirmed DOB with a different benefit identifier type).
+DC's co-loading methods prescribe a specific matching algorithm: benefit identifier + date of birth against DC's warehouse stored procedure. CO's planned co-loading may use different identifiers (e.g., a MyColorado-confirmed DOB with a different benefit identifier type).
 
 Rather than adding a second parallel method for CO, the interface is redesigned at a higher abstraction level: "given a set of identity signals, find a co-loaded household." The state backend decides which subset of signals it can use to produce a match. The portal passes everything it has; the backend uses what applies.
 
@@ -66,17 +66,19 @@ public record IdentitySignal(string Type, string Value);
 /// </summary>
 public static class IdentitySignalType
 {
-    public const string DateOfBirth     = "date_of_birth";
-    public const string StateBenefitId  = "state_benefit_id";
+    public const string DateOfBirth      = "date_of_birth";
+    public const string StateBenefitId   = "state_benefit_id";
     public const string FederalBenefitId = "federal_benefit_id";
-    public const string StateIssuedId   = "state_issued_id";
-    public const string PhoneNumber     = "phone_number";
+    public const string StateIssuedId    = "state_issued_id";
+    public const string PhoneNumber      = "phone_number";
 }
 ```
 
 DC passes `[StateBenefitId, DateOfBirth]`. CO might pass `[StateIssuedId, DateOfBirth]`. A third state could pass `[PhoneNumber, DateOfBirth]` or a signal type not listed above — the portal passes it through without needing a code change.
 
-This is an _optional capability interface_. States that support co-loading export it via the plugin path or advertise `cases.coLoadedLookup` in their capabilities response. The portal checks for the capability before attempting a match; if absent, it skips the co-loaded path entirely. On the REST path, co-loading is a second call to `POST /cases/lookup` with a different signal set — not a separate endpoint. The adapter merges the returned cases into the portal's `Household` model alongside the primary lookup results.
+This is an _optional capability_. States that support co-loading advertise `cases.coLoadedLookup` in their capabilities response. The portal checks for the capability before attempting a match; if absent, it skips the co-loaded path entirely. On the REST path, co-loading is a second call to `POST /cases/lookup` with a different signal set — not a separate endpoint.
+
+**The `intent` field distinguishes lookup types at the protocol level.** The request includes `"intent": "primary"` for the authenticated user's own household, or `"intent": "coLoad"` for a cross-household search. This gives state backends the context to apply different access rules to each call type. The adapter merges co-loaded cases into the portal's `Household` model alongside the primary lookup results.
 
 ### Capability discovery drives `allowedActions` (combined with feature flags)
 
@@ -95,6 +97,7 @@ Capability values are structured objects rather than booleans, even though `supp
 
 ```json
 {
+  "specVersion": "1.0.0",
   "capabilities": {
     "cases": {
       "coLoadedLookup":     { "supported": true },
@@ -106,14 +109,54 @@ Capability values are structured objects rather than booleans, even though `supp
     },
     "enrollment": {
       "check": { "supported": true }
+    },
+    "userAssertion": {
+      "supported": true,
+      "required": false
     }
   }
 }
 ```
 
+`specVersion` declares which version of the SEBT spec this backend conforms to — used for debugging and capability-mismatch logging.
+
 The portal ignores unknown fields within a capability object (open/closed). Future additions — `requiresMinIal`, `cooldownPeriodDays`, time-based availability windows — can be added to the spec and consumed by updated portal versions without breaking states that don't provide them.
 
-**Caching:** The REST adapter caches `GET /capabilities` with a configurable TTL (default: 5 minutes). If the response includes a `Cache-Control: max-age` header, that value wins. This lets state backends that want finer control set their own TTL without requiring portal config changes. Feature flag changes take effect on the next request via `IOptionsMonitor`, same as today.
+**Caching:** The REST adapter caches `GET /capabilities` with a configurable TTL (default: 5 minutes). If the response includes a `Cache-Control: max-age` header, that value wins.
+
+**Capabilities / endpoint behavior conflict resolution:**
+- Capabilities says `supported: false`, endpoint returns `200`: unexpected; the adapter logs a warning and proceeds (cache may be stale).
+- Capabilities says `supported: true`, endpoint returns `501`: adapter logs an error (backend misconfiguration), disables the feature for the session, does not retry.
+
+### End-user assertion (optional)
+
+By default, state backends trust the portal's service credential (OAuth2 client credentials or API key) and rely on the portal to have validated and authorized the end user. This is the baseline and is sufficient for most states.
+
+For states that want finer-grained access control — scoping results to the authenticated user at the data layer — the portal always includes an `X-Sebt-User-Identity` header on every data-access request. State backends that validate it can use it to enforce per-user scoping; those that don't can ignore it.
+
+Header value: a short-lived signed JWT with no PII:
+
+```json
+{
+  "ial": 2,
+  "userRef": "<hmac-sha256-of-portal-user-id>",
+  "iat": 1719878400,
+  "exp": 1719878460
+}
+```
+
+- `ial`: the authenticated user's identity assurance level (1 or 2)
+- `userRef`: a stable, opaque, non-reversible reference (HMAC-SHA256 of the portal's user ID with a per-state secret)
+- 60-second TTL prevents replay
+
+Signed by the portal using `StateBackend:UserAssertionSigningKey` from config. State backends validate the signature before trusting the claims.
+
+Capability flags:
+- `userAssertion.supported: false` (default) — backend ignores the header
+- `userAssertion.supported: true, required: false` — backend validates when present, proceeds without it
+- `userAssertion.supported: true, required: true` — backend rejects requests missing the header with `401`
+
+When assertion validation fails: `403` with ProblemDetails; include `requiredIal` in the extensions object if the failure is IAL-level insufficient.
 
 ### Auth strategy pattern
 
@@ -145,7 +188,8 @@ The strategy is resolved by name via keyed DI. Config:
     "TokenEndpoint": "https://auth.example.gov/token",
     "ClientId": "sebt-portal",
     "ClientSecretKeyName": "state-backend-client-secret"
-  }
+  },
+  "UserAssertionSigningKey": "<secret-key-name>"
 }
 ```
 
@@ -168,7 +212,7 @@ The REST adapter is responsible for that grouping. When it calls `POST /cases/lo
 Consequences:
 
 - **No path-based household reference** in the external contract. Operations that apply to all cases in a household (address update) receive explicit case IDs in the request body. Operations that apply to a single case (card replacement) use the state's native case ID, which is returned from `/cases/lookup`.
-- **Address update is a batch operation.** The adapter collects all case IDs for the household and sends them together: `PATCH /cases/address` with `{ "caseIds": ["..."], "address": {...} }`. The state backend applies the update to each listed case.
+- **Address update is a batch operation.** `POST /cases/address-updates` with `{ "caseIds": [...], "address": {...} }`. The operation is semantically idempotent — applying the same address to the same cases twice yields the same result, so Polly can safely retry. Response is 207 Multi-Status with a per-case result entry; the portal retries only the failed cases.
 - **No pagination.** Household sizes in this program are bounded by family structure and program rules. State backends return all cases in a single response. The spec documents a reasonable upper bound (e.g., 20).
 
 ### Card details loading is capability-driven
@@ -189,7 +233,7 @@ The REST adapter consults capabilities at runtime to pick the loading strategy:
 
 The portal only requests card details on pages that need them (card management flows), not on the dashboard. `IncludeCardDetails` in `HouseholdLookupContext` controls whether the adapter fetches card details at all; the capability flags control how.
 
-**Unsupported optional endpoints must return 501.** A state backend that supports batch but not per-case loading must still expose `GET /cases/{caseId}/card` and return `501 Not Implemented` with a ProblemDetails body. This gives the REST adapter an unambiguous signal if capabilities are misconfigured, surfacing the mismatch as a logged warning rather than a cryptic 404 or 500 mid-flow. The same rule applies to any optional endpoint in the spec.
+**Unsupported optional endpoints must return 501.** A state backend that supports batch but not per-case loading must still expose `GET /cases/{caseId}/card` and return `501 Not Implemented` with a ProblemDetails body. This gives the REST adapter an unambiguous signal if capabilities are misconfigured, surfacing the mismatch as a logged error rather than a cryptic 404 or 500 mid-flow. The same rule applies to any optional endpoint in the spec. `501` is explicitly excluded from Polly retry and circuit-breaker classification — it is not a transient failure.
 
 ### `HouseholdLookupContext` replaces ad-hoc parameters
 
@@ -215,17 +259,70 @@ The canonical contract is `docs/openapi.yaml` (see Phase 1 deliverables). The ta
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness / readiness |
-| `GET` | `/capabilities` | Capability discovery |
-| `POST` | `/cases/lookup` | Find cases by identity signals; returns flat case list; `includeCardDetails: true` triggers batch card data (requires `cardDetailsBatch` capability) |
-| `GET` | `/cases/{caseId}/card` | EBT card details for a single case (requires `cardDetailsPerCase` capability; return `501` if not supported) |
-| `PATCH` | `/cases/address` | Batch address update; body: `{ caseIds, address }` |
-| `POST` | `/cases/{caseId}/card-replacement` | Request card replacement for a specific case |
-| `GET` | `/enrollment` | Enrollment eligibility check |
+| `GET` | `/health` | Readiness check (includes CMS reachability); unauthenticated |
+| `GET` | `/capabilities` | Spec version + capability discovery |
+| `POST` | `/cases/lookup` | Find cases by identity signals; `intent: primary\|coLoad`; optional `includeCardDetails` for batch card data |
+| `GET` | `/cases/{caseId}/card` | EBT card details for a single case (requires `cardDetailsPerCase`; return `501` if not supported) |
+| `POST` | `/cases/address-updates` | Batch address update; semantically idempotent; returns 207 Multi-Status |
+| `POST` | `/cases/{caseId}/card-replacement` | Card replacement; requires `Idempotency-Key` header |
+| `POST` | `/enrollment/check` | Enrollment eligibility check; identity signals in request body |
 
 `{caseId}` is the state backend's native case identifier, returned in each case object from `POST /cases/lookup`. The portal treats it as opaque.
 
-**Error format:** ProblemDetails (RFC 9457) throughout, consistent with the portal's existing error shape. Optional endpoints that a state backend does not implement must return `501 Not Implemented` with a ProblemDetails body — not `404`. The REST adapter treats `501` as "capability not available" and handles it the same as a missing capability flag. The adapter normalizes non-ProblemDetails error responses from backends that can't fully conform.
+### Key request/response shapes
+
+**`POST /cases/lookup` request:**
+```json
+{
+  "signals": [
+    { "type": "email", "value": "guardian@example.com" }
+  ],
+  "intent": "primary",
+  "includeCardDetails": false
+}
+```
+- Signals are AND-matched where possible; the backend uses the most specific combination available.
+- No match: `200` with `{ "cases": [] }`.
+
+**`POST /cases/address-updates` request / response:**
+```json
+{
+  "caseIds": ["abc", "def"],
+  "address": {
+    "street1": "123 Main St",
+    "city": "Denver",
+    "state": "CO",
+    "zip": "80203"
+  }
+}
+```
+```json
+{
+  "results": [
+    { "caseId": "abc", "status": 200 },
+    { "caseId": "def", "status": 422, "error": { "title": "Address validation failed", "detail": "..." } }
+  ]
+}
+```
+
+**`POST /cases/{caseId}/card-replacement`:** requires `Idempotency-Key: <uuid>` header. Backend deduplicates within 24 hours — replayed key returns the original response. Missing key: `400 Bad Request`. This endpoint is excluded from automatic Polly retry; the portal manages retry manually after verifying idempotency key reuse is safe.
+
+**`POST /enrollment/check` request:**
+```json
+{
+  "signals": [
+    { "type": "state_benefit_id", "value": "SNAP-12345" }
+  ]
+}
+```
+
+### Error format
+
+ProblemDetails (RFC 9457) throughout, consistent with the portal's existing error shape.
+
+Optional endpoints that a state backend does not implement must return `501 Not Implemented` with a ProblemDetails body — not `404`. The REST adapter treats `501` as "capability not available," the same as `capabilities: { "supported": false }`. `501` is excluded from retry and circuit-breaker logic.
+
+The REST adapter normalizes non-ProblemDetails error responses from backends that cannot fully conform.
 
 ### Versioning
 
@@ -245,8 +342,9 @@ Alternatives considered:
 The REST adapter applies a Polly resilience pipeline per named HTTP client:
 
 - **Timeout** — per-request deadline (default: 10s, configurable). Prevents slow backends from blocking portal request threads.
-- **Retry with exponential backoff** — 3 attempts on transient failures (5xx, network errors, timeouts). Jitter applied to avoid thundering-herd on backend restarts.
-- **Circuit breaker** — trips after a configurable failure threshold (default: 5 failures in 30s); half-open probe after a configurable recovery window (default: 60s). When open, fails fast rather than queuing requests against a downed backend.
+- **Retry with exponential backoff + jitter** — 3 attempts on transient failures: `5xx` (excluding `501`), network errors, and timeouts. `POST /cases/{caseId}/card-replacement` is **excluded from automatic retry** — callers provide an `Idempotency-Key` and manage retry manually to avoid submitting a duplicate key without explicit intent.
+- **Circuit breaker** — trips on `5xx` (excluding `501`) and timeouts after a configurable threshold (default: 5 failures in 30s); half-open probe after a configurable recovery window (default: 60s). `429` responses do not trip the circuit breaker.
+- **429 / Retry-After** — if the backend returns `429`, the adapter honors the `Retry-After` header before the next attempt. This applies outside the standard retry pipeline.
 
 All thresholds are configurable under `StateBackend:Resilience`. Circuit-open state surfaces to the frontend as a service-unavailable response without leaking backend details.
 
@@ -254,16 +352,42 @@ All thresholds are configurable under `StateBackend:Resilience`. Circuit-open st
 
 The portal already uses `HybridCache` (Microsoft.Extensions.Caching.Hybrid, .NET 9+), which provides L1 in-process and optional L2 distributed caching behind a single API. The REST adapter uses the same infrastructure.
 
-Two separately TTL'd entries:
+Three separately TTL'd entries:
 
-- **Household data** (cases without card details) — short TTL, default 30s. Avoids redundant round-trips within a single user session (e.g., dashboard load followed by navigating to card replacement). Cache key: `portalUserId`.
-- **Card details** — configurable TTL, default 60s. Card status changes infrequently enough that a slightly longer TTL is safe. Cached separately so dashboard loads don't pay the card-detail fetch cost. Cache key: `portalUserId:cards`.
+- **Household data** (cases without card details) — 30s TTL. Cache key: `portalUserId`. The authenticated user's portal ID is strictly 1:1 with the identity-signal set used for lookup within a session.
+- **Card details** — 60s TTL. Cache key: `portalUserId:cards`. Cached separately so dashboard loads don't pay the card-detail fetch cost.
+- **Capabilities** — 5min TTL (or `Cache-Control: max-age` from the response, which wins).
 
-Write operations (address update, card replacement) invalidate both entries for the affected user.
-
-Capabilities are cached separately with a longer TTL (default: 5 minutes). If the `/capabilities` response includes `Cache-Control: max-age`, that value takes precedence over the configured default. This lets state backends that want finer control set their own TTL without requiring portal config changes.
+Write invalidation: the adapter maintains a session-scoped `caseId → portalUserId` mapping (populated during lookup). When a case-scoped write (address update, card replacement) occurs, the adapter uses this mapping to invalidate both the household and card entries for the correct user.
 
 L2 (distributed) caching is optional — if Redis is not configured, `HybridCache` falls back to L1 only. This keeps single-instance deployments simple while supporting multi-replica deployments without code changes.
+
+---
+
+## Conventions
+
+All state backends must conform to these field-level rules. The OpenAPI spec will enforce these as schema constraints.
+
+| Concern | Rule |
+|---|---|
+| Content-Type | `application/json` on all requests and responses |
+| Date-times | RFC 3339 with UTC offset (`2024-06-15T14:30:00Z`) |
+| Date-only | `YYYY-MM-DD` (used for `date_of_birth`) |
+| Phone numbers | E.164 (`+13035551234`) |
+| Benefit / monetary amounts | Integer cents; no decimal |
+| JSON field casing | camelCase |
+| Null vs absent | Absent = field not applicable. `null` = applicable but no value. Prefer absent. |
+| Unknown signal types | Backends ignore silently; never error on unrecognized type |
+
+**Signal value formats by known type:**
+
+| Signal type | Format |
+|---|---|
+| `date_of_birth` | `YYYY-MM-DD` |
+| `phone_number` | E.164 |
+| `state_benefit_id` | Opaque string; normalized (trimmed, dashes and spaces stripped) |
+| `federal_benefit_id` | Opaque string; normalized |
+| `state_issued_id` | Opaque string; normalized |
 
 ---
 
@@ -273,7 +397,7 @@ L2 (distributed) caching is optional — if Redis is not configured, `HybridCach
 appsettings.{state}.json
   StateBackend:BaseUrl + Auth     →  REST adapter (IHttpClientFactory)
                                          ↓
-                                   GET /capabilities (cached at startup)
+                                   GET /capabilities (cached, 5min TTL)
                                          ↓
                              IStateCapabilityService.GetCapabilitiesAsync()
                                          ↓
@@ -292,7 +416,7 @@ Co-loading lookup path:
 User supplies identity signals (from UI)
   → ICoLoadedIdentityService.TryMatchAsync(signals)
        ├─ Plugin path: DLL method call
-       └─ REST path:   POST /cases/lookup  (with co-loading signals)
+       └─ REST path:   POST /cases/lookup  (intent: "coLoad", co-loading signals)
   → CoLoadedIdentityMatchResult { Matched, Cases[] }
   → Adapter merges co-loaded cases into portal's Household model
   → (existing co-loading enrollment flow continues)
