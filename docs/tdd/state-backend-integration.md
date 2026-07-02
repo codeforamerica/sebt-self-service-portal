@@ -4,9 +4,9 @@
 
 The portal integrates with state case-management backends via MEF (System.Composition) plugins — compiled C# DLLs loaded at startup from `plugins-{state}/`. This works for DC and CO but has meaningful costs as we approach broader state onboarding:
 
-- **Onboarding requires CFA involvement.** State CMS teams and their vendors cannot implement a C# plugin. Every new state integration requires CFA to author, package, and distribute a connector DLL.
+- **Onboarding requires CFA involvement.** It is likely impractical for state staff and/or their vendors to implement a C# plugin. Every new state integration requires CFA to author, package, and distribute a connector DLL.
 - **The integration contract encodes CFA's stack.** The plugin interface (`ISummerEbtCaseService`) is expressed in C#. A state that has a working REST API cannot use it without a C# wrapper.
-- **The contract has accreted DC-shaped abstractions.** Co-loading methods were added to the universal interface with docstrings saying "DC only; other states return false." CO is planning to implement co-loading via a different matching path. The abstraction doesn't generalize.
+- **The contract has accreted DC-shaped abstractions.** Co-loading methods were added to the universal interface with docstrings saying "DC only; other states return false." CO may be planning to implement co-loading via a different matching path. The abstraction doesn't generalize.
 - **Infrastructure build coupling.** Email templates and blocked-address lists are embedded as assembly resources in the shared Infrastructure project, requiring a rebuild to add a new state.
 
 The goal is a REST API spec that any state backend can implement — whether by a state's CMS vendor, a CFA-built middleware microservice, or a future state's in-house team — without requiring CFA code.
@@ -17,14 +17,14 @@ The goal is a REST API spec that any state backend can implement — whether by 
 
 ### Ports-and-adapters at the integration boundary
 
-The portal's internal code never calls state backends directly. It calls C# interfaces (the "port"). Two adapters fulfill those interfaces:
+The portal's core business logic code ("use cases") never calls state backends directly. It calls C# interfaces (the "port"). Two adapters fulfill those interfaces:
 
-1. **Plugin adapter** — MEF loads a compiled DLL from `plugins-{state}/`. Existing DC and CO connectors continue to work here, refactored to the new interfaces.
+1. **Plugin adapter** — The portal dynamically loads a compiled DLL from `plugins-{state}/`. Existing DC and CO connectors continue to work here, refactored to the new interfaces.
 2. **REST adapter** — the default implementation; makes HTTP calls to a state backend that implements our OpenAPI spec.
 
-At startup, MEF scans for a plugin. If found, use it. If not, fall back to the REST adapter, which reads `StateBackend:BaseUrl` from `appsettings.{state}.json`. DC and CO keep their plugins until they choose to migrate; new states get the REST path from day one.
+At startup, the portal scans for a plugin. If found, use it. If not, fall back to the REST adapter, which reads `StateBackend:BaseUrl` from `appsettings.{state}.json`. DC and CO keep their plugins until they choose to migrate; new states get the REST path from day one.
 
-This means the C# interfaces remain stable as the portal's internal abstraction. The OpenAPI spec is the *external* contract — what states implement. The two are related but distinct.
+This means the C# interfaces remain stable as the portal's internal abstraction. The OpenAPI spec is the _external_ contract — what states implement. The two are related but distinct.
 
 ```
 Portal (BFF)
@@ -37,7 +37,7 @@ Portal (BFF)
 
 ### The optional middleware layer
 
-Not all states will be able to implement the full spec natively. When needed, CFA builds a thin .NET microservice as an anticorruption layer: it translates the state's existing CMS API into our spec. It has no database. It deploys on state-owned SEBT portal infra (Docker Compose alongside portal components) — not CFA-managed infra. It is a last resort, not the default.
+States may not be able to implement the full spec precisely. If/when needed, CFA builds a thin microservice as an anticorruption layer: it translates the state's existing CMS API into our spec. It has no database. It deploys on state-owned SEBT portal infra (separate container sitting alongside core portal components) — not CFA-managed infra. It is a last resort, not the default.
 
 ### Co-loading as a signal-based identity match
 
@@ -53,21 +53,26 @@ public interface ICoLoadedIdentityService
         CancellationToken ct);
 }
 
-public record IdentitySignal(IdentitySignalType Type, string Value);
+public record IdentitySignal(string Type, string Value);
 
-public enum IdentitySignalType
+/// <summary>
+/// Well-known signal type identifiers. Not an enum — new types can be added
+/// by extending this class or passing custom strings without a portal code change.
+/// State backends ignore types they don't recognize.
+/// </summary>
+public static class IdentitySignalType
 {
-    DateOfBirth,
-    StateBenefitId,
-    FederalBenefitId,
-    StateIssuedId,
-    PhoneNumber,
+    public const string DateOfBirth     = "date_of_birth";
+    public const string StateBenefitId  = "state_benefit_id";
+    public const string FederalBenefitId = "federal_benefit_id";
+    public const string StateIssuedId   = "state_issued_id";
+    public const string PhoneNumber     = "phone_number";
 }
 ```
 
-DC passes `[StateBenefitId, DateOfBirth]`. CO might pass `[StateIssuedId, DateOfBirth]`. A third state could pass `[PhoneNumber, DateOfBirth]`. The interface doesn't change; the backend uses what it knows.
+DC passes `[StateBenefitId, DateOfBirth]`. CO might pass `[StateIssuedId, DateOfBirth]`. A third state could pass `[PhoneNumber, DateOfBirth]` or a signal type not listed above — the portal passes it through without needing a code change.
 
-This is an *optional capability interface*. States that support co-loading export it via MEF (plugin path) or implement `/households/identify` in their REST endpoint. The portal checks for the capability before attempting a match; if absent, it skips the co-loaded path entirely.
+This is an _optional capability interface_. States that support co-loading export it via MEF (plugin path) or implement `POST /households/identify` in their REST endpoint. The portal checks for the capability before attempting a match; if absent, it skips the co-loaded path entirely.
 
 ### Capability discovery drives `allowedActions` (combined with feature flags)
 
@@ -82,7 +87,30 @@ allowedAction(X) =
 
 A state that supports card replacement can still have it disabled portal-wide via `SelfServiceRulesSettings` (e.g., program not yet open). The backend capability is a necessary but not sufficient condition. This extends the existing `SelfServiceEvaluator` pattern rather than replacing it — capabilities feed in as a new input to the existing evaluator.
 
-The REST adapter caches `GET /capabilities` at startup (or on a configurable TTL). Feature flag changes take effect on the next request via `IOptionsMonitor`, same as today.
+Capability values are structured objects rather than booleans, even though `supported: bool` is all the portal uses today:
+
+```json
+{
+  "capabilities": {
+    "household": {
+      "resolve":                { "supported": true },
+      "coLoadedIdentityMatch":  { "supported": true }
+    },
+    "cases": {
+      "cardReplacement": { "supported": true },
+      "addressUpdate":   { "supported": true },
+      "cardActivation":  { "supported": false }
+    },
+    "enrollment": {
+      "check": { "supported": true }
+    }
+  }
+}
+```
+
+The portal ignores unknown fields within a capability object (open/closed). Future additions — `requiresMinIal`, `cooldownPeriodDays`, time-based availability windows — can be added to the spec and consumed by updated portal versions without breaking states that don't provide them.
+
+**Caching:** The REST adapter caches `GET /capabilities` with a configurable TTL (default: 5 minutes). If the response includes a `Cache-Control: max-age` header, that value wins. This lets state backends that want finer control set their own TTL without requiring portal config changes. Feature flag changes take effect on the next request via `IOptionsMonitor`, same as today.
 
 ### Auth strategy pattern
 
@@ -96,10 +124,12 @@ public interface IStateBackendAuthStrategy
 ```
 
 Shipped implementations:
+
 - `OAuth2ClientCredentialsAuthStrategy` — default; handles token caching and refresh. CO already uses this pattern.
 - `ApiKeyAuthStrategy` — header-based; for states that cannot run an OAuth server.
 
 Future (not in scope):
+
 - `MutualTlsAuthStrategy` — client cert from the cert store.
 
 The strategy is resolved by name via keyed DI. Config:
@@ -117,6 +147,24 @@ The strategy is resolved by name via keyed DI. Config:
 ```
 
 Adding support for a new auth mechanism is a new class implementing `IStateBackendAuthStrategy` and a keyed registration in `Dependencies.cs`. No portal code changes.
+
+### Adapter selection is config-driven, not file-presence-driven
+
+If `StateBackend:BaseUrl` is present in `appsettings.{state}.json`, the REST adapter is used. If it is absent, the portal looks for a plugin DLL in `plugins-{state}/`. The REST adapter is therefore the intended default for new states; the plugin path is the backward-compat path for DC and CO during migration.
+
+Migrating a state from plugin to REST = adding `StateBackend:BaseUrl` to its config. No DLL removal required (the config presence takes precedence), though the DLL can be removed once confidence is established.
+
+This is deliberately asymmetric: a state cannot accidentally get the plugin path by having a DLL in the directory if REST is configured. The new integration pattern wins explicitly.
+
+### Household resolution uses opaque state-native references
+
+State backends don't have a concept of a "portal household ID." Resolution always starts from natural key(s) — email, phone, state-issued ID — and returns a `stateReferenceId` that is opaque to the portal. The portal treats it as a session-scoped handle for subsequent operations. The state backend interprets it however it needs to (a primary key, a token, a compound key encoded as a string).
+
+`POST /households/resolve` is the resolution entry point. It accepts a list of identifier signals (same structure as the co-loading identify endpoint) and returns a `HouseholdData` object including `stateReferenceId`. Subsequent operations — address update, card replacement, card details — use `{stateReferenceId}` in the path. The portal never constructs or inspects this value; it only stores and forwards it.
+
+Cases within a household similarly carry a `caseReferenceId` returned from `/households/{ref}/cases`. Case-level operations use that reference.
+
+There is no pagination for `/cases`. Household sizes in this program are bounded by family structure and program rules. State backends must return all cases in a single response. The spec will document a reasonable upper bound (e.g., 20) and note that the portal will not request pages.
 
 ### `HouseholdLookupContext` replaces ad-hoc parameters
 
@@ -144,17 +192,48 @@ The canonical contract is `docs/openapi.yaml` (see Phase 1 deliverables). The ta
 |---|---|---|
 | `GET` | `/health` | Liveness / readiness |
 | `GET` | `/capabilities` | Capability discovery |
-| `GET` | `/households` | Lookup household by identifier type + value |
-| `POST` | `/households/identify` | Co-loading identity match (flexible signal list) |
-| `GET` | `/households/{householdId}/cases` | Cases / benefit records for a household |
-| `PATCH` | `/households/{householdId}/address` | Update mailing address |
-| `POST` | `/households/{householdId}/cases/{caseId}/card-replacement` | Request card replacement |
-| `GET` | `/households/{householdId}/cases/{caseId}/card` | EBT card details |
+| `POST` | `/households/resolve` | Resolve a household from identifier signals; returns `HouseholdData` with `stateReferenceId` |
+| `POST` | `/households/identify` | Co-loading identity match; returns match result + `stateReferenceId` if matched |
+| `GET` | `/households/{ref}/cases` | All cases for a resolved household (no pagination) |
+| `PATCH` | `/households/{ref}/address` | Update mailing address |
+| `POST` | `/households/{ref}/cases/{caseRef}/card-replacement` | Request card replacement |
+| `GET` | `/households/{ref}/cases/{caseRef}/card` | EBT card details |
 | `GET` | `/enrollment` | Enrollment eligibility check |
 
-**Error format:** ProblemDetails (RFC 9457) throughout, consistent with the portal's existing error shape. The REST adapter normalizes non-ProblemDetails error responses from backends that can't conform.
+`{ref}` and `{caseRef}` are opaque `stateReferenceId` / `caseReferenceId` values returned from the resolution step. The portal does not construct or interpret them.
 
-**Versioning:** URL prefix (`/v1/`). See open items.
+**Error format:** ProblemDetails (RFC 9457) throughout, consistent with the portal's existing error shape. The REST adapter normalizes non-ProblemDetails error responses from backends that can't fully conform.
+
+### Versioning
+
+URL prefix: all endpoints live under `/v1/`.
+
+Alternatives considered:
+
+| Approach | Tradeoff |
+|---|---|
+| URL prefix (`/v1/`) | Visible, cacheable, works with any HTTP client, easy to test with curl. Breaking change = new prefix; both versions coexist during transition. **Chosen.** |
+| `Accept` header (`application/vnd.sebt.v1+json`) | More REST-pure; doesn't pollute the URL namespace. Harder to test, invisible in browser address bars, not supported by all API gateways. Not recommended for a government partner audience. |
+| Query param (`?version=1`) | Simple but contaminates resource identity; considered poor practice. |
+| Subdomain (`v1.api.example.gov`) | Requires DNS and TLS cert per version. Operationally expensive for state partners. |
+
+### Fault tolerance
+
+The REST adapter applies a Polly resilience pipeline per named HTTP client:
+
+- **Timeout** — per-request deadline (default: 10s, configurable). Prevents slow backends from blocking portal request threads.
+- **Retry with exponential backoff** — 3 attempts on transient failures (5xx, network errors, timeouts). Jitter applied to avoid thundering-herd on backend restarts.
+- **Circuit breaker** — trips after a configurable failure threshold (default: 5 failures in 30s); half-open probe after a configurable recovery window (default: 60s). When open, fails fast rather than queuing requests against a downed backend.
+
+All thresholds are configurable under `StateBackend:Resilience`. Circuit-open state surfaces to the frontend as a service-unavailable response without leaking backend details.
+
+### Caching in the REST adapter
+
+The REST adapter caches `HouseholdData` (household + cases) with a short configurable TTL (default: 30s). This matches the CO connector's existing caching behavior and avoids redundant round-trips within a single user session (e.g., loading the dashboard then immediately navigating to the card replacement flow).
+
+Cache keys are scoped to `stateReferenceId`. Write operations (address update, card replacement) invalidate the cached entry for that reference.
+
+Capabilities are cached separately with a longer TTL (default: 5 minutes). If the `/capabilities` response includes `Cache-Control: max-age`, that value takes precedence over the configured default. This lets state backends that want finer control set their own TTL without requiring portal config changes.
 
 ---
 
@@ -192,12 +271,12 @@ User supplies identity signals (from UI)
 
 ## New C# Interfaces (Phase 1)
 
-| Interface | Description |
-|---|---|
-| `IStateHouseholdService` | Replaces `ISummerEbtCaseService`; household lookup and cases |
-| `ICoLoadedIdentityService` | Optional capability; signal-based co-loading match |
-| `IStateCapabilityService` | Capability discovery |
-| `IStateBackendAuthStrategy` | Auth strategy abstraction |
+| Interface                   | Description                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| `IStateHouseholdService`    | Replaces `ISummerEbtCaseService`; household lookup and cases |
+| `ICoLoadedIdentityService`  | Optional capability; signal-based co-loading match           |
+| `IStateCapabilityService`   | Capability discovery                                         |
+| `IStateBackendAuthStrategy` | Auth strategy abstraction                                    |
 
 Existing interfaces (`IAddressUpdateService`, `ICardReplacementService`, `IEnrollmentCheckService`) are cleaned up (DC/CO doc references removed, optional fields documented) but otherwise unchanged in Phase 1.
 
@@ -206,25 +285,30 @@ Existing interfaces (`IAddressUpdateService`, `ICardReplacementService`, `IEnrol
 ## Migration Plan
 
 **Phase 1 — Foundation (no DC/CO connector changes)**
+
 - Author `docs/openapi.yaml` and set up Redoc on GitHub Pages
 - Implement new C# interfaces and `HouseholdLookupContext`
-- Implement `RestStateBackendAdapter` (HTTP implementation of all interfaces)
+- Implement `RestStateBackendAdapter` (HTTP implementation of all interfaces, with Polly resilience and caching)
 - Implement auth strategy infrastructure (OAuth2 + ApiKey)
 - Extend `ISelfServiceEvaluator` to consume `IStateCapabilityService`
-- Wire new interfaces into portal use cases; existing plugins still load and win
+- Wire new interfaces into portal use cases; existing plugins still load via the plugin path
+- **CO proof-of-concept middleware** — build a thin .NET middleware microservice that wraps the CO connector's logic and exposes the SEBT REST spec. This does not need to be deployed to production; its purpose is to validate the architecture, stress-test the spec against a real integration, and build team + stakeholder confidence. The PoC becomes the template for future middleware layers.
 
 **Phase 2 — DC/CO interface cleanup**
+
 - Refactor DC and CO connector DLLs to implement the new C# interfaces
 - Replace DC-specific co-loading methods with `ICoLoadedIdentityService`
-- Plugins still load via MEF; no REST endpoint required
+- Plugins still load via MEF when `StateBackend:BaseUrl` is absent; no REST endpoint required
 
-**Phase 3 — Reference REST implementation**
-- Validate the REST adapter against a real state backend (likely CO, timed with their co-loading work)
-- Build and document the middleware microservice template if needed
+**Phase 3 — New state onboarding via REST**
 
-**Phase 4 — New state onboarding via REST**
-- New states implement `docs/openapi.yaml` (or CFA builds middleware)
-- No plugin DLL required; REST adapter is the default path
+- New states implement `docs/openapi.yaml` natively (or CFA builds middleware using the Phase 1 PoC as a template)
+- No plugin DLL required; the REST adapter is the default path when `StateBackend:BaseUrl` is configured
+
+**Phase 4 — DC/CO REST migration (optional, state-timeline-dependent)**
+
+- DC and CO can cut over from their plugin DLLs to REST endpoints at their own pace
+- Migration = setting `StateBackend:BaseUrl` in their config; the plugin DLL becomes inert and can be decommissioned
 
 ---
 
@@ -243,9 +327,7 @@ The spec (`docs/openapi.yaml`) is rendered via Redoc deployed to GitHub Pages on
 
 | # | Question | Impact |
 |---|---|---|
-| OI-1 | CO co-loading: which `IdentitySignalType` values does CO plan to use? | Drives which signal types ship in v1 of the spec |
-| OI-2 | Pagination strategy for `/cases` list endpoints: cursor-based or offset? | Spec design |
-| OI-3 | Does the REST adapter normalize non-ProblemDetails error responses, or do we require conformance? | Middleware complexity |
-| OI-4 | Circuit breaking / retry policy for state backend HTTP calls (Polly)? | Reliability |
-| OI-5 | `GET /capabilities` caching: startup-time snapshot vs. TTL-based refresh? Cache invalidation when a backend redeploys? | Consistency |
-| OI-6 | URL versioning (`/v1/`) vs. `Accept` header versioning? | Onboarding documentation |
+| OI-1 | CO co-loading: which `IdentitySignalType` values does CO plan to use? | Drives which signal types are documented as well-known in v1 of the spec |
+| OI-2 | Default Polly thresholds (timeout, retry count, circuit breaker window) — validate against real CO connector latency profile before hardcoding | Resilience config defaults |
+| OI-3 | Should the middleware microservice template live in this repo (as a `src/SEBT.StateMiddleware/` project) or a separate repo? | PoC scope |
+| OI-4 | For the CO PoC middleware: does it wrap the existing CO connector DLL directly, or re-implement the CBMS calls from scratch? Wrapping is faster; re-implementing produces a cleaner template. | PoC build approach |
