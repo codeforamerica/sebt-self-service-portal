@@ -78,7 +78,12 @@ DC passes `[StateBenefitId, DateOfBirth]`. CO might pass `[StateIssuedId, DateOf
 
 This is an _optional capability_. States that support co-loading advertise `cases.coLoadedLookup` in their capabilities response. The portal checks for the capability before attempting a match; if absent, it skips the co-loaded path entirely. On the REST path, co-loading is a second call to `POST /cases/lookup` with a different signal set — not a separate endpoint.
 
-**The `intent` field distinguishes lookup types at the protocol level.** The request includes `"intent": "primary"` for the authenticated user's own household, or `"intent": "coLoad"` for a cross-household search. This gives state backends the context to apply different access rules to each call type. The adapter merges co-loaded cases into the portal's `Household` model alongside the primary lookup results.
+**The `intent` field** distinguishes lookup types at the protocol level. It is an **open string constant** (same extensibility model as signal types): well-known values are `"primary"` and `"coLoad"`, but future values are possible (e.g., caseworker-assisted lookup). Backends MUST return `400` for unrecognized intent values rather than guessing — fail closed, since `intent` shapes access-control decisions. The portal passes a known value on every request.
+
+- `"primary"` — the authenticated user's own household
+- `"coLoad"` — a cross-household search (find a SNAP/TANF household to co-load); backends may apply stricter access rules
+
+Enrollment eligibility check (`POST /enrollment/check`) is a separate endpoint with its own security posture (unauthenticated by default) and does not use `intent`.
 
 ### Capability discovery drives `allowedActions` (combined with feature flags)
 
@@ -91,48 +96,75 @@ allowedAction(X) =
     && userMeetsRequirements(X)          // IAL, co-loading status, cooldown
 ```
 
-A state that supports card replacement can still have it disabled portal-wide via `SelfServiceRulesSettings` (e.g., program not yet open). The backend capability is a necessary but not sufficient condition. This extends the existing `SelfServiceEvaluator` pattern rather than replacing it — capabilities feed in as a new input to the existing evaluator.
-
-Capability values are structured objects rather than booleans, even though `supported: bool` is all the portal uses today:
+Full capabilities response shape:
 
 ```json
 {
   "specVersion": "1.0.0",
+  "serviceMode": {
+    "mode": "full",
+    "until": null
+  },
   "capabilities": {
     "cases": {
-      "coLoadedLookup":     { "supported": true },
-      "cardDetailsBatch":   { "supported": true },
-      "cardDetailsPerCase": { "supported": false },
-      "cardReplacement":    { "supported": true },
-      "addressUpdate":      { "supported": true },
-      "cardActivation":     { "supported": false }
+      "coLoadedLookup": { "supported": true },
+      "cardDetails":    { "supported": true, "modes": ["batch"] },
+      "cardReplacement": { "supported": true },
+      "addressUpdate":   { "supported": true },
+      "cardActivation":  { "supported": false }
     },
     "enrollment": {
       "check": { "supported": true }
     },
     "userAssertion": {
       "supported": true,
-      "required": false
+      "required": {
+        "default":         false,
+        "cardReplacement": true,
+        "addressUpdate":   true
+      }
     }
   }
 }
 ```
 
-`specVersion` declares which version of the SEBT spec this backend conforms to — used for debugging and capability-mismatch logging.
+Capability values are structured objects (`{ "supported": bool, ... }`) rather than bare booleans, so future metadata fields (`requiresMinIal`, `cooldownPeriodDays`, etc.) can be added without breaking existing consumers. The portal ignores unknown fields within a capability object (open/closed).
 
-The portal ignores unknown fields within a capability object (open/closed). Future additions — `requiresMinIal`, `cooldownPeriodDays`, time-based availability windows — can be added to the spec and consumed by updated portal versions without breaking states that don't provide them.
+**`specVersion`** — declares which version of the SEBT spec this backend conforms to.
 
-**Caching:** The REST adapter caches `GET /capabilities` with a configurable TTL (default: 5 minutes). If the response includes a `Cache-Control: max-age` header, that value wins.
+- The portal sends its own supported spec version on every request via `X-Sebt-Spec-Version: 1.0.0`.
+- Within a major version: unknown capability keys and fields are ignored; absent capability = unsupported. New capabilities may only be *added*, never repurposed.
+- Major version mismatch between portal and backend is fatal: the portal refuses to activate the backend, logs the mismatch, and degrades to a service-unavailable state. This prevents silent behavioral drift across incompatible versions.
 
-**Capabilities / endpoint behavior conflict resolution:**
-- Capabilities says `supported: false`, endpoint returns `200`: unexpected; the adapter logs a warning and proceeds (cache may be stale).
-- Capabilities says `supported: true`, endpoint returns `501`: adapter logs an error (backend misconfiguration), disables the feature for the session, does not retry.
+**`serviceMode`** — runtime operational status, distinct from static capabilities.
+
+| Mode | Portal behavior |
+|---|---|
+| `"full"` (default, may be absent) | Normal operation |
+| `"readOnly"` | Suppress all write `allowedActions` (card replacement, address update); display `until` time to users |
+| `"maintenance"` | All operations suspended; portal shows outage page; use `until` to indicate expected recovery time |
+
+Backends enter `readOnly` during nightly batch windows or CMS maintenance where writes fail but reads succeed. `until` is an RFC 3339 timestamp or `null` if the window end is unknown.
+
+**Per-case capability overrides (reserved, not yet implemented)** — capabilities are currently state-wide. A future version may allow individual cases returned from `POST /cases/lookup` to carry a `capabilities` object that narrows the state-wide defaults. Absent per-case capabilities = inherit state-wide defaults. This field is reserved in the spec from v1 to ensure it can be added non-breakingly when multi-CMS state deployments require it.
+
+**Caching and invalidation:**
+
+Capabilities are cached with a configurable TTL (default: 5 minutes). If the response includes `Cache-Control: max-age`, that value wins — backends should set a short `max-age` ahead of planned capability changes, and `no-cache` during a cutover window.
+
+For near-real-time invalidation, backends include an `X-Sebt-Capabilities-ETag` header on every data response (lookup, writes). When the portal observes a changed ETag value compared to what it cached, it immediately re-fetches `/capabilities`. This lets a backend piggyback "my capabilities changed" onto the next request the user already makes — no push infrastructure required. The portal closes the stale-`allowedActions` window to a single request rather than a full TTL cycle.
+
+**Conflict resolution:**
+- Capabilities says `supported: false`, endpoint returns `200`: log warning, proceed (cache may be stale).
+- Capabilities says `supported: true`, endpoint returns `501`: log error (backend misconfiguration), disable feature for session, do not retry.
 
 ### End-user assertion (optional)
 
 By default, state backends trust the portal's service credential (OAuth2 client credentials or API key) and rely on the portal to have validated and authorized the end user. This is the baseline and is sufficient for most states.
 
-For states that want finer-grained access control — scoping results to the authenticated user at the data layer — the portal always includes an `X-Sebt-User-Identity` header on every data-access request. State backends that validate it can use it to enforce per-user scoping; those that don't can ignore it.
+For states that want finer-grained access control at the data layer, the portal includes an `X-Sebt-User-Identity` header on every **authenticated** data-access request. State backends that validate it can scope results to the authenticated user; those that don't can ignore it.
+
+**Important:** Enrollment check (`POST /enrollment/check`) is unauthenticated by default. The portal does not send the assertion header for enrollment flows, and state backends MUST NOT mark `enrollmentCheck` as `required: true` in the `userAssertion` capability.
 
 Header value: a short-lived signed JWT with no PII:
 
@@ -149,14 +181,22 @@ Header value: a short-lived signed JWT with no PII:
 - `userRef`: a stable, opaque, non-reversible reference (HMAC-SHA256 of the portal's user ID with a per-state secret)
 - 60-second TTL prevents replay
 
-Signed by the portal using `StateBackend:UserAssertionSigningKey` from config. State backends validate the signature before trusting the claims.
+Signed by the portal using `StateBackend:UserAssertionSigningKey` from config.
 
-Capability flags:
-- `userAssertion.supported: false` (default) — backend ignores the header
-- `userAssertion.supported: true, required: false` — backend validates when present, proceeds without it
-- `userAssertion.supported: true, required: true` — backend rejects requests missing the header with `401`
+**`userAssertion.required`** is a per-operation map with a `default` key. The portal reads `required[operation] ?? required.default`. Example: require assertion for writes but not reads:
 
-When assertion validation fails: `403` with ProblemDetails; include `requiredIal` in the extensions object if the failure is IAL-level insufficient.
+```json
+"userAssertion": {
+  "supported": true,
+  "required": {
+    "default":         false,
+    "cardReplacement": true,
+    "addressUpdate":   true
+  }
+}
+```
+
+When assertion validation fails: `403` with ProblemDetails; include `requiredIal` in extensions if the failure is IAL-insufficient.
 
 ### Auth strategy pattern
 
@@ -217,23 +257,23 @@ Consequences:
 
 ### Card details loading is capability-driven
 
-State backends vary in how they can serve EBT card details. Some (notably CO) load details for all cases in a single CMS round-trip; others can serve them one case at a time; some may support both. Two separate capability flags reflect this:
+State backends vary in how they can serve EBT card details. Some (notably CO) load details for all cases in a single CMS round-trip; others can serve them one case at a time; some may support both. The `cardDetails.modes` array reflects this — extensible to future delivery modes (e.g., `"stream"`) without new sibling booleans:
 
-- `cases.cardDetailsBatch` — the backend supports `includeCardDetails: true` on `POST /cases/lookup`; card details arrive inline with the case list.
-- `cases.cardDetailsPerCase` — the backend supports `GET /cases/{caseId}/card`; card details fetched per case on demand.
+- `"batch"` — supports `includeCardDetails: true` on `POST /cases/lookup`; card details arrive inline.
+- `"perCase"` — supports `GET /cases/{caseId}/card`; card details fetched per case on demand.
 
 The REST adapter consults capabilities at runtime to pick the loading strategy:
 
-| cardDetailsBatch | cardDetailsPerCase | Adapter behavior |
+| modes contains `"batch"` | modes contains `"perCase"` | Adapter behavior |
 |---|---|---|
 | ✓ | — | `includeCardDetails: true` on lookup; details inline |
 | — | ✓ | Parallel `GET /cases/{caseId}/card` after initial lookup |
 | ✓ | ✓ | Prefer batch |
 | — | — | Card management features disabled for this state |
 
-The portal only requests card details on pages that need them (card management flows), not on the dashboard. `IncludeCardDetails` in `HouseholdLookupContext` controls whether the adapter fetches card details at all; the capability flags control how.
+The portal only requests card details on pages that need them (card management flows), not on the dashboard. `IncludeCardDetails` in `HouseholdLookupContext` controls whether the adapter fetches card details at all; `cardDetails.modes` controls how.
 
-**Unsupported optional endpoints must return 501.** A state backend that supports batch but not per-case loading must still expose `GET /cases/{caseId}/card` and return `501 Not Implemented` with a ProblemDetails body. This gives the REST adapter an unambiguous signal if capabilities are misconfigured, surfacing the mismatch as a logged error rather than a cryptic 404 or 500 mid-flow. The same rule applies to any optional endpoint in the spec. `501` is explicitly excluded from Polly retry and circuit-breaker classification — it is not a transient failure.
+**Unsupported optional endpoints must return 501.** A state backend that doesn't support per-case loading must still expose `GET /cases/{caseId}/card` and return `501 Not Implemented` with a ProblemDetails body. This gives the REST adapter an unambiguous signal if capabilities are misconfigured, surfacing the mismatch as a logged error rather than a cryptic 404 or 500 mid-flow. The same rule applies to any optional endpoint in the spec. `501` is explicitly excluded from Polly retry and circuit-breaker classification — it is not a transient failure.
 
 ### `HouseholdLookupContext` replaces ad-hoc parameters
 
@@ -260,12 +300,12 @@ The canonical contract is `docs/openapi.yaml` (see Phase 1 deliverables). The ta
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/health` | Readiness check (includes CMS reachability); unauthenticated |
-| `GET` | `/capabilities` | Spec version + capability discovery |
-| `POST` | `/cases/lookup` | Find cases by identity signals; `intent: primary\|coLoad`; optional `includeCardDetails` for batch card data |
-| `GET` | `/cases/{caseId}/card` | EBT card details for a single case (requires `cardDetailsPerCase`; return `501` if not supported) |
+| `GET` | `/capabilities` | Spec version, service mode, and capability discovery |
+| `POST` | `/cases/lookup` | Find cases by identity signals; `intent` string; optional `includeCardDetails` for batch card data |
+| `GET` | `/cases/{caseId}/card` | EBT card details for a single case (requires `cardDetails.modes: ["perCase"]`; return `501` if not supported) |
 | `POST` | `/cases/address-updates` | Batch address update; semantically idempotent; returns 207 Multi-Status |
 | `POST` | `/cases/{caseId}/card-replacement` | Card replacement; requires `Idempotency-Key` header |
-| `POST` | `/enrollment/check` | Enrollment eligibility check; identity signals in request body |
+| `POST` | `/enrollment/check` | Enrollment eligibility check; signals in body; unauthenticated |
 
 `{caseId}` is the state backend's native case identifier, returned in each case object from `POST /cases/lookup`. The portal treats it as opaque.
 
@@ -275,13 +315,15 @@ The canonical contract is `docs/openapi.yaml` (see Phase 1 deliverables). The ta
 ```json
 {
   "signals": [
-    { "type": "email", "value": "guardian@example.com" }
+    { "type": "email", "value": "guardian@example.com", "verified": true, "source": "portal" }
   ],
   "intent": "primary",
   "includeCardDetails": false
 }
 ```
 - Signals are AND-matched where possible; the backend uses the most specific combination available.
+- Signal objects may carry optional sibling fields beyond `type` and `value` (e.g., `verified`, `source`). Backends ignore unknown sibling fields.
+- `intent` is an open string constant. Backends MUST return `400` for unrecognized values.
 - No match: `200` with `{ "cases": [] }`.
 
 **`POST /cases/address-updates` request / response:**
@@ -358,6 +400,8 @@ Three separately TTL'd entries:
 - **Card details** — 60s TTL. Cache key: `portalUserId:cards`. Cached separately so dashboard loads don't pay the card-detail fetch cost.
 - **Capabilities** — 5min TTL (or `Cache-Control: max-age` from the response, which wins).
 
+**ETag-based capability invalidation:** the backend includes an `X-Sebt-Capabilities-ETag` header on every data response (lookup, writes). When the portal observes a changed ETag value compared to what it has cached, it immediately re-fetches `/capabilities`. This closes the stale-`allowedActions` window to a single request rather than a full TTL cycle — no push infrastructure required.
+
 Write invalidation: the adapter maintains a session-scoped `caseId → portalUserId` mapping (populated during lookup). When a case-scoped write (address update, card replacement) occurs, the adapter uses this mapping to invalidate both the household and card entries for the correct user.
 
 L2 (distributed) caching is optional — if Redis is not configured, `HybridCache` falls back to L1 only. This keeps single-instance deployments simple while supporting multi-replica deployments without code changes.
@@ -378,6 +422,9 @@ All state backends must conform to these field-level rules. The OpenAPI spec wil
 | JSON field casing | camelCase |
 | Null vs absent | Absent = field not applicable. `null` = applicable but no value. Prefer absent. |
 | Unknown signal types | Backends ignore silently; never error on unrecognized type |
+| Unknown signal fields | Backends ignore sibling fields beyond `type` and `value` |
+| Unknown capability keys | Portal ignores; absent = unsupported |
+| Unknown `intent` values | Backends return `400`; fail closed |
 
 **Signal value formats by known type:**
 
@@ -398,12 +445,13 @@ appsettings.{state}.json
   StateBackend:BaseUrl + Auth     →  REST adapter (IHttpClientFactory)
                                          ↓
                                    GET /capabilities (cached, 5min TTL)
-                                         ↓
+                                         ↓ (ETag on subsequent responses triggers re-fetch)
                              IStateCapabilityService.GetCapabilitiesAsync()
                                          ↓
 SelfServiceRulesSettings             ISelfServiceEvaluator
 (IOptionsMonitor, hot-reload)    ←         |
 User context (IAL, co-loading)   ←         |
+serviceMode check                ←         |
                                          ↓
                                      AllowedActions
                                          ↓
@@ -484,3 +532,5 @@ The spec (`docs/openapi.yaml`) is rendered via Redoc deployed to GitHub Pages on
 |---|---|---|
 | OI-1 | CO co-loading: which `IdentitySignalType` values does CO plan to use? | Drives which signal types are documented as well-known in v1 of the spec |
 | OI-2 | Default Polly thresholds (timeout, retry count, circuit breaker window) — validate against real CO connector latency profile before hardcoding | Resilience config defaults |
+| OI-3 | Rate-limit advertisement: should `/capabilities` include a `limits` hint (e.g., `lookupPerSecond`) so the portal can self-pace rather than discover limits reactively via `429`? | Nice-to-have; deferred |
+| OI-4 | Consent/authorization state: some states may gate data release on an explicit consent record. No structured representation currently; would need a `consentRequired` capability + defined `403`-with-`consentUrl` ProblemDetails shape | Known gap; deferred |
