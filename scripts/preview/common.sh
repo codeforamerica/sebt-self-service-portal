@@ -482,31 +482,29 @@ resolve_hosted_zone_id() {
   fi
 
   local domain="$1"
-  local zone_name="${domain}."
-  local zone_id zone_name_actual
+  local domain_dot="${domain}."
+  local best_zone_id=""
+  local best_zone_name=""
+  local zone_id zone_name
 
-  zone_id="$(aws route53 list-hosted-zones-by-name \
-    --dns-name "${zone_name}" \
-    --query 'HostedZones[0].Id' \
-    --output text \
-    | sed 's|/hostedzone/||')"
+  while IFS=$'\t' read -r zone_id zone_name; do
+    zone_id="${zone_id#/hostedzone/}"
+    if [ "${domain_dot}" = "${zone_name}" ] || [[ "${domain_dot}" == *".${zone_name}" ]]; then
+      if [ -z "${best_zone_name}" ] || [ "${#zone_name}" -gt "${#best_zone_name}" ]; then
+        best_zone_id="${zone_id}"
+        best_zone_name="${zone_name}"
+      fi
+    fi
+  done < <(aws route53 list-hosted-zones --output json \
+    | jq -r '.HostedZones[] | [.Id, .Name] | @tsv')
 
-  if [ -z "${zone_id}" ] || [ "${zone_id}" = "None" ]; then
-    log_error "Could not find Route53 hosted zone for ${domain}. Set PREVIEW_HOSTED_ZONE_ID."
+  if [ -z "${best_zone_id}" ]; then
+    log_error "Could not find Route53 hosted zone containing ${domain}. Set PREVIEW_HOSTED_ZONE_ID."
     exit 1
   fi
 
-  zone_name_actual="$(aws route53 get-hosted-zone \
-    --id "${zone_id}" \
-    --query 'HostedZone.Name' \
-    --output text)"
-
-  if [ "${zone_name_actual}" != "${zone_name}" ]; then
-    log_error "Route53 zone ${zone_id} (${zone_name_actual}) does not match domain ${zone_name}. Set PREVIEW_HOSTED_ZONE_ID."
-    exit 1
-  fi
-
-  echo "${zone_id}"
+  log_info "Using Route53 hosted zone ${best_zone_name} (${best_zone_id}) for ${domain}"
+  echo "${best_zone_id}"
 }
 
 preview_ssm_param_name() {
