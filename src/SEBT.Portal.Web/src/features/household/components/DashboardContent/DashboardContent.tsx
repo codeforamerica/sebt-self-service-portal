@@ -150,7 +150,8 @@ export function DashboardContent() {
     )
   }
 
-  // 404 means no household data found - show empty state instead of error
+  // Defensive guard: if a proxy/WAF returns 404 instead of the portal's normal
+  // 200+empty response, treat it as empty state rather than a hard error.
   const isNotFound = error instanceof ApiError && error.status === 404
 
   if (isError && !isNotFound) {
