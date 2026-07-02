@@ -72,6 +72,22 @@ export function trackAddressUpdateSubmit(
   dl.trackEvent(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
 }
 
+/**
+ * Emits address_update_validation_error for a client-side validation failure that blocks the
+ * submit before any backend request. Sets `error_code` (taxonomy-aligned, e.g. TOO_LONG) and
+ * `field_name` (the field that failed, e.g. streetAddress1); `flow`/`step` ride along from page
+ * context.
+ */
+export function trackAddressUpdateValidationError(
+  dl: Pick<DataLayerTrackFns, 'setPageData' | 'trackEvent'>,
+  errorCode: string,
+  fieldName: string
+): void {
+  dl.setPageData('error_code', errorCode)
+  dl.setPageData('field_name', fieldName)
+  dl.trackEvent(AnalyticsEvents.ADDRESS_UPDATE_VALIDATION_ERROR)
+}
+
 /** Emits card_replacement_submit; emits card_replacement_error when the API call fails. */
 export function trackCardReplacementSubmit(
   dl: Pick<DataLayerTrackFns, 'setPageData' | 'trackEvent'>,
