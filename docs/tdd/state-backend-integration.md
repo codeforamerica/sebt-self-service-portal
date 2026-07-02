@@ -97,11 +97,12 @@ Capability values are structured objects rather than booleans, even though `supp
 {
   "capabilities": {
     "cases": {
-      "coLoadedLookup":  { "supported": true },
-      "cardDetails":     { "supported": true },
-      "cardReplacement": { "supported": true },
-      "addressUpdate":   { "supported": true },
-      "cardActivation":  { "supported": false }
+      "coLoadedLookup":     { "supported": true },
+      "cardDetailsBatch":   { "supported": true },
+      "cardDetailsPerCase": { "supported": false },
+      "cardReplacement":    { "supported": true },
+      "addressUpdate":      { "supported": true },
+      "cardActivation":     { "supported": false }
     },
     "enrollment": {
       "check": { "supported": true }
@@ -170,23 +171,25 @@ Consequences:
 - **Address update is a batch operation.** The adapter collects all case IDs for the household and sends them together: `PATCH /cases/address` with `{ "caseIds": ["..."], "address": {...} }`. The state backend applies the update to each listed case.
 - **No pagination.** Household sizes in this program are bounded by family structure and program rules. State backends return all cases in a single response. The spec documents a reasonable upper bound (e.g., 20).
 
-### Card details are a household-level fetch, not per-case
+### Card details loading is capability-driven
 
-Some state backends (notably CO) load EBT card details for all cases in a single CMS round-trip. Fetching card details one case at a time either isn't supported or would be prohibitively expensive.
+State backends vary in how they can serve EBT card details. Some (notably CO) load details for all cases in a single CMS round-trip; others can serve them one case at a time; some may support both. Two separate capability flags reflect this:
 
-Card details are therefore requested at lookup time via an opt-in flag:
+- `cases.cardDetailsBatch` — the backend supports `includeCardDetails: true` on `POST /cases/lookup`; card details arrive inline with the case list.
+- `cases.cardDetailsPerCase` — the backend supports `GET /cases/{caseId}/card`; card details fetched per case on demand.
 
-```json
-POST /cases/lookup
-{
-  "signals": [...],
-  "includeCardDetails": true
-}
-```
+The REST adapter consults capabilities at runtime to pick the loading strategy:
 
-The `cases.cardDetails` capability indicates whether the state backend supports this. When not supported, the portal omits card-management features for that state.
+| cardDetailsBatch | cardDetailsPerCase | Adapter behavior |
+|---|---|---|
+| ✓ | — | `includeCardDetails: true` on lookup; details inline |
+| — | ✓ | Parallel `GET /cases/{caseId}/card` after initial lookup |
+| ✓ | ✓ | Prefer batch |
+| — | — | Card management features disabled for this state |
 
-The portal only requests `includeCardDetails: true` on pages that need the data (card management flows), not on the dashboard. This keeps the common path fast.
+The portal only requests card details on pages that need them (card management flows), not on the dashboard. `IncludeCardDetails` in `HouseholdLookupContext` controls whether the adapter fetches card details at all; the capability flags control how.
+
+**Unsupported optional endpoints must return 501.** A state backend that supports batch but not per-case loading must still expose `GET /cases/{caseId}/card` and return `501 Not Implemented` with a ProblemDetails body. This gives the REST adapter an unambiguous signal if capabilities are misconfigured, surfacing the mismatch as a logged warning rather than a cryptic 404 or 500 mid-flow. The same rule applies to any optional endpoint in the spec.
 
 ### `HouseholdLookupContext` replaces ad-hoc parameters
 
@@ -214,14 +217,15 @@ The canonical contract is `docs/openapi.yaml` (see Phase 1 deliverables). The ta
 |---|---|---|
 | `GET` | `/health` | Liveness / readiness |
 | `GET` | `/capabilities` | Capability discovery |
-| `POST` | `/cases/lookup` | Find cases by identity signals; returns flat case list; pass `includeCardDetails: true` to include EBT card data |
+| `POST` | `/cases/lookup` | Find cases by identity signals; returns flat case list; `includeCardDetails: true` triggers batch card data (requires `cardDetailsBatch` capability) |
+| `GET` | `/cases/{caseId}/card` | EBT card details for a single case (requires `cardDetailsPerCase` capability; return `501` if not supported) |
 | `PATCH` | `/cases/address` | Batch address update; body: `{ caseIds, address }` |
 | `POST` | `/cases/{caseId}/card-replacement` | Request card replacement for a specific case |
 | `GET` | `/enrollment` | Enrollment eligibility check |
 
 `{caseId}` is the state backend's native case identifier, returned in each case object from `POST /cases/lookup`. The portal treats it as opaque.
 
-**Error format:** ProblemDetails (RFC 9457) throughout, consistent with the portal's existing error shape. The REST adapter normalizes non-ProblemDetails error responses from backends that can't fully conform.
+**Error format:** ProblemDetails (RFC 9457) throughout, consistent with the portal's existing error shape. Optional endpoints that a state backend does not implement must return `501 Not Implemented` with a ProblemDetails body — not `404`. The REST adapter treats `501` as "capability not available" and handles it the same as a missing capability flag. The adapter normalizes non-ProblemDetails error responses from backends that can't fully conform.
 
 ### Versioning
 
