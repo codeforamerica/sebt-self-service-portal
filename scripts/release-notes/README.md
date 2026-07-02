@@ -1,8 +1,9 @@
 # Release Notes Generator
 
-Fetches merged PRs from the past week and produces a plain-language markdown summary
-bucketed by state (Colorado, DC, or both). Output is written to `output/YYYY-MM-DD.md`
-(gitignored) so it can be reviewed before sharing.
+Fetches merged PRs from the past week and produces a GitHub-style release notes document
+bucketed by state (CO, DC, Both) and a Chores section. Each entry includes the PR author,
+a link to the PR, and a linked Jira ticket reference where present. Output is written to
+`output/YYYY-MM-DD.md` (gitignored) so it can be reviewed before sharing.
 
 The same script runs in CI via the [Weekly Release Notes workflow](../../.github/workflows/weekly-release-notes.yml).
 
