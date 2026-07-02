@@ -76,9 +76,13 @@ function formatEntry(pr: PullRequest): string {
 }
 
 function getPreviousWeeklyTag(): string | null {
-  const raw = execSync('gh release list --json tagName --limit 20', { encoding: 'utf8' })
-  const releases = JSON.parse(raw) as { tagName: string }[]
-  return releases.find((r) => r.tagName.startsWith('weekly-'))?.tagName ?? null
+  try {
+    const raw = execSync('gh release list --json tagName --limit 20', { encoding: 'utf8' })
+    const releases = JSON.parse(raw) as { tagName: string }[]
+    return releases.find((r) => r.tagName.startsWith('weekly-'))?.tagName ?? null
+  } catch {
+    return null
+  }
 }
 
 function buildMarkdown(
@@ -152,7 +156,7 @@ async function main(): Promise<void> {
   const mergedPRs = allPRs.filter((pr) => pr.mergedAt && new Date(pr.mergedAt) >= since)
 
   const repoUrl = mergedPRs.length > 0 ? mergedPRs[0].url.replace(/\/pull\/\d+$/, '') : ''
-  const prevTag = getPreviousWeeklyTag()
+  const prevTag = getPreviousWeeklyTag() ?? `weekly-${weekStart}`
 
   const md = buildMarkdown(mergedPRs, weekStart, today, repoUrl, prevTag)
 
