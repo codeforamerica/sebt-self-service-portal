@@ -1,0 +1,341 @@
+# AWS Tier 1: Colorado ephemeral preview environments in dev-co.
+#
+# Trigger: add the "preview-co" label to a pull request, or workflow_dispatch.
+#
+# Uses the dev-co GitHub environment for AWS credentials, ECR URLs, and DOMAIN.
+# Reuses the shared dev RDS SQL Server (no per-PR database); preview API/Web run
+# as separate ECS services alongside the existing dev-co stack. Preview tasks
+# strip OTEL/AppConfig sidecars, so traces will not appear in Datadog.
+#
+# Prerequisites (dev-co environment / AWS):
+#   - ACM certificate on API and Web ALBs must cover pr-*.{DOMAIN} and api-pr-*.{DOMAIN}
+#   - Create the "preview-co" label on this repository
+#   - Set PREVIEW_BASE_API_SERVICE and PREVIEW_BASE_WEB_SERVICE before first deploy
+#   - Optional vars: PREVIEW_ECS_CLUSTER, PREVIEW_HOSTED_ZONE_ID,
+#     PREVIEW_INGRESS_CIDR (defaults to 0.0.0.0/0 for direct HTTPS)
+#   - PREVIEW_API_SERVICE / PREVIEW_WEB_SERVICE are accepted aliases for the base services
+
+name: Preview (CO Tier 1)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Deploy or destroy a preview stack"
+        required: true
+        type: choice
+        options:
+          - deploy
+          - destroy
+        default: deploy
+      pr_number:
+        description: "PR number (required)"
+        required: true
+        type: string
+      branch:
+        description: "Git branch to build (deploy only; defaults to PR head branch)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: preview-co-${{ github.event.pull_request.number || inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build preview images
+    timeout-minutes: 45
+    if: |
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy') ||
+      (github.event_name == 'pull_request' && github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview-co'))
+    runs-on: ubuntu-latest
+    environment: dev-co
+    outputs:
+      pr_number: ${{ steps.pr.outputs.number }}
+      image_tag: ${{ steps.tag.outputs.tag }}
+
+    steps:
+      - name: Resolve PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Resolve build branch
+        id: branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            if [ -n "${{ inputs.branch }}" ]; then
+              echo "name=${{ inputs.branch }}" >> "$GITHUB_OUTPUT"
+            else
+              PR_HEAD="$(gh pr view "${{ inputs.pr_number }}" --json headRefName --jq .headRefName)"
+              echo "name=${PR_HEAD}" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "name=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine state connector ref
+        id: state-connector-ref
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          FALLBACK="main"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine CO connector ref
+        id: co-connector-ref
+        run: |
+          BRANCH="${{ steps.branch.outputs.name }}"
+          FALLBACK="main"
+          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-co-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout portal
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.branch.outputs.name }}
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          SHORT_SHA="$(git rev-parse --short=7 HEAD)"
+          echo "tag=pr-${{ steps.pr.outputs.number }}-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout state connector
+        uses: actions/checkout@v6
+        with:
+          repository: codeforamerica/sebt-self-service-portal-state-connector
+          ref: ${{ steps.state-connector-ref.outputs.ref }}
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          path: state-connector
+
+      - name: Checkout CO connector
+        uses: actions/checkout@v6
+        with:
+          repository: codeforamerica/sebt-self-service-portal-co-connector
+          ref: ${{ steps.co-connector-ref.outputs.ref }}
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          path: co-connector
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.200"
+
+      - name: Build plugin interfaces
+        run: |
+          dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
+            -c Release
+
+      - name: Publish CO plugin
+        run: |
+          dotnet publish co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+            -c Release \
+            -p:CopyPlugins=false
+
+      - name: Stage plugin artifacts
+        run: |
+          mkdir -p nuget-store
+          cp -r ~/nuget-store/* nuget-store/
+          mkdir -p src/SEBT.Portal.Api/plugins-co
+          cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/publish/*.dll \
+            src/SEBT.Portal.Api/plugins-co/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push API image
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Api/Dockerfile \
+            -t "${{ secrets.ECR_API_REPOSITORY_URL }}:${IMAGE_TAG}" \
+            .
+          docker push "${{ secrets.ECR_API_REPOSITORY_URL }}:${IMAGE_TAG}"
+
+      - name: Build and push Web image
+        env:
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f src/SEBT.Portal.Web/Dockerfile \
+            --build-arg STATE=co \
+            --build-arg NEXT_PUBLIC_MOCK_SOCURE=true \
+            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
+            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
+            --build-arg NEXT_PUBLIC_SITEIMPROVE_ID=${{ vars.SITEIMPROVE_ID }} \
+            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
+            --build-arg NEXT_PUBLIC_BUILD_SHA=$(git rev-parse HEAD) \
+            -t "${{ secrets.ECR_WEB_REPOSITORY_URL }}:${IMAGE_TAG}" \
+            .
+          docker push "${{ secrets.ECR_WEB_REPOSITORY_URL }}:${IMAGE_TAG}"
+
+  deploy:
+    name: Deploy preview stack
+    timeout-minutes: 30
+    needs: build
+    if: |
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'deploy') ||
+      (github.event_name == 'pull_request' && github.event.action != 'closed' && contains(github.event.pull_request.labels.*.name, 'preview-co'))
+    runs-on: ubuntu-latest
+    environment: dev-co
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.preview_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Deploy preview environment
+        id: deploy
+        env:
+          DOMAIN: ${{ vars.DOMAIN }}
+          PREVIEW_DOMAIN: ${{ vars.DOMAIN }}
+          PREVIEW_ECS_CLUSTER: ${{ vars.PREVIEW_ECS_CLUSTER }}
+          PREVIEW_BASE_API_SERVICE: ${{ vars.PREVIEW_BASE_API_SERVICE }}
+          PREVIEW_BASE_WEB_SERVICE: ${{ vars.PREVIEW_BASE_WEB_SERVICE }}
+          PREVIEW_API_SERVICE: ${{ vars.PREVIEW_API_SERVICE }}
+          PREVIEW_WEB_SERVICE: ${{ vars.PREVIEW_WEB_SERVICE }}
+          PREVIEW_HOSTED_ZONE_ID: ${{ vars.PREVIEW_HOSTED_ZONE_ID }}
+          PREVIEW_INGRESS_CIDR: ${{ vars.PREVIEW_INGRESS_CIDR }}
+          ECR_API_REPOSITORY_URL: ${{ secrets.ECR_API_REPOSITORY_URL }}
+          ECR_WEB_REPOSITORY_URL: ${{ secrets.ECR_WEB_REPOSITORY_URL }}
+        run: |
+          OUTPUT="$(./scripts/preview/deploy-co.sh "${{ needs.build.outputs.pr_number }}" "${{ needs.build.outputs.image_tag }}")"
+          echo "${OUTPUT}"
+          PREVIEW_URL="$(echo "${OUTPUT}" | awk -F= '/^preview_url=/{print $2}')"
+          echo "preview_url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Post preview URL on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const url = '${{ steps.deploy.outputs.preview_url }}';
+            const marker = '<!-- preview-co -->';
+            const body = [
+              marker,
+              '## AWS preview environment (CO Tier 1)',
+              '',
+              `**URL:** ${url}`,
+              '',
+              '**Smoke login:** use the scanner identity documented in README (OTP Bypass section) with the fixed OTP code from `OtpBypassSettings`.',
+              '',
+              'Mock household personas use the `sebt.co+{scenario}@codeforamerica.org` pattern but require SMTP for OTP (Tier B).',
+              '',
+              '_Previews share the dev-co database; seeded data and portal state are not isolated per PR._',
+              '',
+              '_Destroy runs automatically when this PR closes (idempotent if already torn down)._',
+            ].join('\n');
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+            }
+
+      - name: Write job summary
+        if: steps.deploy.outputs.preview_url != ''
+        run: |
+          echo "## Preview URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.deploy.outputs.preview_url }}" >> "$GITHUB_STEP_SUMMARY"
+
+  destroy:
+    name: Destroy preview stack
+    if: |
+      (github.event_name == 'workflow_dispatch' && inputs.action == 'destroy') ||
+      (github.event_name == 'pull_request' && github.event.action == 'closed')
+    runs-on: ubuntu-latest
+    environment: dev-co
+
+    steps:
+      - name: Resolve PR number
+        id: pr
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "number=${{ inputs.pr_number }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "number=${{ github.event.pull_request.number }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Destroy preview environment
+        env:
+          DOMAIN: ${{ vars.DOMAIN }}
+          PREVIEW_DOMAIN: ${{ vars.DOMAIN }}
+          PREVIEW_ECS_CLUSTER: ${{ vars.PREVIEW_ECS_CLUSTER }}
+          PREVIEW_BASE_API_SERVICE: ${{ vars.PREVIEW_BASE_API_SERVICE }}
+          PREVIEW_BASE_WEB_SERVICE: ${{ vars.PREVIEW_BASE_WEB_SERVICE }}
+          PREVIEW_API_SERVICE: ${{ vars.PREVIEW_API_SERVICE }}
+          PREVIEW_WEB_SERVICE: ${{ vars.PREVIEW_WEB_SERVICE }}
+          PREVIEW_HOSTED_ZONE_ID: ${{ vars.PREVIEW_HOSTED_ZONE_ID }}
+        run: |
+          DESTROY_ARGS=("${{ steps.pr.outputs.number }}")
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DESTROY_ARGS+=("--force")
+          fi
+          ./scripts/preview/destroy-co.sh "${DESTROY_ARGS[@]}"
