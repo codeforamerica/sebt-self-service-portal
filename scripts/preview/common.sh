@@ -58,7 +58,17 @@ preview_listener_priority() {
   echo $((20000 + pr_number * 2 + slot))
 }
 
-discover_cluster() {
+discover_cluster_for_role() {
+  local role="$1"
+
+  if [ "${role}" = "api" ] && [ -n "${PREVIEW_API_ECS_CLUSTER:-}" ]; then
+    echo "${PREVIEW_API_ECS_CLUSTER}"
+    return
+  fi
+  if [ "${role}" = "web" ] && [ -n "${PREVIEW_WEB_ECS_CLUSTER:-}" ]; then
+    echo "${PREVIEW_WEB_ECS_CLUSTER}"
+    return
+  fi
   if [ -n "${PREVIEW_ECS_CLUSTER:-}" ]; then
     echo "${PREVIEW_ECS_CLUSTER}"
     return
@@ -67,15 +77,27 @@ discover_cluster() {
   local cluster_arn
   cluster_arn="$(aws ecs list-clusters --output text \
     | tr '\t' '\n' \
-    | grep -E 'sebt.*co.*development' \
+    | grep -Ei "sebt.*co.*development.*-${role}\$" \
     | head -n 1 || true)"
 
   if [ -z "${cluster_arn}" ]; then
-    log_error "Could not discover ECS cluster. Set PREVIEW_ECS_CLUSTER."
+    cluster_arn="$(aws ecs list-clusters --output text \
+      | tr '\t' '\n' \
+      | grep -Ei 'sebt.*co.*development' \
+      | grep -viE '-(api|web)\$' \
+      | head -n 1 || true)"
+  fi
+
+  if [ -z "${cluster_arn}" ]; then
+    log_error "Could not discover ECS ${role} cluster. Set PREVIEW_API_ECS_CLUSTER / PREVIEW_WEB_ECS_CLUSTER."
     exit 1
   fi
 
   basename "${cluster_arn}"
+}
+
+discover_cluster() {
+  discover_cluster_for_role "api"
 }
 
 discover_base_service() {
@@ -101,11 +123,17 @@ discover_base_service() {
     return
   fi
 
-  local candidates service_arn pattern
+  local candidates service_arn pattern candidate_count
   candidates="$(aws ecs list-services --cluster "${cluster}" --output text \
     | tr '\t' '\n' \
     | grep -vi preview \
     || true)"
+
+  candidate_count="$(echo "${candidates}" | sed '/^$/d' | wc -l | tr -d ' ')"
+  if [ "${candidate_count}" = "1" ]; then
+    basename "$(echo "${candidates}" | head -n 1)"
+    return
+  fi
 
   for pattern in \
     "development-${role}\$" \
@@ -412,14 +440,18 @@ ensure_ecs_service() {
 }
 
 wait_for_preview_services_stable() {
-  local cluster="$1"
-  local api_service="$2"
-  local web_service="$3"
+  local api_cluster="$1"
+  local web_cluster="$2"
+  local api_service="$3"
+  local web_service="$4"
 
   log_info "Waiting for preview ECS services to stabilize"
   aws ecs wait services-stable \
-    --cluster "${cluster}" \
-    --services "${api_service}" "${web_service}"
+    --cluster "${api_cluster}" \
+    --services "${api_service}"
+  aws ecs wait services-stable \
+    --cluster "${web_cluster}" \
+    --services "${web_service}"
 }
 
 ensure_route53_alias() {
@@ -477,8 +509,31 @@ ensure_preview_https_ingress() {
 
 resolve_hosted_zone_id() {
   if [ -n "${PREVIEW_HOSTED_ZONE_ID:-}" ]; then
-    echo "${PREVIEW_HOSTED_ZONE_ID}"
-    return
+    if [[ "${PREVIEW_HOSTED_ZONE_ID}" =~ ^Z[A-Z0-9]+$ ]]; then
+      echo "${PREVIEW_HOSTED_ZONE_ID}"
+      return
+    fi
+
+    local configured_zone="${PREVIEW_HOSTED_ZONE_ID}"
+    if [[ "${configured_zone}" != *\. ]]; then
+      configured_zone="${configured_zone}."
+    fi
+
+    local zone_id
+    zone_id="$(aws route53 list-hosted-zones-by-name \
+      --dns-name "${configured_zone}" \
+      --query 'HostedZones[?Name==`'"${configured_zone}"'`].Id | [0]' \
+      --output text \
+      | sed 's|/hostedzone/||')"
+
+    if [ -n "${zone_id}" ] && [ "${zone_id}" != "None" ]; then
+      log_info "Resolved hosted zone name ${PREVIEW_HOSTED_ZONE_ID} to ${zone_id}"
+      echo "${zone_id}"
+      return
+    fi
+
+    log_error "PREVIEW_HOSTED_ZONE_ID is not a zone ID or known zone name: ${PREVIEW_HOSTED_ZONE_ID}"
+    exit 1
   fi
 
   local domain="$1"
@@ -530,20 +585,25 @@ delete_preview_deploy_marker() {
 }
 
 preview_stack_resources_exist() {
-  local cluster="$1"
-  local api_service="$2"
-  local web_service="$3"
-  local api_tg_name="$4"
-  local web_tg_name="$5"
+  local api_cluster="$1"
+  local web_cluster="$2"
+  local api_service="$3"
+  local web_service="$4"
+  local api_tg_name="$5"
+  local web_tg_name="$6"
   local description status failure_reason
 
-  for service_name in "${api_service}" "${web_service}"; do
-    description="$(describe_preview_service "${cluster}" "${service_name}")"
-    preview_service_status "${cluster}" "${service_name}" "${description}" status failure_reason
-    if [ -n "${status}" ] && [ "${failure_reason}" != "MISSING" ]; then
-      return 0
-    fi
-  done
+  description="$(describe_preview_service "${api_cluster}" "${api_service}")"
+  preview_service_status "${api_cluster}" "${api_service}" "${description}" status failure_reason
+  if [ -n "${status}" ] && [ "${failure_reason}" != "MISSING" ]; then
+    return 0
+  fi
+
+  description="$(describe_preview_service "${web_cluster}" "${web_service}")"
+  preview_service_status "${web_cluster}" "${web_service}" "${description}" status failure_reason
+  if [ -n "${status}" ] && [ "${failure_reason}" != "MISSING" ]; then
+    return 0
+  fi
 
   if aws elbv2 describe-target-groups --names "${api_tg_name}" >/dev/null 2>&1; then
     return 0

@@ -13,7 +13,9 @@ Usage: deploy-co.sh <pr-number> <image-tag>
 Environment:
   PREVIEW_DOMAIN / DOMAIN          Public preview domain (required)
   PREVIEW_HOSTED_ZONE_ID           Route53 hosted zone ID (optional; auto-discovered)
-  PREVIEW_ECS_CLUSTER              ECS cluster name (optional; auto-discovered)
+  PREVIEW_ECS_CLUSTER              Shared cluster override (optional; legacy)
+  PREVIEW_API_ECS_CLUSTER          API ECS cluster name (optional; auto-discovered)
+  PREVIEW_WEB_ECS_CLUSTER          Web ECS cluster name (optional; auto-discovered)
   PREVIEW_BASE_API_SERVICE         Base dev-co API ECS service name (optional)
   PREVIEW_BASE_WEB_SERVICE         Base dev-co Web ECS service name (optional)
   PREVIEW_API_SERVICE              Alias for PREVIEW_BASE_API_SERVICE (optional)
@@ -50,9 +52,10 @@ export PR_NUMBER
 
 DOMAIN="$(resolve_preview_domain)"
 HOSTED_ZONE_ID="$(resolve_hosted_zone_id "${DOMAIN}")"
-CLUSTER="$(discover_cluster)"
-BASE_API_SERVICE="$(discover_base_service api "${CLUSTER}")"
-BASE_WEB_SERVICE="$(discover_base_service web "${CLUSTER}")"
+API_CLUSTER="$(discover_cluster_for_role api)"
+WEB_CLUSTER="$(discover_cluster_for_role web)"
+BASE_API_SERVICE="$(discover_base_service api "${API_CLUSTER}")"
+BASE_WEB_SERVICE="$(discover_base_service web "${WEB_CLUSTER}")"
 
 API_HOST="api-pr-${PR_NUMBER}.${DOMAIN}"
 WEB_HOST="pr-${PR_NUMBER}.${DOMAIN}"
@@ -68,13 +71,13 @@ WEB_LISTENER_PRIORITY="$(preview_listener_priority "${PR_NUMBER}" 1)"
 API_IMAGE="${ECR_API_REPOSITORY_URL}:${IMAGE_TAG}"
 WEB_IMAGE="${ECR_WEB_REPOSITORY_URL}:${IMAGE_TAG}"
 
-log_info "Deploying preview for PR ${PR_NUMBER} (cluster=${CLUSTER}, tag=${IMAGE_TAG})"
+log_info "Deploying preview for PR ${PR_NUMBER} (api_cluster=${API_CLUSTER}, web_cluster=${WEB_CLUSTER}, tag=${IMAGE_TAG})"
 
-API_BASE_TD="$(get_service_task_definition "${CLUSTER}" "${BASE_API_SERVICE}")"
-WEB_BASE_TD="$(get_service_task_definition "${CLUSTER}" "${BASE_WEB_SERVICE}")"
+API_BASE_TD="$(get_service_task_definition "${API_CLUSTER}" "${BASE_API_SERVICE}")"
+WEB_BASE_TD="$(get_service_task_definition "${WEB_CLUSTER}" "${BASE_WEB_SERVICE}")"
 
-API_LB="$(get_service_load_balancer "${CLUSTER}" "${BASE_API_SERVICE}")"
-WEB_LB="$(get_service_load_balancer "${CLUSTER}" "${BASE_WEB_SERVICE}")"
+API_LB="$(get_service_load_balancer "${API_CLUSTER}" "${BASE_API_SERVICE}")"
+WEB_LB="$(get_service_load_balancer "${WEB_CLUSTER}" "${BASE_WEB_SERVICE}")"
 
 API_CONTAINER_NAME="$(echo "${API_LB}" | jq -r '.containerName')"
 WEB_CONTAINER_NAME="$(echo "${WEB_LB}" | jq -r '.containerName')"
@@ -148,16 +151,17 @@ WEB_TD_ARN="$(register_preview_task_definition \
   "${TMP_DIR}/web-task.json" "${WEB_CONTAINER_NAME}")"
 
 ensure_ecs_service \
-  "${CLUSTER}" "${STACK_API_SERVICE}" "${API_TD_ARN}" "${API_TG_ARN}" \
+  "${API_CLUSTER}" "${STACK_API_SERVICE}" "${API_TD_ARN}" "${API_TG_ARN}" \
   "${API_CONTAINER_NAME}" "${API_CONTAINER_PORT}" "${BASE_API_SERVICE}" \
   "${TMP_DIR}/api-network.json"
 
 ensure_ecs_service \
-  "${CLUSTER}" "${STACK_WEB_SERVICE}" "${WEB_TD_ARN}" "${WEB_TG_ARN}" \
+  "${WEB_CLUSTER}" "${STACK_WEB_SERVICE}" "${WEB_TD_ARN}" "${WEB_TG_ARN}" \
   "${WEB_CONTAINER_NAME}" "${WEB_CONTAINER_PORT}" "${BASE_WEB_SERVICE}" \
   "${TMP_DIR}/web-network.json"
 
-wait_for_preview_services_stable "${CLUSTER}" "${STACK_API_SERVICE}" "${STACK_WEB_SERVICE}"
+wait_for_preview_services_stable \
+  "${API_CLUSTER}" "${WEB_CLUSTER}" "${STACK_API_SERVICE}" "${STACK_WEB_SERVICE}"
 
 ensure_route53_alias \
   "${HOSTED_ZONE_ID}" \

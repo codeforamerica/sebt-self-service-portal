@@ -51,9 +51,11 @@ API_TG_NAME="co-pr-${PR_NUMBER}-api"
 WEB_TG_NAME="co-pr-${PR_NUMBER}-web"
 
 if [ "${FORCE_DESTROY}" != true ] && ! preview_deploy_marker_exists; then
-  CLUSTER="$(discover_cluster)"
+  API_CLUSTER="$(discover_cluster_for_role api)"
+  WEB_CLUSTER="$(discover_cluster_for_role web)"
   if ! preview_stack_resources_exist \
-    "${CLUSTER}" "${STACK_API_SERVICE}" "${STACK_WEB_SERVICE}" "${API_TG_NAME}" "${WEB_TG_NAME}"; then
+    "${API_CLUSTER}" "${WEB_CLUSTER}" \
+    "${STACK_API_SERVICE}" "${STACK_WEB_SERVICE}" "${API_TG_NAME}" "${WEB_TG_NAME}"; then
     log_info "No preview deploy marker or resources for PR ${PR_NUMBER}; skipping destroy"
     exit 0
   fi
@@ -61,9 +63,10 @@ fi
 
 DOMAIN="$(resolve_preview_domain)"
 HOSTED_ZONE_ID="$(resolve_hosted_zone_id "${DOMAIN}")"
-CLUSTER="$(discover_cluster)"
-BASE_API_SERVICE="$(discover_base_service api "${CLUSTER}")"
-BASE_WEB_SERVICE="$(discover_base_service web "${CLUSTER}")"
+API_CLUSTER="$(discover_cluster_for_role api)"
+WEB_CLUSTER="$(discover_cluster_for_role web)"
+BASE_API_SERVICE="$(discover_base_service api "${API_CLUSTER}")"
+BASE_WEB_SERVICE="$(discover_base_service web "${WEB_CLUSTER}")"
 
 API_HOST="api-pr-${PR_NUMBER}.${DOMAIN}"
 WEB_HOST="pr-${PR_NUMBER}.${DOMAIN}"
@@ -180,11 +183,11 @@ revoke_preview_https_ingress() {
 
 log_info "Destroying preview for PR ${PR_NUMBER}"
 
-delete_ecs_service_if_exists "${CLUSTER}" "${STACK_API_SERVICE}"
-delete_ecs_service_if_exists "${CLUSTER}" "${STACK_WEB_SERVICE}"
+delete_ecs_service_if_exists "${API_CLUSTER}" "${STACK_API_SERVICE}"
+delete_ecs_service_if_exists "${WEB_CLUSTER}" "${STACK_WEB_SERVICE}"
 
-API_LB="$(get_service_load_balancer "${CLUSTER}" "${BASE_API_SERVICE}")"
-WEB_LB="$(get_service_load_balancer "${CLUSTER}" "${BASE_WEB_SERVICE}")"
+API_LB="$(get_service_load_balancer "${API_CLUSTER}" "${BASE_API_SERVICE}")"
+WEB_LB="$(get_service_load_balancer "${WEB_CLUSTER}" "${BASE_WEB_SERVICE}")"
 API_BASE_TG="$(echo "${API_LB}" | jq -r '.targetGroupArn')"
 WEB_BASE_TG="$(echo "${WEB_LB}" | jq -r '.targetGroupArn')"
 API_ALB_ARN="$(get_target_group_lb_arn "${API_BASE_TG}")"
