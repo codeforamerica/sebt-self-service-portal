@@ -6,7 +6,16 @@ export const checkerFeaturesSchema = z.object({
     // Per-language banner copy keyed by ISO language code, e.g. { en: '...', es: '...' }.
     // The copy is runtime configuration so it can change without a deployment.
     message: z.record(z.string(), z.string())
-  })
+  }),
+  // Optional for deploy-order safety: the statically-hosted checker and the API deploy
+  // independently, and a strict field here would fail the whole features parse (hiding
+  // the maintenance banner too) against an API that doesn't send it yet. Missing means
+  // the outage page is off.
+  outagePage: z
+    .object({
+      enabled: z.boolean()
+    })
+    .optional()
 })
 
 export type CheckerFeatures = z.infer<typeof checkerFeaturesSchema>
