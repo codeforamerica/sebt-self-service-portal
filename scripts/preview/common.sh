@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 log_info() {
-  echo "[preview] $*"
+  echo "[preview] $*" >&2
 }
 
 log_error() {
