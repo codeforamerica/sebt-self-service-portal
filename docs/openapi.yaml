@@ -31,9 +31,8 @@ info:
     `appsettings.{state}.json`. Only `GET /health` is unauthenticated.
 
     The enrollment check endpoint (`POST /enrollment/check`) uses the same service
-    credential as all other endpoints. What may be unauthenticated is the portal's
-    own BFF endpoint that the Enrollment Checker web app calls — but by the time the
-    portal calls this state backend, it always presents a service credential.
+    credential as all other endpoints. The portal always presents a service credential
+    when calling this backend, regardless of how the upstream user reached the portal.
 
     ## End-user assertion
 
@@ -527,8 +526,8 @@ paths:
         with the original response body. `409` means a *different* replacement is
         already pending — not a duplicate of this request.
 
-        This endpoint is **excluded from automatic Polly retry**. The portal manages
-        retry explicitly to avoid reusing an idempotency key unintentionally.
+        The portal does not automatically retry this endpoint — it manages retry
+        explicitly to avoid reusing an idempotency key across attempts.
       parameters:
         - $ref: '#/components/parameters/CaseIdPath'
         - $ref: '#/components/parameters/IdempotencyKeyHeader'
@@ -680,14 +679,13 @@ paths:
         Checks whether a child identified by the provided signals is enrolled in
         Summer EBT benefits.
 
-        **Service-authenticated, no end-user assertion.** The portal calls this
-        endpoint with its service credential (same as all other endpoints). What may
-        be unauthenticated is the portal's own public BFF route — but the
-        portal-to-backend call always carries a service credential.
+        **Service-authenticated, no end-user assertion.** The portal always calls
+        this endpoint with its service credential. The portal's public-facing
+        enrollment form may be unauthenticated, but the portal-to-backend call
+        always carries a service credential.
 
         `X-Sebt-User-Identity` is **not sent** for this flow — the end user may
-        not be logged in to the portal. Backends must not set `enrollmentCheck: true`
-        in `userAssertion.required`.
+        not be logged in to the portal at that point.
 
         Signal matching semantics may be more permissive than `POST /cases/lookup`
         — backends may apply fuzzy matching (partial name, approximate DOB) per
@@ -830,8 +828,8 @@ components:
         Card lifecycle status. Backends map their CMS-internal status tokens to
         these canonical values. Unrecognized tokens map to `Unknown`.
 
-        The portal's self-service rules evaluate this value against state-configured
-        allowlists when determining `allowedActions`.
+        The portal uses this value to determine which self-service actions are
+        available to the user.
       enum:
         - Active
         - Inactive
@@ -847,7 +845,15 @@ components:
 
     IssuanceType:
       type: string
-      description: How this case's Summer EBT benefits are delivered.
+      description: |
+        How this case's Summer EBT benefits are delivered.
+
+        | Value | Meaning |
+        |---|---|
+        | `SummerEbt` | Benefits loaded onto a dedicated Summer EBT card issued for this child |
+        | `SnapEbtCard` | Benefits loaded onto the household's existing SNAP EBT card |
+        | `TanfEbtCard` | Benefits loaded onto the household's existing TANF EBT card |
+        | `Unknown` | Issuance type could not be determined from CMS data |
       enum:
         - SummerEbt
         - SnapEbtCard
@@ -861,11 +867,8 @@ components:
         per-case fetch). Backends include whichever fields they can provide;
         absent fields are omitted rather than null.
 
-        `cardStatus` is included here — not on the parent case — because card
-        status is only available when card details are loaded. In CO, card status
-        comes from the same CBMS call as the other card fields and is unavailable
-        without it. In DC, card status is synthesized from the issue date and is
-        also part of this payload.
+        Card status is part of this payload — not a standalone field on the case —
+        because it is only available when the full card details are fetched.
       properties:
         status:
           allOf:
@@ -958,8 +961,8 @@ components:
             - $ref: '#/components/schemas/ServiceMode'
           description: |
             Runtime operational status. Absent or `{ mode: "full" }` = normal
-            operation. The portal checks this before computing `allowedActions`
-            and suppresses write actions in `readOnly` or `maintenance` modes.
+            operation. The portal checks this before offering write actions to
+            users — writes are suppressed in `readOnly` or `maintenance` modes.
         capabilities:
           $ref: '#/components/schemas/Capabilities'
 
@@ -973,7 +976,7 @@ components:
           description: |
             - `full` (default when absent) — normal operation
             - `readOnly` — writes disabled (nightly batch window, CMS maintenance);
-              portal suppresses write `allowedActions` and shows `until` to users
+              portal hides write actions and shows `until` to users
             - `maintenance` — all operations suspended; portal shows outage page
         until:
           type: string
@@ -1142,9 +1145,16 @@ components:
         intent:
           type: string
           description: |
-            Lookup type. Well-known values: `primary` (own household), `coLoad`
-            (cross-household co-loading search). Backends must return `400` for
-            unrecognized values.
+            Lookup type. Well-known values:
+            - `primary` — the authenticated user's own household
+            - `coLoad` — co-loading search: finds the SNAP/TANF household whose
+              existing EBT card will carry the child's Summer EBT benefits.
+              Co-loading is a delivery mode where benefits are loaded onto a
+              household's existing SNAP or TANF card rather than issuing a new
+              dedicated card. Only called when `coLoadedLookup.supported: true`.
+
+            Backends must return `400` for unrecognized values — `intent` shapes
+            access-control decisions, so fail closed.
           example: primary
         includeCardDetails:
           type: boolean
@@ -1298,15 +1308,11 @@ components:
           items:
             $ref: '#/components/schemas/EnrollmentCheckMatch'
           description: |
-            Optional summary of matched children. The portal call is service-authed,
-            but the original request may originate from a public-facing form — the
-            backend cannot verify end-user authorization.
-
-            **PII guidance:** Backends that cannot confirm the caller is authorized
-            to see full child details should omit this field entirely or limit it to
-            the minimum needed to confirm the eligibility result. Do not return full
-            child names or identifiers to unauthenticated-origin queries unless state
-            policy explicitly permits it.
+            Optional summary of matched children. Return only the minimum data
+            needed to confirm the eligibility result. Omit this field if your
+            backend cannot confirm the requester is authorized to see child
+            details — the portal is service-authed, but the originating request
+            may come from a public-facing form.
         message:
           type: string
           description: |
@@ -1342,8 +1348,8 @@ components:
     RetryAfter:
       description: |
         Number of seconds the portal should wait before retrying. Required on
-        `429 Too Many Requests` responses. The portal honors this value and does
-        not apply its standard Polly retry interval for `429`.
+        `429 Too Many Requests` responses. The portal waits this many seconds
+        before retrying, overriding any default retry interval.
       schema:
         type: integer
       example: 30
