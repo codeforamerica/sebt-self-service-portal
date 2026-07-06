@@ -764,7 +764,7 @@ components:
         subset of signal types their CMS supports and silently ignore the rest.
 
         Signal objects may contain fields beyond `type` and `value` (e.g.
-        `verified`, `source`). Backends must ignore unrecognized sibling fields.
+        `verified`). Backends must ignore unrecognized sibling fields.
 
         **Well-known `type` values:**
 
@@ -794,10 +794,6 @@ components:
             Whether the portal verified this value through an identity-proofing step.
             Backends MAY apply stricter matching rules when `verified: true` (e.g.
             require exact match instead of fuzzy match for name signals).
-        source:
-          type: string
-          description: How the portal obtained this value (e.g. `portal`, `idp`, `user-entered`).
-
     MailingAddress:
       type: object
       required: [street1, city, state, zip]
@@ -1095,12 +1091,6 @@ components:
       description: |
         A single Summer EBT case representing one child's benefit issuance.
         Multiple cases in a response share the same guardian household.
-
-        **Per-case capability overrides (reserved, not yet implemented).** A future
-        spec version may add a `capabilities` field to individual cases, allowing
-        multi-CMS deployments to narrow state-wide capability defaults per case.
-        Absent per-case capabilities = inherit state-wide defaults. The portal
-        ignores this field in v1.
       properties:
         caseId:
           type: string
@@ -1219,9 +1209,8 @@ components:
     CardReplacementRequest:
       type: object
       description: |
-        Card replacement request body. Currently carries no required fields —
-        backends must accept an absent or empty `{}` body. Additional fields may
-        be added in future spec versions.
+        Card replacement request body. Carries no required fields — backends
+        must accept an absent or empty `{}` body.
 
     CardReplacementResponse:
       type: object
@@ -1313,12 +1302,6 @@ components:
             backend cannot confirm the requester is authorized to see child
             details — the portal is service-authed, but the originating request
             may come from a public-facing form.
-        message:
-          type: string
-          description: |
-            Advisory message for display to the user. State-specific; the portal
-            renders it as plain text — do not include HTML markup. Omit when not
-            applicable.
 
     EnrollmentCheckMatch:
       type: object
