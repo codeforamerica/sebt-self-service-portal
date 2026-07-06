@@ -41,7 +41,7 @@
     "ci:validate": "./act-test.sh dry-run",
     "check:cooldown-exclusions": "tsx scripts/security/check-cooldown-exclusions.ts",
     "test:scripts": "tsx --test scripts/**/*.test.ts",
-    "docs:preview": "npx @redocly/cli preview-docs docs/openapi.yaml",
+    "docs:preview": "npx @scalar/cli serve docs/openapi.yaml --watch",
     "prepare": "husky"
   },
   "devDependencies": {
