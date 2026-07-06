@@ -579,11 +579,22 @@ preview_ssm_param_name() {
 
 write_preview_deploy_marker() {
   local image_tag="$1"
+  local param_name
+  param_name="$(preview_ssm_param_name)"
+
+  if preview_deploy_marker_exists; then
+    aws ssm put-parameter \
+      --name "${param_name}" \
+      --value "${image_tag}" \
+      --type String \
+      --overwrite >/dev/null
+    return
+  fi
+
   aws ssm put-parameter \
-    --name "$(preview_ssm_param_name)" \
+    --name "${param_name}" \
     --value "${image_tag}" \
     --type String \
-    --overwrite \
     --tags "Key=sebt-preview,Value=true" "Key=sebt-preview-pr,Value=${PR_NUMBER}" >/dev/null
 }
 
