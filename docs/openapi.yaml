@@ -6,10 +6,13 @@ info:
     REST interface implemented by state case-management backends to integrate with
     the SEBT (Summer EBT / SUN Bucks) Self-Service Portal.
 
-    **Required vs optional endpoints.** Every endpoint in this spec must be exposed.
-    Optional endpoints that a state backend does not support must return
-    `501 Not Implemented` — not `404`. The portal interprets `501` as "capability
-    unavailable" and degrades gracefully; `404` is treated as an unexpected error.
+    **Capabilities-first design.** The portal reads `GET /capabilities` before making
+    any data-plane call and only calls endpoints the backend has advertised as
+    supported. Backends should not register routes for capabilities they do not
+    implement — a router-level `404` is the correct signal for an unsupported
+    capability. When a route is registered but the requested resource does not exist
+    (e.g. unknown `caseId`), return `404` with a typed `ProblemDetails` body so the
+    portal can distinguish "route not found" from "resource not found".
 
     ## Versioning
 
@@ -35,13 +38,16 @@ info:
     ## End-user assertion
 
     Authenticated portal flows include `X-Sebt-User-Identity` — a 60-second
-    signed JWT carrying `ial` and an opaque `userRef`. Backends that want per-user
-    data scoping validate it; others ignore it. Per-operation requirements are
-    declared in `capabilities.userAssertion.required`.
+    signed JWT carrying `ial` (Identity Assurance Level: 1 or 2) and an opaque
+    `userRef` (a one-way hash of the portal user ID). Backends that want per-user
+    data scoping or minimum-IAL enforcement validate it; others ignore it.
+
+    Whether a backend validates this header is declared in
+    `capabilities.userAssertion`. The portal sends it on all authenticated flows
+    regardless; backends return `403` with `requiredIal` if validation fails.
 
     The portal does **not** send `X-Sebt-User-Identity` for enrollment check flows
-    — the end user may not be logged in to the portal at that point. Backends must
-    not mark `enrollmentCheck` as `required: true` in the `userAssertion` map.
+    — the end user may not be logged in at that point.
 
     ## Conventions
 
@@ -149,10 +155,6 @@ paths:
         **Caching.** The portal caches this response using `Cache-Control: max-age`
         if present, falling back to a default 5-minute TTL. Set a short `max-age`
         ahead of planned capability changes and `no-cache` during cutover windows.
-
-        **ETag invalidation.** Backends include `X-Sebt-Capabilities-ETag` on every
-        data-plane response. When the portal detects a changed ETag value, it
-        immediately re-fetches this endpoint — no push infrastructure required.
       responses:
         '200':
           description: Current capabilities
@@ -180,6 +182,8 @@ paths:
                           modes: [batch]
                         cardReplacement:
                           supported: true
+                          statusTracking:
+                            supported: true
                         addressUpdate:
                           supported: true
                         cardActivation:
@@ -189,10 +193,6 @@ paths:
                           supported: true
                       userAssertion:
                         supported: true
-                        required:
-                          default: false
-                          cardReplacement: true
-                          addressUpdate: true
                 readOnly:
                   summary: Backend in read-only maintenance window
                   value:
@@ -285,9 +285,6 @@ paths:
       responses:
         '200':
           description: Matching cases (empty array when no match)
-          headers:
-            X-Sebt-Capabilities-ETag:
-              $ref: '#/components/headers/CapabilitiesETag'
           content:
             application/json:
               schema:
@@ -359,14 +356,9 @@ paths:
       description: |
         Returns EBT card details for the specified case.
 
-        **Backends that do not support per-case card loading must expose this
-        endpoint and return `501 Not Implemented`** — not `404`. The portal uses
-        `501` to detect capability misconfiguration and logs an error; `404` is
-        treated as an unexpected failure.
-
-        This endpoint is only called when `cardDetails.modes` contains `"perCase"`.
-        If only `"batch"` mode is supported, this endpoint is not called during
-        normal operation — but must still respond `501`, not `404`.
+        Only implement this endpoint when the backend advertises `cardDetails.modes`
+        containing `"perCase"`. Backends that support batch loading only should not
+        register this route.
       parameters:
         - $ref: '#/components/parameters/CaseIdPath'
         - $ref: '#/components/parameters/SpecVersionHeader'
@@ -376,9 +368,6 @@ paths:
           description: |
             Card details for the case. If the case exists but no card has been
             issued, return `200` with `cardDetails` absent — not `404`.
-          headers:
-            X-Sebt-Capabilities-ETag:
-              $ref: '#/components/headers/CapabilitiesETag'
           content:
             application/json:
               schema:
@@ -424,16 +413,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-        '501':
-          description: Per-case card loading not supported by this backend
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-              example:
-                title: Not implemented
-                status: 501
-                detail: This backend supports batch card loading only (cardDetails.modes = ["batch"])
 
   /cases/address-updates:
     post:
@@ -441,15 +420,16 @@ paths:
       tags: [Cases]
       summary: Batch mailing address update
       description: |
-        Updates the mailing address for all specified cases in one request.
+        Updates the mailing address for all specified cases atomically — either all
+        cases are updated or none are. Cases in the batch are expected to form a
+        logical household unit sharing one address.
 
-        **Semantically idempotent** — applying the same address to the same set of
-        cases twice yields the same result. Polly may safely retry on transient
-        errors without an idempotency key.
+        **Idempotent** — applying the same address to the same cases twice produces
+        the same result. The portal may safely retry on transient errors.
 
-        Returns `207 Multi-Status`. Each entry in `results` has its own `status`
-        code; the overall HTTP status is always `207` — even when all per-case entries
-        fail. The portal retries only the cases whose per-entry status is not `2xx`.
+        On failure, the backend rolls back all changes and returns details about
+        which cases could not be updated via a `failedCases` extension on the error
+        response.
       parameters:
         - $ref: '#/components/parameters/SpecVersionHeader'
         - $ref: '#/components/parameters/UserIdentityHeader'
@@ -467,44 +447,31 @@ paths:
                 state: CO
                 zip: '80203'
       responses:
-        '207':
-          description: |
-            Multi-Status — inspect each entry's `status` field. The overall HTTP
-            response is `207` regardless of per-case outcomes.
-          headers:
-            X-Sebt-Capabilities-ETag:
-              $ref: '#/components/headers/CapabilitiesETag'
+        '200':
+          description: All cases updated successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AddressUpdateResponse'
-              examples:
-                allSucceeded:
-                  summary: Both cases updated
-                  value:
-                    results:
-                      - caseId: case-abc-001
-                        status: 200
-                      - caseId: case-abc-002
-                        status: 200
-                partialFailure:
-                  summary: One case failed validation
-                  value:
-                    results:
-                      - caseId: case-abc-001
-                        status: 200
-                      - caseId: case-abc-002
-                        status: 422
-                        error:
-                          title: Address validation failed
-                          status: 422
-                          detail: Street address not found in USPS database
+              example:
+                updatedCaseIds: [case-abc-001, case-abc-002]
         '400':
-          description: Malformed request (empty `caseIds`, invalid address schema)
+          description: |
+            Malformed request (empty `caseIds`, invalid address schema) or address
+            rejected by CMS validation. All changes rolled back. The `failedCases`
+            extension lists which cases had validation issues, if applicable.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: 'urn:sebt:error:address-update-failed'
+                title: Address update failed — all changes rolled back
+                status: 400
+                detail: Address could not be validated
+                failedCases:
+                  - caseId: case-abc-002
+                    detail: Street address not found in USPS database
         '401':
           description: Missing or invalid service credential
           content:
@@ -517,17 +484,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: |
+            One or more cases cannot be updated due to a business rule conflict
+            (e.g. case is locked or on hold). All changes rolled back. The
+            `failedCases` extension identifies the conflicting cases.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: 'urn:sebt:error:address-update-conflict'
+                title: Address update failed — all changes rolled back
+                status: 409
+                detail: One or more cases could not be updated
+                failedCases:
+                  - caseId: case-abc-002
+                    detail: Case is currently on hold
         '429':
           description: Rate limit exceeded
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '501':
-          description: Address update not supported by this backend
           content:
             application/json:
               schema:
@@ -566,9 +544,6 @@ paths:
       responses:
         '200':
           description: Replacement request submitted (or replayed from idempotent key)
-          headers:
-            X-Sebt-Capabilities-ETag:
-              $ref: '#/components/headers/CapabilitiesETag'
           content:
             application/json:
               schema:
@@ -621,8 +596,76 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-        '501':
-          description: Card replacement not supported by this backend
+
+  /cases/{caseId}/card-replacement/{requestId}:
+    get:
+      operationId: getCardReplacementStatus
+      tags: [Cases]
+      summary: Card replacement request status
+      description: |
+        Returns the current status of a card replacement request. Only implement
+        this endpoint when the backend advertises
+        `cardReplacement.statusTracking.supported: true`.
+
+        Use the `requestId` returned by `POST /cases/{caseId}/card-replacement`.
+      parameters:
+        - $ref: '#/components/parameters/CaseIdPath'
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Replacement request identifier, as returned by the POST endpoint.
+        - $ref: '#/components/parameters/SpecVersionHeader'
+        - $ref: '#/components/parameters/UserIdentityHeader'
+      responses:
+        '200':
+          description: Current status of the replacement request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardReplacementStatusResponse'
+              examples:
+                processing:
+                  summary: Request is being processed
+                  value:
+                    caseId: case-abc-001
+                    requestId: repl-xyz-789
+                    status: processing
+                    expectedDelivery: '2026-07-10'
+                fulfilled:
+                  summary: Card has been issued
+                  value:
+                    caseId: case-abc-001
+                    requestId: repl-xyz-789
+                    status: fulfilled
+                    expectedDelivery: '2026-07-10'
+                    actualDelivery: '2026-07-08'
+        '401':
+          description: Missing or invalid service credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: User assertion validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: |
+            Case or replacement request not found. Include a typed `ProblemDetails`
+            body to distinguish case-not-found from request-not-found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/json:
               schema:
@@ -704,12 +747,6 @@ paths:
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '501':
-          description: Enrollment check not supported by this backend
           content:
             application/json:
               schema:
@@ -972,7 +1009,9 @@ components:
         cardDetails:
           $ref: '#/components/schemas/CardDetailsCapability'
         cardReplacement:
-          $ref: '#/components/schemas/SupportedCapability'
+          allOf:
+            - $ref: '#/components/schemas/CardReplacementCapability'
+          description: Card replacement request capability.
         addressUpdate:
           $ref: '#/components/schemas/SupportedCapability'
         cardActivation:
@@ -1000,6 +1039,20 @@ components:
             - `perCase` — card details available via `GET /cases/{caseId}/card`
           example: [batch]
 
+    CardReplacementCapability:
+      type: object
+      required: [supported]
+      description: Card replacement capability, optionally including status tracking.
+      properties:
+        supported:
+          type: boolean
+        statusTracking:
+          allOf:
+            - $ref: '#/components/schemas/SupportedCapability'
+          description: |
+            Whether per-request status polling is available via
+            `GET /cases/{caseId}/card-replacement/{requestId}`.
+
     SupportedCapability:
       type: object
       required: [supported]
@@ -1022,36 +1075,13 @@ components:
       description: |
         Whether the backend validates the `X-Sebt-User-Identity` JWT header.
 
-        When `supported: true`, the `required` map declares per-operation
-        requirements. Backends may require assertion for writes without requiring
-        it for reads.
+        When `supported: true`, the portal sends the header on all authenticated
+        flows. The backend validates it for whichever operations it requires and
+        returns `403` with a `requiredIal` extension if validation fails.
 
-        **Constraint:** Backends must never set `enrollmentCheck: true` in the
-        `required` map. The enrollment check endpoint is unauthenticated; the
-        portal never sends the assertion for it.
+        The portal never sends `X-Sebt-User-Identity` for enrollment check flows.
       properties:
         supported:
-          type: boolean
-        required:
-          $ref: '#/components/schemas/UserAssertionRequired'
-
-    UserAssertionRequired:
-      type: object
-      required: [default]
-      description: |
-        Per-operation map. Portal reads `required[operation] ?? required.default`.
-        Additional operation keys may be added as needed.
-      additionalProperties:
-        type: boolean
-      properties:
-        default:
-          type: boolean
-          description: Fallback for any operation not explicitly listed.
-        casesLookup:
-          type: boolean
-        cardReplacement:
-          type: boolean
-        addressUpdate:
           type: boolean
 
     # ── Cases ─────────────────────────────────────────────────────────────────
@@ -1167,27 +1197,14 @@ components:
 
     AddressUpdateResponse:
       type: object
-      required: [results]
+      required: [updatedCaseIds]
+      description: Returned on successful atomic update of all cases.
       properties:
-        results:
+        updatedCaseIds:
           type: array
           items:
-            $ref: '#/components/schemas/AddressUpdateResult'
-
-    AddressUpdateResult:
-      type: object
-      required: [caseId, status]
-      properties:
-        caseId:
-          type: string
-        status:
-          type: integer
-          description: HTTP-style status code for this case's update (`200`, `422`, etc.).
-          example: 200
-        error:
-          allOf:
-            - $ref: '#/components/schemas/ProblemDetails'
-          description: Present when `status` is not `2xx`.
+            type: string
+          description: The case IDs that were updated, echoed from the request.
 
     CardReplacementRequest:
       type: object
@@ -1198,7 +1215,8 @@ components:
 
     CardReplacementResponse:
       type: object
-      required: [caseId, requestId]
+      required: [caseId, requestId, status]
+      description: Response to a card replacement submission. Status is always `submitted` at creation.
       properties:
         caseId:
           type: string
@@ -1206,17 +1224,51 @@ components:
           example: case-abc-001
         requestId:
           type: string
-          description: Backend's tracking identifier for this replacement request.
+          description: |
+            Backend's tracking identifier. Use with
+            `GET /cases/{caseId}/card-replacement/{requestId}` to poll status.
           example: repl-xyz-789
         status:
           type: string
-          enum: [submitted, processing, fulfilled]
-          description: Current status of the replacement request.
+          enum: [submitted]
+          description: Always `submitted` on initial creation or idempotent replay.
         expectedDelivery:
           type: string
           format: date
           description: Expected delivery date, if known.
           example: '2026-07-10'
+
+    CardReplacementStatusResponse:
+      type: object
+      required: [caseId, requestId, status]
+      description: Current status of a card replacement request, returned by the status polling endpoint.
+      properties:
+        caseId:
+          type: string
+          description: Echoes the caseId path parameter.
+          example: case-abc-001
+        requestId:
+          type: string
+          description: Echoes the requestId path parameter.
+          example: repl-xyz-789
+        status:
+          type: string
+          enum: [submitted, processing, fulfilled, failed]
+          description: |
+            - `submitted` — received and queued
+            - `processing` — card order placed with card vendor
+            - `fulfilled` — card issued; see `actualDelivery`
+            - `failed` — request could not be completed
+        expectedDelivery:
+          type: string
+          format: date
+          description: Estimated delivery date, if known.
+          example: '2026-07-10'
+        actualDelivery:
+          type: string
+          format: date
+          description: Actual card issuance date. Present when `status` is `fulfilled`.
+          example: '2026-07-08'
 
     # ── Enrollment ────────────────────────────────────────────────────────────
 
@@ -1286,19 +1338,6 @@ components:
       schema:
         type: string
       example: 'max-age=300'
-
-    CapabilitiesETag:
-      description: |
-        Opaque tag representing the current capabilities state. Include this on
-        all data-plane responses (lookup and writes). The portal tracks this value;
-        when it changes, the portal immediately re-fetches `GET /capabilities`,
-        closing the stale-`allowedActions` window to a single request.
-
-        Update this value whenever capabilities or `serviceMode` change. Format is
-        implementation-defined — a version counter or content hash are both fine.
-      schema:
-        type: string
-      example: '"cap-v7-2026-07-01"'
 
     RetryAfter:
       description: |
