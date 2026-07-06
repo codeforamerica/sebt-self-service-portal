@@ -114,9 +114,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
-              example:
-                status: pass
-                cmsReachable: true
+              examples:
+                pass:
+                  summary: All systems nominal
+                  value:
+                    status: pass
+                    cmsReachable: true
+                warn:
+                  summary: CMS reachable but a non-critical subsystem is impaired
+                  value:
+                    status: warn
+                    cmsReachable: true
+                    detail: Response times elevated; non-critical job queue backlogged
         '503':
           description: Service is unavailable (CMS unreachable, critical dependency down)
           content:
@@ -293,13 +302,11 @@ paths:
                         childLastName: Garcia
                         dateOfBirth: '2018-03-22'
                         issuanceType: SummerEbt
-                        cardStatus: Active
                       - caseId: case-abc-002
                         childFirstName: Liam
                         childLastName: Garcia
                         dateOfBirth: '2020-11-05'
                         issuanceType: SummerEbt
-                        cardStatus: NotActivated
                 noMatch:
                   summary: No cases found
                   value:
@@ -366,7 +373,9 @@ paths:
         - $ref: '#/components/parameters/UserIdentityHeader'
       responses:
         '200':
-          description: Card details for the case
+          description: |
+            Card details for the case. If the case exists but no card has been
+            issued, return `200` with `cardDetails` absent — not `404`.
           headers:
             X-Sebt-Capabilities-ETag:
               $ref: '#/components/headers/CapabilitiesETag'
@@ -374,13 +383,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CardDetailsResponse'
-              example:
-                caseId: case-abc-001
-                cardDetails:
-                  status: Active
-                  lastFour: '7823'
-                  issuedAt: '2025-06-01'
-                  expiresAt: '2027-06-30'
+              examples:
+                withCard:
+                  summary: Case has an active card
+                  value:
+                    caseId: case-abc-001
+                    cardDetails:
+                      status: Active
+                      lastFour: '7823'
+                      issuedAt: '2025-06-01'
+                      expiresAt: '2027-06-30'
+                noCard:
+                  summary: Case exists but no card issued
+                  value:
+                    caseId: case-abc-001
         '401':
           description: Missing or invalid service credential
           content:
@@ -432,8 +448,8 @@ paths:
         errors without an idempotency key.
 
         Returns `207 Multi-Status`. Each entry in `results` has its own `status`
-        code; the overall HTTP status is always `207`. The portal retries only the
-        cases whose per-entry status is not `2xx`.
+        code; the overall HTTP status is always `207` — even when all per-case entries
+        fail. The portal retries only the cases whose per-entry status is not `2xx`.
       parameters:
         - $ref: '#/components/parameters/SpecVersionHeader'
         - $ref: '#/components/parameters/UserIdentityHeader'
@@ -527,7 +543,11 @@ paths:
 
         **`Idempotency-Key` is required** — a client-generated UUID. The backend
         deduplicates requests with the same key within 24 hours, returning the
-        original response on replay. Missing key returns `400`.
+        original response on replay (`200`, not `409`). Missing key returns `400`.
+
+        **Replay vs conflict:** A replayed key (same key, same caseId) returns `200`
+        with the original response body. `409` means a *different* replacement is
+        already pending — not a duplicate of this request.
 
         This endpoint is **excluded from automatic Polly retry**. The portal manages
         retry explicitly to avoid reusing an idempotency key unintentionally.
@@ -542,8 +562,7 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CardReplacementRequest'
-            example:
-              reason: lost
+            example: {}
       responses:
         '200':
           description: Replacement request submitted (or replayed from idempotent key)
@@ -555,6 +574,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/CardReplacementResponse'
               example:
+                caseId: case-abc-001
                 requestId: repl-xyz-789
                 status: submitted
                 expectedDelivery: '2026-07-10'
@@ -648,6 +668,10 @@ paths:
                 summary: Look up by child name and date of birth
                 value:
                   signals:
+                    - type: child_first_name
+                      value: Maria
+                    - type: child_last_name
+                      value: Garcia
                     - type: date_of_birth
                       value: '2018-03-22'
       responses:
@@ -714,6 +738,8 @@ components:
         | `email` | Standard email address |
         | `date_of_birth` | `YYYY-MM-DD` |
         | `phone_number` | E.164 |
+        | `child_first_name` | Free text; backends may normalize case and trim whitespace |
+        | `child_last_name` | Free text; backends may normalize case and trim whitespace |
         | `state_benefit_id` | Opaque string; normalized (trimmed, dashes/spaces stripped) |
         | `federal_benefit_id` | Opaque string; normalized |
         | `state_issued_id` | Opaque string; normalized |
@@ -729,7 +755,10 @@ components:
           description: Signal value in canonical format for its type.
         verified:
           type: boolean
-          description: Whether the portal verified this value through an identity-proofing step.
+          description: |
+            Whether the portal verified this value through an identity-proofing step.
+            Backends MAY apply stricter matching rules when `verified: true` (e.g.
+            require exact match instead of fuzzy match for name signals).
         source:
           type: string
           description: How the portal obtained this value (e.g. `portal`, `idp`, `user-entered`).
@@ -802,7 +831,8 @@ components:
         also part of this payload.
       properties:
         status:
-          $ref: '#/components/schemas/CardStatus'
+          allOf:
+            - $ref: '#/components/schemas/CardStatus'
           description: Current card lifecycle status.
         lastFour:
           type: string
@@ -864,10 +894,13 @@ components:
               dependency down); HTTP 503
         cmsReachable:
           type: boolean
-          description: Whether the backend can reach its upstream CMS.
+          description: |
+            Whether the backend can reach its upstream CMS. Required when `status`
+            is `warn` or `fail` — include it so the portal can distinguish a CMS
+            outage from an internal impairment.
         detail:
           type: string
-          description: Human-readable description of any impairment.
+          description: Human-readable description of any impairment. Plain text — no HTML markup.
 
     # ── Capabilities ──────────────────────────────────────────────────────────
 
@@ -884,7 +917,8 @@ components:
             is fatal — the portal will not activate the backend.
           example: '1.0.0'
         serviceMode:
-          $ref: '#/components/schemas/ServiceMode'
+          allOf:
+            - $ref: '#/components/schemas/ServiceMode'
           description: |
             Runtime operational status. Absent or `{ mode: "full" }` = normal
             operation. The portal checks this before computing `allowedActions`
@@ -930,7 +964,8 @@ components:
       type: object
       properties:
         coLoadedLookup:
-          $ref: '#/components/schemas/SupportedCapability'
+          allOf:
+            - $ref: '#/components/schemas/SupportedCapability'
           description: |
             Supports co-loading cross-household lookups (`intent: "coLoad"` on
             `POST /cases/lookup`).
@@ -1023,7 +1058,7 @@ components:
 
     SummerEbtCase:
       type: object
-      required: [caseId, issuanceType]
+      required: [caseId, childFirstName, dateOfBirth, issuanceType]
       description: |
         A single Summer EBT case representing one child's benefit issuance.
         Multiple cases in a response share the same guardian household.
@@ -1054,7 +1089,8 @@ components:
         issuanceType:
           $ref: '#/components/schemas/IssuanceType'
         cardDetails:
-          $ref: '#/components/schemas/CardDetails'
+          allOf:
+            - $ref: '#/components/schemas/CardDetails'
           description: |
             Card data including status, last four digits, and issuance dates.
             Present only when `includeCardDetails: true` was requested and
@@ -1109,7 +1145,8 @@ components:
           type: string
           description: Echoes the path parameter.
         cardDetails:
-          $ref: '#/components/schemas/CardDetails'
+          allOf:
+            - $ref: '#/components/schemas/CardDetails'
           description: Card data including status. Backends include whichever fields they can provide.
 
     AddressUpdateRequest:
@@ -1148,21 +1185,25 @@ components:
           description: HTTP-style status code for this case's update (`200`, `422`, etc.).
           example: 200
         error:
-          $ref: '#/components/schemas/ProblemDetails'
+          allOf:
+            - $ref: '#/components/schemas/ProblemDetails'
           description: Present when `status` is not `2xx`.
 
     CardReplacementRequest:
       type: object
-      properties:
-        reason:
-          type: string
-          enum: [lost, stolen, damaged]
-          description: Reason for the replacement request.
+      description: |
+        Card replacement request body. Currently carries no required fields —
+        backends must accept an absent or empty `{}` body. Additional fields may
+        be added in future spec versions.
 
     CardReplacementResponse:
       type: object
-      required: [requestId]
+      required: [caseId, requestId]
       properties:
+        caseId:
+          type: string
+          description: Echoes the path parameter.
+          example: case-abc-001
         requestId:
           type: string
           description: Backend's tracking identifier for this replacement request.
@@ -1205,15 +1246,21 @@ components:
           items:
             $ref: '#/components/schemas/EnrollmentCheckMatch'
           description: |
-            Optional summary of matched children. Backends may omit this if their
-            state policy does not permit returning child identifiers in response
-            to an unauthenticated end-user query (the portal call is service-authed,
-            but the original request may originate from a public-facing form).
+            Optional summary of matched children. The portal call is service-authed,
+            but the original request may originate from a public-facing form — the
+            backend cannot verify end-user authorization.
+
+            **PII guidance:** Backends that cannot confirm the caller is authorized
+            to see full child details should omit this field entirely or limit it to
+            the minimum needed to confirm the eligibility result. Do not return full
+            child names or identifiers to unauthenticated-origin queries unless state
+            policy explicitly permits it.
         message:
           type: string
           description: |
             Advisory message for display to the user. State-specific; the portal
-            renders it as-is. Omit when not applicable.
+            renders it as plain text — do not include HTML markup. Omit when not
+            applicable.
 
     EnrollmentCheckMatch:
       type: object
