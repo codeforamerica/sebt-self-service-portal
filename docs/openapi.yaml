@@ -1,0 +1,1266 @@
+openapi: 3.0.3
+info:
+  title: SEBT State Backend API
+  version: 1.0.0
+  description: |
+    REST interface implemented by state case-management backends to integrate with
+    the SEBT (Summer EBT / SUN Bucks) Self-Service Portal.
+
+    **Required vs optional endpoints.** Every endpoint in this spec must be exposed.
+    Optional endpoints that a state backend does not support must return
+    `501 Not Implemented` — not `404`. The portal interprets `501` as "capability
+    unavailable" and degrades gracefully; `404` is treated as an unexpected error.
+
+    ## Versioning
+
+    All paths are served under a version prefix (default: `sebt/v1`). The portal
+    sends `X-Sebt-Spec-Version: 1.0.0` on every request.
+
+    Within a major version the contract is additive: new fields and capability keys
+    may appear; existing ones are never repurposed or removed. A major version
+    mismatch between portal and backend is fatal — the portal refuses to activate
+    the backend and degrades to a service-unavailable state.
+
+    ## Authentication
+
+    Portal-to-backend auth uses OAuth 2.0 client credentials (default) or an API
+    key, configured per-state in `appsettings.{state}.json`. Health and enrollment
+    check endpoints are unauthenticated.
+
+    ## End-user assertion
+
+    Authenticated portal flows include `X-Sebt-User-Identity` — a 60-second
+    signed JWT carrying `ial` and an opaque `userRef`. Backends that want per-user
+    data scoping validate it; others ignore it. Per-operation requirements are
+    declared in `capabilities.userAssertion.required`.
+
+    The enrollment check endpoint (`POST /enrollment/check`) is unauthenticated
+    by default. The portal never sends the assertion for that flow.
+
+    ## Conventions
+
+    | Concern | Rule |
+    |---|---|
+    | Content-Type | `application/json` on all requests and responses |
+    | Date-times | RFC 3339 with UTC offset (`2024-06-15T14:30:00Z`) |
+    | Date-only | `YYYY-MM-DD` |
+    | Phone numbers | E.164 (`+13035551234`) |
+    | Monetary amounts | Integer cents; no decimal |
+    | JSON field casing | camelCase |
+    | Null vs absent | Absent = field not applicable. `null` = applicable but no value. |
+    | Unknown signal types | Ignore silently — never return an error for unrecognized types |
+    | Unknown signal fields | Ignore sibling fields beyond `type` and `value` |
+    | Unknown capability keys | Portal ignores; absent = unsupported |
+    | Unknown `intent` values | Return `400` — fail closed |
+
+  contact:
+    name: Code for America SEBT Team
+    url: 'https://github.com/codeforamerica/sebt-self-service-portal'
+
+servers:
+  - url: 'https://{host}/{basePath}'
+    description: State backend endpoint (configured per deployment in StateBackend:BaseUrl)
+    variables:
+      host:
+        default: state-backend.example.gov
+        description: Hostname of the state backend service
+      basePath:
+        default: sebt/v1
+        description: Base path including the API version prefix
+
+tags:
+  - name: Readiness
+    description: Liveness and readiness probes
+  - name: Discovery
+    description: Capability and version discovery
+  - name: Cases
+    description: Household case lookup and self-service actions (authenticated)
+  - name: Enrollment
+    description: Enrollment eligibility check (unauthenticated by default)
+
+security:
+  - oauth2ClientCredentials: []
+  - apiKey: []
+
+paths:
+
+  /health:
+    get:
+      operationId: getHealth
+      tags: [Readiness]
+      summary: Readiness check
+      description: |
+        Returns the backend's readiness to serve requests, including whether it can
+        reach the upstream CMS. Called by the portal at startup and periodically
+        to detect service degradation.
+
+        Unauthenticated — called before acquiring a service credential.
+      security: []
+      responses:
+        '200':
+          description: Service is healthy or degraded but able to accept requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: healthy
+                cmsReachable: true
+        '503':
+          description: Service is unavailable (CMS unreachable, fatal dependency down)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: unhealthy
+                cmsReachable: false
+                detail: CMS connection refused
+
+  /capabilities:
+    get:
+      operationId: getCapabilities
+      tags: [Discovery]
+      summary: Capability and version discovery
+      description: |
+        Returns the spec version this backend conforms to, the current service mode,
+        and a structured map of which optional capabilities are supported.
+
+        **Caching.** The portal caches this response using `Cache-Control: max-age`
+        if present, falling back to a default 5-minute TTL. Set a short `max-age`
+        ahead of planned capability changes and `no-cache` during cutover windows.
+
+        **ETag invalidation.** Backends include `X-Sebt-Capabilities-ETag` on every
+        data-plane response. When the portal detects a changed ETag value, it
+        immediately re-fetches this endpoint — no push infrastructure required.
+      responses:
+        '200':
+          description: Current capabilities
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilitiesResponse'
+              examples:
+                fullSupport:
+                  summary: Backend with batch card loading and user assertion
+                  value:
+                    specVersion: '1.0.0'
+                    serviceMode:
+                      mode: full
+                      until: null
+                    capabilities:
+                      cases:
+                        coLoadedLookup:
+                          supported: true
+                        cardDetails:
+                          supported: true
+                          modes: [batch]
+                        cardReplacement:
+                          supported: true
+                        addressUpdate:
+                          supported: true
+                        cardActivation:
+                          supported: false
+                      enrollment:
+                        check:
+                          supported: true
+                      userAssertion:
+                        supported: true
+                        required:
+                          default: false
+                          cardReplacement: true
+                          addressUpdate: true
+                readOnly:
+                  summary: Backend in read-only maintenance window
+                  value:
+                    specVersion: '1.0.0'
+                    serviceMode:
+                      mode: readOnly
+                      until: '2026-07-02T06:00:00Z'
+                    capabilities:
+                      cases:
+                        coLoadedLookup:
+                          supported: false
+                        cardDetails:
+                          supported: true
+                          modes: [perCase]
+                        cardReplacement:
+                          supported: true
+                        addressUpdate:
+                          supported: true
+                        cardActivation:
+                          supported: false
+                      enrollment:
+                        check:
+                          supported: true
+                      userAssertion:
+                        supported: false
+
+  /cases/lookup:
+    post:
+      operationId: lookupCases
+      tags: [Cases]
+      summary: Find cases by identity signals
+      description: |
+        Returns all cases associated with the identity described by the provided
+        signals. Signals are AND-matched where possible; backends use whichever
+        subset their CMS supports and silently ignore unrecognized signal types.
+
+        **`intent`** tells the backend the purpose of the lookup:
+        - `primary` — authenticated user's own household
+        - `coLoad` — cross-household co-loading search; backends may apply stricter
+          access rules (only called when `coLoadedLookup.supported: true`)
+
+        `intent` is an **open string constant** — future values are possible.
+        Backends must return `400` for unrecognized values (fail closed, since
+        `intent` shapes access control decisions).
+
+        **Card details.** When `includeCardDetails: true` and the backend advertises
+        `cardDetails.modes: ["batch"]`, full card details are returned inline on
+        each case. Otherwise `includeCardDetails` is ignored and card details must
+        be fetched per-case via `GET /cases/{caseId}/card`.
+
+        **No match.** Return `200` with `{ "cases": [] }` — not a `404`.
+      parameters:
+        - $ref: '#/components/parameters/SpecVersionHeader'
+        - $ref: '#/components/parameters/UserIdentityHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CasesLookupRequest'
+            examples:
+              primaryLookup:
+                summary: Authenticated user's own household
+                value:
+                  signals:
+                    - type: email
+                      value: guardian@example.com
+                      verified: true
+                      source: portal
+                  intent: primary
+                  includeCardDetails: false
+              coLoadLookup:
+                summary: Cross-household co-loading search
+                value:
+                  signals:
+                    - type: state_benefit_id
+                      value: SNAP-12345
+                    - type: date_of_birth
+                      value: '1985-06-15'
+                  intent: coLoad
+                  includeCardDetails: false
+              withCardDetails:
+                summary: Lookup with inline card details (batch mode)
+                value:
+                  signals:
+                    - type: email
+                      value: guardian@example.com
+                  intent: primary
+                  includeCardDetails: true
+      responses:
+        '200':
+          description: Matching cases (empty array when no match)
+          headers:
+            X-Sebt-Capabilities-ETag:
+              $ref: '#/components/headers/CapabilitiesETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasesLookupResponse'
+              examples:
+                found:
+                  summary: Two cases found
+                  value:
+                    cases:
+                      - caseId: case-abc-001
+                        childFirstName: Maria
+                        childLastName: Garcia
+                        dateOfBirth: '2018-03-22'
+                        issuanceType: SummerEbt
+                        cardStatus: Active
+                      - caseId: case-abc-002
+                        childFirstName: Liam
+                        childLastName: Garcia
+                        dateOfBirth: '2020-11-05'
+                        issuanceType: SummerEbt
+                        cardStatus: NotActivated
+                noMatch:
+                  summary: No cases found
+                  value:
+                    cases: []
+        '400':
+          description: Invalid request — unknown `intent` value, empty signals, malformed body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                type: 'urn:sebt:error:unknown-intent'
+                title: Unknown intent value
+                status: 400
+                detail: '"caseworker" is not a recognized intent value for this backend version'
+        '401':
+          description: Missing or invalid service credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: |
+            User assertion validation failed. Include `requiredIal` in extensions
+            if the failure reason is insufficient IAL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                title: Insufficient identity assurance level
+                status: 403
+                detail: This operation requires IAL 2
+                requiredIal: 2
+
+  /cases/{caseId}/card:
+    get:
+      operationId: getCaseCardDetails
+      tags: [Cases]
+      summary: EBT card details for a single case
+      description: |
+        Returns EBT card details for the specified case.
+
+        **Backends that do not support per-case card loading must expose this
+        endpoint and return `501 Not Implemented`** — not `404`. The portal uses
+        `501` to detect capability misconfiguration and logs an error; `404` is
+        treated as an unexpected failure.
+
+        This endpoint is only called when `cardDetails.modes` contains `"perCase"`.
+        If only `"batch"` mode is supported, this endpoint is not called during
+        normal operation — but must still respond `501`, not `404`.
+      parameters:
+        - $ref: '#/components/parameters/CaseIdPath'
+        - $ref: '#/components/parameters/SpecVersionHeader'
+        - $ref: '#/components/parameters/UserIdentityHeader'
+      responses:
+        '200':
+          description: Card details for the case
+          headers:
+            X-Sebt-Capabilities-ETag:
+              $ref: '#/components/headers/CapabilitiesETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardDetailsResponse'
+              example:
+                caseId: case-abc-001
+                cardStatus: Active
+                cardDetails:
+                  lastFour: '7823'
+                  issuedAt: '2025-06-01'
+                  expiresAt: '2027-06-30'
+        '401':
+          description: Missing or invalid service credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: User assertion validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '501':
+          description: Per-case card loading not supported by this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                title: Not implemented
+                status: 501
+                detail: This backend supports batch card loading only (cardDetails.modes = ["batch"])
+
+  /cases/address-updates:
+    post:
+      operationId: updateAddresses
+      tags: [Cases]
+      summary: Batch mailing address update
+      description: |
+        Updates the mailing address for all specified cases in one request.
+
+        **Semantically idempotent** — applying the same address to the same set of
+        cases twice yields the same result. Polly may safely retry on transient
+        errors without an idempotency key.
+
+        Returns `207 Multi-Status`. Each entry in `results` has its own `status`
+        code; the overall HTTP status is always `207`. The portal retries only the
+        cases whose per-entry status is not `2xx`.
+      parameters:
+        - $ref: '#/components/parameters/SpecVersionHeader'
+        - $ref: '#/components/parameters/UserIdentityHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressUpdateRequest'
+            example:
+              caseIds: [case-abc-001, case-abc-002]
+              address:
+                street1: 123 Main St
+                city: Denver
+                state: CO
+                zip: '80203'
+      responses:
+        '207':
+          description: |
+            Multi-Status — inspect each entry's `status` field. The overall HTTP
+            response is `207` regardless of per-case outcomes.
+          headers:
+            X-Sebt-Capabilities-ETag:
+              $ref: '#/components/headers/CapabilitiesETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressUpdateResponse'
+              examples:
+                allSucceeded:
+                  summary: Both cases updated
+                  value:
+                    results:
+                      - caseId: case-abc-001
+                        status: 200
+                      - caseId: case-abc-002
+                        status: 200
+                partialFailure:
+                  summary: One case failed validation
+                  value:
+                    results:
+                      - caseId: case-abc-001
+                        status: 200
+                      - caseId: case-abc-002
+                        status: 422
+                        error:
+                          title: Address validation failed
+                          status: 422
+                          detail: Street address not found in USPS database
+        '400':
+          description: Malformed request (empty `caseIds`, invalid address schema)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Missing or invalid service credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: User assertion validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '501':
+          description: Address update not supported by this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /cases/{caseId}/card-replacement:
+    post:
+      operationId: requestCardReplacement
+      tags: [Cases]
+      summary: Request a replacement EBT card
+      description: |
+        Submits a card replacement request for the specified case.
+
+        **`Idempotency-Key` is required** — a client-generated UUID. The backend
+        deduplicates requests with the same key within 24 hours, returning the
+        original response on replay. Missing key returns `400`.
+
+        This endpoint is **excluded from automatic Polly retry**. The portal manages
+        retry explicitly to avoid reusing an idempotency key unintentionally.
+      parameters:
+        - $ref: '#/components/parameters/CaseIdPath'
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+        - $ref: '#/components/parameters/SpecVersionHeader'
+        - $ref: '#/components/parameters/UserIdentityHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardReplacementRequest'
+            example:
+              reason: lost
+      responses:
+        '200':
+          description: Replacement request submitted (or replayed from idempotent key)
+          headers:
+            X-Sebt-Capabilities-ETag:
+              $ref: '#/components/headers/CapabilitiesETag'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardReplacementResponse'
+              example:
+                requestId: repl-xyz-789
+                status: submitted
+                expectedDelivery: '2026-07-10'
+        '400':
+          description: Missing `Idempotency-Key` header or malformed request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+              example:
+                title: Missing required header
+                status: 400
+                detail: Idempotency-Key header is required for this operation
+        '401':
+          description: Missing or invalid service credential
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: User assertion validation failed or action not permitted for this case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: A pending replacement already exists for this case
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '501':
+          description: Card replacement not supported by this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /enrollment/check:
+    post:
+      operationId: checkEnrollment
+      tags: [Enrollment]
+      summary: Enrollment eligibility check
+      description: |
+        Checks whether a child identified by the provided signals is enrolled in
+        Summer EBT benefits.
+
+        **Unauthenticated by default.** This endpoint is called from the Enrollment
+        Checker application where the user may not be logged in. The portal does not
+        include `X-Sebt-User-Identity` for this flow. Backends must not set
+        `enrollmentCheck: true` in `userAssertion.required`.
+
+        Signal matching semantics may be more permissive than `POST /cases/lookup`
+        — backends may apply fuzzy matching (partial name, approximate DOB) per
+        state policy.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/SpecVersionHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnrollmentCheckRequest'
+            examples:
+              byBenefitId:
+                summary: Look up by SNAP benefit ID
+                value:
+                  signals:
+                    - type: state_benefit_id
+                      value: SNAP-12345
+              byNameAndDob:
+                summary: Look up by child name and date of birth
+                value:
+                  signals:
+                    - type: date_of_birth
+                      value: '2018-03-22'
+      responses:
+        '200':
+          description: Eligibility result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrollmentCheckResponse'
+              examples:
+                eligible:
+                  summary: Child is eligible
+                  value:
+                    eligible: true
+                    matchedCases:
+                      - childFirstName: Maria
+                        dateOfBirth: '2018-03-22'
+                notEligible:
+                  summary: No eligible child found
+                  value:
+                    eligible: false
+        '400':
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '501':
+          description: Enrollment check not supported by this backend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:
+  schemas:
+
+    # ── Primitives ────────────────────────────────────────────────────────────
+
+    IdentitySignal:
+      type: object
+      required: [type, value]
+      additionalProperties: true
+      description: |
+        An identity signal passed to the backend for matching. Backends use the
+        subset of signal types their CMS supports and silently ignore the rest.
+
+        Signal objects may contain fields beyond `type` and `value` (e.g.
+        `verified`, `source`). Backends must ignore unrecognized sibling fields.
+
+        **Well-known `type` values:**
+
+        | Type | Format |
+        |---|---|
+        | `email` | Standard email address |
+        | `date_of_birth` | `YYYY-MM-DD` |
+        | `phone_number` | E.164 |
+        | `state_benefit_id` | Opaque string; normalized (trimmed, dashes/spaces stripped) |
+        | `federal_benefit_id` | Opaque string; normalized |
+        | `state_issued_id` | Opaque string; normalized |
+
+        Additional types may be added in future spec versions. Backends should
+        ignore types they do not recognize rather than returning an error.
+      properties:
+        type:
+          type: string
+          example: email
+        value:
+          type: string
+          description: Signal value in canonical format for its type.
+        verified:
+          type: boolean
+          description: Whether the portal verified this value through an identity-proofing step.
+        source:
+          type: string
+          description: How the portal obtained this value (e.g. `portal`, `idp`, `user-entered`).
+
+    MailingAddress:
+      type: object
+      required: [street1, city, state, zip]
+      properties:
+        street1:
+          type: string
+          maxLength: 100
+        street2:
+          type: string
+          maxLength: 100
+        city:
+          type: string
+          maxLength: 100
+        state:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: Two-letter USPS state abbreviation.
+        zip:
+          type: string
+          pattern: '^\d{5}(-\d{4})?$'
+          description: ZIP or ZIP+4.
+          example: '80203'
+
+    CardStatus:
+      type: string
+      description: |
+        Card lifecycle status. Backends map their CMS-internal status tokens to
+        these canonical values. Unrecognized tokens map to `Unknown`.
+
+        The portal's self-service rules evaluate this value against state-configured
+        allowlists when determining `allowedActions`.
+      enum:
+        - Active
+        - Inactive
+        - NotActivated
+        - Lost
+        - Stolen
+        - Damaged
+        - DeactivatedByState
+        - Unknown
+
+    IssuanceType:
+      type: string
+      description: How this case's Summer EBT benefits are delivered.
+      enum:
+        - SummerEbt
+        - SnapEbtCard
+        - TanfEbtCard
+        - Unknown
+
+    CardDetails:
+      type: object
+      description: |
+        Rich card data returned when card details are available (via batch lookup
+        or per-case fetch). Backends include whichever fields they can provide;
+        absent fields are omitted rather than null.
+      properties:
+        lastFour:
+          type: string
+          minLength: 4
+          maxLength: 4
+          description: Last four digits of the EBT card number.
+          example: '7823'
+        issuedAt:
+          type: string
+          format: date
+          description: Date the card was issued.
+          example: '2025-06-01'
+        expiresAt:
+          type: string
+          format: date
+          description: Card expiration date.
+          example: '2027-06-30'
+
+    ProblemDetails:
+      type: object
+      description: |
+        RFC 9457 problem detail. Backends return this shape for all `4xx` and `5xx`
+        responses. Extension fields (e.g. `requiredIal`) are permitted.
+      additionalProperties: true
+      properties:
+        type:
+          type: string
+          format: uri
+          description: URI reference identifying the problem type.
+        title:
+          type: string
+          description: Short, human-readable summary of the problem type.
+        status:
+          type: integer
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence.
+        instance:
+          type: string
+          format: uri
+          description: URI reference identifying this specific occurrence.
+
+    # ── Health ────────────────────────────────────────────────────────────────
+
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          description: |
+            - `healthy` — all systems nominal
+            - `degraded` — CMS reachable but a non-critical subsystem is impaired;
+              the backend can still serve requests
+            - `unhealthy` — unable to serve requests (CMS unreachable or critical
+              dependency down)
+        cmsReachable:
+          type: boolean
+          description: Whether the backend can reach its upstream CMS.
+        detail:
+          type: string
+          description: Human-readable description of any impairment.
+
+    # ── Capabilities ──────────────────────────────────────────────────────────
+
+    CapabilitiesResponse:
+      type: object
+      required: [specVersion, capabilities]
+      properties:
+        specVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+          description: |
+            SEBT spec version this backend conforms to (semver). The portal sends
+            its own version via `X-Sebt-Spec-Version`. A major-version mismatch
+            is fatal — the portal will not activate the backend.
+          example: '1.0.0'
+        serviceMode:
+          $ref: '#/components/schemas/ServiceMode'
+          description: |
+            Runtime operational status. Absent or `{ mode: "full" }` = normal
+            operation. The portal checks this before computing `allowedActions`
+            and suppresses write actions in `readOnly` or `maintenance` modes.
+        capabilities:
+          $ref: '#/components/schemas/Capabilities'
+
+    ServiceMode:
+      type: object
+      required: [mode]
+      properties:
+        mode:
+          type: string
+          enum: [full, readOnly, maintenance]
+          description: |
+            - `full` (default when absent) — normal operation
+            - `readOnly` — writes disabled (nightly batch window, CMS maintenance);
+              portal suppresses write `allowedActions` and shows `until` to users
+            - `maintenance` — all operations suspended; portal shows outage page
+        until:
+          type: string
+          format: date-time
+          nullable: true
+          description: |
+            RFC 3339 timestamp for expected service restoration. `null` if unknown.
+          example: '2026-07-02T06:00:00Z'
+
+    Capabilities:
+      type: object
+      description: |
+        Structured map of optional capabilities. An absent key means the capability
+        is not supported. The portal ignores unknown keys — they may be added in
+        future spec versions without breaking existing portal versions.
+      properties:
+        cases:
+          $ref: '#/components/schemas/CasesCapabilities'
+        enrollment:
+          $ref: '#/components/schemas/EnrollmentCapabilities'
+        userAssertion:
+          $ref: '#/components/schemas/UserAssertionCapability'
+
+    CasesCapabilities:
+      type: object
+      properties:
+        coLoadedLookup:
+          $ref: '#/components/schemas/SupportedCapability'
+          description: |
+            Supports co-loading cross-household lookups (`intent: "coLoad"` on
+            `POST /cases/lookup`).
+        cardDetails:
+          $ref: '#/components/schemas/CardDetailsCapability'
+        cardReplacement:
+          $ref: '#/components/schemas/SupportedCapability'
+        addressUpdate:
+          $ref: '#/components/schemas/SupportedCapability'
+        cardActivation:
+          $ref: '#/components/schemas/SupportedCapability'
+
+    CardDetailsCapability:
+      type: object
+      required: [supported]
+      description: |
+        Card details loading capability. When `supported: true`, `modes` declares
+        which delivery mechanism(s) are available. Extensible — future mode values
+        may be added without new sibling booleans.
+      properties:
+        supported:
+          type: boolean
+        modes:
+          type: array
+          items:
+            type: string
+            enum: [batch, perCase]
+          description: |
+            Present only when `supported: true`.
+            - `batch` — card details returned inline from `POST /cases/lookup`
+              when `includeCardDetails: true`
+            - `perCase` — card details available via `GET /cases/{caseId}/card`
+          example: [batch]
+
+    SupportedCapability:
+      type: object
+      required: [supported]
+      description: |
+        Base capability object. Additional fields may be added in future spec
+        versions; the portal ignores unknown fields.
+      properties:
+        supported:
+          type: boolean
+
+    EnrollmentCapabilities:
+      type: object
+      properties:
+        check:
+          $ref: '#/components/schemas/SupportedCapability'
+
+    UserAssertionCapability:
+      type: object
+      required: [supported]
+      description: |
+        Whether the backend validates the `X-Sebt-User-Identity` JWT header.
+
+        When `supported: true`, the `required` map declares per-operation
+        requirements. Backends may require assertion for writes without requiring
+        it for reads.
+
+        **Constraint:** Backends must never set `enrollmentCheck: true` in the
+        `required` map. The enrollment check endpoint is unauthenticated; the
+        portal never sends the assertion for it.
+      properties:
+        supported:
+          type: boolean
+        required:
+          $ref: '#/components/schemas/UserAssertionRequired'
+
+    UserAssertionRequired:
+      type: object
+      required: [default]
+      description: |
+        Per-operation map. Portal reads `required[operation] ?? required.default`.
+        Additional operation keys may be added as needed.
+      additionalProperties:
+        type: boolean
+      properties:
+        default:
+          type: boolean
+          description: Fallback for any operation not explicitly listed.
+        casesLookup:
+          type: boolean
+        cardReplacement:
+          type: boolean
+        addressUpdate:
+          type: boolean
+
+    # ── Cases ─────────────────────────────────────────────────────────────────
+
+    SummerEbtCase:
+      type: object
+      required: [caseId, issuanceType]
+      description: |
+        A single Summer EBT case representing one child's benefit issuance.
+        Multiple cases in a response share the same guardian household.
+
+        **Per-case capability overrides (reserved, not yet implemented).** A future
+        spec version may add a `capabilities` field to individual cases, allowing
+        multi-CMS deployments to narrow state-wide capability defaults per case.
+        Absent per-case capabilities = inherit state-wide defaults. The portal
+        ignores this field in v1.
+      properties:
+        caseId:
+          type: string
+          description: |
+            State's native identifier for this case. Treated as opaque by the
+            portal — echoed back verbatim in subsequent write operations.
+          example: case-abc-001
+        childFirstName:
+          type: string
+          example: Maria
+        childLastName:
+          type: string
+          example: Garcia
+        dateOfBirth:
+          type: string
+          format: date
+          description: Child's date of birth. `YYYY-MM-DD`.
+          example: '2018-03-22'
+        issuanceType:
+          $ref: '#/components/schemas/IssuanceType'
+        cardStatus:
+          $ref: '#/components/schemas/CardStatus'
+          description: |
+            Current card status. Present when the backend can provide it without a
+            separate card-details fetch. Used by the portal's self-service rules
+            evaluator to determine `allowedActions`.
+        cardDetails:
+          $ref: '#/components/schemas/CardDetails'
+          description: |
+            Rich card data. Present only when `includeCardDetails: true` was
+            requested and `cardDetails.modes` includes `"batch"`.
+
+    CasesLookupRequest:
+      type: object
+      required: [signals, intent]
+      properties:
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentitySignal'
+          minItems: 1
+          description: |
+            Identity signals. AND-matched where possible; backends use the subset
+            their CMS supports and ignore the rest.
+        intent:
+          type: string
+          description: |
+            Lookup type. Well-known values: `primary` (own household), `coLoad`
+            (cross-household co-loading search). Backends must return `400` for
+            unrecognized values.
+          example: primary
+        includeCardDetails:
+          type: boolean
+          default: false
+          description: |
+            When `true` and `cardDetails.modes` contains `"batch"`, card details
+            are returned inline. Ignored when batch loading is not supported.
+
+    CasesLookupResponse:
+      type: object
+      required: [cases]
+      properties:
+        cases:
+          type: array
+          items:
+            $ref: '#/components/schemas/SummerEbtCase'
+          maxItems: 20
+          description: |
+            Cases for the matched household. Empty array when no match — not a
+            `404`. Household size is bounded by program rules; no pagination.
+
+    CardDetailsResponse:
+      type: object
+      required: [caseId]
+      description: Card details for a single case, returned by `GET /cases/{caseId}/card`.
+      properties:
+        caseId:
+          type: string
+          description: Echoes the path parameter.
+        cardStatus:
+          $ref: '#/components/schemas/CardStatus'
+        cardDetails:
+          $ref: '#/components/schemas/CardDetails'
+
+    AddressUpdateRequest:
+      type: object
+      required: [caseIds, address]
+      properties:
+        caseIds:
+          type: array
+          items:
+            type: string
+          minItems: 1
+          maxItems: 20
+          description: |
+            State-native case identifiers to update. As returned by
+            `POST /cases/lookup`.
+        address:
+          $ref: '#/components/schemas/MailingAddress'
+
+    AddressUpdateResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AddressUpdateResult'
+
+    AddressUpdateResult:
+      type: object
+      required: [caseId, status]
+      properties:
+        caseId:
+          type: string
+        status:
+          type: integer
+          description: HTTP-style status code for this case's update (`200`, `422`, etc.).
+          example: 200
+        error:
+          $ref: '#/components/schemas/ProblemDetails'
+          description: Present when `status` is not `2xx`.
+
+    CardReplacementRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [lost, stolen, damaged]
+          description: Reason for the replacement request.
+
+    CardReplacementResponse:
+      type: object
+      required: [requestId]
+      properties:
+        requestId:
+          type: string
+          description: Backend's tracking identifier for this replacement request.
+          example: repl-xyz-789
+        status:
+          type: string
+          enum: [submitted, processing, fulfilled]
+          description: Current status of the replacement request.
+        expectedDelivery:
+          type: string
+          format: date
+          description: Expected delivery date, if known.
+          example: '2026-07-10'
+
+    # ── Enrollment ────────────────────────────────────────────────────────────
+
+    EnrollmentCheckRequest:
+      type: object
+      required: [signals]
+      properties:
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/IdentitySignal'
+          minItems: 1
+          description: |
+            Identity signals for the child being checked. Matching semantics may
+            be more permissive than `POST /cases/lookup` (fuzzy name, approximate
+            DOB) per state policy.
+
+    EnrollmentCheckResponse:
+      type: object
+      required: [eligible]
+      properties:
+        eligible:
+          type: boolean
+          description: Whether any enrolled child was found for the provided signals.
+        matchedCases:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrollmentCheckMatch'
+          description: |
+            Optional summary of matched children. Omit if the backend cannot or
+            should not return child identifiers to an unauthenticated caller.
+        message:
+          type: string
+          description: |
+            Advisory message for display to the user. State-specific; the portal
+            renders it as-is. Omit when not applicable.
+
+    EnrollmentCheckMatch:
+      type: object
+      description: Summary of a matched child returned by enrollment check.
+      properties:
+        childFirstName:
+          type: string
+        childLastName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+
+  # ── Headers ──────────────────────────────────────────────────────────────────
+
+  headers:
+    CacheControl:
+      description: |
+        Controls how long the portal caches the capabilities response. Backends
+        should set `max-age` to a short value ahead of planned capability changes
+        and `no-cache` during cutover windows. Portal default is 5 minutes when
+        this header is absent.
+      schema:
+        type: string
+      example: 'max-age=300'
+
+    CapabilitiesETag:
+      description: |
+        Opaque tag representing the current capabilities state. Include this on
+        all data-plane responses (lookup and writes). The portal tracks this value;
+        when it changes, the portal immediately re-fetches `GET /capabilities`,
+        closing the stale-`allowedActions` window to a single request.
+
+        Update this value whenever capabilities or `serviceMode` change. Format is
+        implementation-defined — a version counter or content hash are both fine.
+      schema:
+        type: string
+      example: '"cap-v7-2026-07-01"'
+
+  # ── Parameters ───────────────────────────────────────────────────────────────
+
+  parameters:
+    CaseIdPath:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: State-native case identifier, as returned by `POST /cases/lookup`.
+
+    SpecVersionHeader:
+      name: X-Sebt-Spec-Version
+      in: header
+      required: false
+      schema:
+        type: string
+        pattern: '^\d+\.\d+\.\d+$'
+      description: |
+        SEBT spec version the portal was built against. Backends that support
+        multiple spec versions can use this to adapt their response format.
+        Backends that don't support version negotiation may ignore this header.
+      example: '1.0.0'
+
+    UserIdentityHeader:
+      name: X-Sebt-User-Identity
+      in: header
+      required: false
+      schema:
+        type: string
+      description: |
+        Compact signed JWT (60-second TTL) carrying end-user identity context.
+
+        Claims: `ial` (integer), `userRef` (HMAC-SHA256 of portal user ID — opaque,
+        non-reversible), `iat`, `exp`.
+
+        Only sent by authenticated portal flows. Never sent for
+        `POST /enrollment/check`. Per-operation requirements are declared in
+        `capabilities.userAssertion.required`. Backends that don't validate
+        user identity ignore this header.
+
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: |
+        Client-generated UUID. Backends deduplicate card replacement requests with
+        the same key within 24 hours, returning the original response on replay.
+
+        Missing key: return `400 Bad Request`.
+      example: 550e8400-e29b-41d4-a716-446655440000
+
+  # ── Security Schemes ─────────────────────────────────────────────────────────
+
+  securitySchemes:
+    oauth2ClientCredentials:
+      type: oauth2
+      description: |
+        OAuth 2.0 client credentials grant (default). The portal acquires and
+        caches a bearer token using the configured `TokenEndpoint`, `ClientId`,
+        and `ClientSecret`. Scopes are implementation-defined — states may use
+        broader or narrower scopes than those listed here.
+      flows:
+        clientCredentials:
+          tokenUrl: 'https://auth.example.gov/token'
+          scopes:
+            sebt.read: Read household and case data
+            sebt.write: Modify household data and request cards
+
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: |
+        Static API key for backends that cannot run an OAuth 2.0 authorization
+        server. Configure with `Auth.Strategy: ApiKey` in
+        `appsettings.{state}.json`.
