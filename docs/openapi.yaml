@@ -8,7 +8,7 @@ info:
 
     **Capabilities-first design.** The portal reads `GET /capabilities` before making
     any data-plane call and only calls endpoints the backend has advertised as
-    supported. Backends should not register routes for capabilities they do not
+    supported. Backends should not register routes for optional capabilities they do not
     implement — a router-level `404` is the correct signal for an unsupported
     capability. When a route is registered but the requested resource does not exist
     (e.g. unknown `caseId`), return `404` with a typed `ProblemDetails` body so the
@@ -16,8 +16,7 @@ info:
 
     ## Versioning
 
-    All paths are served under a version prefix (default: `sebt/v1`). The portal
-    sends `X-Sebt-Spec-Version: 1.0.0` on every request.
+    All paths are served under a version prefix (default: `sebt/v1`).
 
     Within a major version the contract is additive: new fields and capability keys
     may appear; existing ones are never repurposed or removed. A major version
@@ -27,8 +26,8 @@ info:
     ## Authentication
 
     This is a **service-to-service API**. The portal always authenticates using
-    OAuth 2.0 client credentials (default) or an API key, configured per-state in
-    `appsettings.{state}.json`. Only `GET /health` is unauthenticated.
+    OAuth 2.0 client credentials (default) or an API key, configured per deployment.
+    Only `GET /health` is unauthenticated.
 
     The enrollment check endpoint (`POST /enrollment/check`) uses the same service
     credential as all other endpoints. The portal always presents a service credential
@@ -36,14 +35,16 @@ info:
 
     ## End-user assertion
 
-    Authenticated portal flows include `X-Sebt-User-Identity` — a 60-second
-    signed JWT carrying `ial` (Identity Assurance Level: 1 or 2) and an opaque
-    `userRef` (a one-way hash of the portal user ID). Backends that want per-user
-    data scoping or minimum-IAL enforcement validate it; others ignore it.
+    When `capabilities.userAssertion.supported` is `true`, authenticated portal
+    flows include `X-Sebt-User-Identity` — a short-lived signed JWT carrying
+    `ial` (Identity Assurance Level: 1 or 2) and an opaque `userRef` (a one-way
+    hash of the portal user ID). Backends that want per-user data scoping or
+    minimum-IAL enforcement validate it; others ignore it.
 
-    Whether a backend validates this header is declared in
-    `capabilities.userAssertion`. The portal sends it on all authenticated flows
-    regardless; backends return `403` with `requiredIal` if validation fails.
+    Backends return `403` with `requiredIal` in ProblemDetails extensions if
+    validation fails. The signing algorithm (`HS256` or `RS256`) and key material
+    are agreed during integration setup — see the `X-Sebt-User-Identity` header
+    definition for details.
 
     The portal does **not** send `X-Sebt-User-Identity` for enrollment check flows
     — the end user may not be logged in at that point.
@@ -66,11 +67,11 @@ info:
 
   contact:
     name: Code for America SEBT Team
-    url: 'https://github.com/codeforamerica/sebt-self-service-portal'
+    url: "https://github.com/codeforamerica/sebt-self-service-portal"
 
 servers:
-  - url: 'https://{host}/{basePath}'
-    description: State backend endpoint (configured per deployment in StateBackend:BaseUrl)
+  - url: "https://{host}/{basePath}"
+    description: State backend endpoint (configured per deployment)
     variables:
       host:
         default: state-backend.example.gov
@@ -94,7 +95,6 @@ security:
   - apiKey: []
 
 paths:
-
   /health:
     get:
       operationId: getHealth
@@ -113,12 +113,12 @@ paths:
         `503` for fail (backend cannot serve requests).
       security: []
       responses:
-        '200':
+        "200":
           description: Service is healthy or degraded but able to accept requests
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
               examples:
                 pass:
                   summary: All systems nominal
@@ -131,12 +131,12 @@ paths:
                     status: warn
                     cmsReachable: true
                     detail: Response times elevated; non-critical job queue backlogged
-        '503':
+        "503":
           description: Service is unavailable (CMS unreachable, critical dependency down)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/HealthResponse'
+                $ref: "#/components/schemas/HealthResponse"
               example:
                 status: fail
                 cmsReachable: false
@@ -155,20 +155,20 @@ paths:
         if present, falling back to a default 5-minute TTL. Set a short `max-age`
         ahead of planned capability changes and `no-cache` during cutover windows.
       responses:
-        '200':
+        "200":
           description: Current capabilities
           headers:
             Cache-Control:
-              $ref: '#/components/headers/CacheControl'
+              $ref: "#/components/headers/CacheControl"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CapabilitiesResponse'
+                $ref: "#/components/schemas/CapabilitiesResponse"
               examples:
                 fullSupport:
                   summary: Backend with batch card loading and user assertion
                   value:
-                    specVersion: '1.0.0'
+                    specVersion: "1.0.0"
                     serviceMode:
                       mode: full
                       until: null
@@ -195,10 +195,10 @@ paths:
                 readOnly:
                   summary: Backend in read-only maintenance window
                   value:
-                    specVersion: '1.0.0'
+                    specVersion: "1.0.0"
                     serviceMode:
                       mode: readOnly
-                      until: '2026-07-02T06:00:00Z'
+                      until: "2026-07-02T06:00:00Z"
                     capabilities:
                       cases:
                         coLoadedLookup:
@@ -244,14 +244,13 @@ paths:
 
         **No match.** Return `200` with `{ "cases": [] }` — not a `404`.
       parameters:
-        - $ref: '#/components/parameters/SpecVersionHeader'
-        - $ref: '#/components/parameters/UserIdentityHeader'
+        - $ref: "#/components/parameters/UserIdentityHeader"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CasesLookupRequest'
+              $ref: "#/components/schemas/CasesLookupRequest"
             examples:
               primaryLookup:
                 summary: Authenticated user's own household
@@ -270,7 +269,7 @@ paths:
                     - type: state_benefit_id
                       value: SNAP-12345
                     - type: date_of_birth
-                      value: '1985-06-15'
+                      value: "1985-06-15"
                   intent: coLoad
                   includeCardDetails: false
               withCardDetails:
@@ -282,12 +281,12 @@ paths:
                   intent: primary
                   includeCardDetails: true
       responses:
-        '200':
+        "200":
           description: Matching cases (empty array when no match)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CasesLookupResponse'
+                $ref: "#/components/schemas/CasesLookupResponse"
               examples:
                 found:
                   summary: Two cases found
@@ -296,56 +295,56 @@ paths:
                       - caseId: case-abc-001
                         childFirstName: Maria
                         childLastName: Garcia
-                        dateOfBirth: '2018-03-22'
+                        dateOfBirth: "2018-03-22"
                         issuanceType: SummerEbt
                       - caseId: case-abc-002
                         childFirstName: Liam
                         childLastName: Garcia
-                        dateOfBirth: '2020-11-05'
+                        dateOfBirth: "2020-11-05"
                         issuanceType: SummerEbt
                 noMatch:
                   summary: No cases found
                   value:
                     cases: []
-        '400':
+        "400":
           description: Invalid request — unknown `intent` value, empty signals, malformed body
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
               example:
-                type: 'urn:sebt:error:unknown-intent'
+                type: "urn:sebt:error:unknown-intent"
                 title: Unknown intent value
                 status: 400
                 detail: '"caseworker" is not a recognized intent value for this backend version'
-        '401':
+        "401":
           description: Missing or invalid service credential
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '403':
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
           description: |
             User assertion validation failed. Include `requiredIal` in extensions
             if the failure reason is insufficient IAL.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
               example:
                 title: Insufficient identity assurance level
                 status: 403
                 detail: This operation requires IAL 2
                 requiredIal: 2
-        '429':
+        "429":
           description: Rate limit exceeded
           headers:
             Retry-After:
-              $ref: '#/components/headers/RetryAfter'
+              $ref: "#/components/headers/RetryAfter"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
 
   /cases/{caseId}/card:
     get:
@@ -359,18 +358,17 @@ paths:
         containing `"perCase"`. Backends that support batch loading only should not
         register this route.
       parameters:
-        - $ref: '#/components/parameters/CaseIdPath'
-        - $ref: '#/components/parameters/SpecVersionHeader'
-        - $ref: '#/components/parameters/UserIdentityHeader'
+        - $ref: "#/components/parameters/CaseIdPath"
+        - $ref: "#/components/parameters/UserIdentityHeader"
       responses:
-        '200':
+        "200":
           description: |
             Card details for the case. If the case exists but no card has been
             issued, return `200` with `cardDetails` absent — not `404`.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CardDetailsResponse'
+                $ref: "#/components/schemas/CardDetailsResponse"
               examples:
                 withCard:
                   summary: Case has an active card
@@ -378,40 +376,40 @@ paths:
                     caseId: case-abc-001
                     cardDetails:
                       status: Active
-                      lastFour: '7823'
-                      issuedAt: '2025-06-01'
-                      expiresAt: '2027-06-30'
+                      lastFour: "7823"
+                      issuedAt: "2025-06-01"
+                      expiresAt: "2027-06-30"
                 noCard:
                   summary: Case exists but no card issued
                   value:
                     caseId: case-abc-001
-        '401':
+        "401":
           description: Missing or invalid service credential
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '403':
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
           description: User assertion validation failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '404':
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
           description: Case not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
           description: Rate limit exceeded
           headers:
             Retry-After:
-              $ref: '#/components/headers/RetryAfter'
+              $ref: "#/components/headers/RetryAfter"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
 
   /cases/address-updates:
     post:
@@ -430,31 +428,30 @@ paths:
         which cases could not be updated via a `failedCases` extension on the error
         response.
       parameters:
-        - $ref: '#/components/parameters/SpecVersionHeader'
-        - $ref: '#/components/parameters/UserIdentityHeader'
+        - $ref: "#/components/parameters/UserIdentityHeader"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddressUpdateRequest'
+              $ref: "#/components/schemas/AddressUpdateRequest"
             example:
               caseIds: [case-abc-001, case-abc-002]
               address:
                 street1: 123 Main St
                 city: Denver
                 state: CO
-                zip: '80203'
+                zip: "80203"
       responses:
-        '200':
+        "200":
           description: All cases updated successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AddressUpdateResponse'
+                $ref: "#/components/schemas/AddressUpdateResponse"
               example:
                 updatedCaseIds: [case-abc-001, case-abc-002]
-        '400':
+        "400":
           description: |
             Malformed request (empty `caseIds`, invalid address schema) or address
             rejected by CMS validation. All changes rolled back. The `failedCases`
@@ -462,28 +459,28 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
               example:
-                type: 'urn:sebt:error:address-update-failed'
+                type: "urn:sebt:error:address-update-failed"
                 title: Address update failed — all changes rolled back
                 status: 400
                 detail: Address could not be validated
                 failedCases:
                   - caseId: case-abc-002
                     detail: Street address not found in USPS database
-        '401':
+        "401":
           description: Missing or invalid service credential
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '403':
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
           description: User assertion validation failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '409':
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
           description: |
             One or more cases cannot be updated due to a business rule conflict
             (e.g. case is locked or on hold). All changes rolled back. The
@@ -491,24 +488,24 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
               example:
-                type: 'urn:sebt:error:address-update-conflict'
+                type: "urn:sebt:error:address-update-conflict"
                 title: Address update failed — all changes rolled back
                 status: 409
                 detail: One or more cases could not be updated
                 failedCases:
                   - caseId: case-abc-002
                     detail: Case is currently on hold
-        '429':
+        "429":
           description: Rate limit exceeded
           headers:
             Retry-After:
-              $ref: '#/components/headers/RetryAfter'
+              $ref: "#/components/headers/RetryAfter"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
 
   /cases/{caseId}/card-replacement:
     post:
@@ -529,72 +526,71 @@ paths:
         The portal does not automatically retry this endpoint — it manages retry
         explicitly to avoid reusing an idempotency key across attempts.
       parameters:
-        - $ref: '#/components/parameters/CaseIdPath'
-        - $ref: '#/components/parameters/IdempotencyKeyHeader'
-        - $ref: '#/components/parameters/SpecVersionHeader'
-        - $ref: '#/components/parameters/UserIdentityHeader'
+        - $ref: "#/components/parameters/CaseIdPath"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+        - $ref: "#/components/parameters/UserIdentityHeader"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CardReplacementRequest'
+              $ref: "#/components/schemas/CardReplacementRequest"
             example: {}
       responses:
-        '200':
+        "200":
           description: Replacement request submitted (or replayed from idempotent key)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CardReplacementResponse'
+                $ref: "#/components/schemas/CardReplacementResponse"
               example:
                 caseId: case-abc-001
                 requestId: repl-xyz-789
                 status: submitted
-                expectedDelivery: '2026-07-10'
-        '400':
+                expectedDelivery: "2026-07-10"
+        "400":
           description: Missing `Idempotency-Key` header or malformed request body
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
               example:
                 title: Missing required header
                 status: 400
                 detail: Idempotency-Key header is required for this operation
-        '401':
+        "401":
           description: Missing or invalid service credential
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '403':
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
           description: User assertion validation failed or action not permitted for this case
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '404':
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
           description: Case not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '409':
+                $ref: "#/components/schemas/ProblemDetails"
+        "409":
           description: A pending replacement already exists for this case
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
           description: Rate limit exceeded
           headers:
             Retry-After:
-              $ref: '#/components/headers/RetryAfter'
+              $ref: "#/components/headers/RetryAfter"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
 
   /cases/{caseId}/card-replacement/{requestId}:
     get:
@@ -608,22 +604,21 @@ paths:
 
         Use the `requestId` returned by `POST /cases/{caseId}/card-replacement`.
       parameters:
-        - $ref: '#/components/parameters/CaseIdPath'
+        - $ref: "#/components/parameters/CaseIdPath"
         - name: requestId
           in: path
           required: true
           schema:
             type: string
           description: Replacement request identifier, as returned by the POST endpoint.
-        - $ref: '#/components/parameters/SpecVersionHeader'
-        - $ref: '#/components/parameters/UserIdentityHeader'
+        - $ref: "#/components/parameters/UserIdentityHeader"
       responses:
-        '200':
+        "200":
           description: Current status of the replacement request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CardReplacementStatusResponse'
+                $ref: "#/components/schemas/CardReplacementStatusResponse"
               examples:
                 processing:
                   summary: Request is being processed
@@ -631,44 +626,44 @@ paths:
                     caseId: case-abc-001
                     requestId: repl-xyz-789
                     status: processing
-                    expectedDelivery: '2026-07-10'
+                    expectedDelivery: "2026-07-10"
                 fulfilled:
                   summary: Card has been issued
                   value:
                     caseId: case-abc-001
                     requestId: repl-xyz-789
                     status: fulfilled
-                    expectedDelivery: '2026-07-10'
-                    actualDelivery: '2026-07-08'
-        '401':
+                    expectedDelivery: "2026-07-10"
+                    actualDelivery: "2026-07-08"
+        "401":
           description: Missing or invalid service credential
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '403':
+                $ref: "#/components/schemas/ProblemDetails"
+        "403":
           description: User assertion validation failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '404':
+                $ref: "#/components/schemas/ProblemDetails"
+        "404":
           description: |
             Case or replacement request not found. Include a typed `ProblemDetails`
             body to distinguish case-not-found from request-not-found.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
           description: Rate limit exceeded
           headers:
             Retry-After:
-              $ref: '#/components/headers/RetryAfter'
+              $ref: "#/components/headers/RetryAfter"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
 
   /enrollment/check:
     post:
@@ -690,14 +685,12 @@ paths:
         Signal matching semantics may be more permissive than `POST /cases/lookup`
         — backends may apply fuzzy matching (partial name, approximate DOB) per
         state policy.
-      parameters:
-        - $ref: '#/components/parameters/SpecVersionHeader'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EnrollmentCheckRequest'
+              $ref: "#/components/schemas/EnrollmentCheckRequest"
             examples:
               byBenefitId:
                 summary: Look up by SNAP benefit ID
@@ -714,14 +707,14 @@ paths:
                     - type: child_last_name
                       value: Garcia
                     - type: date_of_birth
-                      value: '2018-03-22'
+                      value: "2018-03-22"
       responses:
-        '200':
+        "200":
           description: Eligibility result
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EnrollmentCheckResponse'
+                $ref: "#/components/schemas/EnrollmentCheckResponse"
               examples:
                 eligible:
                   summary: Child is eligible
@@ -729,30 +722,29 @@ paths:
                     eligible: true
                     matchedCases:
                       - childFirstName: Maria
-                        dateOfBirth: '2018-03-22'
+                        dateOfBirth: "2018-03-22"
                 notEligible:
                   summary: No eligible child found
                   value:
                     eligible: false
-        '400':
+        "400":
           description: Malformed request
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
+                $ref: "#/components/schemas/ProblemDetails"
+        "429":
           description: Rate limit exceeded
           headers:
             Retry-After:
-              $ref: '#/components/headers/RetryAfter'
+              $ref: "#/components/headers/RetryAfter"
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProblemDetails'
+                $ref: "#/components/schemas/ProblemDetails"
 
 components:
   schemas:
-
     # ── Primitives ────────────────────────────────────────────────────────────
 
     IdentitySignal:
@@ -816,7 +808,7 @@ components:
           type: string
           pattern: '^\d{5}(-\d{4})?$'
           description: ZIP or ZIP+4.
-          example: '80203'
+          example: "80203"
 
     CardStatus:
       type: string
@@ -868,24 +860,24 @@ components:
       properties:
         status:
           allOf:
-            - $ref: '#/components/schemas/CardStatus'
+            - $ref: "#/components/schemas/CardStatus"
           description: Current card lifecycle status.
         lastFour:
           type: string
           minLength: 4
           maxLength: 4
           description: Last four digits of the EBT card number.
-          example: '7823'
+          example: "7823"
         issuedAt:
           type: string
           format: date
           description: Date the card was issued.
-          example: '2025-06-01'
+          example: "2025-06-01"
         expiresAt:
           type: string
           format: date
           description: Card expiration date.
-          example: '2027-06-30'
+          example: "2027-06-30"
 
     ProblemDetails:
       type: object
@@ -948,19 +940,18 @@ components:
           type: string
           pattern: '^\d+\.\d+\.\d+$'
           description: |
-            SEBT spec version this backend conforms to (semver). The portal sends
-            its own version via `X-Sebt-Spec-Version`. A major-version mismatch
-            is fatal — the portal will not activate the backend.
-          example: '1.0.0'
+            SEBT spec version this backend conforms to (semver). A major-version
+            mismatch is fatal — the portal will not activate the backend.
+          example: "1.0.0"
         serviceMode:
           allOf:
-            - $ref: '#/components/schemas/ServiceMode'
+            - $ref: "#/components/schemas/ServiceMode"
           description: |
             Runtime operational status. Absent or `{ mode: "full" }` = normal
             operation. The portal checks this before offering write actions to
             users — writes are suppressed in `readOnly` or `maintenance` modes.
         capabilities:
-          $ref: '#/components/schemas/Capabilities'
+          $ref: "#/components/schemas/Capabilities"
 
     ServiceMode:
       type: object
@@ -980,7 +971,7 @@ components:
           nullable: true
           description: |
             RFC 3339 timestamp for expected service restoration. `null` if unknown.
-          example: '2026-07-02T06:00:00Z'
+          example: "2026-07-02T06:00:00Z"
 
     Capabilities:
       type: object
@@ -990,31 +981,31 @@ components:
         future spec versions without breaking existing portal versions.
       properties:
         cases:
-          $ref: '#/components/schemas/CasesCapabilities'
+          $ref: "#/components/schemas/CasesCapabilities"
         enrollment:
-          $ref: '#/components/schemas/EnrollmentCapabilities'
+          $ref: "#/components/schemas/EnrollmentCapabilities"
         userAssertion:
-          $ref: '#/components/schemas/UserAssertionCapability'
+          $ref: "#/components/schemas/UserAssertionCapability"
 
     CasesCapabilities:
       type: object
       properties:
         coLoadedLookup:
           allOf:
-            - $ref: '#/components/schemas/SupportedCapability'
+            - $ref: "#/components/schemas/SupportedCapability"
           description: |
             Supports co-loading cross-household lookups (`intent: "coLoad"` on
             `POST /cases/lookup`).
         cardDetails:
-          $ref: '#/components/schemas/CardDetailsCapability'
+          $ref: "#/components/schemas/CardDetailsCapability"
         cardReplacement:
           allOf:
-            - $ref: '#/components/schemas/CardReplacementCapability'
+            - $ref: "#/components/schemas/CardReplacementCapability"
           description: Card replacement request capability.
         addressUpdate:
-          $ref: '#/components/schemas/SupportedCapability'
+          $ref: "#/components/schemas/SupportedCapability"
         cardActivation:
-          $ref: '#/components/schemas/SupportedCapability'
+          $ref: "#/components/schemas/SupportedCapability"
 
     CardDetailsCapability:
       type: object
@@ -1047,7 +1038,7 @@ components:
           type: boolean
         statusTracking:
           allOf:
-            - $ref: '#/components/schemas/SupportedCapability'
+            - $ref: "#/components/schemas/SupportedCapability"
           description: |
             Whether per-request status polling is available via
             `GET /cases/{caseId}/card-replacement/{requestId}`.
@@ -1066,7 +1057,7 @@ components:
       type: object
       properties:
         check:
-          $ref: '#/components/schemas/SupportedCapability'
+          $ref: "#/components/schemas/SupportedCapability"
 
     UserAssertionCapability:
       type: object
@@ -1108,12 +1099,12 @@ components:
           type: string
           format: date
           description: Child's date of birth. `YYYY-MM-DD`.
-          example: '2018-03-22'
+          example: "2018-03-22"
         issuanceType:
-          $ref: '#/components/schemas/IssuanceType'
+          $ref: "#/components/schemas/IssuanceType"
         cardDetails:
           allOf:
-            - $ref: '#/components/schemas/CardDetails'
+            - $ref: "#/components/schemas/CardDetails"
           description: |
             Card data including status, last four digits, and issuance dates.
             Present only when `includeCardDetails: true` was requested and
@@ -1127,7 +1118,7 @@ components:
         signals:
           type: array
           items:
-            $ref: '#/components/schemas/IdentitySignal'
+            $ref: "#/components/schemas/IdentitySignal"
           minItems: 1
           description: |
             Identity signals. AND-matched where possible; backends use the subset
@@ -1160,7 +1151,7 @@ components:
         cases:
           type: array
           items:
-            $ref: '#/components/schemas/SummerEbtCase'
+            $ref: "#/components/schemas/SummerEbtCase"
           maxItems: 20
           description: |
             Cases for the matched household. Empty array when no match — not a
@@ -1176,7 +1167,7 @@ components:
           description: Echoes the path parameter.
         cardDetails:
           allOf:
-            - $ref: '#/components/schemas/CardDetails'
+            - $ref: "#/components/schemas/CardDetails"
           description: Card data including status. Backends include whichever fields they can provide.
 
     AddressUpdateRequest:
@@ -1193,7 +1184,7 @@ components:
             State-native case identifiers to update. As returned by
             `POST /cases/lookup`.
         address:
-          $ref: '#/components/schemas/MailingAddress'
+          $ref: "#/components/schemas/MailingAddress"
 
     AddressUpdateResponse:
       type: object
@@ -1235,7 +1226,7 @@ components:
           type: string
           format: date
           description: Expected delivery date, if known.
-          example: '2026-07-10'
+          example: "2026-07-10"
 
     CardReplacementStatusResponse:
       type: object
@@ -1262,12 +1253,12 @@ components:
           type: string
           format: date
           description: Estimated delivery date, if known.
-          example: '2026-07-10'
+          example: "2026-07-10"
         actualDelivery:
           type: string
           format: date
           description: Actual card issuance date. Present when `status` is `fulfilled`.
-          example: '2026-07-08'
+          example: "2026-07-08"
 
     # ── Enrollment ────────────────────────────────────────────────────────────
 
@@ -1278,7 +1269,7 @@ components:
         signals:
           type: array
           items:
-            $ref: '#/components/schemas/IdentitySignal'
+            $ref: "#/components/schemas/IdentitySignal"
           minItems: 1
           description: |
             Identity signals for the child being checked. Matching semantics may
@@ -1295,7 +1286,7 @@ components:
         matchedCases:
           type: array
           items:
-            $ref: '#/components/schemas/EnrollmentCheckMatch'
+            $ref: "#/components/schemas/EnrollmentCheckMatch"
           description: |
             Optional summary of matched children. Return only the minimum data
             needed to confirm the eligibility result. Omit this field if your
@@ -1326,7 +1317,7 @@ components:
         this header is absent.
       schema:
         type: string
-      example: 'max-age=300'
+      example: "max-age=300"
 
     RetryAfter:
       description: |
@@ -1348,19 +1339,6 @@ components:
         type: string
       description: State-native case identifier, as returned by `POST /cases/lookup`.
 
-    SpecVersionHeader:
-      name: X-Sebt-Spec-Version
-      in: header
-      required: false
-      schema:
-        type: string
-        pattern: '^\d+\.\d+\.\d+$'
-      description: |
-        SEBT spec version the portal was built against. Backends that support
-        multiple spec versions can use this to adapt their response format.
-        Backends that don't support version negotiation may ignore this header.
-      example: '1.0.0'
-
     UserIdentityHeader:
       name: X-Sebt-User-Identity
       in: header
@@ -1369,14 +1347,22 @@ components:
         type: string
       description: |
         Compact signed JWT (60-second TTL) carrying end-user identity context.
+        Only sent on authenticated flows when `capabilities.userAssertion.supported`
+        is `true`. Never sent for `POST /enrollment/check`.
 
-        Claims: `ial` (integer), `userRef` (HMAC-SHA256 of portal user ID — opaque,
-        non-reversible), `iat`, `exp`.
+        **Claims:** `ial` (integer 1 or 2), `userRef` (HMAC-SHA256 of the portal
+        user ID — opaque, non-reversible), `iat`, `exp`.
 
-        Only sent by authenticated portal flows. Never sent for
-        `POST /enrollment/check`. Per-operation requirements are declared in
-        `capabilities.userAssertion.required`. Backends that don't validate
-        user identity ignore this header.
+        **Signing.** The JWT `alg` header declares the algorithm. Two options are
+        supported — the choice is made during integration setup:
+
+        - **`HS256`** — HMAC-SHA256 with a shared secret exchanged out-of-band.
+          Simpler; no PKI required.
+        - **`RS256`** — RSA-SHA256. The portal signs with its private key; the
+          backend verifies with the portal's corresponding public key, provided
+          out-of-band during integration setup.
+
+        Backends that do not validate user identity may ignore this header.
 
     IdempotencyKeyHeader:
       name: Idempotency-Key
@@ -1388,6 +1374,8 @@ components:
       description: |
         Client-generated UUID. Backends deduplicate card replacement requests with
         the same key within 24 hours, returning the original response on replay.
+        See the [IETF Idempotency-Key header draft](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)
+        for background.
 
         Missing key: return `400 Bad Request`.
       example: 550e8400-e29b-41d4-a716-446655440000
@@ -1398,13 +1386,12 @@ components:
     oauth2ClientCredentials:
       type: oauth2
       description: |
-        OAuth 2.0 client credentials grant (default). The portal acquires and
-        caches a bearer token using the configured `TokenEndpoint`, `ClientId`,
-        and `ClientSecret`. Scopes are implementation-defined — states may use
-        broader or narrower scopes than those listed here.
+        OAuth 2.0 client credentials grant (default). Scopes are
+        implementation-defined — states may use broader or narrower scopes than
+        those listed here.
       flows:
         clientCredentials:
-          tokenUrl: 'https://auth.example.gov/token'
+          tokenUrl: "https://auth.example.gov/token"
           scopes:
             sebt.read: Read household and case data
             sebt.write: Modify household data and request cards
@@ -1415,5 +1402,4 @@ components:
       name: X-Api-Key
       description: |
         Static API key for backends that cannot run an OAuth 2.0 authorization
-        server. Configure with `Auth.Strategy: ApiKey` in
-        `appsettings.{state}.json`.
+        server.
