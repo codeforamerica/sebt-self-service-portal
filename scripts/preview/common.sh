@@ -507,10 +507,23 @@ ensure_preview_https_ingress() {
       }]')"
 }
 
+normalize_hosted_zone_id() {
+  local value="$1"
+  value="$(printf '%s' "${value}" | head -n1 | tr -d '[:space:]')"
+  if [[ ! "${value}" =~ ^Z[A-Z0-9]+$ ]]; then
+    log_error "Invalid Route53 hosted zone ID: ${value}"
+    exit 1
+  fi
+  echo "${value}"
+}
+
 resolve_hosted_zone_id() {
+  local domain="$1"
+  local zone_id=""
+
   if [ -n "${PREVIEW_HOSTED_ZONE_ID:-}" ]; then
     if [[ "${PREVIEW_HOSTED_ZONE_ID}" =~ ^Z[A-Z0-9]+$ ]]; then
-      echo "${PREVIEW_HOSTED_ZONE_ID}"
+      normalize_hosted_zone_id "${PREVIEW_HOSTED_ZONE_ID}"
       return
     fi
 
@@ -519,16 +532,16 @@ resolve_hosted_zone_id() {
       configured_zone="${configured_zone}."
     fi
 
-    local zone_id
     zone_id="$(aws route53 list-hosted-zones-by-name \
       --dns-name "${configured_zone}" \
       --query 'HostedZones[?Name==`'"${configured_zone}"'`].Id | [0]' \
       --output text \
-      | sed 's|/hostedzone/||')"
+      | sed 's|/hostedzone/||' \
+      | head -n1 \
+      | tr -d '[:space:]')"
 
     if [ -n "${zone_id}" ] && [ "${zone_id}" != "None" ]; then
-      log_info "Resolved hosted zone name ${PREVIEW_HOSTED_ZONE_ID} to ${zone_id}"
-      echo "${zone_id}"
+      normalize_hosted_zone_id "${zone_id}"
       return
     fi
 
@@ -536,18 +549,17 @@ resolve_hosted_zone_id() {
     exit 1
   fi
 
-  local domain="$1"
   local domain_dot="${domain}."
   local best_zone_id=""
   local best_zone_name=""
-  local zone_id zone_name
+  local candidate_id candidate_name
 
-  while IFS=$'\t' read -r zone_id zone_name; do
-    zone_id="${zone_id#/hostedzone/}"
-    if [ "${domain_dot}" = "${zone_name}" ] || [[ "${domain_dot}" == *".${zone_name}" ]]; then
-      if [ -z "${best_zone_name}" ] || [ "${#zone_name}" -gt "${#best_zone_name}" ]; then
-        best_zone_id="${zone_id}"
-        best_zone_name="${zone_name}"
+  while IFS=$'\t' read -r candidate_id candidate_name; do
+    candidate_id="${candidate_id#/hostedzone/}"
+    if [ "${domain_dot}" = "${candidate_name}" ] || [[ "${domain_dot}" == *".${candidate_name}" ]]; then
+      if [ -z "${best_zone_name}" ] || [ "${#candidate_name}" -gt "${#best_zone_name}" ]; then
+        best_zone_id="${candidate_id}"
+        best_zone_name="${candidate_name}"
       fi
     fi
   done < <(aws route53 list-hosted-zones --output json \
@@ -558,8 +570,7 @@ resolve_hosted_zone_id() {
     exit 1
   fi
 
-  log_info "Using Route53 hosted zone ${best_zone_name} (${best_zone_id}) for ${domain}"
-  echo "${best_zone_id}"
+  normalize_hosted_zone_id "${best_zone_id}"
 }
 
 preview_ssm_param_name() {

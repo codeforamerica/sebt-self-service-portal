@@ -63,6 +63,7 @@ fi
 
 DOMAIN="$(resolve_preview_domain)"
 HOSTED_ZONE_ID="$(resolve_hosted_zone_id "${DOMAIN}")"
+log_info "Using Route53 hosted zone ${HOSTED_ZONE_ID} for ${DOMAIN}"
 API_CLUSTER="$(discover_cluster_for_role api)"
 WEB_CLUSTER="$(discover_cluster_for_role web)"
 BASE_API_SERVICE="$(discover_base_service api "${API_CLUSTER}")"
