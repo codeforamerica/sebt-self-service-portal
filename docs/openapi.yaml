@@ -37,7 +37,7 @@ info:
 
     When `capabilities.userAssertion.supported` is `true`, authenticated portal
     flows include `X-Sebt-User-Identity` — a short-lived signed JWT carrying
-    `ial` (Identity Assurance Level: 1 or 2) and an opaque `userRef` (a one-way
+    `ial` (Identity Assurance Level: `1`, `1.5`, or `2`) and an opaque `userRef` (a one-way
     hash of the portal user ID). Backends that want per-user data scoping or
     minimum-IAL enforcement validate it; others ignore it.
 
@@ -326,7 +326,8 @@ paths:
         "403":
           description: |
             User assertion validation failed. Include `requiredIal` in extensions
-            if the failure reason is insufficient IAL.
+            if the failure reason is insufficient IAL. Valid values: `1`, `1.5`
+            (enhanced verification, non-biometric), `2`.
           content:
             application/json:
               schema:
@@ -1350,7 +1351,7 @@ components:
         Only sent on authenticated flows when `capabilities.userAssertion.supported`
         is `true`. Never sent for `POST /enrollment/check`.
 
-        **Claims:** `ial` (integer 1 or 2), `userRef` (HMAC-SHA256 of the portal
+        **Claims:** `ial` (number: `1`, `1.5`, or `2`), `userRef` (HMAC-SHA256 of the portal
         user ID — opaque, non-reversible), `iat`, `exp`.
 
         **Signing.** The JWT `alg` header declares the algorithm. Two options are
