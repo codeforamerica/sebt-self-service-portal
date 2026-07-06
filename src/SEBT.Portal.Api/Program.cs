@@ -43,26 +43,51 @@ var builder = WebApplication.CreateBuilder(args);
 var useJsonLogs = string.Equals(
     Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
 
-var logConfig = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithOtelTracingSpanId()
-    .Enrich.WithPortalUserInfo();
-
-if (useJsonLogs)
+// Shared Serilog configuration, applied to both the bootstrap logger (so configuration
+// providers can log during startup) and the host logger rebuilt once the host is built.
+// Keeping a single definition guarantees the Console sink format is identical in both,
+// so the stdout -> CloudWatch path is unchanged.
+void ConfigureSerilog(LoggerConfiguration configuration)
 {
-    logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
-}
-else
-{
-    logConfig.WriteTo.Console(
-        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+    configuration
+        .ReadFrom.Configuration(builder.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithOtelTracingSpanId()
+        .Enrich.WithPortalUserInfo();
+
+    if (useJsonLogs)
+    {
+        configuration.WriteTo.Console(new ExpressionTemplate(
+            "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
+    }
+    else
+    {
+        configuration.WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+    }
 }
 
-Log.Logger = logConfig.CreateLogger();
+var bootstrapConfig = new LoggerConfiguration();
+ConfigureSerilog(bootstrapConfig);
 
-builder.Host.UseSerilog();
+// CreateBootstrapLogger (not CreateLogger): produces a logger that works immediately for
+// startup logging AND is reconfigured in place by the UseSerilog(...) call below once the host
+// is built. A plain CreateLogger() would be a final logger that UseSerilog replaces outright,
+// which forfeits the two-stage handoff — the point of a bootstrap logger is a seamless swap
+// with no lost early logs and no window where Log.Logger is stale.
+Log.Logger = bootstrapConfig.CreateBootstrapLogger();
+
+// writeToProviders forwards log events to other registered ILogger providers (in addition to
+// Serilog's own sinks) so the OpenTelemetry logger provider set up in SetupOpenTelemetry can
+// export logs over OTLP. It is enabled ONLY when OTLP log export is turned on (Otel:UseLogExporter
+// =otlp); otherwise it stays false and behavior is identical to a plain UseSerilog(). Serilog does
+// not write to MEL providers by default, and this parameter only exists on the lambda-based
+// UseSerilog overloads — hence the bootstrap-logger pattern above.
+var otlpLogExportEnabled = string.Equals(
+    builder.Configuration["Otel:UseLogExporter"], "otlp", StringComparison.OrdinalIgnoreCase);
+builder.Host.UseSerilog(
+    (context, configuration) => ConfigureSerilog(configuration),
+    writeToProviders: otlpLogExportEnabled);
 builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();
