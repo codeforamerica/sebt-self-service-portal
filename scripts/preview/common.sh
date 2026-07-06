@@ -333,29 +333,47 @@ preview_service_status() {
   printf -v "${failure_var}" '%s' "$(echo "${description}" | jq -r '.failures[0].reason // empty')"
 }
 
-wait_for_service_name_available() {
+ecs_create_service_name_blocked() {
+  echo "$1" | grep -qiE \
+    'not idempotent|still contains an inactive|Creation of service was not idempotent|Create service is not idempotent'
+}
+
+recreate_preview_ecs_service() {
   local cluster="$1"
   local service_name="$2"
-  local attempt description status failure_reason
+  local task_definition="$3"
+  local target_group_arn="$4"
+  local container_name="$5"
+  local container_port="$6"
+  local network_config_file="$7"
+  local max_attempts="${8:-90}"
 
-  for attempt in $(seq 1 60); do
-    description="$(describe_preview_service "${cluster}" "${service_name}")"
-    preview_service_status "${cluster}" "${service_name}" "${description}" status failure_reason
+  local attempt create_output create_status
 
-    if [ "${failure_reason}" = "MISSING" ] || [ -z "${status}" ]; then
+  for attempt in $(seq 1 "${max_attempts}"); do
+    set +e
+    create_output="$(create_preview_ecs_service \
+      "${cluster}" "${service_name}" "${task_definition}" "${target_group_arn}" \
+      "${container_name}" "${container_port}" "${network_config_file}" 2>&1)"
+    create_status=$?
+    set -e
+
+    if [ "${create_status}" -eq 0 ]; then
+      echo "${create_output}"
       return 0
     fi
 
-    if [ "${status}" = "DRAINING" ] || [ "${status}" = "INACTIVE" ]; then
-      log_info "Waiting for ECS service ${service_name} deletion (${status}, attempt ${attempt}/60)..."
+    if ecs_create_service_name_blocked "${create_output}"; then
+      log_info "ECS service name ${service_name} not yet reusable (attempt ${attempt}/${max_attempts})..."
       sleep 10
       continue
     fi
 
-    return 0
+    log_error "Failed to create ECS service ${service_name}: ${create_output}"
+    exit 1
   done
 
-  log_error "Timed out waiting for ECS service name ${service_name} to become available"
+  log_error "Timed out recreating ECS service ${service_name} after ${max_attempts} attempts"
   exit 1
 }
 
@@ -423,12 +441,13 @@ ensure_ecs_service() {
         --output text
       ;;
     DRAINING|INACTIVE)
-      log_info "ECS service ${service_name} is ${existing_status}; waiting before recreate"
-      aws ecs wait services-inactive \
-        --cluster "${cluster}" \
-        --services "${service_name}" 2>/dev/null || true
-      wait_for_service_name_available "${cluster}" "${service_name}"
-      create_preview_ecs_service \
+      log_info "ECS service ${service_name} is ${existing_status}; recreating"
+      if [ "${existing_status}" = "DRAINING" ]; then
+        aws ecs wait services-inactive \
+          --cluster "${cluster}" \
+          --services "${service_name}" 2>/dev/null || true
+      fi
+      recreate_preview_ecs_service \
         "${cluster}" "${service_name}" "${task_definition}" "${target_group_arn}" \
         "${container_name}" "${container_port}" "${network_config_file}"
       ;;
@@ -644,5 +663,4 @@ wait_for_ecs_service_inactive() {
   aws ecs wait services-inactive \
     --cluster "${cluster}" \
     --services "${service_name}" 2>/dev/null || true
-  wait_for_service_name_available "${cluster}" "${service_name}"
 }

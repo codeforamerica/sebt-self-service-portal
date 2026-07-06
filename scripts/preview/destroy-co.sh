@@ -133,8 +133,7 @@ delete_ecs_service_if_exists() {
       wait_for_ecs_service_inactive "${cluster}" "${service_name}"
       ;;
     INACTIVE)
-      log_info "Waiting for ECS service ${service_name} name to clear (INACTIVE)"
-      wait_for_ecs_service_inactive "${cluster}" "${service_name}"
+      log_info "ECS service ${service_name} is already INACTIVE"
       ;;
     *)
       log_info "Skipping ECS service ${service_name} with status ${status}"
