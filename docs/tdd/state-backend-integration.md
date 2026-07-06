@@ -164,7 +164,9 @@ By default, state backends trust the portal's service credential (OAuth2 client 
 
 For states that want finer-grained access control at the data layer, the portal includes an `X-Sebt-User-Identity` header on every **authenticated** data-access request. State backends that validate it can scope results to the authenticated user; those that don't can ignore it.
 
-**Important:** Enrollment check (`POST /enrollment/check`) is unauthenticated by default. The portal does not send the assertion header for enrollment flows, and state backends MUST NOT mark `enrollmentCheck` as `required: true` in the `userAssertion` capability.
+**Important — service auth vs. end-user assertion are distinct concerns.** The state backend API is always service-to-service: the portal uses its service credential on every call, including enrollment check. What may be unauthenticated is the portal's own public BFF endpoint (`POST /api/enrollment/check`) that the Enrollment Checker web app calls — but by the time the portal calls the state backend, it always presents a service credential.
+
+However, `X-Sebt-User-Identity` is not sent for enrollment check flows because the end user is typically not logged in to the portal at that point. State backends MUST NOT mark `enrollmentCheck` as `required: true` in the `userAssertion` capability — doing so would break the enrollment check for unauthenticated portal users.
 
 Header value: a short-lived signed JWT with no PII:
 
@@ -273,6 +275,10 @@ The REST adapter consults capabilities at runtime to pick the loading strategy:
 
 The portal only requests card details on pages that need them (card management flows), not on the dashboard. `IncludeCardDetails` in `HouseholdLookupContext` controls whether the adapter fetches card details at all; `cardDetails.modes` controls how.
 
+**`cardStatus` is part of the card details payload, not a standalone case field.** In CO's CBMS integration, card status (`ebtCardSts`) is one of four fields that are only returned when card service data is requested — it cannot be fetched separately. In DC, card status is synthesized from the card issue date and is likewise only meaningful alongside other card fields. As a result, `cardStatus` lives inside the `CardDetails` object rather than at the case level. When `cardDetails` is absent (dashboard view, `includeCardDetails: false`), card status is unknown.
+
+The self-service evaluator handles this gracefully: `AllowedCardStatuses: []` (empty allowlist) means any status — including unknown — passes. Card-status gating only engages when a non-empty allowlist is configured. Both DC and CO currently use an empty allowlist, so the dashboard can show card management CTAs without pre-loading card details; per-case evaluation happens when the user enters the card flow and details are loaded.
+
 **Unsupported optional endpoints must return 501.** A state backend that doesn't support per-case loading must still expose `GET /cases/{caseId}/card` and return `501 Not Implemented` with a ProblemDetails body. This gives the REST adapter an unambiguous signal if capabilities are misconfigured, surfacing the mismatch as a logged error rather than a cryptic 404 or 500 mid-flow. The same rule applies to any optional endpoint in the spec. `501` is explicitly excluded from Polly retry and circuit-breaker classification — it is not a transient failure.
 
 ### `HouseholdLookupContext` replaces ad-hoc parameters
@@ -305,7 +311,7 @@ The canonical contract is `docs/openapi.yaml` (see Phase 1 deliverables). The ta
 | `GET` | `/cases/{caseId}/card` | EBT card details for a single case (requires `cardDetails.modes: ["perCase"]`; return `501` if not supported) |
 | `POST` | `/cases/address-updates` | Batch address update; semantically idempotent; returns 207 Multi-Status |
 | `POST` | `/cases/{caseId}/card-replacement` | Card replacement; requires `Idempotency-Key` header |
-| `POST` | `/enrollment/check` | Enrollment eligibility check; signals in body; unauthenticated |
+| `POST` | `/enrollment/check` | Enrollment eligibility check; signals in body; service-authenticated (no end-user assertion) |
 
 `{caseId}` is the state backend's native case identifier, returned in each case object from `POST /cases/lookup`. The portal treats it as opaque.
 
@@ -411,6 +417,8 @@ L2 (distributed) caching is optional — if Redis is not configured, `HybridCach
 ## Conventions
 
 All state backends must conform to these field-level rules. The OpenAPI spec will enforce these as schema constraints.
+
+**Health endpoint** (`GET /health`) response vocabulary follows [IETF draft-inadarei-api-health-check](https://datatracker.ietf.org/doc/html/draft-inadarei-api-health-check): `pass`/`warn`/`fail`. HTTP status follows the same two-code convention as Spring Boot Actuator and Kubernetes: `2xx` for `pass`/`warn` (backend can serve), `503` for `fail` (backend cannot serve).
 
 | Concern | Rule |
 |---|---|

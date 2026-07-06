@@ -23,9 +23,14 @@ info:
 
     ## Authentication
 
-    Portal-to-backend auth uses OAuth 2.0 client credentials (default) or an API
-    key, configured per-state in `appsettings.{state}.json`. Health and enrollment
-    check endpoints are unauthenticated.
+    This is a **service-to-service API**. The portal always authenticates using
+    OAuth 2.0 client credentials (default) or an API key, configured per-state in
+    `appsettings.{state}.json`. Only `GET /health` is unauthenticated.
+
+    The enrollment check endpoint (`POST /enrollment/check`) uses the same service
+    credential as all other endpoints. What may be unauthenticated is the portal's
+    own BFF endpoint that the Enrollment Checker web app calls — but by the time the
+    portal calls this state backend, it always presents a service credential.
 
     ## End-user assertion
 
@@ -34,8 +39,9 @@ info:
     data scoping validate it; others ignore it. Per-operation requirements are
     declared in `capabilities.userAssertion.required`.
 
-    The enrollment check endpoint (`POST /enrollment/check`) is unauthenticated
-    by default. The portal never sends the assertion for that flow.
+    The portal does **not** send `X-Sebt-User-Identity` for enrollment check flows
+    — the end user may not be logged in to the portal at that point. Backends must
+    not mark `enrollmentCheck` as `required: true` in the `userAssertion` map.
 
     ## Conventions
 
@@ -76,7 +82,7 @@ tags:
   - name: Cases
     description: Household case lookup and self-service actions (authenticated)
   - name: Enrollment
-    description: Enrollment eligibility check (unauthenticated by default)
+    description: Enrollment eligibility check (service-authenticated; no end-user assertion)
 
 security:
   - oauth2ClientCredentials: []
@@ -95,6 +101,11 @@ paths:
         to detect service degradation.
 
         Unauthenticated — called before acquiring a service credential.
+
+        Response vocabulary follows [IETF draft-inadarei-api-health-check](https://datatracker.ietf.org/doc/html/draft-inadarei-api-health-check):
+        `pass`/`warn`/`fail`. HTTP status follows the same convention as Spring Boot
+        Actuator and Kubernetes: `2xx` for pass/warn (backend can serve requests),
+        `503` for fail (backend cannot serve requests).
       security: []
       responses:
         '200':
@@ -104,16 +115,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
               example:
-                status: healthy
+                status: pass
                 cmsReachable: true
         '503':
-          description: Service is unavailable (CMS unreachable, fatal dependency down)
+          description: Service is unavailable (CMS unreachable, critical dependency down)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthResponse'
               example:
-                status: unhealthy
+                status: fail
                 cmsReachable: false
                 detail: CMS connection refused
 
@@ -323,6 +334,15 @@ paths:
                 status: 403
                 detail: This operation requires IAL 2
                 requiredIal: 2
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /cases/{caseId}/card:
     get:
@@ -356,8 +376,8 @@ paths:
                 $ref: '#/components/schemas/CardDetailsResponse'
               example:
                 caseId: case-abc-001
-                cardStatus: Active
                 cardDetails:
+                  status: Active
                   lastFour: '7823'
                   issuedAt: '2025-06-01'
                   expiresAt: '2027-06-30'
@@ -375,6 +395,15 @@ paths:
                 $ref: '#/components/schemas/ProblemDetails'
         '404':
           description: Case not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/json:
               schema:
@@ -472,6 +501,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         '501':
           description: Address update not supported by this backend
           content:
@@ -554,6 +592,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         '501':
           description: Card replacement not supported by this backend
           content:
@@ -570,15 +617,18 @@ paths:
         Checks whether a child identified by the provided signals is enrolled in
         Summer EBT benefits.
 
-        **Unauthenticated by default.** This endpoint is called from the Enrollment
-        Checker application where the user may not be logged in. The portal does not
-        include `X-Sebt-User-Identity` for this flow. Backends must not set
-        `enrollmentCheck: true` in `userAssertion.required`.
+        **Service-authenticated, no end-user assertion.** The portal calls this
+        endpoint with its service credential (same as all other endpoints). What may
+        be unauthenticated is the portal's own public BFF route — but the
+        portal-to-backend call always carries a service credential.
+
+        `X-Sebt-User-Identity` is **not sent** for this flow — the end user may
+        not be logged in to the portal. Backends must not set `enrollmentCheck: true`
+        in `userAssertion.required`.
 
         Signal matching semantics may be more permissive than `POST /cases/lookup`
         — backends may apply fuzzy matching (partial name, approximate DOB) per
         state policy.
-      security: []
       parameters:
         - $ref: '#/components/parameters/SpecVersionHeader'
       requestBody:
@@ -621,6 +671,15 @@ paths:
                     eligible: false
         '400':
           description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/json:
               schema:
@@ -714,7 +773,10 @@ components:
         - Lost
         - Stolen
         - Damaged
+        - Frozen
+        - Undeliverable
         - DeactivatedByState
+        - Processed
         - Unknown
 
     IssuanceType:
@@ -729,10 +791,19 @@ components:
     CardDetails:
       type: object
       description: |
-        Rich card data returned when card details are available (via batch lookup
-        or per-case fetch). Backends include whichever fields they can provide;
+        Card data returned when card details are loaded (via batch lookup or
+        per-case fetch). Backends include whichever fields they can provide;
         absent fields are omitted rather than null.
+
+        `cardStatus` is included here — not on the parent case — because card
+        status is only available when card details are loaded. In CO, card status
+        comes from the same CBMS call as the other card fields and is unavailable
+        without it. In DC, card status is synthesized from the issue date and is
+        also part of this payload.
       properties:
+        status:
+          $ref: '#/components/schemas/CardStatus'
+          description: Current card lifecycle status.
         lastFour:
           type: string
           minLength: 4
@@ -783,13 +854,14 @@ components:
       properties:
         status:
           type: string
-          enum: [healthy, degraded, unhealthy]
+          enum: [pass, warn, fail]
           description: |
-            - `healthy` — all systems nominal
-            - `degraded` — CMS reachable but a non-critical subsystem is impaired;
-              the backend can still serve requests
-            - `unhealthy` — unable to serve requests (CMS unreachable or critical
-              dependency down)
+            Vocabulary from [IETF draft-inadarei-api-health-check](https://datatracker.ietf.org/doc/html/draft-inadarei-api-health-check):
+            - `pass` — all systems nominal; HTTP 200
+            - `warn` — CMS reachable but a non-critical subsystem is impaired;
+              backend can still serve requests; HTTP 200
+            - `fail` — unable to serve requests (CMS unreachable, critical
+              dependency down); HTTP 503
         cmsReachable:
           type: boolean
           description: Whether the backend can reach its upstream CMS.
@@ -981,17 +1053,13 @@ components:
           example: '2018-03-22'
         issuanceType:
           $ref: '#/components/schemas/IssuanceType'
-        cardStatus:
-          $ref: '#/components/schemas/CardStatus'
-          description: |
-            Current card status. Present when the backend can provide it without a
-            separate card-details fetch. Used by the portal's self-service rules
-            evaluator to determine `allowedActions`.
         cardDetails:
           $ref: '#/components/schemas/CardDetails'
           description: |
-            Rich card data. Present only when `includeCardDetails: true` was
-            requested and `cardDetails.modes` includes `"batch"`.
+            Card data including status, last four digits, and issuance dates.
+            Present only when `includeCardDetails: true` was requested and
+            `cardDetails.modes` includes `"batch"`. Card status is not available
+            separately — it is always part of this payload.
 
     CasesLookupRequest:
       type: object
@@ -1040,10 +1108,9 @@ components:
         caseId:
           type: string
           description: Echoes the path parameter.
-        cardStatus:
-          $ref: '#/components/schemas/CardStatus'
         cardDetails:
           $ref: '#/components/schemas/CardDetails'
+          description: Card data including status. Backends include whichever fields they can provide.
 
     AddressUpdateRequest:
       type: object
@@ -1138,8 +1205,10 @@ components:
           items:
             $ref: '#/components/schemas/EnrollmentCheckMatch'
           description: |
-            Optional summary of matched children. Omit if the backend cannot or
-            should not return child identifiers to an unauthenticated caller.
+            Optional summary of matched children. Backends may omit this if their
+            state policy does not permit returning child identifiers in response
+            to an unauthenticated end-user query (the portal call is service-authed,
+            but the original request may originate from a public-facing form).
         message:
           type: string
           description: |
@@ -1183,6 +1252,15 @@ components:
       schema:
         type: string
       example: '"cap-v7-2026-07-01"'
+
+    RetryAfter:
+      description: |
+        Number of seconds the portal should wait before retrying. Required on
+        `429 Too Many Requests` responses. The portal honors this value and does
+        not apply its standard Polly retry interval for `429`.
+      schema:
+        type: integer
+      example: 30
 
   # ── Parameters ───────────────────────────────────────────────────────────────
 
