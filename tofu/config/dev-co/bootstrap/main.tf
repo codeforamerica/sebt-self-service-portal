@@ -28,6 +28,7 @@ resource "aws_iam_policy" "github_actions" {
           "ec2:*",
           "ecr:*",
           "ecs:*",
+          "elasticache:*",
           "elasticloadbalancing:*",
           "iam:*",
           "kms:*",
