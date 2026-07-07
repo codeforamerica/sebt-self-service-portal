@@ -5,7 +5,7 @@
 # auto-generated web.config to enable ASP.NET Core stdout logging.
 #
 # Plugin DLLs are NOT copied by this script — they must already be in
-# src/SEBT.Portal.Api/plugins-dc/ before this runs. In CI, the release workflow
+# apps/portal/src/SEBT.Portal.Api/plugins-dc/ before this runs. In CI, the release workflow
 # stages them explicitly by publishing the DC connector with CopyPlugins=false
 # and copying its publish/*.dll output into plugins-dc/. The API csproj's
 # <None Include="plugins-dc\**\*.dll"> ItemGroup then picks them up during publish.
@@ -56,7 +56,7 @@ if [ -z "$OUTPUT_DIR" ]; then
 fi
 
 # Sanity-check that DC plugin DLLs have already been staged into plugins-dc/.
-PLUGIN_DIR="$PROJECT_ROOT/src/SEBT.Portal.Api/plugins-dc"
+PLUGIN_DIR="$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Api/plugins-dc"
 if [ -z "$(ls -A "$PLUGIN_DIR" 2>/dev/null | grep -E '\.dll$' || true)" ]; then
   log_error "$PLUGIN_DIR has no DLLs — DC plugin artifacts were not staged before publish-api.sh."
   log_error "Stage the DC connector publish output before building the IIS bundle."
@@ -67,7 +67,7 @@ API_OUT="$OUTPUT_DIR/api"
 mkdir -p "$API_OUT"
 
 log_info "Publishing API to $API_OUT (configuration: $CONFIGURATION, runtime: win-x64)"
-dotnet publish "$PROJECT_ROOT/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" \
+dotnet publish "$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" \
   --configuration "$CONFIGURATION" \
   --runtime win-x64 \
   --self-contained false \
