@@ -500,5 +500,9 @@ packages/design-system/design/sass/_uswds-settings.scss
 # Generated design-system locale output (app reads from Web's gitignored copy)
 packages/design-system/content/locales/
 
+# Vestigial generated resource registry — each app uses its own gitignored copy under
+# src/lib/. Kept out of git so a stray bare `generate-locales.js` run can't re-commit it.
+packages/design-system/src/lib/generated-locale-resources.ts
+
 ## macOS Cruft
 .DS_Store

@@ -7,7 +7,8 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <VersionPrefix>0.0.3</VersionPrefix>
+        <!-- Version is defined once in the root Directory.Build.props. -->
+        <VersionPrefix>$(StateConnectorInterfacesVersion)</VersionPrefix>
         <VersionSuffix Condition="'$(Configuration)' != 'Release'">dev</VersionSuffix>
     </PropertyGroup>
 

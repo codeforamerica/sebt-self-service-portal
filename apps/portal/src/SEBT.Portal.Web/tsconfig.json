@@ -33,8 +33,8 @@
       "@/*": ["./src/*"],
       "@/design/*": ["./design/*"],
       "@/content/*": ["./content/*"],
-      "@sebt/design-system": ["../../packages/design-system/src/index.ts"],
-      "@sebt/design-system/*": ["../../packages/design-system/*"]
+      "@sebt/design-system": ["../../../../packages/design-system/src/index.ts"],
+      "@sebt/design-system/*": ["../../../../packages/design-system/*"]
     }
   },
   "include": [

@@ -14,8 +14,8 @@
 
         <RestoreAdditionalProjectSources>$(HomeDir)/nuget-store</RestoreAdditionalProjectSources>
 
-        <!-- When state-connector repo is alongside this repo, use project reference so we build against current Interfaces source. -->
-        <StateConnectorInterfacesProject Condition="'$(StateConnectorInterfacesProject)' == ''">$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj</StateConnectorInterfacesProject>
+        <!-- State connector contract — in-repo (monorepo: apps/connectors/state). NuGet fallback below covers out-of-tree builds. -->
+        <StateConnectorInterfacesProject Condition="'$(StateConnectorInterfacesProject)' == ''">$(MSBuildThisFileDirectory)../../../state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj</StateConnectorInterfacesProject>
     </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
@@ -30,7 +30,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.4" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.4" />
         <PackageReference Include="System.Composition" Version="10.0.1" />
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.2-*" Condition="!Exists('$(StateConnectorInterfacesProject)')" />
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="$(StateConnectorInterfacesFloatingVersion)" Condition="!Exists('$(StateConnectorInterfacesProject)')" />
         <InternalsVisibleTo Include="SEBT.Portal.StatePlugins.CO.Tests" />
         <!-- Required so NSubstitute/Castle.DynamicProxy can create proxies for internal interfaces (e.g. ICbmsHouseholdCache) in tests. -->
         <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
@@ -44,11 +44,12 @@
         <ProjectReference Include="..\SEBT.Portal.StatePlugins.CO.CbmsApi\SEBT.Portal.StatePlugins.CO.CbmsApi.csproj" />
     </ItemGroup>
 
-    <!-- Mirror DC connector: use $(OutputPath) so Debug and Release both publish into the portal plugins-co folder. -->
-    <Target Name="CopyPlugins" AfterTargets="Build">
+    <!-- Mirror DC connector: use $(OutputPath) so Debug and Release both publish into the portal plugins-co folder.
+         CI passes -p:CopyPlugins=false when it must not stage plugins (e.g. state-agnostic validation builds). -->
+    <Target Name="CopyPlugins" AfterTargets="Build" Condition="'$(CopyPlugins)' != 'false'">
         <PropertyGroup>
             <_PluginDestDir Condition="'$(PluginDestDir)' != ''">$(PluginDestDir)</_PluginDestDir>
-            <_PluginDestDir Condition="'$(_PluginDestDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal/src/SEBT.Portal.Api/plugins-co'))</_PluginDestDir>
+            <_PluginDestDir Condition="'$(_PluginDestDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../../portal/src/SEBT.Portal.Api/plugins-co'))</_PluginDestDir>
         </PropertyGroup>
         <ItemGroup>
             <_PluginDlls Include="$(OutputPath)*.dll" />

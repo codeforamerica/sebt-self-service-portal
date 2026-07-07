@@ -41,10 +41,10 @@
         "./content/*"
       ],
       "@sebt/design-system": [
-        "../../packages/design-system/src/index.ts"
+        "../../../../packages/design-system/src/index.ts"
       ],
       "@sebt/design-system/*": [
-        "../../packages/design-system/*"
+        "../../../../packages/design-system/*"
       ]
     }
   },

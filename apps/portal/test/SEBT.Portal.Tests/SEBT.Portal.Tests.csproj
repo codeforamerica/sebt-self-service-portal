@@ -39,17 +39,13 @@
         <PackageReference Include="Xunit.SkippableFact" Version="1.5.61" />
     </ItemGroup>
 
-  <!-- State connector as sibling repo only. Sibling under parent of portal, or CI path. -->
+  <!-- State connector contract lives in-repo (apps/connectors/state). Reference the project
+       directly for normal monorepo builds; fall back to the NuGet package for isolated builds. -->
   <PropertyGroup>
-    <_StateConnectorInterfacesProjectSiblingPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../sebt-self-service-portal-state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectSiblingPath>
-    <_StateConnectorInterfacesProjectCiPath>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProjectCiPath>
-    <_StateConnectorInterfacesProjectSibling Condition="Exists('$(_StateConnectorInterfacesProjectSiblingPath)')">$(_StateConnectorInterfacesProjectSiblingPath)</_StateConnectorInterfacesProjectSibling>
-    <_StateConnectorInterfacesProjectCi Condition="Exists('$(_StateConnectorInterfacesProjectCiPath)')">$(_StateConnectorInterfacesProjectCiPath)</_StateConnectorInterfacesProjectCi>
-    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProjectSibling)' != ''">$(_StateConnectorInterfacesProjectSibling)</_StateConnectorInterfacesProject>
-    <_StateConnectorInterfacesProject Condition="'$(_StateConnectorInterfacesProject)' == '' and '$(_StateConnectorInterfacesProjectCi)' != ''">$(_StateConnectorInterfacesProjectCi)</_StateConnectorInterfacesProject>
+    <_StateConnectorInterfacesProject>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProject>
   </PropertyGroup>
   <Choose>
-    <When Condition="'$(_StateConnectorInterfacesProject)' != ''">
+    <When Condition="Exists('$(_StateConnectorInterfacesProject)')">
       <ItemGroup>
         <ProjectReference Include="$(_StateConnectorInterfacesProject)">
           <PrivateAssets>all</PrivateAssets>
@@ -59,8 +55,9 @@
     </When>
     <Otherwise>
       <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="0.0.2-*" />
-        <!-- HouseholdRepositoryTests requires plugin model types (Models.Household.*, etc.). When only the package is used (no state-connector project), the package may not expose those namespaces, so exclude the file to allow the project to build. -->
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="$(StateConnectorInterfacesFloatingVersion)" />
+        <!-- HouseholdRepositoryTests requires plugin model types (Models.Household.*, etc.). A staged
+             package can lag the in-repo contract, so exclude the file when building against the package. -->
         <Compile Remove="Unit/Repositories/HouseholdRepositoryTests.cs" />
       </ItemGroup>
     </Otherwise>
