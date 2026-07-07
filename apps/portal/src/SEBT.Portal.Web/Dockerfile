@@ -30,13 +30,13 @@ COPY packages/design-system/ ./packages/design-system/
 COPY packages/analytics/ ./packages/analytics/
 
 # Copy web workspace
-COPY src/SEBT.Portal.Web/ ./src/SEBT.Portal.Web/
+COPY apps/portal/src/SEBT.Portal.Web/ ./apps/portal/src/SEBT.Portal.Web/
 
 # Install + build web only
 RUN corepack enable \
   && corepack prepare pnpm@10 --activate \
   && pnpm install --frozen-lockfile \
-  && cd src/SEBT.Portal.Web \
+  && cd apps/portal/src/SEBT.Portal.Web \
   && pnpm build
 
 FROM node:24-alpine AS runtime
@@ -46,15 +46,23 @@ ENV PORT=3000
 
 WORKDIR /app
 
+# Non-root user for security (mirrors the enrollment checker's Dockerfile.ssr)
+RUN addgroup -S app && adduser -S app -G app
+
 # Next standalone output
-COPY --from=build /workspace/src/SEBT.Portal.Web/.next/standalone ./
+COPY --from=build /workspace/apps/portal/src/SEBT.Portal.Web/.next/standalone ./
 
 # Copy static files to the correct location relative to server.js
-COPY --from=build /workspace/src/SEBT.Portal.Web/.next/static ./src/SEBT.Portal.Web/.next/static
-COPY --from=build /workspace/src/SEBT.Portal.Web/public ./src/SEBT.Portal.Web/public
+COPY --from=build /workspace/apps/portal/src/SEBT.Portal.Web/.next/static ./apps/portal/src/SEBT.Portal.Web/.next/static
+COPY --from=build /workspace/apps/portal/src/SEBT.Portal.Web/public ./apps/portal/src/SEBT.Portal.Web/public
 
+# The only path Next writes at runtime; everything else stays root-owned read-only.
+RUN mkdir -p apps/portal/src/SEBT.Portal.Web/.next/cache \
+  && chown -R app:app apps/portal/src/SEBT.Portal.Web/.next/cache
+
+USER app
 EXPOSE 3000
 
 # Use the server.js from the standalone output
-WORKDIR /app/src/SEBT.Portal.Web
+WORKDIR /app/apps/portal/src/SEBT.Portal.Web
 CMD ["node", "server.js"]
