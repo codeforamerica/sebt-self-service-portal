@@ -1,25 +1,26 @@
-# sebt-self-service-portal-co-connector
+# Colorado (CO) connector
 
-A repository containing the implementation for the Colorado backend connector.
+The Colorado implementation of the SEBT portal's state connector plugin. It integrates with
+Colorado's CBMS (Colorado Benefits Management System) API for case data, enrollment checks,
+and address updates, and is loaded by the portal API at runtime via MEF.
 
-## CI
+This directory was imported from the standalone `sebt-self-service-portal-co-connector`
+repository (now archived) — see
+[ADR 0017](../../../docs/adr/0017-monorepo-consolidation.md) for the consolidation rationale.
 
-The GitHub Actions workflow (`.github/workflows/ci.yml`) builds and tests the connector on every push and PR to `main`.
+## Building and CI
 
-### Required credentials
+Build from the repo root: `dotnet build SEBT.slnx` (or `pnpm api:build-co`, which also stages
+the plugin DLLs into the portal's `plugins-co/` directory). The root `state-ci.yaml` workflow
+builds and tests this connector alongside the portal; the plugin contract is referenced
+in-repo from [`../state`](../state/README.md).
 
-The CI workflow uses `GITHUB_TOKEN` (provided automatically) to check out the [state-connector](https://github.com/codeforamerica/sebt-self-service-portal-state-connector) repo for the interface package. No additional secrets are required for CI to pass — all tests that need external credentials skip gracefully when they are not configured.
+## CBMS credentials and mock responses
 
-### Optional: CBMS sandbox integration tests
+CI runs CBMS integration tests with mock responses by default, so no secrets are required
+for the build to pass (sandbox health checks that require the real API are skipped).
 
-CI runs CBMS integration tests with mock responses by default, so no secrets are required for the build to pass (sandbox health checks that require the real API are skipped). To exercise the real sandbox in CI, add these as GitHub Actions **repository secrets** and set `Cbms__UseMockResponses=false` in the workflow:
-
-| Secret | Description |
-|--------|-------------|
-| `CBMS_CLIENT_ID` | OAuth client ID for the CBMS environment |
-| `CBMS_CLIENT_SECRET` | OAuth client secret for the CBMS environment |
-
-For local development, use .NET user secrets instead:
+For local development against the real CBMS sandbox, use .NET user secrets:
 
 ```bash
 cd src/SEBT.Portal.StatePlugins.CO.Tests
@@ -27,9 +28,10 @@ dotnet user-secrets set "Cbms:ClientId" "<id>"
 dotnet user-secrets set "Cbms:ClientSecret" "<secret>"
 ```
 
-### Optional: Run integration tests with mock responses
+### Run integration tests with mock responses
 
-To run the CBMS integration tests without real credentials or network access, enable mock responses:
+To run the CBMS integration tests without real credentials or network access, enable mock
+responses:
 
 ```bash
 cd src/SEBT.Portal.StatePlugins.CO.Tests
@@ -40,6 +42,10 @@ Or use an environment variable: `Cbms__UseMockResponses=true`
 
 ### Local development with mock responses
 
-The same mock responses used in integration tests are available when running the host application. Set `Cbms:UseMockResponses=true` in your host's configuration or `Cbms__UseMockResponses=true` as an environment variable. The Colorado plugin will use mock CBMS API responses (you don't need the client_id/secrets for this to work).
+The same mock responses used in integration tests are available when running the portal. Set
+`Cbms:UseMockResponses=true` in the host configuration or `Cbms__UseMockResponses=true` as an
+environment variable. The Colorado plugin will use mock CBMS API responses (you don't need
+the client_id/secrets for this to work).
 
-Mock response data lives in `src/SEBT.Portal.StatePlugins.CO.CbmsApi/TestData/CbmsMocks/` as JSON files. Edit those files to change mock scenarios without recompiling.
+Mock response data lives in `src/SEBT.Portal.StatePlugins.CO.CbmsApi/TestData/CbmsMocks/` as
+JSON files. Edit those files to change mock scenarios without recompiling.

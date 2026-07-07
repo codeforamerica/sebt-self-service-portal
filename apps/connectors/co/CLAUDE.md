@@ -1,10 +1,16 @@
 # CLAUDE.md
 
-## Project Purpose
+Directory-scoped guidance for the Colorado connector. The root
+[CLAUDE.md](../../../CLAUDE.md) covers repo-wide conventions, commands, and testing norms.
 
-Colorado state plugin for the SEBT Self-Service Portal. Implements plugin interfaces from the state-connector repo to connect with Colorado's CBMS (Colorado Benefits Management System) API for case data, enrollment checks, and address updates. Loaded at runtime by the portal via MEF.
+## Purpose
 
-See [README.md](./README.md) for full setup and credential details.
+Colorado state plugin for the SEBT Self-Service Portal. Implements the plugin contract from
+[`../state`](../state/CLAUDE.md) to connect with Colorado's CBMS (Colorado Benefits
+Management System) API for case data, enrollment checks, and address updates. Loaded at
+runtime by the portal via MEF.
+
+See [README.md](./README.md) for setup and credential details.
 
 ## Technology
 
@@ -14,13 +20,12 @@ See [README.md](./README.md) for full setup and credential details.
 - libphonenumber-csharp, HybridCache
 - xUnit for testing
 
-## Solution Structure
-
-Solution file: `SEBT.Portal.StatePlugins.CO.slnx`
+## Structure
 
 - **`src/SEBT.Portal.StatePlugins.CO`** — Main plugin. MEF exports, CBMS integration services.
 - **`src/SEBT.Portal.StatePlugins.CO.CbmsApi`** — Kiota-generated CBMS API client + embedded mock test data (`TestData/CbmsMocks/`).
 - **`src/SEBT.Portal.StatePlugins.CO.Tests`** — xUnit tests. User secrets for optional sandbox tests.
+- `SEBT.Portal.StatePlugins.CO.slnx` — per-directory solution for IDE convenience; builds and CI use the root `SEBT.slnx`.
 
 ## MEF Exports
 
@@ -35,7 +40,11 @@ All services export `IStatePlugin` with `[ExportMetadata("StateCode", "CO")]`:
 
 ## Plugin Build & Copy
 
-Post-build target `CopyPlugins` copies DLLs to `../../../sebt-self-service-portal/src/SEBT.Portal.Api/plugins-co/`. Override with `PluginDestDir` env var. Restart the portal API after building to pick up changes.
+The post-build target `CopyPlugins` copies DLLs to
+`apps/portal/src/SEBT.Portal.Api/plugins-co/`. Override the destination with
+`-p:PluginDestDir=<path>`, or disable staging entirely with `-p:CopyPlugins=false` (CI does
+this where it stages plugin DLLs itself). Restart the portal API after building to pick up
+changes.
 
 ## CBMS API Integration
 
@@ -45,38 +54,27 @@ Post-build target `CopyPlugins` copies DLLs to `../../../sebt-self-service-porta
 
 ## Configuration
 
-CBMS credentials via user secrets or env vars (`Cbms__ClientId`, `Cbms__ClientSecret`). Set `Cbms:UseMockResponses=true` for offline development without real credentials.
+CBMS credentials via user secrets or env vars (`Cbms__ClientId`, `Cbms__ClientSecret`). Set
+`Cbms:UseMockResponses=true` for offline development without real credentials.
 
 ## Common Commands
 
 ```bash
-dotnet build    # Build + copy DLLs to portal plugins-co/
-dotnet test     # Run tests (uses mock CBMS responses by default)
+dotnet build SEBT.slnx   # From the repo root: contract + portal + this plugin (+ DLL staging)
+pnpm api:build-co        # From the repo root: build CO plugin and stage DLLs
+dotnet test              # From this directory: run the CO test projects
 ```
 
 ## Dependencies
 
-Requires `SEBT.Portal.StatesPlugins.Interfaces` NuGet package from `~/nuget-store/`. If builds fail with package-not-found, build the state-connector repo first.
-
-## Code Style
-
-- C#: 4-space indent, Allman brace style, nullable reference types enabled
-- See `.editorconfig` for full rules
-
-## Related Repos
-
-- **sebt-self-service-portal** — main portal (API + Web + Infrastructure)
-- **sebt-self-service-portal-state-connector** — plugin interface contracts
-
-## Branch Strategy
-
-- `main` — production
-- `feature/*` — in-progress work
+The plugin contract (`SEBT.Portal.StatesPlugins.Interfaces`) is referenced in-repo as a
+ProjectReference from [`../state`](../state/). The NuGet fallback (from `~/nuget-store/`)
+only applies to out-of-tree builds and should not be needed inside the monorepo.
 
 ## Gotchas
+
 - **Never hand-edit `Generated/` files.** Everything under `src/SEBT.Portal.StatePlugins.CO.CbmsApi/Generated/` is Kiota-generated from the CBMS OpenAPI spec and will be overwritten on regeneration.
 - **Adding mock data files?** Files in `TestData/CbmsMocks/` must be `.json` or `.jsonc` — the csproj globs them as `EmbeddedResource` automatically. Other extensions won't be included.
-- **NuGet package not found?** Build the state-connector repo first to populate `~/nuget-store/`, then `dotnet restore` here.
 
 ## Security
 
