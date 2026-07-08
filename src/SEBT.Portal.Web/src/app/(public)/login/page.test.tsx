@@ -15,26 +15,52 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@sebt/design-system', () => ({
   getState: vi.fn(),
-  getStateLinks: vi.fn().mockReturnValue({ external: { contactUsAssistance: '' } }),
-  TextLink: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
+  getStateLinks: vi.fn().mockReturnValue({
+    external: {
+      contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
+    }
+  }),
+  TextLink: ({
+    href,
+    children,
+    target,
+    rel
+  }: {
+    href: string
+    children: React.ReactNode
+    target?: string
+    rel?: string
+  }) => (
+    <a
+      href={href}
+      target={target}
+      rel={rel}
+    >
+      {children}
+    </a>
   )
 }))
 
 // COLoginPage now uses the client-side useTranslation() hook (DC-187 fix).
-// Mock the hook with CO-specific copy so the CO-state tests stay isolated from
+// Mock the hook with state-specific copy so CO/DC tests stay isolated from
 // the project's real i18n init (which boots in DC mode for tests).
 //
 // `logIn` resolves to the current UI language's label; `logInEsp` resolves to
 // the other language. Mirrors the real locale files in `content/locales/{en,es}/co/common.json`.
-const TEST_TRANSLATIONS: Record<string, Record<string, Record<string, string>>> = {
+const CO_TEST_TRANSLATIONS: Record<string, Record<string, Record<string, string>>> = {
   en: {
     login: {
       title: 'Access your Summer EBT account',
       body: 'Enter your email to receive a one-time code.',
       logInDisclaimerBody1:
         'After tapping "Log in" you\'ll be redirected to log in using your myColorado™ account.',
-      logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.'
+      logInDisclaimerBody2: 'Having trouble signing into the portal?',
+      logInDisclaimerBody3: 'Contact myColorado® Support',
+      cardTitle: 'About the Summer EBT portal',
+      cardBody1:
+        "The Summer EBT portal is the fastest way to manage your family's Summer EBT benefits without ever making a phone call.\n\nBy creating a secure account, the main parent or guardian on file can:",
+      cardBody2:
+        "Request a new Summer EBT card if their child's is lost, stolen, or damaged.\nUpdate your mailing address so you don't miss important mail.\nCheck benefits and card status for all enrolled children in your household.\nSee the application status for any applications that you submitted.\nOpt-in to email communications about your benefits."
     },
     common: {
       logIn: 'Log in with myColorado™',
@@ -47,7 +73,12 @@ const TEST_TRANSLATIONS: Record<string, Record<string, Record<string, string>>> 
       body: 'Ingresa tu correo electrónico para recibir un código.',
       logInDisclaimerBody1:
         'Al tocar "Iniciar sesión" serás redirigido a iniciar sesión con tu cuenta myColorado™.',
-      logInDisclaimerBody2: 'Contáctanos si necesitas ayuda para iniciar sesión.'
+      logInDisclaimerBody2: 'Contáctanos si necesitas ayuda para iniciar sesión.',
+      logInDisclaimerBody3: 'Comunícate con la ayuda de myColorado®',
+      cardTitle: 'Sobre el portal de Summer EBT',
+      cardBody1:
+        'El portal de Summer EBT es la forma más rápida de manejar los beneficios de Summer EBT de tu familia.\n\nAl crear una cuenta segura, el padre, madre o tutor principal registrado puede:',
+      cardBody2: 'Pedir una nueva Tarjeta Summer EBT si la de tu niño/a se perdió.'
     },
     common: {
       logIn: 'Iniciar sesión con myColorado™',
@@ -56,13 +87,35 @@ const TEST_TRANSLATIONS: Record<string, Record<string, Record<string, string>>> 
   }
 }
 
+const DC_TEST_TRANSLATIONS: Record<string, Record<string, Record<string, string>>> = {
+  en: {
+    login: {
+      title: 'Access your Summer EBT account',
+      body: 'Enter your email to receive a one-time code.',
+      logInDisclaimerBody2: 'Contact us if you need assistance logging into your account.'
+    },
+    common: {}
+  },
+  es: {
+    login: {
+      title: 'Accede a tu cuenta de Summer EBT',
+      body: 'Ingresa tu correo electrónico para recibir un código.',
+      logInDisclaimerBody2: 'Contáctanos si necesitas ayuda para iniciar sesión.'
+    },
+    common: {}
+  }
+}
+
 let mockLanguage: 'en' | 'es' = 'en'
+let mockState: 'co' | 'dc' = 'co'
 
 vi.mock('react-i18next', () => ({
   useTranslation: (namespace: string) => ({
     /* eslint-disable security/detect-object-injection -- test mock; namespace + key controlled */
-    t: (key: string, defaultValue?: string) =>
-      TEST_TRANSLATIONS[mockLanguage]?.[namespace]?.[key] ?? defaultValue ?? key,
+    t: (key: string, defaultValue?: string) => {
+      const translations = mockState === 'co' ? CO_TEST_TRANSLATIONS : DC_TEST_TRANSLATIONS
+      return translations[mockLanguage]?.[namespace]?.[key] ?? defaultValue ?? key
+    },
     /* eslint-enable security/detect-object-injection */
     i18n: { language: mockLanguage }
   })
@@ -101,11 +154,13 @@ describe('LoginPage', () => {
     vi.clearAllMocks()
     mockTrackEvent.mockClear()
     mockLanguage = 'en'
+    mockState = 'co'
   })
 
   describe('CO state', () => {
     beforeEach(() => {
       mockGetState.mockReturnValue('co')
+      mockState = 'co'
     })
 
     it('renders the login title', () => {
@@ -129,6 +184,31 @@ describe('LoginPage', () => {
       render(<LoginPage />)
       expect(
         screen.getByText(/you'll be redirected to log in using your myColorado/i)
+      ).toBeInTheDocument()
+    })
+
+    it('renders the myColorado support prompt and link', () => {
+      render(<LoginPage />)
+      expect(screen.getByText('Having trouble signing into the portal?')).toBeInTheDocument()
+
+      const supportLink = screen.getByRole('link', { name: /Contact myColorado/i })
+      expect(supportLink).toHaveAttribute('href', 'https://mycolorado.state.co.us/customer-support')
+      expect(supportLink).toHaveAttribute('target', '_blank')
+    })
+
+    it('renders the about portal card with bullet list', () => {
+      render(<LoginPage />)
+      expect(
+        screen.getByRole('heading', { name: /About the Summer EBT portal/i })
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(/fastest way to manage your family's Summer EBT benefits/i)
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(/Request a new Summer EBT card if their child's is lost/i)
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText(/Opt-in to email communications about your benefits/i)
       ).toBeInTheDocument()
     })
 
@@ -267,6 +347,7 @@ describe('LoginPage', () => {
   describe('DC state', () => {
     beforeEach(() => {
       mockGetState.mockReturnValue('dc')
+      mockState = 'dc'
     })
 
     it('renders the contact assistance link', () => {
