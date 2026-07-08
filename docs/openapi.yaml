@@ -230,9 +230,9 @@ paths:
         types.
 
         **Cases vs. applications.** `cases` are per-child benefit issuances (most
-        are auto-issued). `applications` are guardian-submitted applications, which
-        the portal only ever reads. A case links back to the application it came
-        from via `applicationId`; most cases have no application.
+        are auto-issued). `applications` are guardian-submitted, and the portal
+        only ever reads them. A case links back to the application it came from via
+        `applicationId`; most cases have no application.
 
         **`intent`** tells the backend the purpose of the lookup:
         - `primary` — authenticated user's own household

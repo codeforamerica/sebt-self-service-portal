@@ -139,7 +139,7 @@ StateBackend:BaseUrl configured?
   └─ No  → register PluginAdapter (wraps the connector loaded by ServiceCollectionPluginExtensions)
 ```
 
-The use-case layer only ever sees `IStateBackendClient`. The REST-vs-plugin choice is resolved once at startup and is invisible above the infrastructure layer. One binding, chosen by config — no async work during registration, no capability-based conditional registration.
+The use-case layer only ever sees `IStateBackendClient`. The portal resolves the REST-vs-plugin choice once at startup, and above the infrastructure layer it's invisible. One binding, chosen by config — no async work during registration, no capability-based conditional registration.
 
 **`RestStateBackendClient`** is thin. HTTP call to `StateBackend:BaseUrl`, response mapped to Core models. Owns the resilience pipeline (retry, circuit breaker, timeout), the auth strategy (`oauth2` or API key), and — when `capabilities.userAssertion` is true — attaching the `X-Sebt-User-Identity` JWT.
 
@@ -174,7 +174,7 @@ Cost: a DC connector change (move two methods, keep behavior) and an interface-p
 
 Neither DC nor CO exposes a capabilities endpoint, so `PluginAdapter.GetCapabilitiesAsync()` synthesizes `StateCapabilities` from what the connector actually registered — not from a hand-maintained map.
 
-`ServiceCollectionPluginExtensions` backfills any service the connector didn't provide with a `DefaultXService`. So a capability is **true when the resolved implementation is not the `Default` type** — i.e. the connector really provided it. `AddressUpdate` ← real `IAddressUpdateService`; `CardReplacement` ← real `ICardReplacementService`; `EnrollmentCheck` ← real `IEnrollmentCheckService`; `CoLoadedLookup` ← real `ICoLoadCaseService` once the reshape lands.
+`ServiceCollectionPluginExtensions` backfills any service the connector didn't provide with a `DefaultXService`. So a capability is *true when the resolved implementation is not the `Default` type* — i.e. the connector really provided it. `AddressUpdate` ← real `IAddressUpdateService`; `CardReplacement` ← real `ICardReplacementService`; `EnrollmentCheck` ← real `IEnrollmentCheckService`; `CoLoadedLookup` ← real `ICoLoadCaseService` once the reshape lands.
 
 Derived capabilities can't drift, because they *are* the wiring. For `RestStateBackendClient` capabilities come from a real HTTP call, cached per the spec's `Cache-Control: max-age` (default 5-minute TTL). For `PluginAdapter` they're computed from the DI container and effectively static.
 
