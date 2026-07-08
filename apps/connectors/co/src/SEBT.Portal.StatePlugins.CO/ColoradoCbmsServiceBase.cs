@@ -86,7 +86,7 @@ public abstract class ColoradoCbmsServiceBase
         sb.Append($"addrLn1={Len(a.AddrLn1)}");
         sb.Append($", addrLn2={Len(a.AddrLn2)}");
         sb.Append($", cty={Len(a.Cty)}");
-        sb.Append($", staCd={a.StaCd ?? "null"}");
+        sb.Append($", staCd={Len(a.StaCd)}");
         sb.Append($", zip={Len(a.Zip)}");
         sb.Append($", zip4={a.Zip4 is not null}");
         sb.Append(')');

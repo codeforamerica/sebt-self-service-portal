@@ -36,3 +36,7 @@ RUN BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
 # Output is in apps/portal/src/SEBT.EnrollmentChecker.Web/out/
 # Upload to S3: aws s3 sync apps/portal/src/SEBT.EnrollmentChecker.Web/out/ s3://your-bucket/
 # CloudFront: configure error page 404 → /index.html (200 status) for SPA routing
+
+# Build-only image (the artifact above is what ships), but never run as root
+# if someone starts a container from it.
+USER node
