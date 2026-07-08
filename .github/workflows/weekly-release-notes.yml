@@ -43,7 +43,7 @@ jobs:
           tag_name: ${{ steps.date.outputs.tag }}
           name: "Weekly Update – ${{ steps.date.outputs.today }}"
           body_path: scripts/release-notes/output/${{ steps.date.outputs.today }}.md
-          draft: false
+          draft: true
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
