@@ -84,7 +84,7 @@ const stateLinks: Record<string, StateLinks> = {
       helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
     },
     external: {
-      contactUsAssistance: '#'
+      contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
     }
   }
 }
