@@ -30,7 +30,7 @@ New states implement the standard REST contract. Existing states stay on plugins
 
 1. **Capabilities-first.** The portal reads `GET /capabilities` before touching any data endpoint. Backends register only what they support. The alternative — attempt the endpoint, handle 501 — was rejected because state teams may not implement 501 consistently, and explicit capability declaration is safer for a government tech audience.
 
-2. **`intent` field on `POST /cases/lookup` for co-loading.** `intent: primary` = own household; `intent: coLoad` = find SNAP/TANF household to load onto. A separate `POST /cases/coload-lookup` endpoint was considered; it was dropped because the lookup semantics are identical and intent is a modifier, not a different operation.
+2. **`intent` field on `POST /households/lookup` for co-loading.** `intent: primary` = own household; `intent: coLoad` = find SNAP/TANF household to load onto. A separate co-load endpoint was considered; it was dropped because the lookup semantics are identical and intent is a modifier, not a different operation.
 
 3. **Atomic address updates (200/400/409).** All-or-nothing semantics. 207 Multi-Status was rejected — state teams would bypass the multi-status response shape with standard error middleware, making partial-success responses unreliable in practice.
 

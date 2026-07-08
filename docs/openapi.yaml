@@ -218,15 +218,21 @@ paths:
                       userAssertion:
                         supported: false
 
-  /cases/lookup:
+  /households/lookup:
     post:
-      operationId: lookupCases
+      operationId: lookupHousehold
       tags: [Cases]
-      summary: Find cases by identity signals
+      summary: Look up a household by identity signals
       description: |
-        Returns all cases associated with the identity described by the provided
-        signals. Signals are AND-matched where possible; backends use whichever
-        subset their CMS supports and silently ignore unrecognized signal types.
+        Returns the household matched by the provided identity signals — its cases
+        and its applications. Signals are AND-matched where possible; backends use
+        whichever subset their CMS supports and silently ignore unrecognized signal
+        types.
+
+        **Cases vs. applications.** `cases` are per-child benefit issuances (most
+        are auto-issued). `applications` are guardian-submitted applications, which
+        the portal only ever reads. A case links back to the application it came
+        from via `applicationId`; most cases have no application.
 
         **`intent`** tells the backend the purpose of the lookup:
         - `primary` — authenticated user's own household
@@ -242,7 +248,8 @@ paths:
         each case. Otherwise `includeCardDetails` is ignored and card details must
         be fetched per-case via `GET /cases/{caseId}/card`.
 
-        **No match.** Return `200` with `{ "cases": [] }` — not a `404`.
+        **No match.** Return `200` with empty `cases` and `applications` arrays —
+        not a `404`.
       parameters:
         - $ref: "#/components/parameters/UserIdentityHeader"
       requestBody:
@@ -250,7 +257,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CasesLookupRequest"
+              $ref: "#/components/schemas/HouseholdLookupRequest"
             examples:
               primaryLookup:
                 summary: Authenticated user's own household
@@ -259,7 +266,6 @@ paths:
                     - type: email
                       value: guardian@example.com
                       verified: true
-                      source: portal
                   intent: primary
                   includeCardDetails: false
               coLoadLookup:
@@ -282,14 +288,14 @@ paths:
                   includeCardDetails: true
       responses:
         "200":
-          description: Matching cases (empty array when no match)
+          description: Matched household (empty arrays when no match)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/CasesLookupResponse"
+                $ref: "#/components/schemas/HouseholdLookupResponse"
               examples:
                 found:
-                  summary: Two cases found
+                  summary: Two cases, one from an application
                   value:
                     cases:
                       - caseId: case-abc-001
@@ -297,15 +303,28 @@ paths:
                         childLastName: Garcia
                         dateOfBirth: "2018-03-22"
                         issuanceType: SummerEbt
+                        isStreamlineCertified: true
                       - caseId: case-abc-002
                         childFirstName: Liam
                         childLastName: Garcia
                         dateOfBirth: "2020-11-05"
                         issuanceType: SummerEbt
+                        applicationId: app-abc-77
+                    applications:
+                      - applicationNumber: app-abc-77
+                        status: Approved
+                        submittedDate: "2026-05-02"
+                        decisionDate: "2026-05-14"
+                        issuanceType: SummerEbt
+                        children:
+                          - firstName: Liam
+                            lastName: Garcia
+                            dateOfBirth: "2020-11-05"
                 noMatch:
-                  summary: No cases found
+                  summary: No match
                   value:
                     cases: []
+                    applications: []
         "400":
           description: Invalid request — unknown `intent` value, empty signals, malformed body
           content:
@@ -683,7 +702,7 @@ paths:
         `X-Sebt-User-Identity` is **not sent** for this flow — the end user may
         not be logged in to the portal at that point.
 
-        Signal matching semantics may be more permissive than `POST /cases/lookup`
+        Signal matching semantics may be more permissive than `POST /households/lookup`
         — backends may apply fuzzy matching (partial name, approximate DOB) per
         state policy.
       requestBody:
@@ -869,6 +888,10 @@ components:
           maxLength: 4
           description: Last four digits of the EBT card number.
           example: "7823"
+        balance:
+          type: integer
+          description: Current card balance in integer cents (e.g. `12550` = $125.50).
+          example: 12550
         issuedAt:
           type: string
           format: date
@@ -996,7 +1019,7 @@ components:
             - $ref: "#/components/schemas/SupportedCapability"
           description: |
             Supports co-loading cross-household lookups (`intent: "coLoad"` on
-            `POST /cases/lookup`).
+            `POST /households/lookup`).
         cardDetails:
           $ref: "#/components/schemas/CardDetailsCapability"
         cardReplacement:
@@ -1025,7 +1048,7 @@ components:
             enum: [batch, perCase]
           description: |
             Present only when `supported: true`.
-            - `batch` — card details returned inline from `POST /cases/lookup`
+            - `batch` — card details returned inline from `POST /households/lookup`
               when `includeCardDetails: true`
             - `perCase` — card details available via `GET /cases/{caseId}/card`
           example: [batch]
@@ -1090,6 +1113,19 @@ components:
             State's native identifier for this case. Treated as opaque by the
             portal — echoed back verbatim in subsequent write operations.
           example: case-abc-001
+        displayNumber:
+          type: string
+          description: |
+            Guardian-facing case identifier for display, when it differs from the
+            opaque `caseId` (e.g. a CBMS case number or a Colorado application id).
+            Omit when there's nothing distinct to show.
+          example: CBMS-55012
+        applicationId:
+          type: string
+          description: |
+            Links this case to the `applicationNumber` of the application it
+            originated from, when one exists. Omitted for auto-issued cases.
+          example: app-abc-77
         childFirstName:
           type: string
           example: Maria
@@ -1103,6 +1139,34 @@ components:
           example: "2018-03-22"
         issuanceType:
           $ref: "#/components/schemas/IssuanceType"
+        isCoLoaded:
+          type: boolean
+          description: Whether this case's benefits are co-loaded onto an existing SNAP/TANF card.
+        isStreamlineCertified:
+          type: boolean
+          description: |
+            Whether the case was auto-certified (streamline certification) rather
+            than originating from a guardian-submitted application.
+        eligibilityType:
+          type: string
+          description: State-specific eligibility category, passed through for display/analytics.
+        eligibilitySource:
+          type: string
+          description: Source of eligibility (e.g. school, SNAP, TANF), passed through for display/analytics.
+        benefitAvailableAt:
+          type: string
+          format: date
+          description: Date benefits become available on the card. `YYYY-MM-DD`.
+          example: "2026-06-01"
+        benefitExpiresAt:
+          type: string
+          format: date
+          description: Date benefits expire. `YYYY-MM-DD`.
+          example: "2026-12-01"
+        mailingAddress:
+          allOf:
+            - $ref: "#/components/schemas/MailingAddress"
+          description: Mailing address on file for this case, when available.
         cardDetails:
           allOf:
             - $ref: "#/components/schemas/CardDetails"
@@ -1112,7 +1176,7 @@ components:
             `cardDetails.modes` includes `"batch"`. Card status is not available
             separately — it is always part of this payload.
 
-    CasesLookupRequest:
+    HouseholdLookupRequest:
       type: object
       required: [signals, intent]
       properties:
@@ -1145,9 +1209,9 @@ components:
             When `true` and `cardDetails.modes` contains `"batch"`, card details
             are returned inline. Ignored when batch loading is not supported.
 
-    CasesLookupResponse:
+    HouseholdLookupResponse:
       type: object
-      required: [cases]
+      required: [cases, applications]
       properties:
         cases:
           type: array
@@ -1157,6 +1221,80 @@ components:
           description: |
             Cases for the matched household. Empty array when no match — not a
             `404`. Household size is bounded by program rules; no pagination.
+        applications:
+          type: array
+          items:
+            $ref: "#/components/schemas/Application"
+          maxItems: 20
+          description: |
+            Guardian-submitted applications for the matched household. Read-only —
+            the portal never updates applications. Empty array when the household
+            has none (most do not). A case links back to its application via
+            `SummerEbtCase.applicationId`.
+
+    Application:
+      type: object
+      required: [applicationNumber, status]
+      description: |
+        A guardian-submitted benefit application. Read-only. Most children have no
+        application — most cases are auto-issued. When an approved application
+        results in a case, the case references it via `applicationId`.
+      properties:
+        applicationNumber:
+          type: string
+          description: State's identifier for this application. Referenced by `SummerEbtCase.applicationId`.
+          example: app-abc-77
+        status:
+          $ref: "#/components/schemas/ApplicationStatus"
+        submittedDate:
+          type: string
+          format: date
+          description: Date the guardian submitted the application. `YYYY-MM-DD`.
+          example: "2026-05-02"
+        decisionDate:
+          type: string
+          format: date
+          description: |
+            Date the application reached its current decision (e.g. approved,
+            denied). Omitted while the application is still pending.
+          example: "2026-05-14"
+        issuanceType:
+          $ref: "#/components/schemas/IssuanceType"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/Child"
+          description: Children named on the application.
+
+    ApplicationStatus:
+      type: string
+      description: |
+        Status of a guardian-submitted application. Backends map their CMS-internal
+        status tokens to these canonical values; unrecognized tokens map to `Unknown`.
+      enum:
+        - Pending
+        - UnderReview
+        - Approved
+        - Denied
+        - Cancelled
+        - Unknown
+
+    Child:
+      type: object
+      required: [firstName, dateOfBirth]
+      description: A child named on an application.
+      properties:
+        firstName:
+          type: string
+          example: Liam
+        lastName:
+          type: string
+          example: Garcia
+        dateOfBirth:
+          type: string
+          format: date
+          description: Child's date of birth. `YYYY-MM-DD`.
+          example: "2020-11-05"
 
     CardDetailsResponse:
       type: object
@@ -1183,7 +1321,7 @@ components:
           maxItems: 20
           description: |
             State-native case identifiers to update. As returned by
-            `POST /cases/lookup`.
+            `POST /households/lookup`.
         address:
           $ref: "#/components/schemas/MailingAddress"
 
@@ -1274,7 +1412,7 @@ components:
           minItems: 1
           description: |
             Identity signals for the child being checked. Matching semantics may
-            be more permissive than `POST /cases/lookup` (fuzzy name, approximate
+            be more permissive than `POST /households/lookup` (fuzzy name, approximate
             DOB) per state policy.
 
     EnrollmentCheckResponse:
@@ -1338,7 +1476,7 @@ components:
       required: true
       schema:
         type: string
-      description: State-native case identifier, as returned by `POST /cases/lookup`.
+      description: State-native case identifier, as returned by `POST /households/lookup`.
 
     UserIdentityHeader:
       name: X-Sebt-User-Identity
