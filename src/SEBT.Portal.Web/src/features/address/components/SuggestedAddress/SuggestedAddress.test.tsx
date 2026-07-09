@@ -7,6 +7,7 @@ import { useEffect } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
+import { AnalyticsEvents } from '@sebt/analytics'
 
 import type { AddressUpdateResponse, UpdateAddressRequest } from '../../api/schema'
 import { AddressFlowProvider, useAddressFlow } from '../../context'
@@ -14,6 +15,8 @@ import { SuggestedAddress } from './SuggestedAddress'
 
 const mockPush = vi.fn()
 const mockBack = vi.fn()
+const mockSetPageData = vi.fn()
+const mockTrackEvent = vi.fn()
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -21,6 +24,23 @@ vi.mock('next/navigation', () => ({
     back: mockBack
   })
 }))
+
+vi.mock('@sebt/analytics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/analytics')>()
+  return {
+    ...actual,
+    useDataLayer: () => ({
+      setPageData: mockSetPageData,
+      trackEvent: mockTrackEvent,
+      pageLoad: vi.fn(),
+      setPageCategory: vi.fn(),
+      setPageAttribute: vi.fn(),
+      setUserData: vi.fn(),
+      setUserProfile: vi.fn(),
+      get: vi.fn()
+    })
+  }
+})
 
 let mockState = 'dc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
@@ -144,6 +164,8 @@ describe('SuggestedAddress', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockBack.mockClear()
+    mockSetPageData.mockClear()
+    mockTrackEvent.mockClear()
     mockState = 'dc'
   })
 
@@ -265,6 +287,35 @@ describe('SuggestedAddress', () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/cards/replace/confirm?case=SEBT-001')
     })
+  })
+
+  it('classifies a home-state suggested address as home_state on submit', async () => {
+    server.use(http.put('/api/household/address', () => HttpResponse.json({ status: 'valid' })))
+    const { user } = renderSuggestedAddress()
+
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      expect(mockSetPageData).toHaveBeenCalledWith('address_state_category', 'home_state')
+    })
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+  })
+
+  it('classifies an out-of-state suggested address as out_of_state on submit', async () => {
+    server.use(http.put('/api/household/address', () => HttpResponse.json({ status: 'valid' })))
+    const outOfStateResult: AddressUpdateResponse = {
+      status: 'suggestion',
+      reason: 'corrected',
+      suggestedAddress: { ...mockSuggested, state: 'VA' }
+    }
+    const { user } = renderSuggestedAddress(outOfStateResult)
+
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      expect(mockSetPageData).toHaveBeenCalledWith('address_state_category', 'out_of_state')
+    })
+    expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
   })
 
   it('preserves validationResult in context when Continue is clicked (prevents FlowGuard race)', async () => {

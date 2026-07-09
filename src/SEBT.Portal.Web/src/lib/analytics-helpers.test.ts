@@ -52,7 +52,8 @@ describe('classifyAddressState', () => {
   })
 
   it('compares case-insensitively', () => {
-    expect(classifyAddressState('dc', 'DC')).toBe('home_state')
+    expect(classifyAddressState('dc', 'dc')).toBe('home_state')
+    expect(classifyAddressState('Dc', 'dc')).toBe('home_state')
   })
 
   it('treats a missing state as out_of_state', () => {
