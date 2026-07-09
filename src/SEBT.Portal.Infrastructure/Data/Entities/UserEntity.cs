@@ -51,11 +51,6 @@ public class UserEntity
     public DateTime? IdProofingCompletedAt { get; set; }
 
     /// <summary>
-    /// The date and time when ID proofing expires (if applicable).
-    /// </summary>
-    public DateTime? IdProofingExpiresAt { get; set; }
-
-    /// <summary>
     /// The date and time when the user was first created.
     /// </summary>
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

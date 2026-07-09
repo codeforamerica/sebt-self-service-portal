@@ -369,6 +369,8 @@ describe('AddressForm', () => {
     expect(contactLink).toBeInTheDocument()
     expect(contactLink).toHaveTextContent(/contact us/i)
     expect(contactLink).toHaveAttribute('href', expect.stringContaining('contact'))
+    expect(contactLink).toHaveAttribute('data-analytics-cta', 'address_form_contact_us_cta')
+    expect(contactLink).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
   })
 
   // TODO: Re-enable once the local 30-char validation in AddressForm.validate() is
@@ -519,6 +521,57 @@ describe('AddressForm', () => {
     expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
     expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
     expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
+  })
+
+  // --- Client-side validation analytics ---
+
+  it('emits a validation error (TOO_LONG, streetAddress1) and makes no backend call for an over-length street', async () => {
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Avenue NW')
+    await user.type(getPostalInput(), '20001')
+
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_VALIDATION_ERROR)
+    })
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'TOO_LONG')
+    expect(mockSetPageData).toHaveBeenCalledWith('field_name', 'streetAddress1')
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+  })
+
+  it('emits a validation error (REQUIRED, city) and makes no backend call for a missing city', async () => {
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '123 Main St NW')
+    await user.clear(getCityInput())
+    await user.type(getPostalInput(), '20001')
+
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_VALIDATION_ERROR)
+    })
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'REQUIRED')
+    expect(mockSetPageData).toHaveBeenCalledWith('field_name', 'city')
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+  })
+
+  it('emits a validation error (INVALID_ZIP, postalCode) and makes no backend call for a bad ZIP', async () => {
+    const { user } = renderForm()
+
+    await user.type(getStreetInput(), '123 Main St NW')
+    await user.type(getPostalInput(), 'abcde')
+
+    await user.click(screen.getByRole('button', { name: /continue/i }))
+
+    await waitFor(() => {
+      expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_VALIDATION_ERROR)
+    })
+    expect(mockSetPageData).toHaveBeenCalledWith('error_code', 'INVALID_ZIP')
+    expect(mockSetPageData).toHaveBeenCalledWith('field_name', 'postalCode')
+    expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
   })
 
   // --- Back button ---

@@ -78,13 +78,13 @@ const stateLinks: Record<string, StateLinks> = {
       digitalAccessibility: 'https://cdhs.colorado.gov/accessibility-at-cdhs'
     },
     help: {
-      faqs: '',
+      faqs: 'https://cdhs.colorado.gov/summer-ebt-faq',
       contactUs: '',
       sebtMainSite: 'https://co.gov/sebt',
-      helpDeskEmail: ''
+      helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
     },
     external: {
-      contactUsAssistance: '#'
+      contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
     }
   }
 }

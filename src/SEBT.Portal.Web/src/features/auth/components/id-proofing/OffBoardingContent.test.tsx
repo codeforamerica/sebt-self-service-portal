@@ -186,4 +186,90 @@ describe('OffBoardingContent', () => {
       expect(paragraphs).toHaveLength(1)
     })
   })
+
+  describe('Continue action', () => {
+    const CONTINUE_PROPS = {
+      ...DEFAULT_PROPS,
+      continueHref: '/login/id-proofing',
+      continueLabel: 'Continue'
+    }
+
+    it('renders a Continue button as the primary action when continue props are provided', () => {
+      render(<OffBoardingContent {...CONTINUE_PROPS} />)
+
+      const continueLink = screen.getByRole('link', { name: 'Continue' })
+      expect(continueLink).toHaveAttribute('href', '/login/id-proofing')
+      expect(continueLink).toHaveClass('usa-button')
+    })
+
+    it('omits the Contact button when Continue is provided', () => {
+      render(<OffBoardingContent {...CONTINUE_PROPS} />)
+
+      expect(screen.queryByRole('link', { name: /contact us/i })).not.toBeInTheDocument()
+    })
+
+    it('keeps the "Enter an ID number" outline button alongside Continue', () => {
+      render(<OffBoardingContent {...CONTINUE_PROPS} />)
+
+      const backLink = screen.getByRole('link', { name: CONTINUE_PROPS.backLabel })
+      expect(backLink).toHaveClass('usa-button--outline')
+    })
+
+    it('renders the Contact button (not Continue) when continue props are absent', () => {
+      render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      expect(screen.queryByRole('link', { name: 'Continue' })).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /contact us/i })).toBeInTheDocument()
+    })
+  })
+
+  describe('Body list and note (Figma core body content)', () => {
+    const ID_TYPES = ['driver’s license', 'foreign passport', 'or another photo ID']
+
+    it('renders bodyList items as list items above the buttons', () => {
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          bodyList={ID_TYPES}
+        />
+      )
+
+      const items = screen.getAllByRole('listitem')
+      expect(items.map((li) => li.textContent)).toEqual(ID_TYPES)
+    })
+
+    it('renders the bodyNote paragraph when provided', () => {
+      const note =
+        'You may be able to skip this step by going back and typing in an ID number instead.'
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          bodyNote={note}
+        />
+      )
+
+      expect(screen.getByText(note)).toBeInTheDocument()
+    })
+
+    it('shows bodyList and bodyNote even when canApply is false', () => {
+      const note = 'Skip note text.'
+      render(
+        <OffBoardingContent
+          {...DEFAULT_PROPS}
+          canApply={false}
+          bodyList={ID_TYPES}
+          bodyNote={note}
+        />
+      )
+
+      expect(screen.getAllByRole('listitem')).toHaveLength(ID_TYPES.length)
+      expect(screen.getByText(note)).toBeInTheDocument()
+    })
+
+    it('renders no list when bodyList is empty or omitted', () => {
+      render(<OffBoardingContent {...DEFAULT_PROPS} />)
+
+      expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
+    })
+  })
 })

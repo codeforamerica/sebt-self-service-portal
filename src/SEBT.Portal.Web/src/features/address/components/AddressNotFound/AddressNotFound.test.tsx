@@ -1,3 +1,4 @@
+import { DataLayer, DataLayerProvider } from '@sebt/analytics'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import i18n from 'i18next'
@@ -5,6 +6,7 @@ import { useEffect } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import enCOConfirmInfo from '@/content/locales/en/co/confirmInfo.json'
+import { portalRoutes } from '@/lib/analytics-routes'
 
 import type { AddressUpdateResponse, UpdateAddressRequest } from '../../api/schema'
 import { AddressFlowProvider, useAddressFlow } from '../../context'
@@ -15,8 +17,18 @@ const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush
-  })
+  }),
+  usePathname: () => '/profile/address/address-not-found'
 }))
+
+// The DataLayer PageTracker sets page.flow/step inside a requestAnimationFrame, which
+// jsdom does not flush synchronously. Flush it so the cta_click emission test sees a
+// deterministic address-update page context.
+vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+  cb(0)
+  return 0
+})
+vi.stubGlobal('cancelAnimationFrame', vi.fn())
 
 let mockState = 'dc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
@@ -170,12 +182,47 @@ describe('AddressNotFound', () => {
       expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
     })
 
-    it('DC: "Contact us" link points to the state help URL', () => {
+    it('DC: "Contact us" link points to the state help URL and is instrumented for analytics', () => {
       mockState = 'dc'
       renderComponent()
 
       const contactLink = screen.getByRole('link', { name: /contact us/i })
       expect(contactLink).toHaveAttribute('href', 'https://sunbucks.dc.gov/page/contact-us')
+      expect(contactLink).toHaveAttribute('data-analytics-cta', 'address_not_found_contact_us_cta')
+      expect(contactLink).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
+    })
+
+    it('DC: emits a cta_click with the address-update context when "Contact us" is activated', async () => {
+      mockState = 'dc'
+      new DataLayer('digitalData')
+      const user = userEvent.setup()
+
+      render(
+        <DataLayerProvider
+          application="test"
+          routes={portalRoutes}
+        >
+          <AddressFlowProvider>
+            <ContextSeeder
+              enteredAddress={TEST_ADDRESS}
+              validationResult={TEST_VALIDATION_RESULT}
+            />
+          </AddressFlowProvider>
+        </DataLayerProvider>
+      )
+
+      await user.click(screen.getByRole('link', { name: /contact us/i }))
+
+      const ctaEvents = window.digitalData!.event.filter((e) => e.eventName === 'cta_click')
+      const ctaEvent = ctaEvents[ctaEvents.length - 1]
+      expect(ctaEvent).toBeDefined()
+      expect(ctaEvent!.eventData).toMatchObject({
+        cta_id: 'address_not_found_contact_us_cta',
+        cta_destination_type: 'external_only',
+        flow: 'address_update',
+        step: 'address_not_found'
+      })
+      expect(ctaEvent!.eventData.cta_target as string).toMatch(/contact us/i)
     })
   })
 

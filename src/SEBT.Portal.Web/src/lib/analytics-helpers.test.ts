@@ -7,6 +7,7 @@ import {
   apiErrorCodeFromUnknown,
   classifyAddressState,
   trackAddressUpdateSubmit,
+  trackAddressUpdateValidationError,
   trackCardReplacementSubmit
 } from './analytics-helpers'
 
@@ -128,6 +129,25 @@ describe('trackAddressUpdateSubmit', () => {
     trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null)
 
     expect(setPageData).not.toHaveBeenCalledWith('address_state_category', expect.anything())
+  })
+})
+
+describe('trackAddressUpdateValidationError', () => {
+  const setPageData = vi.fn()
+  const trackEvent = vi.fn()
+
+  beforeEach(() => {
+    setPageData.mockClear()
+    trackEvent.mockClear()
+  })
+
+  it('emits the validation-error event with error_code and field_name', () => {
+    trackAddressUpdateValidationError({ setPageData, trackEvent }, 'TOO_LONG', 'streetAddress1')
+
+    expect(setPageData).toHaveBeenCalledWith('error_code', 'TOO_LONG')
+    expect(setPageData).toHaveBeenCalledWith('field_name', 'streetAddress1')
+    expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_VALIDATION_ERROR)
+    expect(trackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
   })
 })
 

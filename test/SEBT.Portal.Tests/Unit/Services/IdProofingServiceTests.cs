@@ -185,4 +185,39 @@ public class IdProofingServiceTests
         Assert.False(visibility.IncludeEmail);
         Assert.False(visibility.IncludePhone);
     }
+
+    // Per-case-type "address+view" IdProofingRequirements must resolve against the user's actual cases,
+    // mirroring how household+view is evaluated. Without this, a per-case-type
+    // PII requirement silently degrades to IAL1 for every request, because the
+    // requirement is resolved against an empty case list.
+    [Fact]
+    public void GetVisibility_PerCaseTypeAddressView_ResolvesAgainstActualCases()
+    {
+        var settings = new IdProofingRequirementsSettings();
+        settings.Requirements["address+view"] = IalRequirement.PerCaseType(
+            new Dictionary<string, IalLevel>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["application"] = IalLevel.IAL1plus,
+                ["streamline"] = IalLevel.IAL1plus,
+                ["coloadedStreamline"] = IalLevel.IAL1plus
+            });
+        settings.Requirements["email+view"] = IalRequirement.Uniform(IalLevel.IAL1);
+        settings.Requirements["phone+view"] = IalRequirement.Uniform(IalLevel.IAL1);
+
+        var service = CreateService(settings);
+
+        var streamlineCase = new SummerEbtCase
+        {
+            ChildFirstName = "Test",
+            ChildLastName = "Child",
+            IsStreamlineCertified = true,
+            IsCoLoaded = false
+        };
+
+        var visibility = service.GetVisibility(UserIalLevel.IAL1, [streamlineCase]);
+
+        Assert.False(visibility.IncludeAddress);
+        Assert.True(visibility.IncludeEmail);
+        Assert.True(visibility.IncludePhone);
+    }
 }

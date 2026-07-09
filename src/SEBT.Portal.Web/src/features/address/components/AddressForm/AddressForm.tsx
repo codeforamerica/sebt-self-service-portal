@@ -8,7 +8,11 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design-system'
 
 import type { Address } from '@/features/household/api'
-import { classifyAddressState, trackAddressUpdateSubmit } from '@/lib/analytics-helpers'
+import {
+  classifyAddressState,
+  trackAddressUpdateSubmit,
+  trackAddressUpdateValidationError
+} from '@/lib/analytics-helpers'
 import { useDataLayer } from '@sebt/analytics'
 
 import { isValidZip, useUpdateAddress } from '../../api'
@@ -25,8 +29,9 @@ interface AddressFormProps {
 
 // Field errors store an i18n key + its namespace (not the resolved string) so the messages
 // re-translate at render time when the user switches language (DC-454). Most keys live in the
-// `validation` namespace; the street-address ones live in `confirmInfo`.
-type FieldErrorDescriptor = { ns: 'validation' | 'confirmInfo'; key: string }
+// `validation` namespace; the street-address ones live in `confirmInfo`. `code` is the
+// taxonomy-aligned analytics error_code reported when client-side validation blocks submit.
+type FieldErrorDescriptor = { ns: 'validation' | 'confirmInfo'; key: string; code?: string }
 
 interface FieldErrors {
   streetAddress1?: FieldErrorDescriptor
@@ -159,20 +164,20 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
   function validate(): FieldErrors {
     const errors: FieldErrors = {}
-    const required: FieldErrorDescriptor = { ns: 'validation', key: 'required' }
+    const required: FieldErrorDescriptor = { ns: 'validation', key: 'required', code: 'REQUIRED' }
 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
     } else if (streetAddress1.trim().length > 30) {
       // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
-      errors.streetAddress1 = { ns: 'confirmInfo', key: 'helperStreetAddress' }
+      errors.streetAddress1 = { ns: 'confirmInfo', key: 'helperStreetAddress', code: 'TOO_LONG' }
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
     if (!postalCode.trim()) {
       errors.postalCode = required
     } else if (!isValidZip(postalCode.trim())) {
-      errors.postalCode = { ns: 'validation', key: 'enterZip' }
+      errors.postalCode = { ns: 'validation', key: 'enterZip', code: 'INVALID_ZIP' }
     }
 
     return errors
@@ -186,6 +191,17 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
     setFieldErrors(errors)
 
     if (Object.keys(errors).length > 0) {
+      // Client-side validation blocked the submit before any backend request. Emit one
+      // validation-error event for the first failing field so these failures stay measurable.
+      const firstEntry = Object.entries(errors)[0]
+      if (firstEntry) {
+        const [fieldName, descriptor] = firstEntry
+        trackAddressUpdateValidationError(
+          { setPageData, trackEvent },
+          descriptor?.code ?? 'INVALID_INPUT',
+          fieldName
+        )
+      }
       return
     }
 
@@ -251,6 +267,8 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
             <a
               href={getStateLinks(currentState).help.contactUs}
               className="usa-link"
+              data-analytics-cta="address_form_contact_us_cta"
+              data-analytics-cta-destination-type="external_only"
             >
               {t('alertAction')}
             </a>

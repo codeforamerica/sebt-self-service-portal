@@ -53,7 +53,7 @@ public class RequestCardReplacementCommandHandler(
         var identifier = await resolver.ResolveAsync(command.User, cancellationToken);
         if (identifier == null)
         {
-            logger.LogWarning(
+            logger.LogError(
                 "Card replacement attempted but no household identifier could be resolved from claims");
             return Result.Unauthorized("Unable to identify user from token.");
         }
@@ -123,7 +123,7 @@ public class RequestCardReplacementCommandHandler(
         var userId = command.User.GetUserId();
         if (userId == null)
         {
-            logger.LogWarning("Card replacement: unable to resolve user ID from claims");
+            logger.LogError("Card replacement: unable to resolve user ID from claims");
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
