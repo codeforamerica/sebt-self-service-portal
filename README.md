@@ -52,6 +52,21 @@ This platform alllows parents/guardians of children eligible for [Summer EBT / S
 - Infrastructure as Code using OpenTofu (Terraform) - see [tofu](./tofu/)
 - Docker with [docker-compose](https://docs.docker.com/compose/) for local development
 
+## Architecture
+
+The product follows Clean Architecture (see [ADR-0002](docs/adr/0002-adopt-clean-architecture.md)). At a glance:
+
+- **Api** — ASP.NET Core entry point: controllers, middleware, plugin loading
+- **UseCases** — application layer command/query handlers (auth, households)
+- **Core** — domain models, service interfaces, exceptions, settings
+- **Infrastructure** — EF Core `DbContext`, repositories, service implementations, migrations
+- **Infrastructure.Seeding** — Development-only data seeding
+- **Kernel** / **Kernel.AspNetCore** — cross-cutting base classes and ASP.NET extensions
+- **Web** — the Next.js portal frontend (see [SEBT.Portal.Web README](./src/SEBT.Portal.Web/README.md))
+- **EnrollmentChecker.Web** — a standalone Next.js enrollment-check app (see [SEBT.EnrollmentChecker.Web](./src/SEBT.EnrollmentChecker.Web))
+- **packages/** — shared workspace packages: `design-system` (tokens, locale generation, content) and `analytics`
+
+
 ## Local Environment Set Up 🧰
 
 > **Note:** The following steps assume you are working on macOS. Steps may differ if you are working on a different operating system.
