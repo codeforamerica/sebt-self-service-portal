@@ -51,7 +51,7 @@ internal static class CbmsResponseMapper
             } : null,
             BenefitIssuanceType = BenefitIssuanceType.SummerEbt,
             SummerEbtCases = BuildCases(students, piiVisibility, logger),
-            Applications = BuildApplications(students)
+            Applications = BuildApplications(students, logger)
         };
 
         return household;
@@ -97,7 +97,7 @@ internal static class CbmsResponseMapper
             HouseholdType = "SEBT",
             EligibilityType = s.StdntEligSts ?? string.Empty,
             IssuanceType = IssuanceType.SummerEbt,
-            ApplicationStatus = MapCaseStatus(s.StdntEligSts),
+            ApplicationStatus = MapCaseStatus(s.StdntEligSts, logger),
             MailingAddress = piiVisibility.IncludeAddress ? MapAddress(s) : null,
             EbtCaseNumber = cbmsCaseId,
             CaseDisplayNumber = displayReferenceId,
@@ -123,6 +123,8 @@ internal static class CbmsResponseMapper
         ILogger? logger)
     {
         return students
+            // No logger for the filter's mapping call: an unmapped token for an application-based
+            // student is logged once via the application's children mapping instead.
             .Where(s => !EligibilitySourceClassifier.IsApplicationBased(s.EligSrc)
                       || MapCaseStatus(s.StdntEligSts) == ApplicationStatus.Approved)
             .Select(s => MapToSummerEbtCase(s, piiVisibility, logger))
@@ -133,7 +135,7 @@ internal static class CbmsResponseMapper
     /// Builds the Applications collection. Only rows where EligSrc indicates
     /// an actual application was submitted (CBMS or PK), grouped by SebtAppId.
     /// </summary>
-    private static List<Application> BuildApplications(List<GetAccountStudentDetail> students)
+    private static List<Application> BuildApplications(List<GetAccountStudentDetail> students, ILogger? logger)
     {
         var applicationRows = students
             .Where(s => EligibilitySourceClassifier.IsApplicationBased(s.EligSrc))
@@ -148,13 +150,13 @@ internal static class CbmsResponseMapper
             {
                 ApplicationNumber = sebtAppIdText,
                 CaseNumber = sebtAppIdText,
-                ApplicationStatus = MapApplicationStatus(first.SebtAppSts),
+                ApplicationStatus = MapApplicationStatus(first.SebtAppSts, logger),
                 IssuanceType = IssuanceType.SummerEbt,
                 Children = g.Select(c => new Child
                 {
                     FirstName = c.StdFstNm ?? string.Empty,
                     LastName = c.StdLstNm ?? string.Empty,
-                    Status = MapCaseStatus(c.StdntEligSts)
+                    Status = MapCaseStatus(c.StdntEligSts, logger)
                 }).ToList()
             };
         }).ToList();
@@ -164,7 +166,7 @@ internal static class CbmsResponseMapper
     /// Maps the CBMS case/eligibility status code (<c>stdntEligSts</c>) to a portal ApplicationStatus.
     /// These 2-letter codes represent the case-level determination (approved, denied, pending).
     /// </summary>
-    private static ApplicationStatus MapCaseStatus(string? stdntEligSts)
+    private static ApplicationStatus MapCaseStatus(string? stdntEligSts, ILogger? logger = null)
     {
         if (string.IsNullOrEmpty(stdntEligSts)) return ApplicationStatus.Unknown;
         return stdntEligSts.ToUpperInvariant() switch
@@ -177,7 +179,7 @@ internal static class CbmsResponseMapper
             "PE" => ApplicationStatus.Pending,
             "PG" => ApplicationStatus.Pending,
             "PS" => ApplicationStatus.Pending,
-            _ => ApplicationStatus.Unknown
+            _ => LogAndReturnUnknownStatus(stdntEligSts, "stdntEligSts", logger)
         };
     }
 
@@ -185,7 +187,7 @@ internal static class CbmsResponseMapper
     /// Maps the CBMS application processing status code (<c>sebtAppSts</c>) to a portal ApplicationStatus.
     /// These 2-letter codes represent application processing state — all known codes are in-process.
     /// </summary>
-    private static ApplicationStatus MapApplicationStatus(string? sebtAppSts)
+    private static ApplicationStatus MapApplicationStatus(string? sebtAppSts, ILogger? logger = null)
     {
         if (string.IsNullOrEmpty(sebtAppSts)) return ApplicationStatus.Unknown;
         return sebtAppSts.ToUpperInvariant() switch
@@ -198,7 +200,7 @@ internal static class CbmsResponseMapper
             "PS" => ApplicationStatus.Pending,
             "PW" => ApplicationStatus.Pending,
             "RC" => ApplicationStatus.Pending,
-            _ => ApplicationStatus.Unknown
+            _ => LogAndReturnUnknownStatus(sebtAppSts, "sebtAppSts", logger)
         };
     }
 
@@ -228,6 +230,16 @@ internal static class CbmsResponseMapper
             "If this token represents a real status, add it to the status mapping table.",
             raw);
         return CardStatus.Unknown;
+    }
+
+    private static ApplicationStatus LogAndReturnUnknownStatus(string raw, string cbmsField, ILogger? logger)
+    {
+        logger?.LogError(
+            "CBMS returned unmapped {Field} token {Token}; falling back to ApplicationStatus.Unknown. " +
+            "If this token represents a real status, add it to the status mapping table.",
+            cbmsField,
+            raw);
+        return ApplicationStatus.Unknown;
     }
 
     private static DateOnly? ParseDateOnly(string? value)
