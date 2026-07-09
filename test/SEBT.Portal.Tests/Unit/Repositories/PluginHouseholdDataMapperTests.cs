@@ -131,6 +131,30 @@ public class PluginHouseholdDataMapperTests
     }
 
     [Fact]
+    public void ToCore_WhenSourceApplicationHasApplicationDate_MapsApplicationDate()
+    {
+        var source = new HouseholdData
+        {
+            Email = "a@b.com",
+            Applications = new List<Application>
+            {
+                new Application
+                {
+                    ApplicationNumber = "APP-002",
+                    ApplicationStatus = ApplicationStatus.Pending,
+                    ApplicationDate = new DateTime(2026, 5, 15)
+                }
+            }
+        };
+
+        var result = PluginHouseholdDataMapper.ToCore(source);
+
+        Assert.NotNull(result);
+        Assert.Single(result.Applications);
+        Assert.Equal(new DateTime(2026, 5, 15), result.Applications[0].ApplicationDate);
+    }
+
+    [Fact]
     public void ToCore_WhenSourceHasSummerEbtCases_MapsIssuanceType()
     {
         var source = new HouseholdData

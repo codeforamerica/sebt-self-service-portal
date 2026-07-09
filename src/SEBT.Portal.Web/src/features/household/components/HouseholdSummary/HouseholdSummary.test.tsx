@@ -121,6 +121,31 @@ describe('HouseholdSummary', () => {
     expect(screen.queryByText('Application in-progress')).not.toBeInTheDocument()
   })
 
+  it('renders approved status for an approved application awaiting issuance', () => {
+    // Approved application, benefits not yet issued. The household's status is known,
+    // so the summary must not claim it is unavailable.
+    mockReturnData = { ...defaultMockData, summerEbtCases: [] }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Application approved')).toBeInTheDocument()
+    expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
+    expect(screen.queryByText('Status unavailable')).not.toBeInTheDocument()
+  })
+
+  it('renders cancelled status for a cancelled application when no cases', () => {
+    const cancelledApp: Application = { ...mockApplication, applicationStatus: 'Cancelled' }
+    mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [cancelledApp] }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Application cancelled')).toBeInTheDocument()
+  })
+
+  it('renders a safe default when the application status is unmapped', () => {
+    const unknownApp: Application = { ...mockApplication, applicationStatus: 'Unknown' }
+    mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [unknownApp] }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Status unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
+  })
+
   it('renders mailing address when provided', () => {
     render(<HouseholdSummary />)
     expect(screen.getByText('Your mailing address')).toBeInTheDocument()
