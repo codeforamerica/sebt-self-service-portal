@@ -1,16 +1,36 @@
-# Summer EBT (SUN Bucks) Self-Service Portal
+# Summer EBT (SUN Bucks) Self-Service Portal and Enrollment Checker
 
 [![State CI](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml/badge.svg)](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml)
 
-## Background
 
-The Summer EBT (SUN Bucks) Self-Service Portal is an application that allows parents/guardians
-of children eligible for [Summer EBT](https://www.fns.usda.gov/summer/sunbucks) manage their benefit, including the following core features:
+# About
 
-- Verifying a child's eligibility
-- Verifying when and how the benefit will be received (which EBT card)
-- Changing mailing address on file
-- Requesting a replacement EBT card
+This platform alllows parents/guardians of children eligible for [Summer EBT / Sun Bucks](https://www.fns.usda.gov/summer/sunbucks) to view the status of and manage their benefit.
+
+- The **Enrollment Checker** enables families to quickly confirm whether their child is already enrolled in the program or if they need to apply, without having to log in
+  
+- The **Self-Service Portal** allows families to log in and:
+  - Check Summer EBT benefits and card status for all enrolled children their household
+  - See the application status for any applications they submitted
+  - View or update their mailing adddress on file
+  - Request a replcement Summer EBT card
+  - Opt-in to email communications about benefits
+
+## Product Capabilities
+
+| Capability | What it does | Key dependencies | Configured by |
+| --- | --- | --- | --- |
+| **Portal: Authentication** | Users can sign into the Portal, configured via one-time password (OTP) email or OpenID Connect (OIDC) provider | An OIDC provider | See [OIDC Support](#oidc-support)  |
+| **Portal: Identity proofing** | Users proof to an appropriate Identity Assurance Level (IAL) threshold ("step-up") before accessing Personally Identifiable Information (PII). Users below a threshold see masked data or are blocked. | Via OIDC provider or **Socure** Web SDK (frontend) + API (backend) | Configured via `Appsettings` -> `IdProofingRequirements`. For dev, a stub/mock (`NEXT_PUBLIC_MOCK_SOCURE` / `UseStub`) is available. See [ID Proofing](#id-proofing-requirements). |
+| **Portal: Dashboard for SEBT enrollment and benefit status** | Users can view case enrollment data for each child in their household, status of EBT cards, and any outstanding SEBT applications | State endpoint to read household data | Configured via state connectors. For dev, `UseMockHouseholdData: true` is available to mock the state integration |
+| **Portal: Update mailing address** | Users can update their mailing address in their state's system of record, to ensure delivery of cards | State endpoint to write household data | Configured via state connectors |
+| **Portal: Validate mailing address** | When users update their mailing address, they see type-ahead autocomplete and/or their input is validated against USPS on the back end | Enabled through **Smarty** | Frontend enabled with embedded key (`NEXT_PUBLIC_SMARTY_EMBEDDED_KEY`).  Backend enabled with `PassThroughAddressUpdateService`, uses `AuthId`/`AuthToken` |
+| **Portal: Request replacement EBT card** | Users can request a replacement EBT card if it has been lost or stolen | State endpoint to submit card replacement requests | Configured via `SelfServiceRules` |
+| **Enrollment Checker** | Users can check whether their child is already enrolled in SEBT or if they need to apply, without having to log into the portal | State endpoint to check enrollment | This is a standalone NextJS app that uses the Portal API,  deployable as a static site (SSG) or SSR. See [EnrollmentChecker.Web](./src/SEBT.EnrollmentChecker.Web) |
+| **Custom theming, content and localization** | Product look/feel, copy, and localization (translations) can be customized according to state needs | | Configured in `packages/design-system` (tokens + content generation). See [Content & Localization Generation](#content--localization-generation). |
+| **Product analytics** | Optional analytics events to understand user behavior | Currently works with **Google Analytics**, **Amplitude**, **Mixpanel** or **SiteImprove** | See [Analytics](#analytics). |
+| **Caching** | Improves application experience via optional distributed caching | **Redis** (`HybridCache`) | See [Redis](#redis-distributed-cache), falls back to in-memory when unconfigured|
+| **Observability and telemetry** | Provides structured logging and distributed tracing via **Serilog** and **OpenTelemetry** | An OTEL-compatible observability platform  | (see [Jaeger](#jaeger-local-opentelemetry-tracing) locally) |
 
 ## Technology Stack overview
 
