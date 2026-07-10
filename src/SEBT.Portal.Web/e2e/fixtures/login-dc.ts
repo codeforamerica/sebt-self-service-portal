@@ -34,9 +34,6 @@ export async function reachOtpVerifyPage(
     `OTP request failed with status ${otpRequest.status()} for ${email}`
   ).toBeTruthy()
 
-  // Poll Mailpit only after the OTP request succeeds so the timeout covers delivery time.
-  const otpEmailPromise = waitForEmail ? waitForOtpEmail(email) : undefined
-
   // LoginForm sets otp_email in sessionStorage then router.push('/login/verify').
   await expect(page).toHaveURL(/\/login\/verify\/?$/, { timeout: 15_000 })
   await expect
@@ -44,7 +41,13 @@ export async function reachOtpVerifyPage(
     .toBe(email)
   await expect(page.locator('[name="otp"]')).toBeVisible({ timeout: 15_000 })
 
-  return { otpEmailPromise }
+  // Poll Mailpit only after the verify screen is ready so a failed assertion above
+  // does not leave a background poll running until timeout.
+  if (waitForEmail) {
+    return { otpEmailPromise: waitForOtpEmail(email) }
+  }
+
+  return {}
 }
 
 /** Submits an OTP code on /login/verify and waits for the validate API response. */
