@@ -20,6 +20,14 @@ export const PAGE_LOAD = 'page_load'
  *    the address-update flow these are `flow: 'address_update'` with the route's step.
  */
 export const CTA_CLICK = 'cta_click'
+/**
+ * Fired once per Web Vitals metric (ttfb, fcp, lcp, cls, inp) as it finalizes — at most
+ * five per hard page load. Carries `metric_name`, `metric_value` (ms for timing metrics,
+ * unitless 4-decimal for CLS), `metric_rating`, plus `page_instance_id` and `initial_path`,
+ * which pin late-finalizing metrics (CLS/INP report at page-hide) to the page load they
+ * measured even if the user has since soft-navigated.
+ */
+export const WEB_VITALS = 'web_vitals'
 
 // Authentication
 export const OTP_REQUEST = 'otp_request'
