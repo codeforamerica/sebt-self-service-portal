@@ -1,5 +1,6 @@
 import { act, render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { StrictMode } from 'react'
 
 import { DataLayer } from './data-layer'
 import { DataLayerProvider } from './DataLayerProvider'
@@ -221,6 +222,20 @@ describe('WebVitalsTracker (via DataLayerProvider)', () => {
 
     expect(mockInitWebVitals).toHaveBeenCalledTimes(1)
     expect(mockInitWebVitals).toHaveBeenCalledWith(window.digitalData)
+  })
+
+  it('subscribes only once under StrictMode double-mounting', () => {
+    new DataLayer('digitalData')
+
+    render(
+      <StrictMode>
+        <DataLayerProvider application="test">
+          <div />
+        </DataLayerProvider>
+      </StrictMode>
+    )
+
+    expect(mockInitWebVitals).toHaveBeenCalledTimes(1)
   })
 
   it('does not re-subscribe on re-render or navigation', () => {

@@ -26,6 +26,8 @@ export const CTA_CLICK = 'cta_click'
  * unitless 4-decimal for CLS), `metric_rating`, plus `page_instance_id` and `initial_path`,
  * which pin late-finalizing metrics (CLS/INP report at page-hide) to the page load they
  * measured even if the user has since soft-navigated.
+ * CLS and INP are cumulative and can grow after they first finalize; the recorded value is the
+ * metric as of the first page-hide — an accepted tradeoff for strict once-per-load semantics.
  */
 export const WEB_VITALS = 'web_vitals'
 
