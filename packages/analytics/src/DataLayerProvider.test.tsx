@@ -10,6 +10,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mockPathname
 }))
 
+const mockInitWebVitals = vi.fn(() => vi.fn())
+vi.mock('./web-vitals', () => ({
+  initWebVitals: (dl: unknown) => mockInitWebVitals(dl)
+}))
+
 // jsdom does not implement requestAnimationFrame; stub it to flush synchronously
 vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
   cb(0)
@@ -196,5 +201,44 @@ describe('PageTracker (via DataLayerProvider)', () => {
 
     expect(window.digitalData!.get('page.flow')).toBe('')
     expect(window.digitalData!.get('page.step')).toBe('')
+  })
+})
+
+describe('WebVitalsTracker (via DataLayerProvider)', () => {
+  beforeEach(() => {
+    delete (window as unknown as Record<string, unknown>).digitalData
+    mockInitWebVitals.mockClear()
+  })
+
+  it('initializes web vitals tracking once with the live data layer', () => {
+    new DataLayer('digitalData')
+
+    render(
+      <DataLayerProvider application="test">
+        <div />
+      </DataLayerProvider>
+    )
+
+    expect(mockInitWebVitals).toHaveBeenCalledTimes(1)
+    expect(mockInitWebVitals).toHaveBeenCalledWith(window.digitalData)
+  })
+
+  it('does not re-subscribe on re-render or navigation', () => {
+    new DataLayer('digitalData')
+
+    const { rerender } = render(
+      <DataLayerProvider application="test">
+        <div />
+      </DataLayerProvider>
+    )
+
+    mockPathname = '/login'
+    rerender(
+      <DataLayerProvider application="test">
+        <div />
+      </DataLayerProvider>
+    )
+
+    expect(mockInitWebVitals).toHaveBeenCalledTimes(1)
   })
 })
