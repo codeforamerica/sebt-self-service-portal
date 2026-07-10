@@ -27,7 +27,7 @@ public class OpenTelemetrySettings
     /// </summary>
     public HistogramAggregationKind HistogramAggregation { get; set; } = HistogramAggregationKind.Explicit;
 
-    public enum ExporterKind { None, Console, Otlp }
-    public enum HistogramAggregationKind { Explicit, Exponential }
-
 }
+
+public enum ExporterKind { None, Console, Otlp }
+public enum HistogramAggregationKind { Explicit, Exponential }
