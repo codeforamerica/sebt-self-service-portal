@@ -27,21 +27,6 @@ public class OpenTelemetrySettings
     /// </summary>
     public HistogramAggregationKind HistogramAggregation { get; set; } = HistogramAggregationKind.Explicit;
 
-    #region "Nested OpenTelemetry SDK Settings Classes"
-    public OtlpExporterSettings OtlpExporter { get; set; } = new();
-    public AspNetCoreInstrumentationSettings AspNetCoreInstrumentation { get; set; } = new();
-    #endregion
-
-    public class OtlpExporterSettings
-    {
-        public Uri Endpoint { get; set; } = new Uri("http://localhost:4317");
-    }
-
-    public class AspNetCoreInstrumentationSettings
-    {
-        public bool RecordException { get; set; } = true;   // binder coerces "true" string -> bool
-    }
-
     public enum ExporterKind { None, Console, Otlp }
     public enum HistogramAggregationKind { Explicit, Exponential }
 

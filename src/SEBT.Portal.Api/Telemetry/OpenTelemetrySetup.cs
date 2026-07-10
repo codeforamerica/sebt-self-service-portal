@@ -25,7 +25,7 @@ internal static class OpenTelemetrySetup
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Use IConfiguration binding for AspNetCore instrumentation and OTLP Exorter options.
+        // Use IConfiguration binding for AspNetCore instrumentation and OTLP Exporter options.
         builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(configSection.GetSection("AspNetCoreInstrumentation"));
         builder.Services.Configure<OtlpExporterOptions>(configSection.GetSection("OtlpExporter"));
 
