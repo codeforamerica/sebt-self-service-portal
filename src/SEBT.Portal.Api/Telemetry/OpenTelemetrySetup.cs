@@ -1,12 +1,14 @@
 using System.Diagnostics.Metrics;
-using Microsoft.Extensions.Logging;
-using OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel.Telemetry;
+
+using static SEBT.Portal.Core.AppSettings.OpenTelemetrySettings;
 
 internal static class OpenTelemetrySetup
 {
@@ -14,10 +16,22 @@ internal static class OpenTelemetrySetup
 
     public static void SetupOpenTelemetry(this WebApplicationBuilder builder)
     {
-        var configSection = builder.Configuration.GetSection("Otel");
+        var configSection =
+            builder.Configuration.GetSection(OpenTelemetrySettings.SectionName);
 
-        // Use IConfiguration binding for AspNetCore instrumentation options.
+        builder.Services
+            .AddOptions<OpenTelemetrySettings>()
+            .Bind(configSection)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // Use IConfiguration binding for AspNetCore instrumentation and OTLP Exorter options.
         builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(configSection.GetSection("AspNetCoreInstrumentation"));
+        builder.Services.Configure<OtlpExporterOptions>(configSection.GetSection("OtlpExporter"));
+
+        // Get the OtelSettings instance from configuration, or use defaults if not present.
+        var otelSettings = configSection
+            .Get<OpenTelemetrySettings>() ?? new OpenTelemetrySettings();
 
         builder.Services.AddOpenTelemetry()
             .ConfigureResource(r => r.AddService(
@@ -25,18 +39,14 @@ internal static class OpenTelemetrySetup
                 serviceInstanceId: Environment.MachineName
             // TODO serviceVersion: ???
             ))
-            .WithTracing(tracingBuilder => ConfigureTracing(tracingBuilder, configSection))
-            .WithMetrics(metricsBuilder => ConfigureMetrics(metricsBuilder, configSection));
+            .WithTracing(tracingBuilder => ConfigureTracing(tracingBuilder, otelSettings))
+            .WithMetrics(metricsBuilder => ConfigureMetrics(metricsBuilder, otelSettings));
 
         // OTLP log export is opt-in (Otel:UseLogExporter=otlp). When disabled we register no
         // OpenTelemetry logging provider at all and Serilog runs writeToProviders: false, so the
         // Serilog -> stdout -> CloudWatch path is completely unaffected by deploying this code.
-        // When enabled, clear the framework's default logger providers first so that — with
-        // Serilog's writeToProviders on — events are forwarded only to the OTLP exporter and are
-        // not also duplicated onto stdout by the default console provider.
-        if (GetConfiguredLogExporter(configSection) == "OTLP")
+        if (otelSettings.UseLogExporter == ExporterKind.Otlp)
         {
-            builder.Logging.ClearProviders();
             builder.Logging.AddOpenTelemetry(ConfigureLogging);
         }
 
@@ -75,14 +85,7 @@ internal static class OpenTelemetrySetup
         ResourceBuilder.CreateDefault()
             .AddService(serviceName: ServiceName, serviceInstanceId: Environment.MachineName);
 
-    /// <summary>
-    /// Reads the configured log exporter. Defaults to <c>CONSOLE</c> so OTLP export is strictly
-    /// opt-in and the CloudWatch logging path is never disrupted by merely deploying this code.
-    /// </summary>
-    internal static string GetConfiguredLogExporter(IConfiguration configSection) =>
-        configSection.GetValue("UseLogExporter", defaultValue: "CONSOLE").ToUpperInvariant();
-
-    private static void ConfigureTracing(TracerProviderBuilder tracingBuilder, IConfiguration configSection)
+    private static void ConfigureTracing(TracerProviderBuilder tracingBuilder, OpenTelemetrySettings otelSettings)
     {
         tracingBuilder
             .AddSource(InstrumentationSource.ActivitySourceName)
@@ -90,17 +93,10 @@ internal static class OpenTelemetrySetup
             .AddHttpClientInstrumentation()
             .AddAspNetCoreInstrumentation();
 
-        // Note: Switch between OTLP/Console by setting UseTracingExporter in appsettings.json.
-        var tracingExporter = configSection.GetValue("UseTracingExporter", defaultValue: "CONSOLE").ToUpperInvariant();
-
-        switch (tracingExporter)
+        switch (otelSettings.UseTracingExporter)
         {
-            case "OTLP":
-                tracingBuilder.AddOtlpExporter(otlpOptions =>
-                {
-                    // Use IConfiguration directly for Otlp exporter endpoint option.
-                    otlpOptions.Endpoint = new Uri(configSection.GetValue("Otlp:Endpoint", defaultValue: "http://localhost:4317"));
-                });
+            case ExporterKind.Otlp:
+                tracingBuilder.AddOtlpExporter();
                 break;
 
             default:
@@ -109,7 +105,7 @@ internal static class OpenTelemetrySetup
         }
     }
 
-    private static void ConfigureMetrics(MeterProviderBuilder metricsBuilder, IConfigurationSection configSection)
+    private static void ConfigureMetrics(MeterProviderBuilder metricsBuilder, OpenTelemetrySettings otelSettings)
     {
         metricsBuilder
             .AddMeter(InstrumentationSource.MeterName)
@@ -118,12 +114,9 @@ internal static class OpenTelemetrySetup
             .AddHttpClientInstrumentation()
             .AddAspNetCoreInstrumentation();
 
-        // Note: Switch between Explicit/Exponential by setting HistogramAggregation in appsettings.json
-        var histogramAggregation = configSection.GetValue("HistogramAggregation", defaultValue: "EXPLICIT").ToUpperInvariant();
-
-        switch (histogramAggregation)
+        switch (otelSettings.HistogramAggregation)
         {
-            case "EXPONENTIAL":
+            case HistogramAggregationKind.Exponential:
                 metricsBuilder.AddView(instrument =>
                 {
                     return instrument.GetType().GetGenericTypeDefinition() == typeof(Histogram<>)
@@ -138,16 +131,10 @@ internal static class OpenTelemetrySetup
         }
 
         // Note: Switch between Prometheus/OTLP/Console by setting UseMetricsExporter in appsettings.json.
-        var metricsExporter = configSection.GetValue("UseMetricsExporter", defaultValue: "CONSOLE").ToUpperInvariant();
-
-        switch (metricsExporter)
+        switch (otelSettings.UseMetricsExporter)
         {
-            case "OTLP":
-                metricsBuilder.AddOtlpExporter(otlpOptions =>
-                {
-                    // Use IConfiguration directly for Otlp exporter endpoint option.
-                    otlpOptions.Endpoint = new Uri(configSection.GetValue("Otlp:Endpoint", defaultValue: "http://localhost:4317"));
-                });
+            case ExporterKind.Otlp:
+                metricsBuilder.AddOtlpExporter();
                 break;
             default:
                 metricsBuilder.AddConsoleExporter();

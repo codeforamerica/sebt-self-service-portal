@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
+using SEBT.Portal.Core.AppSettings;
 
 namespace SEBT.Portal.Tests.Unit.Api.Telemetry;
 
@@ -74,20 +75,29 @@ public class OpenTelemetrySetupTests
     }
 
     [Fact]
-    public void GetConfiguredLogExporter_DefaultsToConsole_SoOtlpIsOptIn()
+    public void UseLogExporter_DefaultsToConsole_SoOtlpIsOptIn()
     {
-        var emptyConfig = new ConfigurationBuilder().Build();
-
-        Assert.Equal("CONSOLE", OpenTelemetrySetup.GetConfiguredLogExporter(emptyConfig));
+        // OTLP log export must be opt-in: with no configuration the CloudWatch/Console path
+        // is left untouched, so a plain OtelSettings instance defaults the log exporter off.
+        Assert.Equal(OpenTelemetrySettings.ExporterKind.Console, new OpenTelemetrySettings().UseLogExporter);
     }
 
     [Fact]
-    public void GetConfiguredLogExporter_SelectsOtlp_WhenConfigured()
+    public void UseLogExporter_BindsToOtlp_WhenConfigured()
     {
+        // Mirrors the binding path in OpenTelemetrySetup.SetupOpenTelemetry: the "Otel" section
+        // is bound onto OtelSettings, and the config binder maps the string case-insensitively
+        // onto the ExporterKind enum.
         var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["UseLogExporter"] = "otlp" })
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{OpenTelemetrySettings.SectionName}:{nameof(OpenTelemetrySettings.UseLogExporter)}"] = "otlp",
+            })
             .Build();
 
-        Assert.Equal("OTLP", OpenTelemetrySetup.GetConfiguredLogExporter(config));
+        var settings = config.GetSection(OpenTelemetrySettings.SectionName).Get<OpenTelemetrySettings>();
+
+        Assert.NotNull(settings);
+        Assert.Equal(OpenTelemetrySettings.ExporterKind.Otlp, settings.UseLogExporter);
     }
 }
