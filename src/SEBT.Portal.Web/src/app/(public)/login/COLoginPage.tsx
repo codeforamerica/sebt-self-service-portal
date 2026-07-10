@@ -2,13 +2,32 @@
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
+import { TextLink, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import { MyColoradoLogo } from './MyColoradoLogo'
 
+function splitParagraphs(text: string): string[] {
+  return text
+    .split(/\r?\n\r?\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+}
+
+function splitListItems(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
 export function COLoginPage({ state }: { state: StateCode }) {
+  const links = getStateLinks(state)
   const { t, i18n } = useTranslation('login')
   const { t: tCommon } = useTranslation('common')
   const { trackEvent } = useDataLayer()
+
+  const aboutParagraphs = splitParagraphs(t('cardBody1'))
+  const aboutListItems = splitListItems(t('cardBody2'))
 
   // The `logIn` translation key resolves to the current UI language's label, and
   // `logInEsp` resolves to the *other* language's label. Pair each button's link
@@ -63,6 +82,53 @@ export function COLoginPage({ state }: { state: StateCode }) {
               <MyColoradoLogo className="margin-right-1" />
               {tCommon('logInEsp')}
             </button>
+          </div>
+
+          <p className="margin-top-4 margin-bottom-1 font-sans-sm">{t('logInDisclaimerBody2')}</p>
+          <p className="margin-top-0 font-sans-sm">
+            <TextLink
+              href={links.external.contactUsAssistance}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {t('logInDisclaimerBody3')}
+            </TextLink>
+          </p>
+        </section>
+
+        <section
+          className="margin-top-4"
+          aria-labelledby="about-portal-title"
+        >
+          <div className="usa-card__container">
+            <div className="usa-card__body">
+              <h2
+                id="about-portal-title"
+                className="usa-card__heading font-sans-lg text-bold margin-top-0"
+              >
+                {t('cardTitle')}
+              </h2>
+
+              {aboutParagraphs.map((paragraph) => (
+                <p
+                  key={paragraph}
+                  className="font-sans-sm margin-bottom-2"
+                >
+                  {paragraph}
+                </p>
+              ))}
+
+              <ul className="usa-list margin-top-0 margin-bottom-0">
+                {aboutListItems.map((item) => (
+                  <li
+                    key={item}
+                    className="font-sans-sm"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </section>
       </div>
