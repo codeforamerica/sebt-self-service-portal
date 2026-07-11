@@ -1,78 +1,38 @@
 'use client'
 
 import { useFeatureFlag, useFeatureFlagsStatus } from '@/features/feature-flags'
-import { readCachedOutageFlag, writeCachedOutageFlag } from '@/features/outage/outageFlagCache'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useSyncExternalStore, type ReactNode } from 'react'
+import { OutageGuard as SharedOutageGuard } from '@sebt/design-system'
+import { type ReactNode } from 'react'
 
-export const OUTAGE_PATH = '/outage'
+export { OUTAGE_PATH } from '@sebt/design-system'
+
+const OUTAGE_FLAG_CACHE_KEY = 'sebt_outage_page_enabled'
 
 interface OutageGuardProps {
   children: ReactNode
 }
 
-function subscribeToOutageFlagCache(callback: () => void) {
-  window.addEventListener('storage', callback)
-  return () => window.removeEventListener('storage', callback)
-}
-
-function getOutageFlagCacheSnapshot(): boolean | null {
-  return readCachedOutageFlag()
-}
-
-function getOutageFlagCacheServerSnapshot(): boolean | null {
-  return null
-}
-
 /**
- * Redirects all portal routes to the outage page when the outage_page_enabled
- * feature flag is on. State partners toggle the flag via appsettings or AppConfig.
+ * Redirects all portal routes to the outage page when the outage_page_enabled feature flag is on.
+ * State partners toggle the flag via appsettings or AppConfig, and a scheduled maintenance window
+ * targeting the portal overrides it server-side.
  *
- * Uses sessionStorage to remember the last-known flag value. When cached true,
- * non-outage routes block immediately (no flash of login/dashboard). When cached
- * false or missing, children render while /features loads so normal routes are
- * not gated on every navigation.
+ * The portal reads the flag from the feature-flags context, which fetches /features once. The
+ * enrollment checker resolves its own outage state differently; only the redirect behavior is
+ * shared.
  */
 export function OutageGuard({ children }: OutageGuardProps) {
   const outageEnabled = useFeatureFlag('outage_page_enabled')
   const { isLoading } = useFeatureFlagsStatus()
-  const pathname = usePathname()
-  const router = useRouter()
-  const isOutagePage = pathname === OUTAGE_PATH
-  // useSyncExternalStore keeps SSR/hydration aligned (server snapshot is null) while
-  // still reading sessionStorage on the client after hydration.
-  const cachedOutageEnabled = useSyncExternalStore(
-    subscribeToOutageFlagCache,
-    getOutageFlagCacheSnapshot,
-    getOutageFlagCacheServerSnapshot
+
+  return (
+    <SharedOutageGuard
+      outageActive={outageEnabled}
+      isResolving={isLoading}
+      offPath="/login"
+      storageKey={OUTAGE_FLAG_CACHE_KEY}
+    >
+      {children}
+    </SharedOutageGuard>
   )
-
-  const outageActiveWhileLoading = cachedOutageEnabled === true
-  const outageActive = isLoading ? outageActiveWhileLoading : outageEnabled
-
-  useEffect(() => {
-    if (!isLoading) {
-      writeCachedOutageFlag(outageEnabled)
-    }
-  }, [isLoading, outageEnabled])
-
-  useEffect(() => {
-    if (outageActive && !isOutagePage) {
-      router.replace(OUTAGE_PATH)
-      return
-    }
-
-    if (!isLoading && !outageEnabled && isOutagePage) {
-      router.replace('/login')
-    }
-  }, [isLoading, outageActive, outageEnabled, isOutagePage, router])
-
-  const hideForOutageRedirect = !isOutagePage && outageActive
-  const hideForLoginRedirect = isOutagePage && !isLoading && !outageEnabled
-
-  if (hideForOutageRedirect || hideForLoginRedirect) {
-    return null
-  }
-
-  return <>{children}</>
 }

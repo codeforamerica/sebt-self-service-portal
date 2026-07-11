@@ -35,6 +35,13 @@ export type { RichTextProps } from './components/RichText/RichText'
 export { OutagePageContent } from './components/OutagePage/OutagePageContent'
 export type { OutagePageContentProps } from './components/OutagePage/OutagePageContent'
 
+// Outage redirect choreography. Headless: each app resolves outage state its own way and
+// passes the answer in. Safe for the main barrel — it uses next/navigation, not react-i18next.
+export { OutageGuard, OUTAGE_PATH } from './components/OutageGuard/OutageGuard'
+export type { OutageGuardProps } from './components/OutageGuard/OutageGuard'
+export { createOutageFlagCache } from './lib/outageFlagCache'
+export type { OutageFlagCache } from './lib/outageFlagCache'
+
 // Layout chrome (server-safe — no react-i18next dependency)
 export { SkipNav } from './components/layout/SkipNav'
 

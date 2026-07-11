@@ -1,81 +1,44 @@
 'use client'
 
-import { readCachedOutageFlag, writeCachedOutageFlag } from '@/features/outage/outageFlagCache'
 import { useOutageState } from '@/features/outage/useOutageState'
 import { getEnrollmentConfig } from '@/lib/stateConfig'
-import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useSyncExternalStore, type ReactNode } from 'react'
+// Direct subpath import avoids the @sebt/design-system barrel, which pulls react-i18next
+// into the RSC layer via layout.tsx -> CheckerShell.
+import {
+  OUTAGE_PATH,
+  OutageGuard as SharedOutageGuard
+} from '@sebt/design-system/src/components/OutageGuard/OutageGuard'
+import { type ReactNode } from 'react'
 
-export const OUTAGE_PATH = '/outage'
+export { OUTAGE_PATH }
+
+const OUTAGE_FLAG_CACHE_KEY = 'sebt_checker_outage_page_enabled'
 
 interface OutageGuardProps {
   children: ReactNode
 }
 
-function subscribeToOutageFlagCache(callback: () => void) {
-  window.addEventListener('storage', callback)
-  return () => window.removeEventListener('storage', callback)
-}
-
-function getOutageFlagCacheSnapshot(): boolean | null {
-  return readCachedOutageFlag()
-}
-
-function getOutageFlagCacheServerSnapshot(): boolean | null {
-  return null
-}
-
 /**
- * Redirects all checker routes to the outage page while an outage is active, riding
- * the existing features poll (schedule windows targeting the checker, or the manual
- * checker_outage_page_enabled flag — resolved server-side).
+ * Redirects all checker routes to the outage page while an outage is active, riding the existing
+ * features poll (schedule windows targeting the checker, or the manual checker_outage_page_enabled
+ * flag — resolved server-side).
  *
- * Uses sessionStorage to remember the last-known outage state. When cached true,
- * non-outage routes block immediately (no flash of the form). When cached false or
- * missing, children render while the first features fetch is in flight, so normal
- * routes are not gated on every navigation. Once a fetch succeeds, the live value
- * governs — and stays sticky through failed polls (see useOutageState).
+ * useOutageState keeps an active outage sticky through failed polls, unlike the maintenance banner,
+ * which hides itself once its data goes stale. Dropping users onto a form whose submissions will
+ * error is worse than leaving the outage page up a little too long.
  */
 export function OutageGuard({ children }: OutageGuardProps) {
   const { apiBaseUrl } = getEnrollmentConfig()
-  const { outageActive: outageEnabled, isPending } = useOutageState(apiBaseUrl)
-  const pathname = usePathname()
-  const router = useRouter()
-  const isOutagePage = pathname === OUTAGE_PATH
-  // useSyncExternalStore keeps SSR/hydration aligned (server snapshot is null) while
-  // still reading sessionStorage on the client after hydration.
-  const cachedOutageEnabled = useSyncExternalStore(
-    subscribeToOutageFlagCache,
-    getOutageFlagCacheSnapshot,
-    getOutageFlagCacheServerSnapshot
+  const { outageActive, isPending } = useOutageState(apiBaseUrl)
+
+  return (
+    <SharedOutageGuard
+      outageActive={outageActive}
+      isResolving={isPending}
+      offPath="/"
+      storageKey={OUTAGE_FLAG_CACHE_KEY}
+    >
+      {children}
+    </SharedOutageGuard>
   )
-
-  const outageActiveWhileLoading = cachedOutageEnabled === true
-  const outageActive = isPending ? outageActiveWhileLoading : outageEnabled
-
-  useEffect(() => {
-    if (!isPending) {
-      writeCachedOutageFlag(outageEnabled)
-    }
-  }, [isPending, outageEnabled])
-
-  useEffect(() => {
-    if (outageActive && !isOutagePage) {
-      router.replace(OUTAGE_PATH)
-      return
-    }
-
-    if (!isPending && !outageEnabled && isOutagePage) {
-      router.replace('/')
-    }
-  }, [isPending, outageActive, outageEnabled, isOutagePage, router])
-
-  const hideForOutageRedirect = !isOutagePage && outageActive
-  const hideForLandingRedirect = isOutagePage && !isPending && !outageEnabled
-
-  if (hideForOutageRedirect || hideForLandingRedirect) {
-    return null
-  }
-
-  return <>{children}</>
 }

@@ -1,7 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { clearCachedOutageFlag, writeCachedOutageFlag } from '@/features/outage/outageFlagCache'
 import { useOutageState } from '@/features/outage/useOutageState'
 
 import { OutageGuard } from './OutageGuard'
@@ -40,63 +39,41 @@ function renderGuard(state: { outageActive: boolean; isPending?: boolean }) {
   )
 }
 
-describe('OutageGuard', () => {
+// The redirect choreography itself is covered in @sebt/design-system. These tests pin the wiring
+// this app owns: which hook supplies outage state, where it sends people once the outage ends, and
+// which sessionStorage key it caches under.
+describe('OutageGuard (checker wiring)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    clearCachedOutageFlag()
+    window.sessionStorage.clear()
     mockPathname.mockReturnValue('/check')
   })
 
-  it('renders children when no outage is active', () => {
+  it('renders children when useOutageState reports no outage', () => {
     renderGuard({ outageActive: false })
 
     expect(screen.getByText('Checker Content')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('redirects to /outage when an outage is active', () => {
+  it('redirects to /outage when useOutageState reports an outage', () => {
     renderGuard({ outageActive: true })
 
     expect(screen.queryByText('Checker Content')).not.toBeInTheDocument()
     expect(mockReplace).toHaveBeenCalledWith('/outage')
   })
 
-  it('renders children on /outage while the outage is active', () => {
-    mockPathname.mockReturnValue('/outage')
-    renderGuard({ outageActive: true })
-
-    expect(screen.getByText('Checker Content')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  it('redirects away from /outage when the outage has ended', () => {
+  it('returns to the landing route, not the portal login, when the outage ends', () => {
     mockPathname.mockReturnValue('/outage')
     renderGuard({ outageActive: false })
 
-    expect(screen.queryByText('Checker Content')).not.toBeInTheDocument()
     expect(mockReplace).toHaveBeenCalledWith('/')
   })
 
-  it('renders children while features load when no outage is cached', () => {
-    renderGuard({ outageActive: false, isPending: true })
-
-    expect(screen.getByText('Checker Content')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  it('blocks and redirects while features load when an outage is cached as active', async () => {
-    writeCachedOutageFlag(true)
-    renderGuard({ outageActive: false, isPending: true })
-
-    await waitFor(() => {
-      expect(screen.queryByText('Checker Content')).not.toBeInTheDocument()
-    })
-    expect(mockReplace).toHaveBeenCalledWith('/outage')
-  })
-
-  it('persists the live outage state to sessionStorage after features load', () => {
+  it('caches under the checker key so a portal outage does not gate the checker', () => {
     renderGuard({ outageActive: true })
 
     expect(window.sessionStorage.getItem('sebt_checker_outage_page_enabled')).toBe('true')
+    expect(window.sessionStorage.getItem('sebt_outage_page_enabled')).toBeNull()
   })
 })
