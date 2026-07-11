@@ -92,7 +92,8 @@ public class EnrollmentCheckerFeaturesEndpointTests
     [Fact]
     public async Task GetFeatures_WhenOutagePageActive_ReturnsOutagePageEnabled()
     {
-        _outagePageStateResolver.IsOutagePageActiveAsync(OutageTarget.EnrollmentChecker).Returns(true);
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(IsActive: true, ScheduleIsAuthority: false));
 
         var response = AssertOkResponse(await GetFeatures());
 
@@ -102,7 +103,8 @@ public class EnrollmentCheckerFeaturesEndpointTests
     [Fact]
     public async Task GetFeatures_WhenOutagePageInactive_ReturnsOutagePageDisabled()
     {
-        _outagePageStateResolver.IsOutagePageActiveAsync(OutageTarget.EnrollmentChecker).Returns(false);
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(IsActive: false, ScheduleIsAuthority: false));
 
         var response = AssertOkResponse(await GetFeatures());
 
@@ -114,7 +116,8 @@ public class EnrollmentCheckerFeaturesEndpointTests
     {
         // The outage page is additive; the maintenance banner mechanism stays independent.
         _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerMaintenanceBanner).Returns(true);
-        _outagePageStateResolver.IsOutagePageActiveAsync(OutageTarget.EnrollmentChecker).Returns(true);
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(IsActive: true, ScheduleIsAuthority: false));
 
         var response = AssertOkResponse(await GetFeatures());
 

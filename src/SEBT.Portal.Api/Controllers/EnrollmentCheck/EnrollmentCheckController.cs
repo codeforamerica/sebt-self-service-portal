@@ -114,7 +114,7 @@ public class EnrollmentCheckController : ControllerBase
         // take effect without an app restart.
         var message = settings.CurrentValue.MaintenanceBanner.Message;
 
-        var outagePageEnabled = await outagePageStateResolver.IsOutagePageActiveAsync(OutageTarget.EnrollmentChecker);
+        var outagePageEnabled = (await outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)).IsActive;
 
         return Ok(new EnrollmentCheckerFeaturesResponse
         {

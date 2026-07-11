@@ -54,12 +54,13 @@ public static class Dependencies
         // Feature Flag Services
         services.AddScoped<IFeatureFlagQueryService, Services.FeatureFlagQueryService>();
 
-        // Auto-enables the outage page during configured outage windows (drives outage_page_enabled).
+        // Reads the configured outage windows and answers whether one is currently active.
         services.AddSingleton<IOutageScheduleEvaluator, Services.OutageScheduleEvaluator>();
 
-        // Combines the outage schedule with the per-surface manual flag ("schedule wins when
-        // windows target the surface, else the manual flag decides"). Scoped because it consumes
-        // the scoped IFeatureManager.
+        // The single authority on outage page state: combines the schedule with the per-surface
+        // manual flag ("schedule wins when windows target the surface, else the manual flag
+        // decides"). Both the features endpoints and FeatureFlagQueryService go through it, so the
+        // rule lives in one place. Scoped because it consumes the scoped IFeatureManager.
         services.AddScoped<IOutagePageStateResolver, Services.OutagePageStateResolver>();
 
         // Household identifier resolution (state-configurable preferred household ID type)
@@ -439,7 +440,11 @@ public static class Dependencies
             .BindConfiguration(RedisSettings.SectionName);
 
         // Outage schedule windows. IOptionsMonitor so AppConfig updates hot-reload without a redeploy.
-        services.AddOptions<OutageScheduleSettings>()
+        // ValidateOnStart refuses to boot on a malformed schedule, so a mistyped window cannot ship.
+        // A malformed window pushed to AppConfig after boot is rejected on the reload thread instead;
+        // AppConfigAgentReloadService logs it Critical and keeps the host alive.
+        services.AddSingleton<IValidateOptions<OutageScheduleSettings>, OutageScheduleSettingsValidator>();
+        services.AddOptionsWithValidateOnStart<OutageScheduleSettings>()
             .BindConfiguration(OutageScheduleSettings.SectionName);
 
         return services;

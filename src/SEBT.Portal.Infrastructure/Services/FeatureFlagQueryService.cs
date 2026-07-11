@@ -15,22 +15,22 @@ namespace SEBT.Portal.Infrastructure.Services;
 public class FeatureFlagQueryService : IFeatureFlagQueryService
 {
     private readonly IFeatureManager _featureManager;
-    private readonly IOutageScheduleEvaluator _outageScheduleEvaluator;
+    private readonly IOutagePageStateResolver _outagePageStateResolver;
     private readonly ILogger<FeatureFlagQueryService> _logger;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FeatureFlagQueryService"/> class.
     /// </summary>
     /// <param name="featureManager">The feature manager from Microsoft.FeatureManagement.</param>
-    /// <param name="outageScheduleEvaluator">Evaluates outage windows per surface.</param>
+    /// <param name="outagePageStateResolver">Resolves outage page state per surface.</param>
     /// <param name="logger">The logger.</param>
     public FeatureFlagQueryService(
         IFeatureManager featureManager,
-        IOutageScheduleEvaluator outageScheduleEvaluator,
+        IOutagePageStateResolver outagePageStateResolver,
         ILogger<FeatureFlagQueryService> logger)
     {
         _featureManager = featureManager;
-        _outageScheduleEvaluator = outageScheduleEvaluator;
+        _outagePageStateResolver = outagePageStateResolver;
         _logger = logger;
     }
 
@@ -82,40 +82,34 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
             throw;
         }
 
-        ApplyOutagePageFlags(flags);
+        await ApplyOutagePageFlagsAsync(flags);
 
         return flags;
     }
 
     /// <summary>
-    /// Resolves the outage page flags after feature-manager values are loaded, independently per
-    /// surface. When any schedule windows target a surface, that surface's flag follows the
-    /// schedule only (inside window = on, outside = off) so a manual/AppConfig "true" cannot
-    /// bypass the maintenance calendar — but windows targeting one surface never disable the
-    /// other surface's manual toggle. With no windows targeting a surface, the feature-manager
-    /// value is kept (or stays absent when unconfigured, preserving the configured-flags-only
-    /// contract of this service).
+    /// Overwrites the outage page flags with the resolver's answer, independently per surface, but
+    /// only where the schedule is the authority. The resolver already owns the schedule-versus-flag
+    /// rule; this service's extra concern is its configured-flags-only contract. Where no windows
+    /// target a surface the resolver would just echo the feature-manager value, and writing it back
+    /// would materialize a flag that was never configured. Leaving it alone keeps an unconfigured
+    /// flag absent from the response.
     /// </summary>
-    private void ApplyOutagePageFlags(Dictionary<string, bool> flags)
+    private async Task ApplyOutagePageFlagsAsync(Dictionary<string, bool> flags)
     {
-        ApplySurfaceOutageFlag(flags, OutageTarget.Portal, FeatureFlags.OutagePageEnabled);
-        ApplySurfaceOutageFlag(flags, OutageTarget.EnrollmentChecker, FeatureFlags.CheckerOutagePageEnabled);
+        await ApplySurfaceOutageFlagAsync(flags, OutageTarget.Portal, FeatureFlags.OutagePageEnabled);
+        await ApplySurfaceOutageFlagAsync(flags, OutageTarget.EnrollmentChecker, FeatureFlags.CheckerOutagePageEnabled);
     }
 
-    private void ApplySurfaceOutageFlag(Dictionary<string, bool> flags, OutageTarget surface, string flagName)
+    private async Task ApplySurfaceOutageFlagAsync(Dictionary<string, bool> flags, OutageTarget surface, string flagName)
     {
-        if (!_outageScheduleEvaluator.HasScheduledWindows(surface))
+        var state = await _outagePageStateResolver.ResolveAsync(surface);
+        if (!state.ScheduleIsAuthority)
         {
             return;
         }
 
-        var scheduleActive = _outageScheduleEvaluator.IsOutageActive(surface);
-        flags[flagName] = scheduleActive;
-        _logger.LogDebug(
-            "Outage flag {FlagName} forced to {Value} by schedule (windows target {Surface})",
-            flagName,
-            scheduleActive,
-            surface);
+        flags[flagName] = state.IsActive;
     }
 
     /// <summary>

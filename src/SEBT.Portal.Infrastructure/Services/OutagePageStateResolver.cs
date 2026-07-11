@@ -24,7 +24,7 @@ public sealed class OutagePageStateResolver : IOutagePageStateResolver
         _logger = logger;
     }
 
-    public async Task<bool> IsOutagePageActiveAsync(OutageTarget surface)
+    public async Task<OutagePageState> ResolveAsync(OutageTarget surface)
     {
         var manualFlagName = surface switch
         {
@@ -54,7 +54,7 @@ public sealed class OutagePageStateResolver : IOutagePageStateResolver
                     surface);
             }
 
-            return scheduleActive;
+            return new OutagePageState(scheduleActive, ScheduleIsAuthority: true);
         }
 
         var manualFlag = await _featureManager.IsEnabledAsync(manualFlagName);
@@ -73,6 +73,6 @@ public sealed class OutagePageStateResolver : IOutagePageStateResolver
                 manualFlagName);
         }
 
-        return manualFlag;
+        return new OutagePageState(manualFlag, ScheduleIsAuthority: false);
     }
 }

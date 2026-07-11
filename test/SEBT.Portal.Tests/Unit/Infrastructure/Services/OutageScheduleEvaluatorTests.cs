@@ -262,16 +262,29 @@ public class OutageScheduleEvaluatorTests
     }
 
     [Fact]
-    public void HasScheduledWindows_WhenDatesMalformedButTargetValid_StillTrue()
+    public void HasScheduledWindows_WhenDatesMalformedButTargetValid_False()
     {
-        // Gating intent: a window scheduled for a surface signals "the schedule is the
-        // authority for that surface" even when its dates fail to parse. Only the
-        // per-instant evaluation skips it.
+        // A window IsOutageActive cannot evaluate must not make the schedule authoritative, or the
+        // surface is pinned to "no outage" with its manual toggle suppressed. Startup validation
+        // rejects such a window outright; this keeps the two methods agreeing if one ever slips by.
         var settings = SettingsWithTargets("America/Denver", ("not-a-date", "also-not-a-date", "Portal"));
         var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
 
-        Assert.True(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.Portal));
         Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
+    }
+
+    [Fact]
+    public void HasScheduledWindows_WhenOneWindowMalformedAndAnotherValid_TrueForTheValidOne()
+    {
+        var settings = SettingsWithTargets(
+            "America/Denver",
+            ("not-a-date", "also-not-a-date", "Portal"),
+            (ActiveStart, ActiveEnd, "EnrollmentChecker"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.True(evaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker));
     }
 
     [Fact]

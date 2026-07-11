@@ -11,24 +11,25 @@ namespace SEBT.Portal.Tests.Unit.Services;
 public class FeatureFlagServiceTests
 {
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
-    private readonly IOutageScheduleEvaluator _outageScheduleEvaluator = Substitute.For<IOutageScheduleEvaluator>();
+    private readonly IOutagePageStateResolver _outagePageStateResolver = Substitute.For<IOutagePageStateResolver>();
     private readonly ILogger<FeatureFlagQueryService> _logger = NullLogger<FeatureFlagQueryService>.Instance;
 
-    // Evaluator methods default to false (NSubstitute bool default), so tests not
-    // arranging outage state behave as "no windows configured, no active outage".
+    // The resolver defaults to default(OutagePageState) — not active, schedule not authoritative —
+    // so tests that do not arrange outage state behave as "no windows configured", leaving the
+    // feature-manager values untouched.
     private FeatureFlagQueryService CreateService() =>
-        new(_featureManager, _outageScheduleEvaluator, _logger);
+        new(_featureManager, _outagePageStateResolver, _logger);
 
     private void ArrangePortalWindows(bool active)
     {
-        _outageScheduleEvaluator.HasScheduledWindows(OutageTarget.Portal).Returns(true);
-        _outageScheduleEvaluator.IsOutageActive(OutageTarget.Portal).Returns(active);
+        _outagePageStateResolver.ResolveAsync(OutageTarget.Portal)
+            .Returns(new OutagePageState(active, ScheduleIsAuthority: true));
     }
 
     private void ArrangeCheckerWindows(bool active)
     {
-        _outageScheduleEvaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker).Returns(true);
-        _outageScheduleEvaluator.IsOutageActive(OutageTarget.EnrollmentChecker).Returns(active);
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(active, ScheduleIsAuthority: true));
     }
 
     [Fact]

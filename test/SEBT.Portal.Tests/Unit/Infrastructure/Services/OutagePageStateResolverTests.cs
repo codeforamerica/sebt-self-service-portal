@@ -23,9 +23,10 @@ public class OutagePageStateResolverTests
         _scheduleEvaluator.HasScheduledWindows(surface).Returns(true);
         _scheduleEvaluator.IsOutageActive(surface).Returns(true);
 
-        var result = await CreateResolver().IsOutagePageActiveAsync(surface);
+        var result = await CreateResolver().ResolveAsync(surface);
 
-        Assert.True(result);
+        Assert.True(result.IsActive);
+        Assert.True(result.ScheduleIsAuthority);
         await _featureManager.DidNotReceiveWithAnyArgs().IsEnabledAsync(default!);
     }
 
@@ -39,9 +40,10 @@ public class OutagePageStateResolverTests
         _scheduleEvaluator.IsOutageActive(surface).Returns(false);
         _featureManager.IsEnabledAsync(Arg.Any<string>()).Returns(true);
 
-        var result = await CreateResolver().IsOutagePageActiveAsync(surface);
+        var result = await CreateResolver().ResolveAsync(surface);
 
-        Assert.False(result);
+        Assert.False(result.IsActive);
+        Assert.True(result.ScheduleIsAuthority);
     }
 
     [Fact]
@@ -50,9 +52,10 @@ public class OutagePageStateResolverTests
         _scheduleEvaluator.HasScheduledWindows(OutageTarget.Portal).Returns(false);
         _featureManager.IsEnabledAsync(FeatureFlags.OutagePageEnabled).Returns(true);
 
-        var result = await CreateResolver().IsOutagePageActiveAsync(OutageTarget.Portal);
+        var result = await CreateResolver().ResolveAsync(OutageTarget.Portal);
 
-        Assert.True(result);
+        Assert.True(result.IsActive);
+        Assert.False(result.ScheduleIsAuthority);
         await _featureManager.Received(1).IsEnabledAsync(FeatureFlags.OutagePageEnabled);
     }
 
@@ -62,9 +65,10 @@ public class OutagePageStateResolverTests
         _scheduleEvaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker).Returns(false);
         _featureManager.IsEnabledAsync(FeatureFlags.CheckerOutagePageEnabled).Returns(true);
 
-        var result = await CreateResolver().IsOutagePageActiveAsync(OutageTarget.EnrollmentChecker);
+        var result = await CreateResolver().ResolveAsync(OutageTarget.EnrollmentChecker);
 
-        Assert.True(result);
+        Assert.True(result.IsActive);
+        Assert.False(result.ScheduleIsAuthority);
         await _featureManager.Received(1).IsEnabledAsync(FeatureFlags.CheckerOutagePageEnabled);
     }
 
@@ -76,9 +80,25 @@ public class OutagePageStateResolverTests
         _scheduleEvaluator.HasScheduledWindows(surface).Returns(false);
         _featureManager.IsEnabledAsync(Arg.Any<string>()).Returns(false);
 
-        var result = await CreateResolver().IsOutagePageActiveAsync(surface);
+        var result = await CreateResolver().ResolveAsync(surface);
 
-        Assert.False(result);
+        Assert.False(result.IsActive);
+        Assert.False(result.ScheduleIsAuthority);
+    }
+
+    // Windows targeting one surface must leave the other surface's manual toggle reachable.
+    [Fact]
+    public async Task WhenWindowsTargetOnlyPortal_CheckerManualFlagStillDecides()
+    {
+        _scheduleEvaluator.HasScheduledWindows(OutageTarget.Portal).Returns(true);
+        _scheduleEvaluator.IsOutageActive(OutageTarget.Portal).Returns(false);
+        _scheduleEvaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker).Returns(false);
+        _featureManager.IsEnabledAsync(FeatureFlags.CheckerOutagePageEnabled).Returns(true);
+
+        var result = await CreateResolver().ResolveAsync(OutageTarget.EnrollmentChecker);
+
+        Assert.True(result.IsActive);
+        Assert.False(result.ScheduleIsAuthority);
     }
 
     [Fact]
@@ -86,6 +106,6 @@ public class OutagePageStateResolverTests
     {
         // Both is a window-level value, not a queryable surface.
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => CreateResolver().IsOutagePageActiveAsync(OutageTarget.Both));
+            () => CreateResolver().ResolveAsync(OutageTarget.Both));
     }
 }
