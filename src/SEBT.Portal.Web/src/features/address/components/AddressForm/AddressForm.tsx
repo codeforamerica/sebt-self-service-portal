@@ -8,7 +8,11 @@ import { useTranslation } from 'react-i18next'
 import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design-system'
 
 import type { Address } from '@/features/household/api'
-import { trackAddressUpdateSubmit, trackAddressUpdateValidationError } from '@/lib/analytics-helpers'
+import {
+  classifyAddressState,
+  trackAddressUpdateSubmit,
+  trackAddressUpdateValidationError
+} from '@/lib/analytics-helpers'
 import { useDataLayer } from '@sebt/analytics'
 
 import { isValidZip, useUpdateAddress } from '../../api'
@@ -208,10 +212,11 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       state: stateValue.trim(),
       postalCode: postalCode.trim()
     }
+    const addressStateCategory = classifyAddressState(addressData.state, currentState)
 
     try {
       const result = await updateAddress.mutateAsync(addressData)
-      trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null)
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null, addressStateCategory)
 
       if (result.status === 'valid') {
         setAddress(toUpdateAddressRequestOrNull(result.normalizedAddress) ?? addressData)
@@ -236,7 +241,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         router.push('/profile/address/address-not-found')
       }
     } catch (err) {
-      trackAddressUpdateSubmit({ setPageData, trackEvent }, null, err)
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, null, err, addressStateCategory)
       setSubmitErrorKey('globalInternalError')
     }
   }
