@@ -75,7 +75,7 @@ def create_secret(client, secret_arn, token):
         logger.info("AWSPENDING already set for token %s — skipping createSecret", token)
         return
     except client.exceptions.ResourceNotFoundException:
-        pass
+        logger.info("AWSPENDING not yet set for token %s — will create new secret", token)
 
     current = _get_secret_dict(client, secret_arn, stage="AWSCURRENT")
     pending_user = _other_user(current["username"])
@@ -120,7 +120,7 @@ def set_secret(client, secret_arn, token):
         master_conn.commit()
         _alter_login_password(cursor, pending["username"], pending["password"])
         master_conn.commit()
-        logger.info("Updated SQL Server password for login %s", pending["username"])
+        logger.info("Updated SQL Server password for pending login")
     finally:
         master_conn.close()
 
@@ -155,7 +155,7 @@ def test_secret(client, secret_arn, token):
     )
     try:
         conn.cursor().execute("SELECT 1")
-        logger.info("Test connection succeeded for user %s", pending["username"])
+        logger.info("Test connection succeeded for pending login")
     finally:
         conn.close()
 
@@ -178,7 +178,7 @@ def finish_secret(client, secret_arn, token):
         MoveToVersionId=token,
         RemoveFromVersionId=current_version,
     )
-    logger.info("Promoted version %s to AWSCURRENT for %s", token, secret_arn)
+    logger.info("Promoted version %s to AWSCURRENT", token)
 
     _restart_ecs_service()
 

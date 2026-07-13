@@ -68,6 +68,7 @@ data "archive_file" "rotation_lambda" {
   excludes = [
     ".venv",
     "requirements.txt",
+    "requirements-test.txt",
     "test_rotate_db_credentials.py",
   ]
 
