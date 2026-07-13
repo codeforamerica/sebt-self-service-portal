@@ -52,6 +52,8 @@ def handler(event, context):
     if "AWSPENDING" not in versions[token]:
         raise ValueError(f"Version {token} not AWSPENDING for {secret_arn}")
 
+    logger.info("Rotation step: %s", step)
+
     if step == "createSecret":
         create_secret(client, secret_arn, token)
     elif step == "setSecret":
