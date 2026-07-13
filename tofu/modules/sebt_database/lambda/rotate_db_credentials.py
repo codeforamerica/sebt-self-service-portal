@@ -251,7 +251,7 @@ def _alter_login_password(cursor, username, password):
 
 
 def _ensure_db_user_exists(cursor, username):
-    """Create the database user and grant db_owner if it does not already exist."""
+    """Create the database user and grant db_owner if not already in place."""
     escaped_name = _escape_sql_str(username)
     cursor.execute(
         f"IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'{escaped_name}') "
@@ -259,7 +259,10 @@ def _ensure_db_user_exists(cursor, username):
         f"  CREATE USER [{username}] FOR LOGIN [{username}] "
         f"END"
     )
-    cursor.execute(f"ALTER ROLE [db_owner] ADD MEMBER [{username}]")
+    cursor.execute(
+        f"IF IS_ROLEMEMBER('db_owner', N'{escaped_name}') = 0 "
+        f"  ALTER ROLE [db_owner] ADD MEMBER [{username}]"
+    )
 
 
 def _restart_ecs_service():
