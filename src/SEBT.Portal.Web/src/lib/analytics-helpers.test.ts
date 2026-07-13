@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   apiErrorCodeFromUnknown,
+  classifyAddressState,
   trackAddressUpdateSubmit,
   trackAddressUpdateValidationError,
   trackCardReplacementSubmit
@@ -30,6 +31,34 @@ describe('apiErrorCodeFromUnknown', () => {
 
   it('maps unknown errors to TECH_ERROR', () => {
     expect(apiErrorCodeFromUnknown(new Error('network'))).toBe('TECH_ERROR')
+  })
+})
+
+describe('classifyAddressState', () => {
+  it('returns home_state when the submitted state matches the DC deployment', () => {
+    expect(classifyAddressState('DC', 'dc')).toBe('home_state')
+  })
+
+  it('returns out_of_state for a non-DC state on a DC deployment', () => {
+    expect(classifyAddressState('VA', 'dc')).toBe('out_of_state')
+  })
+
+  it('returns home_state when the submitted state matches the CO deployment', () => {
+    expect(classifyAddressState('CO', 'co')).toBe('home_state')
+  })
+
+  it('returns out_of_state for a non-CO state on a CO deployment', () => {
+    expect(classifyAddressState('NM', 'co')).toBe('out_of_state')
+  })
+
+  it('compares case-insensitively', () => {
+    expect(classifyAddressState('dc', 'dc')).toBe('home_state')
+    expect(classifyAddressState('Dc', 'dc')).toBe('home_state')
+  })
+
+  it('treats a missing state as out_of_state', () => {
+    expect(classifyAddressState(undefined, 'dc')).toBe('out_of_state')
+    expect(classifyAddressState('', 'dc')).toBe('out_of_state')
   })
 })
 
@@ -71,6 +100,36 @@ describe('trackAddressUpdateSubmit', () => {
     expect(setPageData).toHaveBeenCalledWith('error_code', 'TECH_ERROR')
     expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
     expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
+  })
+
+  it('sets page.address_state_category when provided on a successful submit', () => {
+    const result: AddressUpdateResponse = { status: 'valid' }
+
+    trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null, 'home_state')
+
+    expect(setPageData).toHaveBeenCalledWith('address_state_category', 'home_state')
+    expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+  })
+
+  it('sets page.address_state_category on the error path too', () => {
+    trackAddressUpdateSubmit(
+      { setPageData, trackEvent },
+      null,
+      new ApiError('Server error', 500),
+      'out_of_state'
+    )
+
+    expect(setPageData).toHaveBeenCalledWith('address_state_category', 'out_of_state')
+    expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_SUBMIT)
+    expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_ERROR)
+  })
+
+  it('omits page.address_state_category when not provided', () => {
+    const result: AddressUpdateResponse = { status: 'valid' }
+
+    trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null)
+
+    expect(setPageData).not.toHaveBeenCalledWith('address_state_category', expect.anything())
   })
 })
 
