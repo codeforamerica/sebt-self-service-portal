@@ -1,0 +1,53 @@
+name: Lambda Tests
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "tofu/modules/sebt_database/lambda/**"
+      - "tofu/modules/sebt_ses/lambda/**"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "tofu/modules/sebt_database/lambda/**"
+      - "tofu/modules/sebt_ses/lambda/**"
+
+permissions:
+  contents: read
+
+jobs:
+  test-db-rotation-lambda:
+    name: DB rotation Lambda unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r tofu/modules/sebt_database/lambda/requirements.txt pytest boto3
+
+      - name: Run tests
+        run: pytest tofu/modules/sebt_database/lambda/test_rotate_db_credentials.py -v
+
+  test-ses-rotation-lambda:
+    name: SES rotation Lambda unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pytest boto3
+
+      - name: Run tests
+        run: pytest tofu/modules/sebt_ses/lambda/test_rotate_smtp_credentials.py -v
