@@ -99,13 +99,20 @@ jobs:
 
       - name: Discover state configurations
         id: set-matrix
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_STATE: ${{ github.event.inputs.state }}
         run: |
-          BRANCH="${{ github.ref_name }}"
+          BRANCH="$REF_NAME"
 
           # Priority 1: Manual workflow_dispatch with specific state
-          if [ -n "${{ github.event.inputs.state }}" ]; then
-            echo "Manual trigger for state: ${{ github.event.inputs.state }}"
-            echo "matrix={\"state\":[\"${{ github.event.inputs.state }}\"]}" >> $GITHUB_OUTPUT
+          if [ -n "$INPUT_STATE" ]; then
+            if [[ ! "$INPUT_STATE" =~ ^[a-z]{2}$ ]]; then
+              echo "::error::Invalid state code: $INPUT_STATE"
+              exit 1
+            fi
+            echo "Manual trigger for state: $INPUT_STATE"
+            echo "matrix={\"state\":[\"${INPUT_STATE}\"]}" >> $GITHUB_OUTPUT
 
           # Priority 2: Branch name pattern (deploy/STATE or deploy/STATE-feature)
           elif [[ "$BRANCH" =~ ^deploy/([a-z]{2})(-.*)?$ ]]; then

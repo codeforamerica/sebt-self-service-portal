@@ -1,16 +1,12 @@
 // Direct subpath imports avoid the @sebt/design-system barrel export, which
 // re-exports react-i18next-dependent modules. Importing from the barrel in a
 // Server Component would pull react-i18next into the RSC bundle and crash.
+import { CheckerShell } from '@/components/CheckerShell'
 import { headingFont, primaryFont } from '@/design/fonts'
-import { MaintenanceBanner } from '@/features/maintenance'
 import { env } from '@/lib/env'
 import { buildRootMetadata } from '@/lib/metadata'
 import { Providers } from '@/providers/Providers'
 import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
-import { Footer } from '@sebt/design-system/src/components/layout/Footer'
-import { Header } from '@sebt/design-system/src/components/layout/Header'
-import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSection'
-import { SkipNav } from '@sebt/design-system/src/components/layout/SkipNav'
 import { getState } from '@sebt/design-system/src/lib/state'
 import type { Viewport } from 'next'
 import './globals.css'
@@ -44,12 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <Providers>
-          <SkipNav />
-          <MaintenanceBanner />
-          <Header state={state} />
-          <main id="main-content">{children}</main>
-          <HelpSection state={state} />
-          <Footer state={state} />
+          <CheckerShell state={state}>{children}</CheckerShell>
         </Providers>
         <script src="/js/uswds-init.min.js" defer />
       </body>

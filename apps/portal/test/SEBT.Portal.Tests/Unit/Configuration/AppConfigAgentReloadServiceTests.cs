@@ -3,6 +3,8 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.Time.Testing;
 using SEBT.Portal.Infrastructure.Configuration;
 using Xunit;
@@ -72,6 +74,47 @@ public class AppConfigAgentReloadServiceTests
             "loop should keep polling after a failed reload");
     }
 
+    [Fact]
+    public async Task ReloadOnce_WhenAConfigurationConsumerThrows_SwallowsItAndLogsCritical()
+    {
+        // IConfigurationRoot.Reload() invokes change-token consumers inline, and IOptionsMonitor
+        // is one of them: it evicts its cache and immediately rebuilds the options, running every
+        // registered IValidateOptions. A validator that rejects the newly fetched configuration
+        // therefore throws from inside Reload(). ChangeToken does not catch consumer exceptions,
+        // so unhandled it faults this BackgroundService, and the default StopHost behavior
+        // terminates the process. Reload polling must instead stay alive and shout.
+        var handler = new CountingHandler { ContentVariesPerCall = true };
+        var config = BuildConfig(handler, reloadAfterSeconds: 1);
+        var entries = new List<(LogLevel Level, string Message)>();
+        var service = new AppConfigAgentReloadService(
+            config,
+            new FakeTimeProvider(),
+            new CallbackLogger((level, message) => entries.Add((level, message))));
+
+        // A plain ConfigurationRoot keeps the provider -> root change-token bridge intact, so the
+        // provider's own OnReload() already notified consumers before ReloadOnceAsync reaches
+        // Reload(). In the running app that bridge is severed (see ReloadOnceAsync), leaving
+        // Reload() as the only notifier. Ignoring the first notification models the deployed path.
+        var notifications = 0;
+        using var registration = ChangeToken.OnChange(
+            config.GetReloadToken,
+            () =>
+            {
+                if (Interlocked.Increment(ref notifications) > 1)
+                {
+                    throw new OptionsValidationException(
+                        "TestSettings",
+                        typeof(object),
+                        ["Simulated validation failure for a rejected configuration value."]);
+                }
+            });
+
+        var exception = await Record.ExceptionAsync(() => service.ReloadOnceAsync());
+
+        Assert.Null(exception);
+        Assert.Contains(entries, entry => entry.Level == LogLevel.Critical);
+    }
+
     private static IConfigurationRoot BuildConfig(HttpMessageHandler handler, int reloadAfterSeconds)
     {
         var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:2772") };
@@ -101,7 +144,7 @@ public class AppConfigAgentReloadServiceTests
     // immediately before arming the timer; waiting for it removes the race deterministically.
     private static ILogger<AppConfigAgentReloadService> StartSignalLogger(TaskCompletionSource started)
     {
-        return new CallbackLogger(message =>
+        return new CallbackLogger((_, message) =>
         {
             if (message.Contains("reload polling started", StringComparison.OrdinalIgnoreCase))
             {
@@ -137,6 +180,12 @@ public class AppConfigAgentReloadServiceTests
         public int Count => _count;
         public HashSet<int> ThrowOnCalls { get; } = new();
 
+        /// <summary>
+        /// Returns a different payload on every call, so each provider load reports a change.
+        /// Off by default: the other tests rely on a stable payload so no reload propagates.
+        /// </summary>
+        public bool ContentVariesPerCall { get; init; }
+
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request, CancellationToken cancellationToken)
         {
@@ -146,18 +195,20 @@ public class AppConfigAgentReloadServiceTests
                 throw new HttpRequestException("Simulated agent failure");
             }
 
+            var value = ContentVariesPerCall ? $"value{call}" : "value1";
+
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
             {
-                Content = new StringContent("""{"Key1":"value1"}""", Encoding.UTF8, "application/json"),
+                Content = new StringContent($$"""{"Key1":"{{value}}"}""", Encoding.UTF8, "application/json"),
             });
         }
     }
 
     private sealed class CallbackLogger : ILogger<AppConfigAgentReloadService>
     {
-        private readonly Action<string> _onLog;
+        private readonly Action<LogLevel, string> _onLog;
 
-        public CallbackLogger(Action<string> onLog)
+        public CallbackLogger(Action<LogLevel, string> onLog)
         {
             _onLog = onLog;
         }
@@ -170,7 +221,7 @@ public class AppConfigAgentReloadServiceTests
             LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter)
         {
-            _onLog(formatter(state, exception));
+            _onLog(logLevel, formatter(state, exception));
         }
     }
 }

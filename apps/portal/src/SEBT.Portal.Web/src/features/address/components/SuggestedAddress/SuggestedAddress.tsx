@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { useDataLayer } from '@sebt/analytics'
 import { Alert, Button, getState } from '@sebt/design-system'
 
-import { trackAddressUpdateSubmit } from '@/lib/analytics-helpers'
+import { classifyAddressState, trackAddressUpdateSubmit } from '@/lib/analytics-helpers'
 
 import { useUpdateAddress } from '../../api'
 import type { AddressResponse, UpdateAddressRequest } from '../../api/schema'
@@ -70,6 +70,7 @@ export function SuggestedAddress() {
     }
 
     setSubmitError(null)
+    const addressStateCategory = classifyAddressState(selectedAddress.state, currentState)
 
     try {
       const payload =
@@ -78,7 +79,7 @@ export function SuggestedAddress() {
           : selectedAddress
 
       const result = await updateAddress.mutateAsync(payload)
-      trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null)
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null, addressStateCategory)
 
       if (result.status !== 'valid' && result.status !== 'suggestion') {
         setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
@@ -102,7 +103,7 @@ export function SuggestedAddress() {
       flushSync(() => setAddress(selectedAddress))
       router.push(continuePath)
     } catch (err) {
-      trackAddressUpdateSubmit({ setPageData, trackEvent }, null, err)
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, null, err, addressStateCategory)
       setSubmitError(t('addressUpdateError', 'Something went wrong. Please try again.'))
     }
   }

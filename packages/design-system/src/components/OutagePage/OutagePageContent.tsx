@@ -1,15 +1,13 @@
 'use client'
 
-import { getFooterLinkLabel } from '@/features/outage/getFooterLinkLabel'
-import { getOutageFooterCopy, getOutageMessages } from '@/features/outage/getOutageMessages'
-import {
-  getSiteDisplayName,
-  getState,
-  getStateAssetPath,
-  getStateLinks,
-  type StateCode
-} from '@sebt/design-system'
 import Image from 'next/image'
+// StateResources is imported type-only: lib/i18n initializes react-i18next at module
+// scope, and pulling that runtime here would break the server-safe main barrel.
+import type { StateResources } from '../../lib/i18n'
+import { getStateLinks } from '../../lib/links'
+import { getSiteDisplayName, getState, getStateAssetPath, type StateCode } from '../../lib/state'
+import { getFooterLinkLabel } from './getFooterLinkLabel'
+import { getOutageFooterCopy, getOutageMessages } from './getOutageMessages'
 
 const DEFAULT_LOGO_DIMENSIONS = { width: 122, height: 52 } as const
 
@@ -18,10 +16,20 @@ const logoDimensions: Record<StateCode, { width: number; height: number }> = {
   co: { width: 192, height: 28 }
 }
 
-export function OutagePageContent() {
+export interface OutagePageContentProps {
+  /**
+   * The app's generated locale resources (imported from its
+   * generated-locale-resources.ts). Passed in rather than imported so this
+   * component can render each app's own bundle — the portal and the enrollment
+   * checker generate different namespace sets.
+   */
+  resources: StateResources
+}
+
+export function OutagePageContent({ resources }: OutagePageContentProps) {
   const state = getState()
-  const messages = getOutageMessages()
-  const footerCopy = getOutageFooterCopy()
+  const messages = getOutageMessages(resources)
+  const footerCopy = getOutageFooterCopy(resources)
   const links = getStateLinks(state)
   const contactHref = links.help.sebtMainSite ?? links.help.helpDeskEmail ?? '#'
   const isExternalLink = contactHref.startsWith('http')
