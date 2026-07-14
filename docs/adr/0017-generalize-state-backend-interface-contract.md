@@ -34,11 +34,9 @@ New states implement the standard REST contract. Existing states stay on plugins
 
 3. **Atomic address updates (200/400/409).** All-or-nothing semantics. 207 Multi-Status was rejected — state teams would bypass the multi-status response shape with standard error middleware, making partial-success responses unreliable in practice.
 
-4. **`X-Sebt-User-Identity` JWT with dual algorithm support (`HS256` / `RS256`).** Sent only when `capabilities.userAssertion.supported: true`. Previously the portal sent this header unconditionally — now it's gated on the declared capability.
+4. **No end-user assertion on the wire.** An earlier draft carried an `X-Sebt-User-Identity` signed JWT (with a `userAssertion` capability) so backends could do per-user scoping or IAL enforcement. We cut it: no state requested it, and JWT was the top blocker for government implementers. The portal stays the authorization authority — it authenticates the guardian and requests only their household. If a backend later needs it, we add it back then, likely as a plain header over the already-authed channel. IAL (including the non-standard `1.5` — enhanced verification without biometrics) remains an internal portal concept, not a contract field.
 
-5. **`ial` claim as a number enum (1, 1.5, 2).** _IAL 1.5_ is a non-standard level representing enhanced identity verification without biometrics. The `ial` value is a number, not an integer, to accommodate it.
-
-6. **Card replacement idempotency via `Idempotency-Key` header.** 24-hour dedup window. Replay returns 200. 409 means a different pending request exists. An optional status polling endpoint (`GET /cases/{caseId}/card-replacement/{requestId}`) is supported when `capabilities.cases.cardReplacement.statusTracking.supported: true`.
+5. **Card replacement idempotency via `Idempotency-Key` header.** 24-hour dedup window. Replay returns 200. 409 means a different pending request exists. An optional status polling endpoint (`GET /cases/{caseId}/card-replacement/{requestId}`) is supported when `capabilities.cases.cardReplacement.statusTracking.supported: true`.
 
 ---
 
@@ -59,7 +57,7 @@ New states implement the standard REST contract. Existing states stay on plugins
 - The portal now maintains two code paths — HTTP client and plugin scanning — until/unless DC/CO migrate. That's surface area to keep aligned.
 - The `GET /capabilities` pre-flight adds a round-trip per session initialization. It should be cached, but that's an implementation concern that should be tested for performance issues and bugs.
 - State backend implementors need to return well-formed capability documents. Any mismatch silently degrades features. We may need to consider how best to detect and alert on this.
-- IAL 1.5 is non-standard. If in the future NIST adopts an intermediate level of enhanced identity verification (between IAL 1 and IAL 2), we may need to revisit this specification to align it with federal standard.
+- Cutting end-user assertion means a REST backend can't do server-side per-user scoping or minimum-IAL enforcement — the portal is trusted to have authorized the user. That's fine for our topology (the portal is the sole, service-authed client), but a backend that later wants to enforce independently needs the mechanism added back.
 
 **Benefits:**
 

@@ -33,22 +33,6 @@ info:
     credential as all other endpoints. The portal always presents a service credential
     when calling this backend, regardless of how the upstream user reached the portal.
 
-    ## End-user assertion
-
-    When `capabilities.userAssertion.supported` is `true`, authenticated portal
-    flows include `X-Sebt-User-Identity` — a short-lived signed JWT carrying
-    `ial` (Identity Assurance Level: `1`, `1.5`, or `2`) and an opaque `userRef` (a one-way
-    hash of the portal user ID). Backends that want per-user data scoping or
-    minimum-IAL enforcement validate it; others ignore it.
-
-    Backends return `403` with `requiredIal` in ProblemDetails extensions if
-    validation fails. The signing algorithm (`HS256` or `RS256`) and key material
-    are agreed during integration setup — see the `X-Sebt-User-Identity` header
-    definition for details.
-
-    The portal does **not** send `X-Sebt-User-Identity` for enrollment check flows
-    — the end user may not be logged in at that point.
-
     ## Conventions
 
     | Concern | Rule |
@@ -190,8 +174,6 @@ paths:
                       enrollment:
                         check:
                           supported: true
-                      userAssertion:
-                        supported: true
                 readOnly:
                   summary: Backend in read-only maintenance window
                   value:
@@ -215,8 +197,6 @@ paths:
                       enrollment:
                         check:
                           supported: true
-                      userAssertion:
-                        supported: false
 
   /households/lookup:
     post:
@@ -232,16 +212,18 @@ paths:
         **Cases vs. applications.** `cases` are per-child benefit issuances (most
         are auto-issued). `applications` are guardian-submitted, and the portal
         only ever reads them. A case links back to the application it came from via
-        `applicationId`; most cases have no application.
+        `applicationId`; most cases have no application. A backend without a native
+        cases/applications split may synthesize both from its own data and derive
+        the `applicationId` link.
 
         **`intent`** tells the backend the purpose of the lookup:
         - `primary` — authenticated user's own household
         - `coLoad` — cross-household co-loading search; backends may apply stricter
           access rules (only called when `coLoadedLookup.supported: true`)
 
-        `intent` is an **open string constant** — future values are possible.
-        Backends must return `400` for unrecognized values (fail closed, since
-        `intent` shapes access control decisions).
+        `intent` is a **fixed enum** (`primary`, `coLoad`). Backends must reject any
+        other value with `400` (fail closed, since `intent` shapes access control
+        decisions).
 
         **Card details.** When `includeCardDetails: true` and the backend advertises
         `cardDetails.modes: ["batch"]`, full card details are returned inline on
@@ -250,8 +232,6 @@ paths:
 
         **No match.** Return `200` with empty `cases` and `applications` arrays —
         not a `404`.
-      parameters:
-        - $ref: "#/components/parameters/UserIdentityHeader"
       requestBody:
         required: true
         content:
@@ -342,20 +322,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: |
-            User assertion validation failed. Include `requiredIal` in extensions
-            if the failure reason is insufficient IAL. Valid values: `1`, `1.5`
-            (enhanced verification, non-biometric), `2`.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-              example:
-                title: Insufficient identity assurance level
-                status: 403
-                detail: This operation requires IAL 2
-                requiredIal: 2
         "429":
           description: Rate limit exceeded
           headers:
@@ -379,7 +345,6 @@ paths:
         register this route.
       parameters:
         - $ref: "#/components/parameters/CaseIdPath"
-        - $ref: "#/components/parameters/UserIdentityHeader"
       responses:
         "200":
           description: |
@@ -409,12 +374,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: User assertion validation failed
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
         "404":
           description: Case not found
           content:
@@ -437,18 +396,16 @@ paths:
       tags: [Cases]
       summary: Batch mailing address update
       description: |
-        Updates the mailing address for all specified cases atomically — either all
-        cases are updated or none are. Cases in the batch are expected to form a
-        logical household unit sharing one address.
+        Updates the mailing address for all specified cases. Cases in the batch are
+        expected to form a logical household unit sharing one address.
+
+        **Atomic at the CMS's granularity.** Backends SHOULD apply all-or-nothing
+        semantics — either all cases update or none do — and roll back on partial
+        failure. A backend whose CMS can't guarantee a cross-case transaction MAY
+        instead report per-case outcomes via the optional `failedCases` extension.
 
         **Idempotent** — applying the same address to the same cases twice produces
         the same result. The portal may safely retry on transient errors.
-
-        On failure, the backend rolls back all changes and returns details about
-        which cases could not be updated via a `failedCases` extension on the error
-        response.
-      parameters:
-        - $ref: "#/components/parameters/UserIdentityHeader"
       requestBody:
         required: true
         content:
@@ -490,12 +447,6 @@ paths:
                     detail: Street address not found in USPS database
         "401":
           description: Missing or invalid service credential
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: User assertion validation failed
           content:
             application/json:
               schema:
@@ -548,7 +499,6 @@ paths:
       parameters:
         - $ref: "#/components/parameters/CaseIdPath"
         - $ref: "#/components/parameters/IdempotencyKeyHeader"
-        - $ref: "#/components/parameters/UserIdentityHeader"
       requestBody:
         required: true
         content:
@@ -585,7 +535,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ProblemDetails"
         "403":
-          description: User assertion validation failed or action not permitted for this case
+          description: Action not permitted for this case
           content:
             application/json:
               schema:
@@ -631,7 +581,6 @@ paths:
           schema:
             type: string
           description: Replacement request identifier, as returned by the POST endpoint.
-        - $ref: "#/components/parameters/UserIdentityHeader"
       responses:
         "200":
           description: Current status of the replacement request
@@ -657,12 +606,6 @@ paths:
                     actualDelivery: "2026-07-08"
         "401":
           description: Missing or invalid service credential
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ProblemDetails"
-        "403":
-          description: User assertion validation failed
           content:
             application/json:
               schema:
@@ -694,13 +637,10 @@ paths:
         Checks whether a child identified by the provided signals is enrolled in
         Summer EBT benefits.
 
-        **Service-authenticated, no end-user assertion.** The portal always calls
-        this endpoint with its service credential. The portal's public-facing
-        enrollment form may be unauthenticated, but the portal-to-backend call
-        always carries a service credential.
-
-        `X-Sebt-User-Identity` is **not sent** for this flow — the end user may
-        not be logged in to the portal at that point.
+        **Service-authenticated.** The portal always calls this endpoint with its
+        service credential. The portal's public-facing enrollment form may be
+        unauthenticated, but the portal-to-backend call always carries a service
+        credential.
 
         Signal matching semantics may be more permissive than `POST /households/lookup`
         — backends may apply fuzzy matching (partial name, approximate DOB) per
@@ -907,7 +847,7 @@ components:
       type: object
       description: |
         RFC 9457 problem detail. Backends return this shape for all `4xx` and `5xx`
-        responses. Extension fields (e.g. `requiredIal`) are permitted.
+        responses. Extension fields (e.g. `failedCases`) are permitted.
       additionalProperties: true
       properties:
         type:
@@ -1008,8 +948,6 @@ components:
           $ref: "#/components/schemas/CasesCapabilities"
         enrollment:
           $ref: "#/components/schemas/EnrollmentCapabilities"
-        userAssertion:
-          $ref: "#/components/schemas/UserAssertionCapability"
 
     CasesCapabilities:
       type: object
@@ -1082,21 +1020,6 @@ components:
       properties:
         check:
           $ref: "#/components/schemas/SupportedCapability"
-
-    UserAssertionCapability:
-      type: object
-      required: [supported]
-      description: |
-        Whether the backend validates the `X-Sebt-User-Identity` JWT header.
-
-        When `supported: true`, the portal sends the header on all authenticated
-        flows. The backend validates it for whichever operations it requires and
-        returns `403` with a `requiredIal` extension if validation fails.
-
-        The portal never sends `X-Sebt-User-Identity` for enrollment check flows.
-      properties:
-        supported:
-          type: boolean
 
     # ── Cases ─────────────────────────────────────────────────────────────────
 
@@ -1190,8 +1113,9 @@ components:
             their CMS supports and ignore the rest.
         intent:
           type: string
+          enum: [primary, coLoad]
           description: |
-            Lookup type. Well-known values:
+            Lookup type:
             - `primary` — the authenticated user's own household
             - `coLoad` — co-loading search: finds the SNAP/TANF household whose
               existing EBT card will carry the child's Summer EBT benefits.
@@ -1199,8 +1123,8 @@ components:
               household's existing SNAP or TANF card rather than issuing a new
               dedicated card. Only called when `coLoadedLookup.supported: true`.
 
-            Backends must return `400` for unrecognized values — `intent` shapes
-            access-control decisions, so fail closed.
+            A fixed enum, not an open set. Backends must reject any other value
+            with `400` — `intent` shapes access-control decisions, so fail closed.
           example: primary
         includeCardDetails:
           type: boolean
@@ -1249,14 +1173,16 @@ components:
         submittedDate:
           type: string
           format: date
-          description: Date the guardian submitted the application. `YYYY-MM-DD`.
+          description: |
+            Date the guardian submitted the application. `YYYY-MM-DD`. Optional —
+            omit when the backend's CMS doesn't expose a submission date.
           example: "2026-05-02"
         decisionDate:
           type: string
           format: date
           description: |
             Date the application reached its current decision (e.g. approved,
-            denied). Omitted while the application is still pending.
+            denied). Omitted while pending, or when the CMS doesn't expose it.
           example: "2026-05-14"
         issuanceType:
           $ref: "#/components/schemas/IssuanceType"
@@ -1328,7 +1254,7 @@ components:
     AddressUpdateResponse:
       type: object
       required: [updatedCaseIds]
-      description: Returned on successful atomic update of all cases.
+      description: Returned when all cases in the batch update successfully.
       properties:
         updatedCaseIds:
           type: array
@@ -1336,11 +1262,35 @@ components:
             type: string
           description: The case IDs that were updated, echoed from the request.
 
+    FailedCase:
+      type: object
+      required: [caseId]
+      description: |
+        One entry in the optional `failedCases` ProblemDetails extension returned
+        by a failed batch address update. Names a case that couldn't be updated
+        and why.
+      properties:
+        caseId:
+          type: string
+          description: The case that couldn't be updated.
+        detail:
+          type: string
+          description: Human-readable reason this case failed.
+
     CardReplacementRequest:
       type: object
       description: |
-        Card replacement request body. Carries no required fields — backends
-        must accept an absent or empty `{}` body.
+        Card replacement request body. No required fields — backends must accept
+        an absent or empty `{}` body.
+      properties:
+        reason:
+          type: string
+          enum: [Unspecified, Lost, Stolen, Damaged, Undeliverable]
+          default: Unspecified
+          description: |
+            Why the household is requesting a replacement. Distinct from card
+            status — a card can be `Active` while the user reports it lost. Omit
+            or send `Unspecified` when the portal UI doesn't collect a reason.
 
     CardReplacementResponse:
       type: object
@@ -1477,31 +1427,6 @@ components:
       schema:
         type: string
       description: State-native case identifier, as returned by `POST /households/lookup`.
-
-    UserIdentityHeader:
-      name: X-Sebt-User-Identity
-      in: header
-      required: false
-      schema:
-        type: string
-      description: |
-        Compact signed JWT (60-second TTL) carrying end-user identity context.
-        Only sent on authenticated flows when `capabilities.userAssertion.supported`
-        is `true`. Never sent for `POST /enrollment/check`.
-
-        **Claims:** `ial` (number: `1`, `1.5`, or `2`), `userRef` (HMAC-SHA256 of the portal
-        user ID — opaque, non-reversible), `iat`, `exp`.
-
-        **Signing.** The JWT `alg` header declares the algorithm. Two options are
-        supported — the choice is made during integration setup:
-
-        - **`HS256`** — HMAC-SHA256 with a shared secret exchanged out-of-band.
-          Simpler; no PKI required.
-        - **`RS256`** — RSA-SHA256. The portal signs with its private key; the
-          backend verifies with the portal's corresponding public key, provided
-          out-of-band during integration setup.
-
-        Backends that do not validate user identity may ignore this header.
 
     IdempotencyKeyHeader:
       name: Idempotency-Key

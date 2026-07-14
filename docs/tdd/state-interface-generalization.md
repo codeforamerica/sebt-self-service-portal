@@ -106,7 +106,6 @@ public record StateCapabilities
     public bool CardReplacementStatusTracking { get; init; }
     public bool AddressUpdate { get; init; }
     public bool EnrollmentCheck { get; init; }
-    public bool UserAssertion { get; init; }
 }
 
 public record CardDetailsCapability
@@ -141,13 +140,17 @@ StateBackend:BaseUrl configured?
 
 The use-case layer only ever sees `IStateBackendClient`. The portal resolves the REST-vs-plugin choice once at startup, and above the infrastructure layer it's invisible. One binding, chosen by config — no async work during registration, no capability-based conditional registration.
 
-**`RestStateBackendClient`** is thin. HTTP call to `StateBackend:BaseUrl`, response mapped to Core models. Owns the resilience pipeline (retry, circuit breaker, timeout), the auth strategy (`oauth2` or API key), and — when `capabilities.userAssertion` is true — attaching the `X-Sebt-User-Identity` JWT.
+**`RestStateBackendClient`** is thin. HTTP call to `StateBackend:BaseUrl`, response mapped to Core models. Owns the resilience pipeline (retry, circuit breaker, timeout) and the service auth strategy (`oauth2` or API key).
 
-**`PluginAdapter`** delegates to the current plugin interfaces (`ISummerEbtCaseService`, `ICardReplacementService`, `IAddressUpdateService`, `IEnrollmentCheckService`, `IStateHealthCheckService`). Its job is mechanical mapping only:
+**`PluginAdapter`** delegates to the current plugin interfaces (`ISummerEbtCaseService`, `ICardReplacementService`, `IAddressUpdateService`, `IEnrollmentCheckService`, `IStateHealthCheckService`). It absorbs the impedance between the contract and today's plugin shapes:
 
 - `LookupHouseholdAsync(query)` dispatches on `query.Intent` and the signals present: `Primary` → the identifier-based lookup, picking the identifier from the signal list by type; `CoLoad` → the co-load lookup, reading `state_benefit_id` (or `federal_benefit_id`) + `date_of_birth` from the signals.
 - Plugins already return `HouseholdData`, so there's effectively no output mapping.
-- Writes delegate 1:1. The idempotency key rides as a correlation header; current DC/CO plugins don't enforce dedup, so it's advisory until they do.
+- **Writes aren't 1:1.** The plugin's `ICardReplacementService` takes a household identifier plus a list of `CaseRef` *triples* (`SummerEbtCaseId` + `ApplicationId` + `ApplicationStudentId`); the contract's per-case call carries only an opaque `caseId`. Address update is similar. The adapter bridges by making the opaque `caseId` **self-describing** — encode the triple (and household resolver) into the `caseId` it emits at lookup, decode on write. Stateless, no cache. The deeper fix — a genuinely unique plugin case id that drops the triple — is follow-up, not this spike.
+- **Idempotency is the adapter's job.** Current DC/CO plugins don't dedup, so the adapter owns the 24h replay window.
+- **Batch-only backends:** DC surfaces card details inline on the lookup, with no per-case fetch or status polling. Those ops are capability-gated (`cardDetails.modes`, `cardReplacement.statusTracking`); the adapter reports them unsupported rather than faking them.
+
+**Request context is in-process, not a wire mechanism.** The plugin methods need the user's IAL, `PiiVisibility`, and the *raw* portal user id (DC forwards it to its warehouse as `PortalUUID` for correlation). The plugin runs in-process, so the adapter reads this straight from the portal session — nothing to thread over a wire, and the raw id is available directly. `IdentityAssuranceLevel` stays an internal portal type.
 
 ## The one plugin reshape
 
@@ -180,34 +183,11 @@ Derived capabilities can't drift, because they *are* the wiring. For `RestStateB
 
 `ISelfServiceEvaluator` gates `allowedActions` on capability support. That logic is unchanged — it reads `StateCapabilities` regardless of which client produced them.
 
-### `X-Sebt-User-Identity` JWT
+### No end-user assertion on the wire
 
-When `capabilities.userAssertion` is true, `RestStateBackendClient` generates a short-lived signed JWT per authenticated request. `PluginAdapter` never sends it — plugins run in-process and don't consume it.
+The REST contract has no user-identity mechanism — `X-Sebt-User-Identity` and the `userAssertion` capability were cut. It was YAGNI: no state requested it, and JWT was the top implementer blocker in the government-implementer review. The portal stays the authorization authority — it authenticates the guardian and only requests their household. A backend that later needs per-user scoping or IAL enforcement gets the mechanism added back then, likely as a plain `X-Sebt-Ial` header over the already-authed channel rather than a signed JWT.
 
-```csharp
-public interface IUserAssertionJwtService
-{
-    string GenerateToken(UserAssertion assertion);
-}
-
-public record UserAssertion
-{
-    public required IdentityAssuranceLevel Ial { get; init; }
-    /// <summary>HMAC-SHA256 of the portal's internal user ID. Opaque, non-reversible.</summary>
-    public required string UserRef { get; init; }
-}
-
-/// <summary>
-/// IAL levels. The converter is the single source of truth for the wire mapping:
-/// Ial1 -> 1, Ial1Plus -> 1.5, Ial2 -> 2. Enum everywhere in code; number on the wire.
-/// </summary>
-[JsonConverter(typeof(IdentityAssuranceLevelConverter))]
-public enum IdentityAssuranceLevel { Ial1, Ial1Plus, Ial2 }
-```
-
-We use an enum, not a `decimal` — the levels are stable and a `decimal` field would admit nonsense values (e.g. `1.3`). The non-integer wire value (`1.5`) lives only in the `JsonConverter`, which maps enum↔number in one place. If a future level appears, it's a one-line enum + converter change.
-
-`HS256` (shared secret) by default; `RS256` (portal signs, backend verifies with the portal's public key) when configured. Key material comes from config or a Docker secret path. 60-second TTL.
+`IdentityAssuranceLevel` survives as an internal portal/adapter type — the plugin path still needs it (see the request-context note above) — but it's no longer a wire concern.
 
 ## Backwards compatibility
 
@@ -234,7 +214,7 @@ The sequence, with the caveat that steps 3–4 are aspirations, not commitments:
 |---|---|---|
 | OQ-1 | **Do all plugins populate the newly-added case fields?** The spec now carries `eligibilityType`, `eligibilitySource`, `isCoLoaded`, `isStreamlineCertified`, benefit dates, per-case `mailingAddress`, `displayNumber`, and card `balance`. DC and CO plugins may not surface all of them; the adapter maps what's present and omits the rest. Confirm no use-case treats an omitted field as an error. | Medium — silent display gaps if a handler assumes presence |
 | OQ-2 | **`Application` Core-model cleanup.** The spec's `Application` dropped benefit issue/expiration dates and gained `submittedDate`/`decisionDate`. The Core `Application` model still carries the old fields. Aligning it is out of scope here but should be tracked — it overlaps the known `Cases vs Applications` tech debt. | Low — Core model lags the contract until addressed |
-| OQ-3 | **IAL wire format: number vs. decimal string.** The converter emits a JSON number (`1.5`) by default. Some JWT libraries are fussy about non-integer numeric claims; if so, emit a decimal string (`"1.5"`) instead. Decide during implementation against the chosen JWT library. | Low — isolated to the converter |
+| OQ-3 | **`caseId` encoding vs. plugin case-id cleanup.** The adapter makes its opaque `caseId` self-describing (encodes the `CaseRef` triple + household resolver) so per-case writes resolve statelessly. Is that encoding acceptable long-term, or do we prioritize making the plugin's own case id genuinely unique now so the triple can go away? | Medium — affects adapter complexity and the eventual plugin cleanup |
 
 ## References
 
