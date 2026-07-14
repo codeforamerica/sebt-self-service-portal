@@ -1,9 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Api.Controllers.Auth;
@@ -310,6 +313,7 @@ public class AuthControllerTests
         };
         oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(oidcConfig));
+        var tokenDenylist = Substitute.For<ITokenDenylist>();
 
         _controller.ControllerContext = new ControllerContext
         {
@@ -317,7 +321,7 @@ public class AuthControllerTests
         };
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService);
+        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
 
         // Assert
         var redirectResult = Assert.IsType<RedirectResult>(result);
@@ -340,6 +344,7 @@ public class AuthControllerTests
             .Build();
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+        var tokenDenylist = Substitute.For<ITokenDenylist>();
 
         _controller.ControllerContext = new ControllerContext
         {
@@ -347,7 +352,7 @@ public class AuthControllerTests
         };
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService);
+        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
 
         // Assert
         var redirectResult = Assert.IsType<RedirectResult>(result);
@@ -374,6 +379,7 @@ public class AuthControllerTests
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
         oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Discovery failed"));
+        var tokenDenylist = Substitute.For<ITokenDenylist>();
 
         _controller.ControllerContext = new ControllerContext
         {
@@ -381,7 +387,7 @@ public class AuthControllerTests
         };
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService);
+        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
 
         // Assert — graceful fallback, don't strand the user
         var redirectResult = Assert.IsType<RedirectResult>(result);
@@ -390,6 +396,59 @@ public class AuthControllerTests
         var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
         Assert.Contains($"{AuthCookies.AuthCookieName}=", setCookie);
         Assert.Contains("expires=", setCookie, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Logout_WithNonGuidJti_SkipsRevocation()
+    {
+        // Arrange — logout decodes the cookie JWT without validating it (the token is
+        // being discarded), so an attacker can forge a jti of arbitrary shape. The portal's
+        // JwtTokenService mints only Guid jtis, so a non-Guid value must be skipped rather
+        // than denylisted — otherwise a forged, arbitrarily large jti could be written to
+        // the shared cache by an unauthenticated caller.
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+        var tokenDenylist = Substitute.For<ITokenDenylist>();
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
+            $"{AuthCookies.AuthCookieName}={CreateJwtWithJti("not-a-guid")}";
+
+        // Act
+        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
+
+        // Assert
+        Assert.IsType<RedirectResult>(result);
+        await tokenDenylist.DidNotReceive().DenyAsync(
+            Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
+    }
+
+    /// <summary>
+    /// Builds a signed JWT carrying an arbitrary jti claim value, for exercising the
+    /// unvalidated decode path in <c>AuthController.Logout</c>.
+    /// </summary>
+    private static string CreateJwtWithJti(string jti)
+    {
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(new string('x', 32)));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+        var claims = new List<Claim>
+        {
+            new("email", "user@example.com"),
+            new(JwtRegisteredClaimNames.Jti, jti)
+        };
+        var token = new JwtSecurityToken(
+            issuer: "test",
+            audience: "test",
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(15),
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     [Fact]
