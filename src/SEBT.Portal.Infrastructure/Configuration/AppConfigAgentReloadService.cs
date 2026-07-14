@@ -118,14 +118,31 @@ public sealed class AppConfigAgentReloadService : BackgroundService
 
         if (anyChanged)
         {
-            // The host's ConfigurationManager is disposed during startup: a transient
-            // ServiceProvider built to construct plugin health checks takes ownership of it and
-            // disposes it, severing the provider -> configuration-root change-token bridge. After
-            // that, a provider's OnReload() no longer reaches IFeatureManager / IOptionsMonitor<T>.
-            // IConfigurationRoot.Reload() calls RaiseChanged() directly, so consumers are
-            // re-notified even on a disposed manager. The providers' own Load() short-circuits when
-            // disposed, so this does not re-fetch from the agent.
-            (_configuration as IConfigurationRoot)?.Reload();
+            try
+            {
+                // The host's ConfigurationManager is disposed during startup: a transient
+                // ServiceProvider built to construct plugin health checks takes ownership of it and
+                // disposes it, severing the provider -> configuration-root change-token bridge. After
+                // that, a provider's OnReload() no longer reaches IFeatureManager / IOptionsMonitor<T>.
+                // IConfigurationRoot.Reload() calls RaiseChanged() directly, so consumers are
+                // re-notified even on a disposed manager. The providers' own Load() short-circuits when
+                // disposed, so this does not re-fetch from the agent.
+                (_configuration as IConfigurationRoot)?.Reload();
+            }
+            catch (Exception ex)
+            {
+                // Reload() runs change-token consumers inline. IOptionsMonitor is one: it evicts its
+                // cache and rebuilds the options, running every IValidateOptions. A validator that
+                // rejects the new configuration throws from here, and nothing between us and it
+                // catches. Unhandled, that faults this BackgroundService and the host's default
+                // StopHost behavior terminates the process, which a restart cannot fix while the bad
+                // value is still published. Absorb it and keep polling instead. The rejected section's
+                // options cache is already evicted, so its consumers fail until the configuration is
+                // corrected, at which point the next reload rebuilds it and they recover on their own.
+                _logger.LogCritical(ex,
+                    "AppConfig change rejected while notifying configuration consumers. Consumers of "
+                    + "the rejected section will fail until the configuration is corrected.");
+            }
         }
 
         return anyChanged;

@@ -1,8 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
-import { clearCachedOutageFlag, writeCachedOutageFlag } from '@/features/outage/outageFlagCache'
 import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
 
 import { OutageGuard } from './OutageGuard'
@@ -36,10 +35,13 @@ function renderWithFlags(
   )
 }
 
-describe('OutageGuard', () => {
+// The redirect choreography itself is covered in @sebt/design-system. These tests pin the wiring
+// this app owns: which flag supplies outage state, where it sends people once the outage ends, and
+// which sessionStorage key it caches under.
+describe('OutageGuard (portal wiring)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    clearCachedOutageFlag()
+    window.sessionStorage.clear()
     mockPathname.mockReturnValue('/dashboard')
   })
 
@@ -57,42 +59,24 @@ describe('OutageGuard', () => {
     expect(mockReplace).toHaveBeenCalledWith('/outage')
   })
 
-  it('renders children on /outage when outage_page_enabled is true', () => {
-    mockPathname.mockReturnValue('/outage')
-    renderWithFlags({ outage_page_enabled: true })
-
-    expect(screen.getByText('Portal Content')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  it('redirects away from /outage when outage_page_enabled is false', () => {
-    mockPathname.mockReturnValue('/outage')
-    renderWithFlags({ outage_page_enabled: false })
-
-    expect(screen.queryByText('Portal Content')).not.toBeInTheDocument()
-    expect(mockReplace).toHaveBeenCalledWith('/login')
-  })
-
-  it('renders children while feature flags load when outage is not cached as enabled', () => {
+  it('treats a loading feature-flags context as still resolving', () => {
     renderWithFlags({ outage_page_enabled: true }, { isLoading: true })
 
     expect(screen.getByText('Portal Content')).toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('blocks and redirects while feature flags load when outage is cached as enabled', async () => {
-    writeCachedOutageFlag(true)
-    renderWithFlags({ outage_page_enabled: false }, { isLoading: true })
+  it('returns to login, not the checker landing route, when the outage ends', () => {
+    mockPathname.mockReturnValue('/outage')
+    renderWithFlags({ outage_page_enabled: false })
 
-    await waitFor(() => {
-      expect(screen.queryByText('Portal Content')).not.toBeInTheDocument()
-    })
-    expect(mockReplace).toHaveBeenCalledWith('/outage')
+    expect(mockReplace).toHaveBeenCalledWith('/login')
   })
 
-  it('persists the live flag to sessionStorage after features load', () => {
+  it('caches under the portal key so a checker outage does not gate the portal', () => {
     renderWithFlags({ outage_page_enabled: true })
 
     expect(window.sessionStorage.getItem('sebt_outage_page_enabled')).toBe('true')
+    expect(window.sessionStorage.getItem('sebt_checker_outage_page_enabled')).toBeNull()
   })
 })

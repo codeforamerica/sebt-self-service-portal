@@ -10,6 +10,25 @@ public class EnrollmentCheckerFeaturesResponse
     /// Maintenance banner state.
     /// </summary>
     public MaintenanceBannerFeature MaintenanceBanner { get; init; } = new();
+
+    /// <summary>
+    /// Sitewide outage page state. Driven by OutageSchedule windows targeting the
+    /// enrollment checker, with the checker_outage_page_enabled flag as the manual
+    /// fallback when no such windows are configured.
+    /// </summary>
+    public OutagePageFeature OutagePage { get; init; } = new();
+}
+
+/// <summary>
+/// Outage page state for the enrollment checker. When enabled, the checker replaces all
+/// routes with a full-page outage notice.
+/// </summary>
+public class OutagePageFeature
+{
+    /// <summary>
+    /// Whether the outage page should be shown.
+    /// </summary>
+    public bool Enabled { get; init; }
 }
 
 /// <summary>

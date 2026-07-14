@@ -8,6 +8,7 @@ using SEBT.Portal.Api;
 using SEBT.Portal.Api.Controllers.EnrollmentCheck;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Api.Controllers.EnrollmentCheck;
 
@@ -22,6 +23,8 @@ public class EnrollmentCheckerFeaturesEndpointTests
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
     private readonly IOptionsMonitor<EnrollmentCheckerSettings> _settings =
         Substitute.For<IOptionsMonitor<EnrollmentCheckerSettings>>();
+    private readonly IOutagePageStateResolver _outagePageStateResolver =
+        Substitute.For<IOutagePageStateResolver>();
     private readonly EnrollmentCheckController _controller = new();
 
     public EnrollmentCheckerFeaturesEndpointTests()
@@ -32,15 +35,22 @@ public class EnrollmentCheckerFeaturesEndpointTests
         });
     }
 
+    private Task<IActionResult> GetFeatures() =>
+        _controller.GetFeatures(_featureManager, _settings, _outagePageStateResolver);
+
+    private static EnrollmentCheckerFeaturesResponse AssertOkResponse(IActionResult result)
+    {
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        return Assert.IsType<EnrollmentCheckerFeaturesResponse>(okResult.Value);
+    }
+
     [Fact]
     public async Task GetFeatures_WhenBannerFlagEnabled_ReturnsEnabledWithMessage()
     {
         _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerMaintenanceBanner).Returns(true);
 
-        var result = await _controller.GetFeatures(_featureManager, _settings);
+        var response = AssertOkResponse(await GetFeatures());
 
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<EnrollmentCheckerFeaturesResponse>(okResult.Value);
         Assert.True(response.MaintenanceBanner.Enabled);
         Assert.Equal(DefaultMessage, response.MaintenanceBanner.Message);
     }
@@ -50,10 +60,8 @@ public class EnrollmentCheckerFeaturesEndpointTests
     {
         _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerMaintenanceBanner).Returns(false);
 
-        var result = await _controller.GetFeatures(_featureManager, _settings);
+        var response = AssertOkResponse(await GetFeatures());
 
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<EnrollmentCheckerFeaturesResponse>(okResult.Value);
         Assert.False(response.MaintenanceBanner.Enabled);
         Assert.Equal(DefaultMessage, response.MaintenanceBanner.Message);
     }
@@ -63,7 +71,7 @@ public class EnrollmentCheckerFeaturesEndpointTests
     {
         _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerMaintenanceBanner).Returns(true);
 
-        var firstResult = await _controller.GetFeatures(_featureManager, _settings);
+        var firstResult = await GetFeatures();
 
         var updatedMessage = new Dictionary<string, string>
         {
@@ -75,14 +83,47 @@ public class EnrollmentCheckerFeaturesEndpointTests
             MaintenanceBanner = new MaintenanceBannerSettings { Message = updatedMessage }
         });
 
-        var secondResult = await _controller.GetFeatures(_featureManager, _settings);
+        var secondResult = await GetFeatures();
 
-        var firstResponse = Assert.IsType<EnrollmentCheckerFeaturesResponse>(
-            Assert.IsType<OkObjectResult>(firstResult).Value);
-        var secondResponse = Assert.IsType<EnrollmentCheckerFeaturesResponse>(
-            Assert.IsType<OkObjectResult>(secondResult).Value);
-        Assert.Equal(DefaultMessage, firstResponse.MaintenanceBanner.Message);
-        Assert.Equal(updatedMessage, secondResponse.MaintenanceBanner.Message);
+        Assert.Equal(DefaultMessage, AssertOkResponse(firstResult).MaintenanceBanner.Message);
+        Assert.Equal(updatedMessage, AssertOkResponse(secondResult).MaintenanceBanner.Message);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenOutagePageActive_ReturnsOutagePageEnabled()
+    {
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(IsActive: true, ScheduleIsAuthority: false));
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.True(response.OutagePage.Enabled);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenOutagePageInactive_ReturnsOutagePageDisabled()
+    {
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(IsActive: false, ScheduleIsAuthority: false));
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.False(response.OutagePage.Enabled);
+    }
+
+    [Fact]
+    public async Task GetFeatures_OutageStateDoesNotAffectBannerFields()
+    {
+        // The outage page is additive; the maintenance banner mechanism stays independent.
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerMaintenanceBanner).Returns(true);
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(IsActive: true, ScheduleIsAuthority: false));
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.True(response.MaintenanceBanner.Enabled);
+        Assert.Equal(DefaultMessage, response.MaintenanceBanner.Message);
+        Assert.True(response.OutagePage.Enabled);
     }
 
     [Fact]
