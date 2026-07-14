@@ -77,17 +77,21 @@ jobs:
           CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then  
-            BRANCH="$HEAD_REF"  
-          else  
-            BRANCH="$REF_NAME"  
-          fi  
-          FALLBACK="main"  
-          REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-state-connector.git"  
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then  
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"  
-          else  
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"  
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+          else
+            BRANCH="$REF_NAME"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH"
+            exit 1
+          fi
+          FALLBACK="main"
+          REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-state-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Determine dc-connector ref
@@ -103,6 +107,10 @@ jobs:
             BRANCH="$HEAD_REF"
           else
             BRANCH="$REF_NAME"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH"
+            exit 1
           fi
           FALLBACK="main"
           REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"

@@ -97,10 +97,26 @@ jobs:
 
       - name: Determine state connector ref
         id: connector-ref
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
-          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
-          FALLBACK="${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+            FALLBACK="$BASE_REF"
+          else
+            BRANCH="$REF_NAME"
+            FALLBACK="main"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ ! "$FALLBACK" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH fallback=$FALLBACK"
+            exit 1
+          fi
+          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_OWNER}/sebt-self-service-portal-state-connector.git"
           if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
             echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
           else

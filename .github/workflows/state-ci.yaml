@@ -31,13 +31,20 @@ jobs:
 
       - name: Discover state configurations
         id: set-matrix
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_STATE: ${{ github.event.inputs.state }}
         run: |
-          BRANCH="${{ github.ref_name }}"
+          BRANCH="$REF_NAME"
 
           # Priority 1: Manual workflow_dispatch with specific state
-          if [ -n "${{ github.event.inputs.state }}" ]; then
-            echo "Manual trigger for state: ${{ github.event.inputs.state }}"
-            echo "matrix={\"state\":[\"${{ github.event.inputs.state }}\"]}" >> $GITHUB_OUTPUT
+          if [ -n "$INPUT_STATE" ]; then
+            if [[ ! "$INPUT_STATE" =~ ^[a-z]{2}$ ]]; then
+              echo "::error::Invalid state code: $INPUT_STATE"
+              exit 1
+            fi
+            echo "Manual trigger for state: $INPUT_STATE"
+            echo "matrix={\"state\":[\"${INPUT_STATE}\"]}" >> $GITHUB_OUTPUT
 
           # Priority 2: Branch name pattern (deploy/STATE or deploy/STATE-feature)
           elif [[ "$BRANCH" =~ ^deploy/([a-z]{2})(-.*)?$ ]]; then
@@ -104,12 +111,27 @@ jobs:
 
       - name: Determine state connector ref
         id: connector-ref
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          BASE_REF: ${{ github.base_ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
         run: |
           # Same-named branch as this run (PR head branch or push branch)
-          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
-          # Fallback when that branch does not exist in the state connector repo
-          FALLBACK="${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+            FALLBACK="$BASE_REF"
+          else
+            BRANCH="$REF_NAME"
+            FALLBACK="main"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ ! "$FALLBACK" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH fallback=$FALLBACK"
+            exit 1
+          fi
+          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_OWNER}/sebt-self-service-portal-state-connector.git"
           if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
             echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
             echo "Using state connector branch: ${BRANCH}"
