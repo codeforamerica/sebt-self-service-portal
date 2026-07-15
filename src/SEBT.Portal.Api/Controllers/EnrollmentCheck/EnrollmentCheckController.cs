@@ -6,6 +6,7 @@ using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
@@ -85,14 +86,15 @@ public class EnrollmentCheckController : ControllerBase
 
     /// <summary>
     /// Returns runtime feature state for the standalone enrollment checker app
-    /// (currently the maintenance banner toggle and its per-language copy).
-    /// This is a public, unauthenticated endpoint. In static-hosting deployments
-    /// (e.g. CO) the checker has no server of its own, so it polls this endpoint at
-    /// runtime, which is what lets the banner be toggled and its copy updated via
-    /// AWS AppConfig without a checker redeploy.
+    /// (the maintenance banner toggle with its per-language copy, and the outage
+    /// page state). This is a public, unauthenticated endpoint. In static-hosting
+    /// deployments (e.g. CO) the checker has no server of its own, so it polls this
+    /// endpoint at runtime, which is what lets these be toggled via AWS AppConfig
+    /// without a checker redeploy.
     /// </summary>
     /// <param name="featureManager">Feature manager resolving the banner toggle.</param>
     /// <param name="settings">Enrollment checker settings (banner copy).</param>
+    /// <param name="outagePageStateResolver">Resolves the checker's outage page state (schedule + manual flag).</param>
     /// <returns>An OK result with the checker feature state.</returns>
     /// <response code="200">Returns the current checker feature state.</response>
     [HttpGet("features")]
@@ -103,7 +105,8 @@ public class EnrollmentCheckController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> GetFeatures(
         [FromServices] IFeatureManager featureManager,
-        [FromServices] IOptionsMonitor<EnrollmentCheckerSettings> settings)
+        [FromServices] IOptionsMonitor<EnrollmentCheckerSettings> settings,
+        [FromServices] IOutagePageStateResolver outagePageStateResolver)
     {
         var bannerEnabled = await featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerMaintenanceBanner);
 
@@ -111,12 +114,18 @@ public class EnrollmentCheckController : ControllerBase
         // take effect without an app restart.
         var message = settings.CurrentValue.MaintenanceBanner.Message;
 
+        var outagePageEnabled = (await outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)).IsActive;
+
         return Ok(new EnrollmentCheckerFeaturesResponse
         {
             MaintenanceBanner = new MaintenanceBannerFeature
             {
                 Enabled = bannerEnabled,
                 Message = message
+            },
+            OutagePage = new OutagePageFeature
+            {
+                Enabled = outagePageEnabled
             }
         });
     }

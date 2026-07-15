@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
@@ -8,10 +7,16 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// <summary>
 /// Evaluates the configured <see cref="OutageScheduleSettings"/> against the current time so the
 /// outage page can auto-enable during scheduled (state-backend) maintenance windows without a
-/// manual flag toggle. Reads the schedule via <see cref="IOptionsMonitor{TOptions}"/> so AWS
-/// AppConfig updates take effect without a redeploy. Defensive by design: bad configuration
-/// (unknown timezone, unparseable window) is logged and skipped rather than thrown, so the
-/// feature-flags endpoint can never break.
+/// manual flag toggle. Windows apply per-surface via <see cref="OutageWindow.Target"/>. Reads the
+/// schedule via <see cref="IOptionsMonitor{TOptions}"/> so AWS AppConfig updates take effect
+/// without a redeploy.
+/// <para>
+/// Startup validation rejects an unknown timezone, an unparseable window, and an unrecognized
+/// target, so none of those should reach this class. The checks below remain as a backstop and log
+/// at Error: reaching one means validation was bypassed, and the feature-flag endpoints must keep
+/// answering either way. Both methods share <see cref="OutageWindowParsing"/> with the validator, so
+/// their notion of a well-formed window cannot drift apart.
+/// </para>
 /// </summary>
 public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
 {
@@ -29,7 +34,7 @@ public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
         _logger = logger;
     }
 
-    public bool IsOutageActive()
+    public bool IsOutageActive(OutageTarget surface)
     {
         var settings = _options.CurrentValue;
         if (settings.Windows.Count == 0)
@@ -44,7 +49,7 @@ public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(
+            _logger.LogError(
                 ex,
                 "Invalid OutageSchedule TimeZoneId '{TimeZoneId}'; treating as no scheduled outage",
                 settings.TimeZoneId);
@@ -55,9 +60,26 @@ public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
 
         foreach (var window in settings.Windows)
         {
-            if (!TryParseLocal(window.Start, out var start) || !TryParseLocal(window.End, out var end))
+            if (!OutageWindowParsing.TryParseTarget(window.Target, out var target))
             {
-                _logger.LogWarning(
+                _logger.LogError(
+                    "Skipping OutageSchedule window with unrecognized Target '{Target}' " +
+                    "(Start='{Start}' End='{End}'); expected Portal, EnrollmentChecker, or Both",
+                    window.Target,
+                    window.Start,
+                    window.End);
+                continue;
+            }
+
+            if (!AppliesTo(target, surface))
+            {
+                continue;
+            }
+
+            if (!OutageWindowParsing.TryParseLocal(window.Start, out var start)
+                || !OutageWindowParsing.TryParseLocal(window.End, out var end))
+            {
+                _logger.LogError(
                     "Skipping malformed OutageSchedule window Start='{Start}' End='{End}'",
                     window.Start,
                     window.End);
@@ -74,10 +96,31 @@ public sealed class OutageScheduleEvaluator : IOutageScheduleEvaluator
         return false;
     }
 
-    /// <summary>
-    /// Parses an ISO-8601 local wall-clock date-time (no offset) as <see cref="DateTimeKind.Unspecified"/>,
-    /// matching the timezone-local <c>nowLocal</c> it is compared against.
-    /// </summary>
-    private static bool TryParseLocal(string value, out DateTime result) =>
-        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out result);
+    public bool HasScheduledWindows(OutageTarget surface)
+    {
+        foreach (var window in _options.CurrentValue.Windows)
+        {
+            // A window only makes the schedule authoritative for a surface when it can actually be
+            // evaluated. A window this method counted but IsOutageActive could not read would pin
+            // the surface to "no outage" and suppress its manual flag, so the two must agree on
+            // exactly which windows count. IsOutageActive logs the ones it rejects; logging again
+            // here would double every message on every request.
+            if (!OutageWindowParsing.TryParseTarget(window.Target, out var target)
+                || !AppliesTo(target, surface))
+            {
+                continue;
+            }
+
+            if (OutageWindowParsing.TryParseLocal(window.Start, out _)
+                && OutageWindowParsing.TryParseLocal(window.End, out _))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool AppliesTo(OutageTarget windowTarget, OutageTarget surface) =>
+        windowTarget == OutageTarget.Both || windowTarget == surface;
 }

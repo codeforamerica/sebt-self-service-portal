@@ -1,5 +1,6 @@
-import { OutagePageContent } from '@/features/outage/components/OutagePageContent'
+import { stateResources } from '@/lib/generated-locale-resources'
+import { OutagePageContent } from '@sebt/design-system'
 
 export default function OutagePage() {
-  return <OutagePageContent />
+  return <OutagePageContent resources={stateResources} />
 }

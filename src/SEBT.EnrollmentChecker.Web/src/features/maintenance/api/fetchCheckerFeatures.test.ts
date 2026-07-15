@@ -14,6 +14,25 @@ describe('fetchCheckerFeatures', () => {
     expect(features.maintenanceBanner.enabled).toBe(true)
   })
 
+  it('parses the outage page state when the API sends it', async () => {
+    server.use(
+      http.get('/api/enrollment/features', () =>
+        HttpResponse.json({ ...FEATURES, outagePage: { enabled: true } })
+      )
+    )
+    const features = await fetchCheckerFeatures('')
+    expect(features.outagePage?.enabled).toBe(true)
+  })
+
+  it('tolerates a response without outagePage so an older API cannot break the banner', async () => {
+    server.use(
+      http.get('/api/enrollment/features', () => HttpResponse.json(FEATURES))
+    )
+    const features = await fetchCheckerFeatures('')
+    expect(features.outagePage).toBeUndefined()
+    expect(features.maintenanceBanner.enabled).toBe(true)
+  })
+
   it('includes the resolved URL in the error so console captures distinguish proxy from API failures', async () => {
     server.use(
       http.get('/api/enrollment/features', () => new HttpResponse(null, { status: 500 }))

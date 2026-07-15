@@ -1,7 +1,6 @@
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using Microsoft.FeatureManagement;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
@@ -12,19 +11,26 @@ namespace SEBT.Portal.Tests.Unit.Services;
 public class FeatureFlagServiceTests
 {
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
-    private readonly IOutageScheduleEvaluator _outageScheduleEvaluator = Substitute.For<IOutageScheduleEvaluator>();
-    private readonly IOptionsMonitor<OutageScheduleSettings> _outageScheduleOptions =
-        Substitute.For<IOptionsMonitor<OutageScheduleSettings>>();
+    private readonly IOutagePageStateResolver _outagePageStateResolver = Substitute.For<IOutagePageStateResolver>();
     private readonly ILogger<FeatureFlagQueryService> _logger = NullLogger<FeatureFlagQueryService>.Instance;
 
-    public FeatureFlagServiceTests()
+    // The resolver defaults to default(OutagePageState) — not active, schedule not authoritative —
+    // so tests that do not arrange outage state behave as "no windows configured", leaving the
+    // feature-manager values untouched.
+    private FeatureFlagQueryService CreateService() =>
+        new(_featureManager, _outagePageStateResolver, _logger);
+
+    private void ArrangePortalWindows(bool active)
     {
-        _outageScheduleOptions.CurrentValue.Returns(new OutageScheduleSettings());
+        _outagePageStateResolver.ResolveAsync(OutageTarget.Portal)
+            .Returns(new OutagePageState(active, ScheduleIsAuthority: true));
     }
 
-    // IsOutageActive() defaults to false (NSubstitute bool default), so existing tests are unaffected.
-    private FeatureFlagQueryService CreateService() =>
-        new(_featureManager, _outageScheduleEvaluator, _outageScheduleOptions, _logger);
+    private void ArrangeCheckerWindows(bool active)
+    {
+        _outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)
+            .Returns(new OutagePageState(active, ScheduleIsAuthority: true));
+    }
 
     [Fact]
     public async Task GetFeatureFlagsAsync_WhenFlagIsEnabled_ShouldReturnTrue()
@@ -127,14 +133,10 @@ public class FeatureFlagServiceTests
     public async Task GetFeatureFlagsAsync_WhenScheduledOutageActive_ShouldForceOutageFlagTrue()
     {
         // Arrange: outage flag manually disabled, but a scheduled outage window is active.
-        _outageScheduleOptions.CurrentValue.Returns(new OutageScheduleSettings
-        {
-            Windows = [new OutageWindow { Start = "2026-06-21T00:00:00", End = "2026-06-22T00:00:00" }]
-        });
+        ArrangePortalWindows(active: true);
         _featureManager.GetFeatureNamesAsync()
             .Returns(new[] { FeatureFlags.OutagePageEnabled }.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync(FeatureFlags.OutagePageEnabled).Returns(false);
-        _outageScheduleEvaluator.IsOutageActive().Returns(true);
 
         var service = CreateService();
 
@@ -149,13 +151,9 @@ public class FeatureFlagServiceTests
     public async Task GetFeatureFlagsAsync_WhenScheduledOutageActiveAndFlagNotConfigured_ShouldAddOutageFlagTrue()
     {
         // Arrange: no flags configured at all, but a scheduled outage window is active.
-        _outageScheduleOptions.CurrentValue.Returns(new OutageScheduleSettings
-        {
-            Windows = [new OutageWindow { Start = "2026-06-21T00:00:00", End = "2026-06-22T00:00:00" }]
-        });
+        ArrangePortalWindows(active: true);
         _featureManager.GetFeatureNamesAsync()
             .Returns(AsyncEnumerable.Empty<string>());
-        _outageScheduleEvaluator.IsOutageActive().Returns(true);
 
         var service = CreateService();
 
@@ -170,14 +168,10 @@ public class FeatureFlagServiceTests
     public async Task GetFeatureFlagsAsync_WhenScheduleConfiguredButInactive_ShouldForceOutageFlagFalse()
     {
         // Arrange: manual/AppConfig "true" must not bypass the maintenance calendar.
-        _outageScheduleOptions.CurrentValue.Returns(new OutageScheduleSettings
-        {
-            Windows = [new OutageWindow { Start = "2026-06-21T00:00:00", End = "2026-06-22T00:00:00" }]
-        });
+        ArrangePortalWindows(active: false);
         _featureManager.GetFeatureNamesAsync()
             .Returns(new[] { FeatureFlags.OutagePageEnabled }.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync(FeatureFlags.OutagePageEnabled).Returns(true);
-        _outageScheduleEvaluator.IsOutageActive().Returns(false);
 
         var service = CreateService();
 
@@ -195,7 +189,6 @@ public class FeatureFlagServiceTests
         _featureManager.GetFeatureNamesAsync()
             .Returns(new[] { FeatureFlags.OutagePageEnabled }.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync(FeatureFlags.OutagePageEnabled).Returns(true);
-        _outageScheduleEvaluator.IsOutageActive().Returns(false);
 
         var service = CreateService();
 
@@ -210,14 +203,10 @@ public class FeatureFlagServiceTests
     public async Task GetFeatureFlagsAsync_WhenScheduledOutageActive_ShouldNotAffectOtherFlags()
     {
         // Arrange
-        _outageScheduleOptions.CurrentValue.Returns(new OutageScheduleSettings
-        {
-            Windows = [new OutageWindow { Start = "2026-06-21T00:00:00", End = "2026-06-22T00:00:00" }]
-        });
+        ArrangePortalWindows(active: true);
         _featureManager.GetFeatureNamesAsync()
             .Returns(new[] { "other_feature" }.ToAsyncEnumerable());
         _featureManager.IsEnabledAsync("other_feature").Returns(false);
-        _outageScheduleEvaluator.IsOutageActive().Returns(true);
 
         var service = CreateService();
 
@@ -227,5 +216,62 @@ public class FeatureFlagServiceTests
         // Assert: only the outage flag is forced on; unrelated flags keep their values.
         Assert.False(result["other_feature"]);
         Assert.True(result[FeatureFlags.OutagePageEnabled]);
+    }
+
+    [Fact]
+    public async Task GetFeatureFlagsAsync_WhenOnlyCheckerWindowsExist_ShouldPreservePortalManualFlag()
+    {
+        // Arrange: windows targeting only the enrollment checker must not disable the
+        // portal's manual toggle (the emergency kill switch for unscheduled outages).
+        ArrangeCheckerWindows(active: true);
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { FeatureFlags.OutagePageEnabled }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(FeatureFlags.OutagePageEnabled).Returns(true);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.GetFeatureFlagsAsync();
+
+        // Assert: portal manual value preserved; checker flag forced on by its schedule.
+        Assert.True(result[FeatureFlags.OutagePageEnabled]);
+        Assert.True(result[FeatureFlags.CheckerOutagePageEnabled]);
+    }
+
+    [Fact]
+    public async Task GetFeatureFlagsAsync_WhenOnlyPortalWindowsExist_ShouldPreserveCheckerManualFlag()
+    {
+        // Arrange: the mirror case — portal windows must not disable the checker's manual toggle.
+        ArrangePortalWindows(active: false);
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { FeatureFlags.CheckerOutagePageEnabled }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(FeatureFlags.CheckerOutagePageEnabled).Returns(true);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.GetFeatureFlagsAsync();
+
+        // Assert: checker manual value preserved; portal flag forced off by its inactive schedule.
+        Assert.True(result[FeatureFlags.CheckerOutagePageEnabled]);
+        Assert.False(result[FeatureFlags.OutagePageEnabled]);
+    }
+
+    [Fact]
+    public async Task GetFeatureFlagsAsync_WhenCheckerScheduleInactive_ShouldForceCheckerFlagFalse()
+    {
+        // Arrange: checker windows exist but none is active; manual "true" cannot bypass.
+        ArrangeCheckerWindows(active: false);
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { FeatureFlags.CheckerOutagePageEnabled }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(FeatureFlags.CheckerOutagePageEnabled).Returns(true);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.GetFeatureFlagsAsync();
+
+        // Assert
+        Assert.False(result[FeatureFlags.CheckerOutagePageEnabled]);
     }
 }
