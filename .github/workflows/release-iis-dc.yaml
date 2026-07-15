@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout portal
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
@@ -121,7 +121,7 @@ jobs:
           fi
 
       - name: Checkout state-connector (interfaces NuGet source)
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: codeforamerica/sebt-self-service-portal-state-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
@@ -129,7 +129,7 @@ jobs:
           path: state-connector
 
       - name: Checkout dc-connector (DC plugin implementation)
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
@@ -137,17 +137,17 @@ jobs:
           path: dc-connector
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: "10.0.200"
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: "10"
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           cache: "pnpm"
@@ -226,7 +226,7 @@ jobs:
 
       - name: Upload workflow artifact
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: sebt-dc-iis-${{ steps.ver.outputs.version }}
           path: |
