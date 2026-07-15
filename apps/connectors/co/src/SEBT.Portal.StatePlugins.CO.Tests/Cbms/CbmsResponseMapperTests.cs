@@ -680,6 +680,89 @@ public class CbmsResponseMapperTests
     }
 
     [Fact]
+    public void MapToHouseholdData_logs_unmapped_case_status_once_across_application_children()
+    {
+        // Three children on one application sharing an unmapped stdntEligSts. Before per-lookup
+        // dedup this logged once per child; it must now log exactly once.
+        var students = new List<GetAccountStudentDetail>();
+        for (var i = 0; i < 3; i++)
+        {
+            var student = CreateMinimalStudent();
+            student.EligSrc = "CBMS";
+            student.SebtAppId = 700; // same application -> one group, three children
+            student.SebtChldId = 900 + i;
+            student.SebtChldCwin = 7000900 + i;
+            student.StdntEligSts = "ZZ"; // unmapped
+            student.SebtAppSts = "PN"; // maps cleanly, contributes no log
+            students.Add(student);
+        }
+        var response = new GetAccountDetailsResponse { StdntEnrollDtls = students };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        var result = CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        var app = Assert.Single(result.Applications);
+        Assert.Equal(3, app.Children.Count);
+        var errors = logger.Entries.FindAll(e => e.Level == LogLevel.Error);
+        var entry = Assert.Single(errors);
+        Assert.Contains("ZZ", entry.Message);
+        Assert.Contains("stdntEligSts", entry.Message);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_logs_unmapped_card_status_once_across_multiple_cases()
+    {
+        // Three auto-eligible cases sharing an unmapped card status. Logs once, not once per case.
+        var students = new List<GetAccountStudentDetail>();
+        for (var i = 0; i < 3; i++)
+        {
+            var student = CreateMinimalStudent();
+            student.EligSrc = "DIRC"; // auto-eligible -> always a case
+            student.SebtChldId = 800 + i;
+            student.SebtChldCwin = 6000800 + i;
+            student.StdntEligSts = "AP"; // maps cleanly, contributes no log
+            student.EbtCardSts = "MYSTERY_CARD_STATE"; // unmapped card token
+            students.Add(student);
+        }
+        var response = new GetAccountDetailsResponse { StdntEnrollDtls = students };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        var result = CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        Assert.Equal(3, result.SummerEbtCases.Count);
+        var errors = logger.Entries.FindAll(e => e.Level == LogLevel.Error);
+        var entry = Assert.Single(errors);
+        Assert.Contains("MYSTERY_CARD_STATE", entry.Message);
+        Assert.Contains("ebtCardSts", entry.Message);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_logs_card_and_status_tokens_separately_when_text_matches()
+    {
+        // The same raw text as both an unmapped card status and an unmapped case status must produce
+        // two logs: the dedup key is scoped by field, so identical text across fields does not collide.
+        var student = CreateMinimalStudent();
+        student.EligSrc = "DIRC"; // auto-eligible -> a case, mapped for both status and card
+        student.StdntEligSts = "ZZ"; // unmapped case status
+        student.EbtCardSts = "ZZ"; // unmapped card status, identical text
+        var response = new GetAccountDetailsResponse
+        {
+            StdntEnrollDtls = new List<GetAccountStudentDetail> { student }
+        };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        var errors = logger.Entries.FindAll(e => e.Level == LogLevel.Error);
+        Assert.Equal(2, errors.Count);
+        Assert.Contains(errors, e => e.Message.Contains("stdntEligSts"));
+        Assert.Contains(errors, e => e.Message.Contains("ebtCardSts"));
+    }
+
+    [Fact]
     public void MapToHouseholdData_populates_child_status_from_stdntEligSts()
     {
         var approved = CreateMinimalStudent();

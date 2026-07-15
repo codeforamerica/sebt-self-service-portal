@@ -39,6 +39,13 @@ internal static class CbmsResponseMapper
 
         var first = students.FirstOrDefault();
 
+        // Tracks unmapped tokens already logged during this lookup so a token shared across a
+        // household's students (per case, per application child, per card) logs once, not once per
+        // occurrence. Keyed by "field:token" so an unmapped card value and an unmapped status value
+        // that happen to share text (or the same 2-letter code across stdntEligSts and sebtAppSts)
+        // are still reported separately. Shared across the cases and applications mapping below.
+        var seenUnmappedTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         var household = new HouseholdData
         {
             Phone = piiVisibility.IncludePhone ? queryPhone : null,
@@ -50,8 +57,8 @@ internal static class CbmsResponseMapper
                 LastName = first.GurdLstNm ?? string.Empty
             } : null,
             BenefitIssuanceType = BenefitIssuanceType.SummerEbt,
-            SummerEbtCases = BuildCases(students, piiVisibility, logger),
-            Applications = BuildApplications(students, logger)
+            SummerEbtCases = BuildCases(students, piiVisibility, logger, seenUnmappedTokens),
+            Applications = BuildApplications(students, logger, seenUnmappedTokens)
         };
 
         return household;
@@ -77,7 +84,11 @@ internal static class CbmsResponseMapper
         };
     }
 
-    private static SummerEbtCase MapToSummerEbtCase(GetAccountStudentDetail s, PiiVisibility piiVisibility, ILogger? logger)
+    private static SummerEbtCase MapToSummerEbtCase(
+        GetAccountStudentDetail s,
+        PiiVisibility piiVisibility,
+        ILogger? logger,
+        HashSet<string>? seenUnmappedTokens = null)
     {
         var isApplicationBased = EligibilitySourceClassifier.IsApplicationBased(s.EligSrc);
         var cbmsCaseId = s.CbmsCsId;
@@ -97,12 +108,12 @@ internal static class CbmsResponseMapper
             HouseholdType = "SEBT",
             EligibilityType = s.StdntEligSts ?? string.Empty,
             IssuanceType = IssuanceType.SummerEbt,
-            ApplicationStatus = MapCaseStatus(s.StdntEligSts, logger),
+            ApplicationStatus = MapCaseStatus(s.StdntEligSts, logger, seenUnmappedTokens),
             MailingAddress = piiVisibility.IncludeAddress ? MapAddress(s) : null,
             EbtCaseNumber = cbmsCaseId,
             CaseDisplayNumber = displayReferenceId,
             EbtCardLastFour = s.EbtCardLastFour,
-            EbtCardStatus = MapCardStatus(s.EbtCardSts, logger),
+            EbtCardStatus = MapCardStatus(s.EbtCardSts, logger, seenUnmappedTokens),
             EbtCardIssueDate = ParseDateOnly(s.CardIssDt),
             EbtCardBalance = s.CardBal.HasValue ? (decimal)s.CardBal.Value : null,
             BenefitAvailableDate = ParseDateOnly(s.BenAvalDt),
@@ -120,14 +131,16 @@ internal static class CbmsResponseMapper
     private static List<SummerEbtCase> BuildCases(
         List<GetAccountStudentDetail> students,
         PiiVisibility piiVisibility,
-        ILogger? logger)
+        ILogger? logger,
+        HashSet<string>? seenUnmappedTokens = null)
     {
         return students
-            // No logger for the filter's mapping call: an unmapped token for an application-based
-            // student is logged once via the application's children mapping instead.
+            // No logger or dedup set for the filter's mapping call: an unmapped token for an
+            // application-based student is logged once via the application's children mapping
+            // instead. Passing the set here would consume its dedup slot without emitting a log.
             .Where(s => !EligibilitySourceClassifier.IsApplicationBased(s.EligSrc)
                       || MapCaseStatus(s.StdntEligSts) == ApplicationStatus.Approved)
-            .Select(s => MapToSummerEbtCase(s, piiVisibility, logger))
+            .Select(s => MapToSummerEbtCase(s, piiVisibility, logger, seenUnmappedTokens))
             .ToList();
     }
 
@@ -135,7 +148,10 @@ internal static class CbmsResponseMapper
     /// Builds the Applications collection. Only rows where EligSrc indicates
     /// an actual application was submitted (CBMS or PK), grouped by SebtAppId.
     /// </summary>
-    private static List<Application> BuildApplications(List<GetAccountStudentDetail> students, ILogger? logger)
+    private static List<Application> BuildApplications(
+        List<GetAccountStudentDetail> students,
+        ILogger? logger,
+        HashSet<string>? seenUnmappedTokens = null)
     {
         var applicationRows = students
             .Where(s => EligibilitySourceClassifier.IsApplicationBased(s.EligSrc))
@@ -150,13 +166,13 @@ internal static class CbmsResponseMapper
             {
                 ApplicationNumber = sebtAppIdText,
                 CaseNumber = sebtAppIdText,
-                ApplicationStatus = MapApplicationStatus(first.SebtAppSts, logger),
+                ApplicationStatus = MapApplicationStatus(first.SebtAppSts, logger, seenUnmappedTokens),
                 IssuanceType = IssuanceType.SummerEbt,
                 Children = g.Select(c => new Child
                 {
                     FirstName = c.StdFstNm ?? string.Empty,
                     LastName = c.StdLstNm ?? string.Empty,
-                    Status = MapCaseStatus(c.StdntEligSts, logger)
+                    Status = MapCaseStatus(c.StdntEligSts, logger, seenUnmappedTokens)
                 }).ToList()
             };
         }).ToList();
@@ -166,7 +182,10 @@ internal static class CbmsResponseMapper
     /// Maps the CBMS case/eligibility status code (<c>stdntEligSts</c>) to a portal ApplicationStatus.
     /// These 2-letter codes represent the case-level determination (approved, denied, pending).
     /// </summary>
-    private static ApplicationStatus MapCaseStatus(string? stdntEligSts, ILogger? logger = null)
+    private static ApplicationStatus MapCaseStatus(
+        string? stdntEligSts,
+        ILogger? logger = null,
+        HashSet<string>? seenUnmappedTokens = null)
     {
         if (string.IsNullOrEmpty(stdntEligSts)) return ApplicationStatus.Unknown;
         return stdntEligSts.ToUpperInvariant() switch
@@ -179,7 +198,7 @@ internal static class CbmsResponseMapper
             "PE" => ApplicationStatus.Pending,
             "PG" => ApplicationStatus.Pending,
             "PS" => ApplicationStatus.Pending,
-            _ => LogAndReturnUnknownStatus(stdntEligSts, "stdntEligSts", logger)
+            _ => LogAndReturnUnknownStatus(stdntEligSts, "stdntEligSts", logger, seenUnmappedTokens)
         };
     }
 
@@ -187,7 +206,10 @@ internal static class CbmsResponseMapper
     /// Maps the CBMS application processing status code (<c>sebtAppSts</c>) to a portal ApplicationStatus.
     /// These 2-letter codes represent application processing state — all known codes are in-process.
     /// </summary>
-    private static ApplicationStatus MapApplicationStatus(string? sebtAppSts, ILogger? logger = null)
+    private static ApplicationStatus MapApplicationStatus(
+        string? sebtAppSts,
+        ILogger? logger = null,
+        HashSet<string>? seenUnmappedTokens = null)
     {
         if (string.IsNullOrEmpty(sebtAppSts)) return ApplicationStatus.Unknown;
         return sebtAppSts.ToUpperInvariant() switch
@@ -200,11 +222,14 @@ internal static class CbmsResponseMapper
             "PS" => ApplicationStatus.Pending,
             "PW" => ApplicationStatus.Pending,
             "RC" => ApplicationStatus.Pending,
-            _ => LogAndReturnUnknownStatus(sebtAppSts, "sebtAppSts", logger)
+            _ => LogAndReturnUnknownStatus(sebtAppSts, "sebtAppSts", logger, seenUnmappedTokens)
         };
     }
 
-    private static CardStatus MapCardStatus(string? ebtCardSts, ILogger? logger = null)
+    private static CardStatus MapCardStatus(
+        string? ebtCardSts,
+        ILogger? logger = null,
+        HashSet<string>? seenUnmappedTokens = null)
     {
         if (string.IsNullOrEmpty(ebtCardSts)) return CardStatus.Unknown;
         return ebtCardSts.ToUpperInvariant() switch
@@ -219,12 +244,28 @@ internal static class CbmsResponseMapper
             "NOT ACTIVATED" => CardStatus.NotActivated,
             "FROZEN" => CardStatus.Frozen,
             "UNDELIVERABLE" => CardStatus.Undeliverable,
-            _ => LogAndReturnUnknown(ebtCardSts, logger)
+            _ => LogAndReturnUnknown(ebtCardSts, logger, seenUnmappedTokens)
         };
     }
 
-    private static CardStatus LogAndReturnUnknown(string raw, ILogger? logger)
+    // Dedup within a single household lookup: a token shared across a household's students would
+    // otherwise log once per occurrence (per case, per application child, per card). Log it once per
+    // lookup so it still surfaces for the mapping table without ERROR-level noise that scales with
+    // household size. The set is keyed by "field:token" so an unmapped card value and an unmapped
+    // status value that share text (or the same code across stdntEligSts and sebtAppSts) still each
+    // log. A null set means "don't dedup" (used by the BuildCases filter, which never logs).
+    private static bool AlreadyLoggedUnmapped(HashSet<string>? seenUnmappedTokens, string field, string raw)
     {
+        return seenUnmappedTokens is not null && !seenUnmappedTokens.Add($"{field}:{raw}");
+    }
+
+    private static CardStatus LogAndReturnUnknown(string raw, ILogger? logger, HashSet<string>? seenUnmappedTokens)
+    {
+        if (AlreadyLoggedUnmapped(seenUnmappedTokens, "ebtCardSts", raw))
+        {
+            return CardStatus.Unknown;
+        }
+
         logger?.LogError(
             "CBMS returned unmapped ebtCardSts token {Token}; falling back to CardStatus.Unknown. " +
             "If this token represents a real status, add it to the status mapping table.",
@@ -232,8 +273,17 @@ internal static class CbmsResponseMapper
         return CardStatus.Unknown;
     }
 
-    private static ApplicationStatus LogAndReturnUnknownStatus(string raw, string cbmsField, ILogger? logger)
+    private static ApplicationStatus LogAndReturnUnknownStatus(
+        string raw,
+        string cbmsField,
+        ILogger? logger,
+        HashSet<string>? seenUnmappedTokens)
     {
+        if (AlreadyLoggedUnmapped(seenUnmappedTokens, cbmsField, raw))
+        {
+            return ApplicationStatus.Unknown;
+        }
+
         logger?.LogError(
             "CBMS returned unmapped {Field} token {Token}; falling back to ApplicationStatus.Unknown. " +
             "If this token represents a real status, add it to the status mapping table.",
