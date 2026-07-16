@@ -24,6 +24,20 @@ public class OutageScheduleEvaluatorTests
             Windows = windows.Select(w => new OutageWindow { Start = w.start, End = w.end }).ToList()
         };
 
+    private static OutageScheduleSettings SettingsWithTargets(
+        string timeZoneId,
+        params (string start, string end, string target)[] windows) =>
+        new()
+        {
+            TimeZoneId = timeZoneId,
+            Windows = windows.Select(w => new OutageWindow { Start = w.start, End = w.end, Target = w.target }).ToList()
+        };
+
+    // A window active at this instant for tests that vary only the Target.
+    private const string ActiveStart = "2026-06-21T00:00:00";
+    private const string ActiveEnd = "2026-06-22T00:00:00";
+    private static readonly DateTimeOffset InsideActiveWindowUtc = new(2026, 6, 21, 18, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public void IsOutageActive_WhenNowInsideWindow_ReturnsTrue()
     {
@@ -31,7 +45,7 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("America/Denver", ("2026-06-21T00:00:00", "2026-06-22T00:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 21, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.True(evaluator.IsOutageActive());
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -41,7 +55,7 @@ public class OutageScheduleEvaluatorTests
         // Day before the window.
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 20, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.False(evaluator.IsOutageActive());
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -51,7 +65,7 @@ public class OutageScheduleEvaluatorTests
         // Day after the window.
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 23, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.False(evaluator.IsOutageActive());
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -60,7 +74,7 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("America/Denver");
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 21, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.False(evaluator.IsOutageActive());
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -72,7 +86,7 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("America/Denver", ("2026-01-15T02:00:00", "2026-01-15T03:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 1, 15, 9, 30, 0, TimeSpan.Zero));
 
-        Assert.True(evaluator.IsOutageActive());
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -84,7 +98,7 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("America/Denver", ("2026-07-15T02:00:00", "2026-07-15T03:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 7, 15, 8, 30, 0, TimeSpan.Zero));
 
-        Assert.True(evaluator.IsOutageActive());
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -94,7 +108,7 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("America/Denver", ("2026-06-21T00:00:00", "2026-06-22T00:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 21, 6, 0, 0, TimeSpan.Zero));
 
-        Assert.True(evaluator.IsOutageActive());
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -104,7 +118,7 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("America/Denver", ("2026-06-21T00:00:00", "2026-06-22T00:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 22, 6, 0, 0, TimeSpan.Zero));
 
-        Assert.False(evaluator.IsOutageActive());
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -116,7 +130,7 @@ public class OutageScheduleEvaluatorTests
             ("2026-06-21T00:00:00", "2026-06-22T00:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 21, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.True(evaluator.IsOutageActive());
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -129,7 +143,7 @@ public class OutageScheduleEvaluatorTests
             ("2026-06-21T00:00:00", "2026-06-22T00:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 21, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.True(evaluator.IsOutageActive());
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -138,7 +152,7 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("America/Denver", ("not-a-date", "also-not-a-date"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 21, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.False(evaluator.IsOutageActive());
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
     }
 
     [Fact]
@@ -147,6 +161,150 @@ public class OutageScheduleEvaluatorTests
         var settings = Settings("Not/A_Real_Zone", ("2026-06-21T00:00:00", "2026-06-22T00:00:00"));
         var evaluator = CreateEvaluator(settings, new DateTimeOffset(2026, 6, 21, 18, 0, 0, TimeSpan.Zero));
 
-        Assert.False(evaluator.IsOutageActive());
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
+    }
+
+    [Fact]
+    public void IsOutageActive_WhenWindowTargetsPortal_ActiveForPortalOnly()
+    {
+        var settings = SettingsWithTargets("America/Denver", (ActiveStart, ActiveEnd, "Portal"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
+        Assert.False(evaluator.IsOutageActive(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void IsOutageActive_WhenWindowTargetsEnrollmentChecker_ActiveForCheckerOnly()
+    {
+        var settings = SettingsWithTargets("America/Denver", (ActiveStart, ActiveEnd, "EnrollmentChecker"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
+        Assert.True(evaluator.IsOutageActive(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void IsOutageActive_WhenWindowTargetsBoth_ActiveForBothSurfaces()
+    {
+        var settings = SettingsWithTargets("America/Denver", (ActiveStart, ActiveEnd, "Both"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
+        Assert.True(evaluator.IsOutageActive(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void IsOutageActive_WhenTargetOmitted_DefaultsToBoth()
+    {
+        // The plain Settings helper leaves Target at its default (empty string).
+        // A scheduled backend outage takes down every surface unless the window says otherwise.
+        var settings = Settings("America/Denver", (ActiveStart, ActiveEnd));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.True(evaluator.IsOutageActive(OutageTarget.Portal));
+        Assert.True(evaluator.IsOutageActive(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void IsOutageActive_TargetParsingIsCaseInsensitive()
+    {
+        var settings = SettingsWithTargets("America/Denver", (ActiveStart, ActiveEnd, "enrollmentchecker"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.True(evaluator.IsOutageActive(OutageTarget.EnrollmentChecker));
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
+    }
+
+    [Fact]
+    public void IsOutageActive_WhenTargetUnrecognized_SkipsWindowAndDoesNotThrow()
+    {
+        // A typo'd Target must not throw and must not activate any surface; a valid
+        // window later in the list still wins (mirrors malformed Start/End handling).
+        var settings = SettingsWithTargets(
+            "America/Denver",
+            (ActiveStart, ActiveEnd, "Prtal"),
+            (ActiveStart, ActiveEnd, "EnrollmentChecker"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
+        Assert.True(evaluator.IsOutageActive(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void IsOutageActive_WhenOnlyWindowHasUnrecognizedTarget_ReturnsFalseForAllSurfaces()
+    {
+        var settings = SettingsWithTargets("America/Denver", (ActiveStart, ActiveEnd, "Prtal"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
+        Assert.False(evaluator.IsOutageActive(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void HasScheduledWindows_WhenWindowTargetsPortal_TrueForPortalOnly()
+    {
+        var settings = SettingsWithTargets("America/Denver", (ActiveStart, ActiveEnd, "Portal"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.True(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void HasScheduledWindows_WhenTargetOmitted_TrueForBothSurfaces()
+    {
+        var settings = Settings("America/Denver", (ActiveStart, ActiveEnd));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.True(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.True(evaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void HasScheduledWindows_WhenDatesMalformedButTargetValid_False()
+    {
+        // A window IsOutageActive cannot evaluate must not make the schedule authoritative, or the
+        // surface is pinned to "no outage" with its manual toggle suppressed. Startup validation
+        // rejects such a window outright; this keeps the two methods agreeing if one ever slips by.
+        var settings = SettingsWithTargets("America/Denver", ("not-a-date", "also-not-a-date", "Portal"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.False(evaluator.IsOutageActive(OutageTarget.Portal));
+    }
+
+    [Fact]
+    public void HasScheduledWindows_WhenOneWindowMalformedAndAnotherValid_TrueForTheValidOne()
+    {
+        var settings = SettingsWithTargets(
+            "America/Denver",
+            ("not-a-date", "also-not-a-date", "Portal"),
+            (ActiveStart, ActiveEnd, "EnrollmentChecker"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.True(evaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void HasScheduledWindows_WhenTargetUnrecognized_False()
+    {
+        // A window we skip for evaluation must not silently lock out the manual toggle.
+        var settings = SettingsWithTargets("America/Denver", (ActiveStart, ActiveEnd, "Prtal"));
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker));
+    }
+
+    [Fact]
+    public void HasScheduledWindows_WhenNoWindows_False()
+    {
+        var settings = Settings("America/Denver");
+        var evaluator = CreateEvaluator(settings, InsideActiveWindowUtc);
+
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.Portal));
+        Assert.False(evaluator.HasScheduledWindows(OutageTarget.EnrollmentChecker));
     }
 }

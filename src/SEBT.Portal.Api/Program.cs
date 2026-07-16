@@ -61,8 +61,11 @@ else
 }
 
 Log.Logger = logConfig.CreateLogger();
-
-builder.Host.UseSerilog();
+builder.Host.UseSerilog((cntx, lc) =>
+    lc.ReadFrom.Configuration(cntx.Configuration)
+        .Enrich.FromLogContext()
+        .Enrich.WithOtelTracingSpanId()
+        .Enrich.WithPortalUserInfo(), writeToProviders: true);
 builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();

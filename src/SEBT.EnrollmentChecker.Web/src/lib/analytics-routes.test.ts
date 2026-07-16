@@ -13,7 +13,7 @@ describe('enrollmentCheckerRoutes', () => {
   })
 
   it('contains entries for all known Enrollment Checker routes', () => {
-    const expectedPaths = ['/', '/disclaimer', '/check', '/review', '/results', '/closed']
+    const expectedPaths = ['/', '/disclaimer', '/check', '/review', '/results', '/closed', '/outage']
 
     for (const path of expectedPaths) {
       expect(enrollmentCheckerRoutes).toHaveProperty(path)

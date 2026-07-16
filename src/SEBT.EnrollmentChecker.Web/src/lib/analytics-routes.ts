@@ -6,5 +6,6 @@ export const enrollmentCheckerRoutes: RoutePageContextMap = {
   '/check': { name: 'Check', flow: 'enrollment_checker', step: 'check' },
   '/review': { name: 'Review', flow: 'enrollment_checker', step: 'review' },
   '/results': { name: 'Results', flow: 'enrollment_checker', step: 'results' },
-  '/closed': { name: 'Closed', flow: 'enrollment_checker', step: 'closed' }
+  '/closed': { name: 'Closed', flow: 'enrollment_checker', step: 'closed' },
+  '/outage': { name: 'Outage', flow: 'enrollment_checker', step: 'outage' }
 }

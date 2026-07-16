@@ -22,7 +22,8 @@ export const handlers = [
   ),
   http.get('/api/enrollment/features', () =>
     HttpResponse.json({
-      maintenanceBanner: { enabled: false, message: {} }
+      maintenanceBanner: { enabled: false, message: {} },
+      outagePage: { enabled: false }
     })
   )
 ]

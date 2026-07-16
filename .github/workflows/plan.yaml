@@ -52,6 +52,20 @@ jobs:
         with:
           tofu_version: "1.10.0"
 
+      - name: Validate inputs
+        env:
+          CONFIG: ${{ inputs.config }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          if [[ ! "$CONFIG" =~ ^[a-z0-9-]+$ ]]; then
+            echo "::error::Invalid config: $CONFIG"
+            exit 1
+          fi
+          if [[ ! "$IMAGE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Invalid image_tag: $IMAGE_TAG"
+            exit 1
+          fi
+
       - name: OpenTofu Init
         working-directory: tofu/config/${{ inputs.config }}
         run: tofu init -upgrade
@@ -59,7 +73,7 @@ jobs:
       - name: OpenTofu Plan
         id: plan
         continue-on-error: true
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         working-directory: tofu/config/${{ inputs.config }}
-        run: |
-          tofu plan -no-color -input=false \
-            -var="image_tag=${{ inputs.image_tag }}"
+        run: tofu plan -no-color -input=false -var="image_tag=${IMAGE_TAG}"

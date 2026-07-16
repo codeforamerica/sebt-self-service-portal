@@ -1,48 +1,11 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
-import { OutagePageContent } from '@/features/outage/components/OutagePageContent'
+import OutagePage from './page'
 
-vi.mock('@/features/outage/getOutageMessages', () => ({
-  getOutageMessages: () => [
-    {
-      language: 'en',
-      body1: 'We are down for maintenance and will be back up shortly.',
-      body2: 'Try waiting a few hours and come back to this page.'
-    },
-    {
-      language: 'es',
-      body1: 'Estamos en mantenimiento y volveremos en breve.',
-      body2: 'Le rogamos que espere unas horas y vuelva a esta página.'
-    }
-  ],
-  getOutageFooterCopy: () => [
-    {
-      language: 'en',
-      prefix: 'For more information, visit'
-    },
-    {
-      language: 'es',
-      prefix: 'Para más información, visite'
-    }
-  ]
-}))
-
-vi.mock('@sebt/design-system', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sebt/design-system')>()
-  return {
-    ...actual,
-    getState: () => 'dc',
-    getStateAssetPath: (_state: string, asset: string) => `/images/states/dc/${asset}`,
-    getSiteDisplayName: () => 'District of Columbia SUN Bucks',
-    getStateLinks: () => ({
-      help: {
-        sebtMainSite: 'https://sunbucks.dc.gov/page/contact-us',
-        helpDeskEmail: 'mailto:help@example.com'
-      }
-    })
-  }
-})
+// Wiring test: renders the shared OutagePageContent with the portal's real generated
+// locale resources, proving the outage namespace flows through end to end. The
+// component's own rendering details are covered in @sebt/design-system.
 
 vi.mock('next/image', () => ({
   default: ({ alt, src }: { alt: string; src: string }) => (
@@ -54,33 +17,20 @@ vi.mock('next/image', () => ({
   )
 }))
 
-describe('OutagePageContent', () => {
-  it('renders stacked multilingual maintenance copy, logo, and footer link', () => {
-    render(<OutagePageContent />)
+beforeAll(() => {
+  vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+})
 
+describe('OutagePage', () => {
+  it('renders the portal outage copy from the generated locale bundle', () => {
+    render(<OutagePage />)
+
+    // The English body1 renders twice by design: the sr-only <h1> and the visible <p>.
     expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'We are down for maintenance and will be back up shortly.'
-      })
-    ).toBeInTheDocument()
+      screen.getAllByText('We are down for maintenance and will be back up shortly.')
+    ).toHaveLength(2)
     expect(screen.getByText('Estamos en mantenimiento y volveremos en breve.')).toBeInTheDocument()
-    expect(
-      screen.getByText('Try waiting a few hours and come back to this page.')
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText('Le rogamos que espere unas horas y vuelva a esta página.')
-    ).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'District of Columbia SUN Bucks' })).toBeInTheDocument()
-
-    const footerLinks = screen.getAllByRole('link', {
-      name: /sunbucks\.dc\.gov\/page\/contact-us/i
-    })
-    expect(footerLinks).toHaveLength(2)
-    footerLinks.forEach((link) => {
-      expect(link).toHaveAttribute('href', 'https://sunbucks.dc.gov/page/contact-us')
-      expect(link).toHaveAttribute('target', '_blank')
-    })
-    expect(screen.getByText(/For more information, visit/i)).toBeInTheDocument()
+    expect(screen.getByRole('img')).toBeInTheDocument()
+    expect(screen.getAllByRole('link').length).toBeGreaterThan(0)
   })
 })

@@ -42,4 +42,14 @@ public static class FeatureFlags
     /// the enrollment features endpoint, so no checker redeploy is required.
     /// </summary>
     public const string EnableCheckerMaintenanceBanner = "enable_checker_maintenance_banner";
+
+    /// <summary>
+    /// When enabled, the standalone enrollment checker app shows a sitewide outage page
+    /// instead of normal routes. Manual counterpart to OutageSchedule windows targeting
+    /// EnrollmentChecker: with no such windows configured, this flag is the authority
+    /// (for unscheduled emergencies); when windows targeting the checker exist, the
+    /// schedule wins and this flag is ignored. Toggle at runtime via AWS AppConfig; the
+    /// checker polls the enrollment features endpoint, so no checker redeploy is required.
+    /// </summary>
+    public const string CheckerOutagePageEnabled = "checker_outage_page_enabled";
 }

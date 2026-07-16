@@ -502,3 +502,6 @@ packages/design-system/content/locales/
 
 ## macOS Cruft
 .DS_Store
+
+# Generated release notes output (scripts/release-notes/generate.ts)
+scripts/release-notes/output/

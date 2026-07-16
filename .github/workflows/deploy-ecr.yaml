@@ -118,9 +118,15 @@ jobs:
 
       - name: Compute image tag
         id: tag
+        env:
+          INPUT_IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          if [ -n "${{ inputs.image_tag }}" ]; then
-            echo "tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          if [ -n "$INPUT_IMAGE_TAG" ]; then
+            if [[ ! "$INPUT_IMAGE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+              echo "::error::Invalid image tag: $INPUT_IMAGE_TAG"
+              exit 1
+            fi
+            echo "tag=${INPUT_IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           else
             echo "tag=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
           fi
