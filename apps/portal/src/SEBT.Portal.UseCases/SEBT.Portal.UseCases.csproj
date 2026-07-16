@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="SEBT.Portal.Tests" />
+    </ItemGroup>
+
+    <PropertyGroup>
+      <HomeDir Condition="'$(OS)' == 'Windows_NT'">$(USERPROFILE)</HomeDir>
+      <HomeDir Condition="'$(HomeDir)' == ''">$(HOME)</HomeDir>
+      <RestoreAdditionalProjectSources>$(HomeDir)/nuget-store</RestoreAdditionalProjectSources>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
+      <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="DistributedLock.Core" Version="1.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
+      <PackageReference Include="Microsoft.FeatureManagement" Version="4.5.0" />
+    </ItemGroup>
+
+  <!-- State connector contract lives in-repo (apps/connectors/state). Reference the project
+       directly for normal monorepo builds; fall back to the NuGet package (staged in nuget-store)
+       for isolated Docker builds that copy only the portal projects. -->
+  <PropertyGroup>
+    <_StateConnectorInterfacesProject>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProject>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="Exists('$(_StateConnectorInterfacesProject)')">
+      <ItemGroup>
+        <ProjectReference Include="$(_StateConnectorInterfacesProject)">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>compile; runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </ProjectReference>
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="$(StateConnectorInterfacesFloatingVersion)" PrivateAssets="compile" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
+</Project>

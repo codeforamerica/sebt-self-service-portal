@@ -68,32 +68,6 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Determine state-connector ref
-        id: state-connector-ref
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-          REF_NAME: ${{ github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
-          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
-          REPO_OWNER: ${{ github.repository_owner }}
-        run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            BRANCH="$HEAD_REF"
-          else
-            BRANCH="$REF_NAME"
-          fi
-          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-            echo "::error::Invalid git ref: branch=$BRANCH"
-            exit 1
-          fi
-          FALLBACK="main"
-          REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-state-connector.git"
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Determine dc-connector ref
         id: dc-connector-ref
         env:
@@ -120,14 +94,7 @@ jobs:
             echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Checkout state-connector (interfaces NuGet source)
-        uses: actions/checkout@v4
-        with:
-          repository: codeforamerica/sebt-self-service-portal-state-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
-          ref: ${{ steps.state-connector-ref.outputs.ref }}
-          path: state-connector
-
+      # state connector (interfaces) is now in-repo at apps/connectors/state.
       - name: Checkout dc-connector (DC plugin implementation)
         uses: actions/checkout@v4
         with:
@@ -139,7 +106,7 @@ jobs:
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: "10.0.200"
+          global-json-file: global.json
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -159,24 +126,27 @@ jobs:
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
       - name: Build backend
-        run: ./scripts/ci/build-backend.sh --configuration Release -p:BuildFrontend=false
+        # CopyPlugins=false: this is a validation build — plugin DLLs are staged
+        # explicitly below, and the DC bundle must not pick up other states' plugins.
+        run: ./scripts/ci/build-backend.sh --configuration Release -p:BuildFrontend=false -p:CopyPlugins=false
 
       - name: Build plugin interfaces (NuGet package)
         run: |
-          dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
+          dotnet build apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
             -c Release
 
       - name: Publish DC plugin
         run: |
           dotnet publish dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
             -c Release \
-            -p:CopyPlugins=false
+            -p:CopyPlugins=false \
+            -p:StateConnectorInterfacesProject="$GITHUB_WORKSPACE/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj"
 
       - name: Stage plugin artifacts for IIS publish
         run: |
-          mkdir -p src/SEBT.Portal.Api/plugins-dc
+          mkdir -p apps/portal/src/SEBT.Portal.Api/plugins-dc
           cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/publish/*.dll \
-            src/SEBT.Portal.Api/plugins-dc/
+            apps/portal/src/SEBT.Portal.Api/plugins-dc/
 
       - name: Publish API for IIS
         run: ./scripts/ci/publish-api.sh --output staging --configuration Release

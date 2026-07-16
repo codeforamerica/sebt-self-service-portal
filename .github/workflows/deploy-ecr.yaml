@@ -34,7 +34,7 @@ jobs:
 
       - name: Check for tofu changes
         id: changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
         with:
           filters: |
             tofu:
@@ -134,15 +134,9 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5.2.0
         with:
-          dotnet-version: "10.0.200"
+          global-json-file: global.json
 
-      - name: Checkout state-connector
-        uses: actions/checkout@v6
-        with:
-          repository: codeforamerica/sebt-self-service-portal-state-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
-          path: state-connector
-
+      # state + co connectors are now in-repo (apps/connectors/*); only dc remains external.
       - name: Checkout dc-connector
         uses: actions/checkout@v6
         with:
@@ -150,27 +144,21 @@ jobs:
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           path: dc-connector
 
-      - name: Checkout co-connector
-        uses: actions/checkout@v6
-        with:
-          repository: codeforamerica/sebt-self-service-portal-co-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
-          path: co-connector
-
       - name: Build plugin interfaces (NuGet package)
         run: |
-          dotnet build state-connector/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
+          dotnet build apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
             -c Release
 
       - name: Publish DC plugin
         run: |
           dotnet publish dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
             -c Release \
-            -p:CopyPlugins=false
+            -p:CopyPlugins=false \
+            -p:StateConnectorInterfacesProject="$GITHUB_WORKSPACE/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj"
 
       - name: Publish CO plugin
         run: |
-          dotnet publish co-connector/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+          dotnet publish apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
             -c Release \
             -p:CopyPlugins=false
 
@@ -178,18 +166,18 @@ jobs:
         run: |
           mkdir -p nuget-store
           cp -r ~/nuget-store/* nuget-store/
-          mkdir -p src/SEBT.Portal.Api/plugins-dc
+          mkdir -p apps/portal/src/SEBT.Portal.Api/plugins-dc
           cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/publish/*.dll \
-            src/SEBT.Portal.Api/plugins-dc/
-          mkdir -p src/SEBT.Portal.Api/plugins-co
-          cp co-connector/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/publish/*.dll \
-            src/SEBT.Portal.Api/plugins-co/
+            apps/portal/src/SEBT.Portal.Api/plugins-dc/
+          mkdir -p apps/portal/src/SEBT.Portal.Api/plugins-co
+          cp apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/publish/*.dll \
+            apps/portal/src/SEBT.Portal.Api/plugins-co/
 
       - name: Build API image
         run: |
           docker build \
             --platform linux/amd64 \
-            -f src/SEBT.Portal.Api/Dockerfile \
+            -f apps/portal/src/SEBT.Portal.Api/Dockerfile \
             -t sebt-portal-api:${{ steps.tag.outputs.tag }} \
             .
 
@@ -249,7 +237,7 @@ jobs:
         run: |
           docker build \
             --platform linux/amd64 \
-            -f src/SEBT.Portal.Web/Dockerfile \
+            -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
             --build-arg STATE=dc \
             --build-arg NEXT_PUBLIC_SOCURE_SDK_KEY=${{ vars.SOCURE_SDK_KEY }} \
             --build-arg NEXT_PUBLIC_SOCURE_DI_SDK_KEY=${{ vars.SOCURE_DI_SDK_KEY }} \
@@ -340,7 +328,7 @@ jobs:
         run: |
           docker build \
             --platform linux/amd64 \
-            -f src/SEBT.Portal.Web/Dockerfile \
+            -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
             --build-arg STATE=co \
             --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
             --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
