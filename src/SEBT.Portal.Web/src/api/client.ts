@@ -99,7 +99,10 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
 
   let data: T | ApiErrorResponse | undefined
   const contentType = response.headers.get('content-type')
-  if (contentType?.includes('application/json')) {
+  // ASP.NET ProblemDetails (403 IAL step-up, validation errors) uses
+  // application/problem+json — must parse those bodies too or extensions
+  // like requiredIal never reach ApiError.data.
+  if (contentType?.includes('json')) {
     data = (await response.json()) as T | ApiErrorResponse
   }
 

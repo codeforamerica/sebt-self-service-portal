@@ -120,6 +120,21 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
         return users.ToArray();
     }
 
+    private static User CreateExpiredMockHouseholdUser(
+        string normalizedEmail,
+        UserIalLevel ialLevel,
+        DateTime now)
+    {
+        return UserFactory.CreateUserWithEmail(normalizedEmail, u =>
+        {
+            u.IdProofingStatus = IdProofingStatus.Expired;
+            u.IalLevel = ialLevel;
+            u.IdProofingCompletedAt = now.AddDays(DaysSinceIdProofingCompleted);
+            u.IsCoLoaded = false;
+            u.CoLoadedLastUpdated = null;
+        });
+    }
+
     /// <summary>
     /// Seeds the database with specific test users for development.
     /// </summary>
@@ -148,6 +163,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
+            var expiredEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Expired.Name));
             var idProofInProgressEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.IdProofInProgress.Name));
 
@@ -247,6 +263,10 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.Ssn = "123456789";
                         });
                     }
+                    else if (normalizedEmail == expiredEmail)
+                    {
+                        user = CreateExpiredMockHouseholdUser(normalizedEmail, scenario.IalLevel, now);
+                    }
                     else
                     {
                         user = UserFactory.CreateUserWithEmail(normalizedEmail, u =>
@@ -345,6 +365,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             var coLoadedNoChildrenEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.CoLoadedNoChildren.Name));
             var verifiedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Verified.Name));
+            var expiredEmail = EmailNormalizer.Normalize(_settings.BuildEmail(SeedScenarios.Expired.Name));
             var idProofInProgressEmail = EmailNormalizer.Normalize(
                 _settings.BuildEmail(SeedScenarios.IdProofInProgress.Name));
             foreach (var scenario in SeedScenarios.UserScenarios)
@@ -442,6 +463,10 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.TanfId = "TANF-IPR-001";
                             u.Ssn = "123456789";
                         });
+                    }
+                    else if (normalizedEmail == expiredEmail)
+                    {
+                        user = CreateExpiredMockHouseholdUser(normalizedEmail, scenario.IalLevel, now);
                     }
                     else
                     {
