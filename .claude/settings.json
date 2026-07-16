@@ -98,9 +98,7 @@
       "mcp__plugin_figma_figma__whoami"
     ],
     "additionalDirectories": [
-      "../sebt-self-service-portal-state-connector",
-      "../sebt-self-service-portal-dc-connector",
-      "../sebt-self-service-portal-co-connector"
+      "../sebt-self-service-portal-dc-connector"
     ]
   },
   "enabledPlugins": {
@@ -143,7 +141,7 @@
     ]
   },
   "sandbox": {
-    "enabled": true,
+    "enabled": false,
     "allowUnsandboxedCommands": false,
     "network": {
       "allowLocalBinding": true

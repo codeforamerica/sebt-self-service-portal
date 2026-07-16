@@ -1,0 +1,45 @@
+# Server-rendered image for the enrollment checker. Not wired to CI — the deploy
+# workflow (deploy-enrollment-checker.yaml) builds a static export on the runner
+# and ships to S3; keep this for container-based hosting alternatives.
+# ── Stage 1: Build ──────────────────────────────────────────────────────────
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+# Copy workspace config and all workspace packages
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/ ./packages/
+COPY apps/portal/src/SEBT.EnrollmentChecker.Web/ ./apps/portal/src/SEBT.EnrollmentChecker.Web/
+
+# Install dependencies (workspace-aware)
+RUN corepack enable && pnpm install --frozen-lockfile
+
+# Build SSR standalone output
+ARG STATE=co
+ARG NEXT_PUBLIC_PORTAL_URL
+ARG NEXT_PUBLIC_APPLICATION_URL
+ARG NEXT_PUBLIC_AMPLITUDE_API_KEY=""
+ARG NEXT_PUBLIC_MIXPANEL_TOKEN=""
+ARG NEXT_PUBLIC_SITEIMPROVE_ID=""
+ENV STATE=$STATE \
+    NEXT_PUBLIC_PORTAL_URL=$NEXT_PUBLIC_PORTAL_URL \
+    NEXT_PUBLIC_APPLICATION_URL=$NEXT_PUBLIC_APPLICATION_URL \
+    NEXT_PUBLIC_AMPLITUDE_API_KEY=$NEXT_PUBLIC_AMPLITUDE_API_KEY \
+    NEXT_PUBLIC_MIXPANEL_TOKEN=$NEXT_PUBLIC_MIXPANEL_TOKEN \
+    NEXT_PUBLIC_SITEIMPROVE_ID=$NEXT_PUBLIC_SITEIMPROVE_ID
+RUN BUILD_STANDALONE=true pnpm --filter @sebt/enrollment-checker build
+
+# ── Stage 2: Runtime ────────────────────────────────────────────────────────
+FROM node:24-alpine AS runner
+WORKDIR /app
+
+# Non-root user for security
+RUN addgroup -S app && adduser -S app -G app
+
+COPY --from=builder /app/apps/portal/src/SEBT.EnrollmentChecker.Web/.next/standalone ./
+COPY --from=builder /app/apps/portal/src/SEBT.EnrollmentChecker.Web/.next/static ./apps/portal/src/SEBT.EnrollmentChecker.Web/.next/static
+COPY --from=builder /app/apps/portal/src/SEBT.EnrollmentChecker.Web/public ./apps/portal/src/SEBT.EnrollmentChecker.Web/public
+
+USER app
+EXPOSE 3000
+ENV PORT=3000 HOSTNAME="0.0.0.0"
+CMD ["node", "apps/portal/src/SEBT.EnrollmentChecker.Web/server.js"]

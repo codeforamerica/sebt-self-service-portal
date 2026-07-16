@@ -50,3 +50,15 @@ assert_zip_contains() {
     exit 1
   fi
 }
+
+assert_zip_not_contains() {
+  local zip_path="$1"
+  local entry="$2"
+  local listing
+  listing=$(unzip -l "$zip_path")
+  if grep -qF -- "$entry" <<<"$listing"; then
+    echo "ASSERT FAIL: expected zip '$zip_path' to NOT contain entry: $entry" >&2
+    echo "$listing" >&2
+    exit 1
+  fi
+}

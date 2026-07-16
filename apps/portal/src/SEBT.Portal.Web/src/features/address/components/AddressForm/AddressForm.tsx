@@ -1,0 +1,421 @@
+'use client'
+
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
+
+import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design-system'
+
+import type { Address } from '@/features/household/api'
+import {
+  classifyAddressState,
+  trackAddressUpdateSubmit,
+  trackAddressUpdateValidationError
+} from '@/lib/analytics-helpers'
+import { useDataLayer } from '@sebt/analytics'
+
+import { isValidZip, useUpdateAddress } from '../../api'
+import type { AddressResponse, UpdateAddressRequest } from '../../api/schema'
+import { useAddressFlow } from '../../context'
+import { AddressAutocomplete, type SelectedAddress } from '../AddressAutocomplete'
+import { STATE_ABBREVIATIONS, US_STATE_OPTIONS } from './usStates'
+
+interface AddressFormProps {
+  initialAddress: Address | null
+  /** Override the default redirect path after successful address update. */
+  redirectPath?: string
+}
+
+// Field errors store an i18n key + its namespace (not the resolved string) so the messages
+// re-translate at render time when the user switches language (DC-454). Most keys live in the
+// `validation` namespace; the street-address ones live in `confirmInfo`. `code` is the
+// taxonomy-aligned analytics error_code reported when client-side validation blocks submit.
+type FieldErrorDescriptor = { ns: 'validation' | 'confirmInfo'; key: string; code?: string }
+
+interface FieldErrors {
+  streetAddress1?: FieldErrorDescriptor
+  city?: FieldErrorDescriptor
+  state?: FieldErrorDescriptor
+  postalCode?: FieldErrorDescriptor
+}
+
+const STATE_DEFAULTS: Record<string, { city: string; state: string }> = {
+  dc: { city: 'Washington', state: 'DC' },
+  co: { city: '', state: 'CO' }
+}
+
+/** Resolves backend/form state to the USPS code used as the select value (labels stay full names). */
+function resolveStateValue(value: string | null | undefined, fallback: string): string {
+  if (!value) return fallback
+  const trimmed = value.trim()
+  if (!trimmed) return fallback
+
+  const upper2 = trimmed.length === 2 ? trimmed.toUpperCase() : null
+  if (upper2 && upper2 in STATE_ABBREVIATIONS) return upper2
+
+  for (const [code, name] of Object.entries(STATE_ABBREVIATIONS)) {
+    if (name === trimmed) return code
+  }
+  for (const [code, name] of Object.entries(STATE_ABBREVIATIONS)) {
+    if (name.toLowerCase() === trimmed.toLowerCase()) return code
+  }
+
+  return fallback
+}
+
+const DEFAULT_REDIRECT = '/profile/address/replacement-cards'
+
+function toUpdateAddressRequestOrNull(
+  address: AddressResponse | null | undefined
+): UpdateAddressRequest | null {
+  if (!address?.streetAddress1 || !address.city || !address.state || !address.postalCode) {
+    return null
+  }
+
+  return {
+    streetAddress1: address.streetAddress1,
+    streetAddress2: address.streetAddress2 ?? undefined,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode
+  }
+}
+
+function updateRequestToAddress(address: UpdateAddressRequest): Address {
+  return {
+    streetAddress1: address.streetAddress1,
+    streetAddress2: address.streetAddress2 ?? null,
+    city: address.city,
+    state: address.state,
+    postalCode: address.postalCode
+  }
+}
+
+/** Prefer in-flow edits when returning from suggestion/not-found screens. */
+function resolveFormSeedAddress(
+  enteredAddress: UpdateAddressRequest | null,
+  initialAddress: Address | null
+): Address | null {
+  if (enteredAddress) {
+    return updateRequestToAddress(enteredAddress)
+  }
+
+  return initialAddress
+}
+
+export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) {
+  const { t } = useTranslation('confirmInfo')
+  const { t: tValidation } = useTranslation('validation')
+  const { t: tCommon } = useTranslation('common')
+
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const updateAddress = useUpdateAddress()
+  const {
+    enteredAddress,
+    setAddress,
+    setValidationResult,
+    clearEnteredAddress,
+    setNavigationTargets
+  } = useAddressFlow()
+  const { setPageData, trackEvent } = useDataLayer()
+  const errorSummaryRef = useRef<HTMLDivElement>(null)
+
+  const currentState = getState()
+  // eslint-disable-next-line security/detect-object-injection -- currentState is typed StateCode
+  const defaults = STATE_DEFAULTS[currentState] ?? { city: '', state: '' }
+  const seedAddress = resolveFormSeedAddress(enteredAddress, initialAddress)
+
+  const [streetAddress1, setStreetAddress1] = useState(seedAddress?.streetAddress1 ?? '')
+  const [streetAddress2, setStreetAddress2] = useState(seedAddress?.streetAddress2 ?? '')
+  const [city, setCity] = useState(seedAddress?.city ?? defaults.city)
+  const [stateValue, setStateValue] = useState(
+    resolveStateValue(seedAddress?.state, defaults.state)
+  )
+  const [postalCode, setPostalCode] = useState(seedAddress?.postalCode ?? '')
+
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
+  const [submitErrorKey, setSubmitErrorKey] = useState<string | null>(null)
+
+  // Resolve a field-error descriptor at render time: confirmInfo keys via `t`, validation
+  // keys via `tValidation`. Call sites guard on the descriptor being present.
+  const resolveFieldError = (d: FieldErrorDescriptor): string =>
+    d.ns === 'validation' ? tValidation(d.key) : t(d.key)
+
+  const isSubmitting = updateAddress.isPending
+  const hasErrors = Object.keys(fieldErrors).length > 0
+
+  useEffect(() => {
+    if (hasErrors) {
+      errorSummaryRef.current?.focus()
+    }
+  }, [hasErrors])
+
+  useEffect(() => {
+    const currentQuery = searchParams.toString()
+    const formPath = currentQuery ? `${pathname}?${currentQuery}` : pathname
+    setNavigationTargets({
+      formPath,
+      continuePath: redirectPath ?? DEFAULT_REDIRECT
+    })
+  }, [pathname, redirectPath, searchParams, setNavigationTargets])
+
+  function validate(): FieldErrors {
+    const errors: FieldErrors = {}
+    const required: FieldErrorDescriptor = { ns: 'validation', key: 'required', code: 'REQUIRED' }
+
+    if (!streetAddress1.trim()) {
+      errors.streetAddress1 = required
+    } else if (streetAddress1.trim().length > 30) {
+      // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
+      errors.streetAddress1 = { ns: 'confirmInfo', key: 'helperStreetAddress', code: 'TOO_LONG' }
+    }
+    if (!city.trim()) errors.city = required
+    if (!stateValue.trim()) errors.state = required
+    if (!postalCode.trim()) {
+      errors.postalCode = required
+    } else if (!isValidZip(postalCode.trim())) {
+      errors.postalCode = { ns: 'validation', key: 'enterZip', code: 'INVALID_ZIP' }
+    }
+
+    return errors
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSubmitErrorKey(null)
+
+    const errors = validate()
+    setFieldErrors(errors)
+
+    if (Object.keys(errors).length > 0) {
+      // Client-side validation blocked the submit before any backend request. Emit one
+      // validation-error event for the first failing field so these failures stay measurable.
+      const firstEntry = Object.entries(errors)[0]
+      if (firstEntry) {
+        const [fieldName, descriptor] = firstEntry
+        trackAddressUpdateValidationError(
+          { setPageData, trackEvent },
+          descriptor?.code ?? 'INVALID_INPUT',
+          fieldName
+        )
+      }
+      return
+    }
+
+    const addressData = {
+      streetAddress1: streetAddress1.trim(),
+      streetAddress2: streetAddress2.trim() || undefined,
+      city: city.trim(),
+      state: stateValue.trim(),
+      postalCode: postalCode.trim()
+    }
+    const addressStateCategory = classifyAddressState(addressData.state, currentState)
+
+    try {
+      const result = await updateAddress.mutateAsync(addressData)
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, result, null, addressStateCategory)
+
+      if (result.status === 'valid') {
+        setAddress(toUpdateAddressRequestOrNull(result.normalizedAddress) ?? addressData)
+        clearEnteredAddress()
+        router.push(redirectPath ?? DEFAULT_REDIRECT)
+        return
+      }
+
+      // too_long stays on the form: inline field error + portal banner via showStreetLengthAlert.
+      if (result.reason === 'too_long') {
+        setFieldErrors({
+          streetAddress1: { ns: 'confirmInfo', key: 'validationStreetAddress' }
+        })
+        return
+      }
+
+      // blocked, abbreviated, or suggestion: store in context and navigate
+      setValidationResult(result, addressData)
+      if (result.status === 'suggestion') {
+        router.push('/profile/address/suggested-address')
+      } else {
+        router.push('/profile/address/address-not-found')
+      }
+    } catch (err) {
+      trackAddressUpdateSubmit({ setPageData, trackEvent }, null, err, addressStateCategory)
+      setSubmitErrorKey('globalInternalError')
+    }
+  }
+
+  const showStreetLengthAlert = hasErrors && streetAddress1.trim().length > 30
+  // Portal renders this alert above the header via #site-alerts in root layout.
+  // If a second feature needs this pattern, refactor to a shared SiteAlertContext.
+  const siteAlertsEl =
+    typeof document !== 'undefined' ? document.getElementById('site-alerts') : null
+
+  return (
+    <>
+      {showStreetLengthAlert &&
+        siteAlertsEl &&
+        createPortal(
+          <Alert
+            variant="error"
+            className="margin-bottom-0"
+            textClassName="text-bold"
+          >
+            {t('alertBody')}
+            <br />
+            <a
+              href={getStateLinks(currentState).help.contactUs}
+              className="usa-link"
+              data-analytics-cta="address_form_contact_us_cta"
+              data-analytics-cta-destination-type="external_only"
+            >
+              {t('alertAction')}
+            </a>
+          </Alert>,
+          siteAlertsEl
+        )}
+
+      <form
+        className="usa-form maxw-full"
+        onSubmit={handleSubmit}
+        noValidate
+      >
+        {submitErrorKey && (
+          <Alert
+            variant="error"
+            slim
+            className="margin-bottom-2"
+          >
+            {tValidation(submitErrorKey)}
+          </Alert>
+        )}
+
+        {hasErrors && (
+          <div
+            ref={errorSummaryRef}
+            className="usa-alert usa-alert--error usa-alert--slim margin-bottom-2"
+            role="alert"
+            tabIndex={-1}
+          >
+            <div className="usa-alert__body">
+              <p className="usa-alert__text">
+                {/* TODO update */}
+                {t('formErrorSummary', 'Please correct the errors below.')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <AddressAutocomplete
+          label={tCommon('streetAddress')}
+          {...(currentState === 'dc' ? { hint: tCommon('helperStreetAddress') } : {})}
+          name="streetAddress1"
+          value={streetAddress1}
+          onChange={(e) => setStreetAddress1(e.target.value)}
+          onSuggestionSelected={(address: SelectedAddress) => {
+            setStreetAddress1(address.streetLine1)
+            setStreetAddress2(address.streetLine2)
+            setCity(address.city)
+            setStateValue(address.state)
+            setPostalCode(address.zipcode)
+          }}
+          autoComplete="address-line1"
+          isRequired
+          {...(fieldErrors.streetAddress1
+            ? { error: resolveFieldError(fieldErrors.streetAddress1) }
+            : {})}
+        />
+
+        <InputField
+          label={tCommon('streetAddress2')}
+          hint={tCommon('helperStreetAddress2')}
+          name="streetAddress2"
+          value={streetAddress2}
+          onChange={(e) => setStreetAddress2(e.target.value)}
+          autoComplete="address-line2"
+        />
+
+        <InputField
+          label={tCommon('city')}
+          name="city"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+          autoComplete="address-level2"
+          isRequired
+          {...(fieldErrors.city ? { error: resolveFieldError(fieldErrors.city) } : {})}
+        />
+
+        <div
+          className={fieldErrors.state ? 'usa-form-group usa-form-group--error' : 'usa-form-group'}
+        >
+          <label
+            className="usa-label"
+            htmlFor="address-state"
+          >
+            {tCommon('stateOrTerritory')}
+            <span className="text-secondary-dark"> *</span>
+          </label>
+          {fieldErrors.state && (
+            <span
+              className="usa-error-message"
+              id="address-state-error"
+              role="alert"
+            >
+              {resolveFieldError(fieldErrors.state)}
+            </span>
+          )}
+          <select
+            id="address-state"
+            className={`usa-select${fieldErrors.state ? ' usa-input--error' : ''}`}
+            name="state"
+            value={stateValue}
+            onChange={(e) => setStateValue(e.target.value)}
+            autoComplete="address-level1"
+            aria-required="true"
+            aria-invalid={!!fieldErrors.state}
+            aria-describedby={fieldErrors.state ? 'address-state-error' : undefined}
+          >
+            <option value="">{`- ${tCommon('selectOne')} -`}</option>
+            {US_STATE_OPTIONS.map(({ code, name }) => (
+              <option
+                key={code}
+                value={code}
+              >
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <InputField
+          label={tCommon('zipCode')}
+          name="postalCode"
+          value={postalCode}
+          onChange={(e) => setPostalCode(e.target.value)}
+          autoComplete="postal-code"
+          isRequired
+          {...(fieldErrors.postalCode ? { error: resolveFieldError(fieldErrors.postalCode) } : {})}
+        />
+
+        <div className="margin-top-3 display-flex flex-row gap-2">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => router.push('/dashboard')}
+          >
+            {tCommon('back')}
+          </Button>
+          <Button
+            type="submit"
+            isLoading={isSubmitting}
+            loadingText={`${tCommon('continue')}...`}
+            disabled={isSubmitting}
+          >
+            {tCommon('continue')}
+          </Button>
+        </div>
+      </form>
+    </>
+  )
+}

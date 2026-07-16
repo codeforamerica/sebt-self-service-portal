@@ -17,6 +17,11 @@ trap 'rm -rf "$WORK" "$EXTRACTED" && rm -f "$ABSOLUTE_OUT_ZIP"' EXIT
 mkdir -p "$WORK/api/plugins-dc"
 echo "fake dll" > "$WORK/api/SEBT.Portal.Api.dll"
 echo "fake plugin" > "$WORK/api/plugins-dc/Plugin.dll"
+# A stray CO plugin dir simulates a workspace where the full solution was built
+# (the CO connector's CopyPlugins target stages DLLs on every build). The DC
+# bundle must never ship another state's plugins.
+mkdir -p "$WORK/api/plugins-co"
+echo "co plugin" > "$WORK/api/plugins-co/CoPlugin.dll"
 echo "{}" > "$WORK/api/appsettings.prod.example.json"
 cat > "$WORK/api/web.config" <<'XML'
 <?xml version="1.0"?><configuration><system.webServer><aspNetCore stdoutLogEnabled="true" /></system.webServer></configuration>
@@ -27,8 +32,8 @@ touch "$WORK/api/logs/.gitkeep"
 # Synthesize a fake web zip (directory tree as zip).
 # bundle-iis-package.sh expects the zip's top-level dir to contain the web tree;
 # package-frontend.sh's real output uses 'sebt-web/' as that root dir.
-mkdir -p "$WORK/web-staging/src/SEBT.Portal.Web/.next" "$WORK/web-staging/src/SEBT.Portal.Web/public" "$WORK/web-staging/node_modules"
-echo "console.log('hi')" > "$WORK/web-staging/src/SEBT.Portal.Web/server.js"
+mkdir -p "$WORK/web-staging/apps/portal/src/SEBT.Portal.Web/.next" "$WORK/web-staging/apps/portal/src/SEBT.Portal.Web/public" "$WORK/web-staging/node_modules"
+echo "console.log('hi')" > "$WORK/web-staging/apps/portal/src/SEBT.Portal.Web/server.js"
 (cd "$WORK" && zip -rq web.zip web-staging)
 
 # Synthesize a fake dacpac and report files
@@ -56,10 +61,11 @@ assert_zip_contains "$ABSOLUTE_OUT_ZIP" "README.md"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "CHANGELOG-DACPAC.md"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/SEBT.Portal.Api.dll"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/plugins-dc/Plugin.dll"
+assert_zip_not_contains "$ABSOLUTE_OUT_ZIP" "api/plugins-co/"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/appsettings.prod.example.json"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "api/web.config"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "web/web.config"
-assert_zip_contains "$ABSOLUTE_OUT_ZIP" "web/src/SEBT.Portal.Web/server.js"
+assert_zip_contains "$ABSOLUTE_OUT_ZIP" "web/apps/portal/src/SEBT.Portal.Web/server.js"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "dacpac/sebt-portal-1.0.0.dacpac"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "dacpac/deploy-report.xml"
 assert_zip_contains "$ABSOLUTE_OUT_ZIP" "dacpac/deploy-report.html"
@@ -81,5 +87,15 @@ if grep -F '{{' "$README_PATH"; then
   echo "ASSERT FAIL: README still contains unresolved {{...}} placeholders" >&2
   exit 1
 fi
+
+# The bundled web/web.config must point HttpPlatformHandler at a server.js that
+# actually exists inside the bundled web tree (guards template/layout drift).
+BUNDLE_DIR="$(dirname "$README_PATH")"
+SERVER_ARG="$(sed -n 's/.*arguments="\([^"]*\)".*/\1/p' "$BUNDLE_DIR/web/web.config")"
+if [ -z "$SERVER_ARG" ]; then
+  echo "ASSERT FAIL: no arguments=\"...\" found in bundled web/web.config" >&2
+  exit 1
+fi
+assert_file_exists "$BUNDLE_DIR/web/${SERVER_ARG//\\//}"
 
 echo "bundle-iis-package_test: OK"

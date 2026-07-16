@@ -19,14 +19,15 @@ log_error() {
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT_ROOT"
 
-# Check if there are backend changes in staged files
+# Check if there are backend changes in staged files (portal, in-repo connectors,
+# or the shared build configuration they all inherit).
 has_backend_changes() {
-  git diff --cached --name-only | grep -vE '^src/SEBT\.Portal\.Web' | grep -qE '^SEBT\.Portal\.sln$|^src/SEBT\.Portal\.|\.(csproj|sln)$|^test/' || return 1
+  git diff --cached --name-only | grep -vE '^apps/portal/src/SEBT\.Portal\.Web' | grep -qE '^apps/portal/src/SEBT\.Portal\.|^apps/portal/test/|^apps/connectors/|^(Directory\.Build\.props|global\.json|nuget\.config)$|\.(csproj|sln|slnx)$' || return 1
 }
 
 # Check if there are frontend changes in staged files
 has_frontend_changes() {
-  git diff --cached --name-only | grep -qE '^src/SEBT\.Portal\.Web/' || return 1
+  git diff --cached --name-only | grep -qE '^apps/portal/src/SEBT\.Portal\.Web/' || return 1
 }
 
 # Check if cooldown-exclusion sources were staged (workspace policy or lockfile)
@@ -95,7 +96,7 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
     exit 1
   fi
 
-  cd src/SEBT.Portal.Web || {
+  cd apps/portal/src/SEBT.Portal.Web || {
     log_error "Could not change to web package directory"
     exit 1
   }
@@ -127,12 +128,12 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
         INCLUDE_FLAGS="$INCLUDE_FLAGS --include $f"
       done
 
-      dotnet format SEBT.Portal.sln whitespace --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
+      dotnet format SEBT.slnx whitespace --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
         log_error ".NET code formatting check failed - run 'pnpm api:format:staged' to fix"
         exit 1
       }
 
-      dotnet format SEBT.Portal.sln analyzers --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
+      dotnet format SEBT.slnx analyzers --verify-no-changes --verbosity quiet $INCLUDE_FLAGS || {
         log_error ".NET analyzer checks failed - fix the reported issues"
         exit 1
       }
@@ -153,11 +154,11 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 
   if command -v dotnet &> /dev/null; then
-    dotnet restore --verbosity quiet || {
+    dotnet restore SEBT.slnx --verbosity quiet || {
       log_error "Backend dependency restore failed"
       exit 1
     }
-    dotnet build --configuration Debug --no-restore --verbosity quiet || {
+    dotnet build SEBT.slnx --configuration Debug --no-restore --verbosity quiet || {
       log_error "Backend build failed"
       exit 1
     }
@@ -173,7 +174,7 @@ fi
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Validating frontend build..."
-  cd src/SEBT.Portal.Web || {
+  cd apps/portal/src/SEBT.Portal.Web || {
     log_error "Could not change to web package directory"
     exit 1
   }
@@ -197,7 +198,7 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
     # Exclude SqlServer tests (Testcontainers/SQL Server) from pre-commit.
     # They run in CI but cause stack overflows locally when combined with
     # the rest of the suite due to Docker resource pressure under parallelism.
-    dotnet test --configuration Debug --verbosity quiet --filter "Category!=SqlServer" || {
+    dotnet test SEBT.slnx --configuration Debug --verbosity quiet --filter "Category!=SqlServer" || {
       log_error "Backend tests failed"
       exit 1
     }
@@ -213,7 +214,7 @@ fi
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running frontend tests..."
-  cd src/SEBT.Portal.Web || {
+  cd apps/portal/src/SEBT.Portal.Web || {
     log_error "Could not change to web package directory"
     exit 1
   }

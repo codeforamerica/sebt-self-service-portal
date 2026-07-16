@@ -2,7 +2,7 @@
 # Smoke test for scripts/ci/publish-api.sh.
 # Asserts the resulting directory has the structure the bundle step expects.
 #
-# Pre-req: src/SEBT.Portal.Api/plugins-dc/ must already contain DC plugin DLLs.
+# Pre-req: apps/portal/src/SEBT.Portal.Api/plugins-dc/ must already contain DC plugin DLLs.
 # The smoke test does NOT build or publish the DC connector itself — too heavy
 # for a smoke test — so it skips when plugins-dc is empty.
 set -euo pipefail
@@ -12,7 +12,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 source "$SCRIPT_DIR/_assert.sh"
 
 # Skip locally if the API plugins-dc dir is empty (no plugin DLLs staged).
-PLUGIN_DIR="$PROJECT_ROOT/src/SEBT.Portal.Api/plugins-dc"
+PLUGIN_DIR="$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Api/plugins-dc"
 if [ ! -d "$PLUGIN_DIR" ] || [ -z "$(ls -A "$PLUGIN_DIR" 2>/dev/null | grep -E '\.dll$' || true)" ]; then
   echo "SKIP: $PLUGIN_DIR has no plugin DLLs (stage the DC connector publish output first)"
   exit 0
@@ -22,7 +22,7 @@ OUT_DIR="$(mktemp -d)"
 trap 'rm -rf "$OUT_DIR"' EXIT
 
 # This test runs a real `dotnet publish` against the live source tree. It will
-# leave behind populated obj/ and bin/ directories under src/SEBT.Portal.Api/ —
+# leave behind populated obj/ and bin/ directories under apps/portal/src/SEBT.Portal.Api/ —
 # this is normal .NET behavior; those directories are .gitignored.
 bash "$PROJECT_ROOT/scripts/ci/publish-api.sh" --output "$OUT_DIR"
 

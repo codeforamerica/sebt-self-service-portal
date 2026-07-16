@@ -1,0 +1,136 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <UserSecretsId>sebt-portal-api</UserSecretsId>
+  </PropertyGroup>
+
+  <!-- Production Build: Build frontend before .NET build -->
+  <Target Name="BuildFrontend" BeforeTargets="Build" Condition="'$(BuildFrontend)' != 'false' AND '$(Configuration)' == 'Release'">
+    <Message Importance="high" Text="Building frontend (pnpm workspace)..." />
+
+    <!-- Install dependencies if node_modules doesn't exist -->
+    <Exec Command="pnpm install" WorkingDirectory="$(WorkspaceRoot)" Condition="!Exists('$(FrontendRoot)/node_modules')" />
+
+    <!-- Build frontend (Next.js) -->
+    <Exec Command="pnpm --filter @sebt/web build" WorkingDirectory="$(WorkspaceRoot)" />
+
+    <Message Importance="high" Text="Frontend build complete: $(FrontendDist)" />
+  </Target>
+
+  <!-- Development: Start frontend watch mode alongside dotnet watch -->
+  <Target Name="StartFrontendWatch" BeforeTargets="BeforeBuild" Condition="'$(DOTNET_WATCH)' == '1' AND '$(Configuration)' == 'Debug'">
+    <Message Importance="high" Text="Starting frontend watch mode..." />
+
+    <!-- Check if frontend is already running (by checking if port 5173 is in use) -->
+    <!-- Unix-like systems: use lsof -->
+    <Exec Command="lsof -ti:5173" IgnoreExitCode="true" ConsoleToMSBuild="true" Condition="'$(OS)' != 'Windows_NT'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="FrontendPort" />
+    </Exec>
+    <!-- Windows: set FrontendPort to empty (always try to start frontend) -->
+    <PropertyGroup Condition="'$(OS)' == 'Windows_NT'">
+      <FrontendPort></FrontendPort>
+    </PropertyGroup>
+
+    <Message Importance="high" Text="Frontend already running on port 5173" Condition="'$(FrontendPort)' != ''" />
+
+    <!-- Start frontend watch if not already running -->
+    <Exec Command="pnpm web:dev &amp;" WorkingDirectory="$(WorkspaceRoot)" Condition="'$(FrontendPort)' == ''" ContinueOnError="true" />
+
+    <Message Importance="high" Text="Frontend watch mode started (http://localhost:5173)" Condition="'$(FrontendPort)' == ''" />
+  </Target>
+
+  <!-- Clean frontend on dotnet clean -->
+  <Target Name="CleanFrontend" AfterTargets="Clean">
+    <Message Importance="high" Text="Cleaning frontend dist directory..." />
+    <RemoveDir Directories="$(FrontendDist)" Condition="Exists('$(FrontendDist)')" />
+  </Target>
+
+  <PropertyGroup>
+    <HomeDir Condition="'$(OS)' == 'Windows_NT'">$(USERPROFILE)</HomeDir>
+    <HomeDir Condition="'$(HomeDir)' == ''">$(HOME)</HomeDir>
+    <RestoreAdditionalProjectSources>$(HomeDir)/nuget-store</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <RestoreNoCache>true</RestoreNoCache>
+    <RestoreForce>true</RestoreForce>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="plugins-dc\**\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="plugins-co\**\*.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- State connector contract lives in-repo (apps/connectors/state). Reference the project
+       directly for normal monorepo builds; fall back to the NuGet package (staged in nuget-store)
+       for the isolated API Docker build, which copies only the portal projects. -->
+  <PropertyGroup>
+    <_StateConnectorInterfacesProject>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProject>
+  </PropertyGroup>
+  <Choose>
+    <When Condition="Exists('$(_StateConnectorInterfacesProject)')">
+      <ItemGroup>
+        <ProjectReference Include="$(_StateConnectorInterfacesProject)" PrivateAssets="compile" />
+      </ItemGroup>
+    </When>
+    <Otherwise>
+      <ItemGroup>
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="$(StateConnectorInterfacesFloatingVersion)" PrivateAssets="compile" />
+      </ItemGroup>
+    </Otherwise>
+  </Choose>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" Version="4.5.0" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Serilog.Expressions" Version="5.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.18.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.18.0" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.18.0" />
+    <!-- Required by state connector plugins that use Kiota-generated API clients -->
+    <PackageReference Include="Microsoft.Kiota.Abstractions" Version="1.22.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SEBT.Portal.Infrastructure\SEBT.Portal.Infrastructure.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Infrastructure.Seeding\SEBT.Portal.Infrastructure.Seeding.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Kernel.AspNetCore\SEBT.Portal.Kernel.AspNetCore.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Kernel\SEBT.Portal.Kernel.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.UseCases\SEBT.Portal.UseCases.csproj" />
+    <ProjectReference Include="..\SEBT.Portal.Core\SEBT.Portal.Core.csproj" Aliases="Core,global" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SEBT.Portal.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="plugins-dc\" />
+    <Folder Include="plugins-co\" />
+  </ItemGroup>
+
+</Project>

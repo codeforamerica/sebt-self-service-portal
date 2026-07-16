@@ -15,7 +15,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - Preserve comments. They're documentation, not clutter.
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
 - All user-facing strings must go through i18next. Never hardcode display text in components — reference keys via the translation functions.
-- **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (run `pnpm copy:generate` from within `src/SEBT.Portal.Web/` or `src/SEBT.EnrollmentChecker.Web/`). This also runs automatically via the `predev` and `prebuild` hooks. If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
+- **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (run `pnpm copy:generate` from within `apps/portal/src/SEBT.Portal.Web/` or `apps/portal/src/SEBT.EnrollmentChecker.Web/`). This also runs automatically via the `predev` and `prebuild` hooks. If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
 
 ### Code style
 - C#: 4-space indent, Allman brace style (braces on own line), nullable reference types enabled (see `.editorconfig`). Always use braces for control-flow bodies (`if`, `else`, `for`, `foreach`, `while`) even when the body is a single line.
@@ -85,7 +85,7 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - **Frontend**: Vitest with React Testing Library for unit tests, Playwright for E2E tests.
 - **Pre-commit hook**: The backend pre-commit hook runs `dotnet build` and `dotnet test`. Non-compiling code cannot be committed. For TDD red-phase work, either combine test + implementation in one commit (commit at green), or use `--no-verify` for intermediate commits with a full-hook run before pushing.
 - New functionality must include tests. Prefer writing the test before the implementation.
-- **Backend test namespace convention**: .NET test namespaces should mirror the implementation namespace. For example, tests for `SEBT.Portal.Infrastructure.Services.JwtTokenService` belong in `SEBT.Portal.Tests.Unit.Infrastructure.Services` (file path: `test/SEBT.Portal.Tests/Unit/Infrastructure/Services/`). Some older tests live in a flat `Unit/Services/` directory — don't follow that pattern. Align incrementally when writing new tests or refactoring existing ones.
+- **Backend test namespace convention**: .NET test namespaces should mirror the implementation namespace. For example, tests for `SEBT.Portal.Infrastructure.Services.JwtTokenService` belong in `SEBT.Portal.Tests.Unit.Infrastructure.Services` (file path: `apps/portal/test/SEBT.Portal.Tests/Unit/Infrastructure/Services/`). Some older tests live in a flat `Unit/Services/` directory — don't follow that pattern. Align incrementally when writing new tests or refactoring existing ones.
 
 ## Dependency Management
 - Manage all .NET dependencies with NuGet
@@ -106,7 +106,7 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - In React, avoid 'dangerouslySetInnerHtml'. If rendering HTML, sanitize it first.
 
 ### Content Security Policy (CSP)
-- The portal enforces a strict CSP via `src/SEBT.Portal.Web/src/proxy.ts`. When adding **any browser-side call to a new external domain** (API, SDK, analytics, fonts), add the domain to the appropriate CSP directive (`connect-src`, `script-src`, `style-src`, `font-src`, etc.).
+- The portal enforces a strict CSP via `apps/portal/src/SEBT.Portal.Web/src/proxy.ts`. When adding **any browser-side call to a new external domain** (API, SDK, analytics, fonts), add the domain to the appropriate CSP directive (`connect-src`, `script-src`, `style-src`, `font-src`, etc.).
 - This is easy to miss because CSP is not enforced in local dev or in tests (MSW intercepts network calls). A missing entry means the feature silently fails in production — the browser blocks the request, and error-handling code gracefully degrades as if the service is down.
 
 ### Client-side env vars (`NEXT_PUBLIC_*`)
@@ -115,10 +115,10 @@ Next.js inlines `NEXT_PUBLIC_*` references into the client bundle at **build tim
 Adding a new client-exposed var requires wire-ups across **both** deployment paths:
 
 **Shared:**
-1. `src/SEBT.Portal.Web/src/env.ts` — declare in the `client` schema and `runtimeEnv` pass-through.
+1. `apps/portal/src/SEBT.Portal.Web/src/env.ts` — declare in the `client` schema and `runtimeEnv` pass-through.
 
 **Docker / ECR path (DC dev, CO):**
-2. `src/SEBT.Portal.Web/Dockerfile` — add `ARG NEXT_PUBLIC_FOO=""` (BuildKit auto-exposes named ARGs as env vars to subsequent RUN steps; no explicit `ENV` bridge needed).
+2. `apps/portal/src/SEBT.Portal.Web/Dockerfile` — add `ARG NEXT_PUBLIC_FOO=""` (BuildKit auto-exposes named ARGs as env vars to subsequent RUN steps; no explicit `ENV` bridge needed).
 3. `.github/workflows/deploy-ecr.yaml` — add `--build-arg NEXT_PUBLIC_FOO=${{ vars.FOO }}` to **both** the DC and CO docker build steps.
 
 **IIS path (DC prod):**
@@ -164,8 +164,8 @@ pnpm api:build            # Backend (Debug)
 pnpm api:test             # All backend tests
 pnpm api:test:unit        # Backend unit tests only (excludes Testcontainers/external APIs)
 dotnet test --filter "FullyQualifiedName~MyTest"  # Single backend test
-cd src/SEBT.Portal.Web && pnpm test              # Frontend tests (Vitest)
-cd src/SEBT.Portal.Web && pnpm test:e2e          # Playwright E2E tests
+cd apps/portal/src/SEBT.Portal.Web && pnpm test              # Frontend tests (Vitest)
+cd apps/portal/src/SEBT.Portal.Web && pnpm test:e2e          # Playwright E2E tests
 pnpm ci:build             # Full Release build
 pnpm ci:test              # Full Release test suite
 ```
@@ -191,14 +191,14 @@ pnpm api:build-co         # Build CO connector plugin only
 Migrations auto-apply on startup. For manual operations, both flags are always required:
 ```bash
 dotnet ef migrations add MigrationName \
-  --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
-  --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
+  --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+  --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
 ```
 
 ### Linting
 ```bash
-cd src/SEBT.Portal.Web && pnpm lint   # ESLint
-cd src/SEBT.Portal.Web && pnpm knip   # Dead code detection
+cd apps/portal/src/SEBT.Portal.Web && pnpm lint   # ESLint
+cd apps/portal/src/SEBT.Portal.Web && pnpm knip   # Dead code detection
 ```
 
 ## Architecture Overview
@@ -230,9 +230,9 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 - Known tech debt: `Application` still carries card lifecycle fields (`CardStatus`, `CardRequestedAt`, etc.) that belong on `SummerEbtCase`.
 
 ### Multi-State Plugin System
-State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. Plugin contracts live in the separate `sebt-self-service-portal-state-connector` repo; implementations live in per-state repos (`-dc-connector`, `-co-connector`). The `STATE` env var controls which state config overlay loads. See [docs/adr/0007-multi-state-plugin-approach.md](./docs/adr/0007-multi-state-plugin-approach.md) for the design rationale.
+State-specific behavior uses MEF (System.Composition) plugins loaded at runtime from `plugins-{state}/` directories. The plugin contract (`SEBT.Portal.StatesPlugins.Interfaces`) lives in-repo at `apps/connectors/state`, and the Colorado implementation at `apps/connectors/co`. The DC implementation remains in the external `sebt-self-service-portal-dc-connector` repo (see [apps/connectors/dc/README.md](./apps/connectors/dc/README.md)). The `STATE` env var controls which state config overlay loads. See [docs/adr/0007-multi-state-plugin-approach.md](./docs/adr/0007-multi-state-plugin-approach.md) for the design rationale and [docs/adr/0017-monorepo-consolidation.md](./docs/adr/0017-monorepo-consolidation.md) for the monorepo consolidation.
 
-**Plugin development inner loop:** The state-connector repo builds its interface package to `~/nuget-store/` as a local NuGet source. The API project and state connector repos (e.g., `-dc-connector`) reference that package and have post-build targets that copy compiled DLLs into this repo's `src/SEBT.Portal.Api/plugins-{state}/` directory. After building a connector, restart the API to pick up changes.
+**Plugin development inner loop:** The portal and in-repo connectors reference the contract as a `ProjectReference`, so `dotnet build SEBT.slnx` (or `pnpm api:build-co`) builds everything together; the CO connector's post-build target stages its DLLs into `apps/portal/src/SEBT.Portal.Api/plugins-co/`. For DC, `pnpm api:build-dc` builds the sibling `-dc-connector` checkout against the in-repo contract and stages DLLs into `plugins-dc/`. The contract still packs to `~/nuget-store/` on build, but that package is only a fallback — used by the isolated API Docker image build and by out-of-tree DC builds; its version comes from `StateConnectorInterfacesVersion` in the root `Directory.Build.props`. After building a connector, restart the API to pick up changes.
 
 **Mock data mode:** When `UseMockHouseholdData` is `true` (set in `appsettings.{state}.json`), the API uses in-memory mock data from `MockHouseholdRepository` instead of calling state connector plugins. This affects both reads and writes. Mock data scenarios are defined in `MockHouseholdRepository.SeedMockData()` with test personas keyed by email/phone.
 
