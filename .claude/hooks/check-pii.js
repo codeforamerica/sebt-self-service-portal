@@ -68,8 +68,13 @@ const SAFE_EMAIL_RE =
   /@(example\.(com|org|net)|test\.(com|org|net)|localhost|users\.noreply\.github\.com|anthropic\.com)$/i;
 const NOREPLY_RE = /^noreply@/i;
 
+// Known government program contact addresses required verbatim in legal notices.
+// These are institutional addresses, not personal PII.
+const GOVT_PROGRAM_EMAILS_RE =
+  /^(dc\.oara@dc\.gov|program\.intake@usda\.gov|sunbucksverify@dc\.gov)$/i;
+
 const emails = [...new Set((content.match(EMAIL_RE) || []))]
-  .filter((e) => !SAFE_EMAIL_RE.test(e) && !NOREPLY_RE.test(e));
+  .filter((e) => !SAFE_EMAIL_RE.test(e) && !NOREPLY_RE.test(e) && !GOVT_PROGRAM_EMAILS_RE.test(e));
 
 if (emails.length) {
   findings.push(`Email(s): ${emails.join(', ')}`);
