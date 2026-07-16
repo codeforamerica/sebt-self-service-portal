@@ -129,6 +129,7 @@ run_type_check() {
   cd "$FRONTEND_DIR"
 
   pnpm exec tsc --noEmit
+  pnpm exec tsc -p e2e/tsconfig.json --noEmit
   log_success "Type checking passed"
 }
 

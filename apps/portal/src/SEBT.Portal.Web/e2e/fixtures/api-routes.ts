@@ -30,6 +30,13 @@ interface ApiRouteOverrides {
    * Defaults to 204 (success).
    */
   cardReplaceStatus?: number
+  /** Override GET /api/household/data response status. Defaults to 200. */
+  householdDataStatus?: number
+  /**
+   * JSON body when householdDataStatus is not 200.
+   * For 403 IAL step-up, include `requiredIal` (see useHouseholdData).
+   */
+  householdDataProblem?: Record<string, unknown>
 }
 
 /**
@@ -62,6 +69,12 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
           ? { status: 'valid' }
           : null
   const cardReplaceStatus = overrides.cardReplaceStatus ?? 204
+  const householdDataStatus = overrides.householdDataStatus ?? 200
+  const householdDataProblem = overrides.householdDataProblem ?? {
+    type: 'about:blank',
+    title: 'Forbidden',
+    status: householdDataStatus
+  }
 
   // The trailing `*` on GET routes tolerates the per-request `?_=<uuid>`
   // cache-bust query string that apiFetch appends to defeat edge-cache leaks
@@ -95,10 +108,20 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
   })
 
   await page.route('**/api/household/data*', (route) => {
+    if (householdDataStatus === 200) {
+      void route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(householdSnapshot)
+      })
+      return
+    }
+
+    // Match ASP.NET ProblemDetails (application/problem+json), not generic JSON.
     void route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(householdSnapshot)
+      status: householdDataStatus,
+      contentType: 'application/problem+json; charset=utf-8',
+      body: JSON.stringify(householdDataProblem)
     })
   })
 

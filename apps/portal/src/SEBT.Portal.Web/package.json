@@ -17,6 +17,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
     "pretest": "pnpm --silent copy:generate",
     "test": "vitest",
     "test:ui": "vitest --ui",

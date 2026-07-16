@@ -28,6 +28,7 @@
     "ci:build:enrollment-checker": "pnpm --filter @sebt/enrollment-checker lint && pnpm --filter @sebt/enrollment-checker typecheck && STATE=co NEXT_PUBLIC_STATE=co NEXT_PUBLIC_PORTAL_URL=https://portal.ci-validation.example.gov NEXT_PUBLIC_APPLICATION_URL=https://apply.ci-validation.example.gov pnpm --filter @sebt/enrollment-checker build",
     "ci:test": "./scripts/ci/test-backend.sh && ./scripts/ci/test-frontend.sh && pnpm ci:test:enrollment-checker",
     "ci:test:e2e": "cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright test --project=chromium",
+    "ci:test:e2e:integration": "cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright test --project=chromium-integration-dc",
     "ci:test:e2e:all": "cd apps/portal/src/SEBT.Portal.Web && pnpm test:e2e",
     "ci:test:a11y": "cd apps/portal/src/SEBT.Portal.Web && pnpm test:a11y",
     "ci:test:frontend": "./scripts/ci/test-frontend.sh",

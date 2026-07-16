@@ -187,6 +187,35 @@ describe('apiFetch', () => {
         })
       }
     })
+
+    it('parses application/problem+json bodies so ProblemDetails extensions reach ApiError.data', async () => {
+      server.use(
+        http.get('/api/household/data', () =>
+          HttpResponse.json(
+            {
+              type: 'about:blank',
+              title: 'Insufficient identity assurance level',
+              status: 403,
+              detail: 'This household requires IAL1plus.',
+              requiredIal: 'IAL1plus'
+            },
+            {
+              status: 403,
+              headers: { 'Content-Type': 'application/problem+json; charset=utf-8' }
+            }
+          )
+        )
+      )
+
+      try {
+        await apiFetch('/household/data')
+        expect.fail('Expected ApiError to be thrown')
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApiError)
+        expect((error as ApiError).status).toBe(403)
+        expect((error as ApiError).data).toMatchObject({ requiredIal: 'IAL1plus' })
+      }
+    })
   })
 
   describe('Timeout Handling', () => {

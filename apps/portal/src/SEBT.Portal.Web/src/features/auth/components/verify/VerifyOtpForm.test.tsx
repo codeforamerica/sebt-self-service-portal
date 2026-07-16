@@ -540,6 +540,40 @@ describe('VerifyOtpForm', () => {
       })
     })
 
+    it('should display error alert for invalid OTP when API returns 400', async () => {
+      server.use(
+        http.post('/api/auth/otp/validate', () =>
+          HttpResponse.json({ error: 'Invalid OTP. Please try again.' }, { status: 400 })
+        )
+      )
+
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+        ).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+
+      await user.type(otpInput, TEST_OTP.invalid)
+      await user.click(confirmButton)
+
+      // The real validate endpoint returns 400 for a wrong code; treat it like 401.
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument()
+        expect(screen.getByText(/enter a valid.*digit code/i)).toBeInTheDocument()
+      })
+    })
+
     it('should display error alert for expired OTP', async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       renderWithProviders(

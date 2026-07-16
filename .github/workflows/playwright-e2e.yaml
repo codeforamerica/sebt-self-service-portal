@@ -9,6 +9,12 @@ on:
   pull_request:
     branches: ["main"]
 
+# Pinned third-party CI images/tools — avoid mutable :latest tags (Aikido supply-chain checks).
+env:
+  CI_MSSQL_IMAGE: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
+  CI_MAILPIT_IMAGE: axllent/mailpit:v1.30.2@sha256:37a38e48e9338cd7e89dfeb487f37b02ebfcd9cb23111bed2d345e79d37d6dd6
+  CI_DOTNET_EF_VERSION: "10.0.9"
+
 jobs:
   # Same fail-open change detection as state-ci.yaml: PRs skip jobs whose inputs
   # didn't change; pushes and CI-infra changes always run everything.
@@ -132,6 +138,180 @@ jobs:
           path: apps/portal/src/SEBT.Portal.Web/playwright-report/
           retention-days: 7
 
+  # Integration E2E drives the full stack (real API + web), so it reacts to both areas.
+  e2e-integration-dc:
+    name: Playwright Integration E2E (DC)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: YourStrong@Passw0rd
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C -b -o /dev/null || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=10s
+
+      mailpit:
+        image: axllent/mailpit:v1.30.2@sha256:37a38e48e9338cd7e89dfeb487f37b02ebfcd9cb23111bed2d345e79d37d6dd6
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # state connector (interfaces) is now in-repo at apps/connectors/state — no checkout needed.
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build backend
+        run: ./.github/workflows/scripts/build-backend.sh --configuration Release
+
+      - name: Build frontend for integration E2E
+        env:
+          STATE: dc
+          NEXT_PUBLIC_STATE: dc
+        run: ./.github/workflows/scripts/build-frontend.sh --production --skip-install
+
+      - name: Install Playwright browsers
+        run: cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
+
+      - name: Install dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef --version "$CI_DOTNET_EF_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Initialize SQL Server Database
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          STATE: dc
+        run: |
+          set -euo pipefail
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          CONN="Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          SA_PASSWORD='YourStrong@Passw0rd'
+          SQLCMD_IMAGE="$CI_MSSQL_IMAGE"
+
+          run_sqlcmd() {
+            docker run --rm --network host "$SQLCMD_IMAGE" \
+              /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P "$SA_PASSWORD" -C -b "$@"
+          }
+
+          # Wait for SQL Server to accept connections from the job host (service health runs inside the container).
+          for i in $(seq 1 30); do
+            if run_sqlcmd -Q 'SELECT 1' -o /dev/null 2>&1; then
+              echo "SQL Server ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "SQL Server did not become ready in time"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "Creating SebtPortal database if missing..."
+          run_sqlcmd -Q "IF DB_ID(N'SebtPortal') IS NULL CREATE DATABASE [SebtPortal];"
+
+          for attempt in $(seq 1 3); do
+            echo "Applying EF migrations (attempt ${attempt}/3)..."
+            if dotnet ef database update \
+              --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+              --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
+              --configuration Release \
+              --no-build \
+              --connection "$CONN"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "EF migrations failed after 3 attempts"
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "Verifying SebtPortal schema..."
+          run_sqlcmd -d SebtPortal -Q "IF OBJECT_ID(N'__EFMigrationsHistory', N'U') IS NULL RAISERROR('Missing __EFMigrationsHistory', 16, 1); SELECT TOP 1 MigrationId FROM __EFMigrationsHistory;"
+          echo "Database initialization complete"
+
+      - name: Run Playwright integration E2E tests
+        env:
+          CI: true
+          E2E_FULL_STACK: "1"
+          SKIP_WEB_SERVER: "1"
+          STATE: dc
+          NEXT_PUBLIC_STATE: dc
+          BACKEND_URL: http://localhost:5280
+          MAILPIT_API_URL: http://localhost:8025
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
+          IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
+          Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
+          PluginAssemblyPaths__0: "plugins-dc"
+          Seeding__State: dc
+          Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
+          UseMockHouseholdData: "true"
+          Socure__UseStub: "true"
+          SmtpClientSettings__SmtpServer: "localhost"
+          SmtpClientSettings__SmtpPort: "1025"
+          SmtpClientSettings__EnableSsl: "false"
+          OtpRateLimitSettings__PermitLimit: "30"
+        run: |
+          ASPNETCORE_ENVIRONMENT=Development dotnet run --project apps/portal/src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
+          (cd apps/portal/src/SEBT.Portal.Web && pnpm start) &
+          echo "Waiting for API at http://localhost:5280/health..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:5280/health > /dev/null && echo "API ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:5280/health > /dev/null || (echo "API failed to start" && exit 1)
+          echo "Waiting for web app at http://localhost:3000..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Web ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Web failed to start" && exit 1)
+          echo "Running Playwright integration E2E tests..."
+          pnpm ci:test:e2e:integration
+
+      - name: Upload Playwright integration report
+        uses: actions/upload-artifact@v4
+        if: ${{ always() }}
+        with:
+          name: playwright-integration-report-dc
+          path: apps/portal/src/SEBT.Portal.Web/playwright-report/
+          retention-days: 7
+
   # Pa11y runs the full stack (real API + web), so it reacts to both areas.
   a11y:
     name: Pa11y Accessibility Tests
@@ -142,7 +322,7 @@ jobs:
 
     services:
       mssql:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+        image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
         env:
           ACCEPT_EULA: Y
           MSSQL_SA_PASSWORD: YourStrong@Passw0rd
@@ -212,6 +392,8 @@ jobs:
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
           PluginAssemblyPaths__0: "plugins-dc"
+          Seeding__State: dc
+          Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
           UseMockHouseholdData: "true"
         run: |
           ASPNETCORE_ENVIRONMENT=Development dotnet run --project apps/portal/src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
