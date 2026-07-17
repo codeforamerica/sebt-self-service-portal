@@ -34,6 +34,8 @@ public static class IdentifierNormalizer
         return NormalizeCore(value);
     }
 
-    private static string NormalizeCore(string value) =>
-        value.Trim().Replace("-", "").Replace(" ", "");
+    private static string NormalizeCore(string value)
+    {
+        return value.Trim().Replace("-", "").Replace(" ", "");
+    }
 }

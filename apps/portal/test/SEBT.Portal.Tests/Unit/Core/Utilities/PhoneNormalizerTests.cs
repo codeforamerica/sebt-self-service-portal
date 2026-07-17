@@ -1,6 +1,6 @@
-using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Core.Utilities;
 
-namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
+namespace SEBT.Portal.Tests.Unit.Core.Utilities;
 
 public class PhoneNormalizerTests
 {
