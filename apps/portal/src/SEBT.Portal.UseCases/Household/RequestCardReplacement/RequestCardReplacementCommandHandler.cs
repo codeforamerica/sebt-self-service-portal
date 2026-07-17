@@ -58,6 +58,27 @@ public class RequestCardReplacementCommandHandler(
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
+        var householdHash = identifierHasher.Hash(identifier.Value);
+        if (householdHash == null)
+        {
+            logger.LogError(
+                "Card replacement attempted but household identifier hash resulted in null value");
+            return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed);
+        }
+
+        var caseHashes = new Dictionary<string, string>();
+        foreach (var caseRef in command.CaseRefs)
+        {
+            var caseHash = identifierHasher.Hash(caseRef.SummerEbtCaseId);
+            if (caseHash == null)
+            {
+                logger.LogError(
+                    "Card replacement attempted but case identifier hash resulted in null value");
+                return Result.PreconditionFailed(PreconditionFailedReason.NotAllowed);
+            }
+            caseHashes[caseRef.SummerEbtCaseId] = caseHash;
+        }
+
         var userIalLevel = UserIalLevelExtensions.FromClaimsPrincipal(command.User);
 
         var household = await repository.GetHouseholdByIdentifierAsync(
@@ -138,24 +159,7 @@ public class RequestCardReplacementCommandHandler(
             $"CardReplacement:{userId.Value}", cancellationToken: cancellationToken))
         {
             // Check cooldown from portal DB — the authoritative source for request timestamps.
-            var householdHash = identifierHasher.Hash(identifier.Value);
-            var cooldownErrors = new List<ValidationError>();
-
-            foreach (var caseRef in command.CaseRefs)
-            {
-                var caseHash = identifierHasher.Hash(caseRef.SummerEbtCaseId);
-                if (householdHash != null && caseHash != null)
-                {
-                    var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
-                        householdHash, caseHash, CooldownPeriod, cancellationToken);
-                    if (hasCooldown)
-                    {
-                        cooldownErrors.Add(new ValidationError(
-                            "CaseRefs",
-                            $"A card replacement was requested for this case within the last 14 days."));
-                    }
-                }
-            }
+            var cooldownErrors = await CheckCooldownErrors(command, householdHash, caseHashes, cancellationToken);
 
             if (cooldownErrors.Count > 0)
             {
@@ -273,5 +277,33 @@ public class RequestCardReplacementCommandHandler(
                 command.CaseRefs.Count);
             return Result.Success();
         }
+    }
+
+    private async Task<IReadOnlyCollection<ValidationError>> CheckCooldownErrors(
+        RequestCardReplacementCommand command,
+        string householdHash,
+        IDictionary<string, string> caseHashes,
+        CancellationToken cancellationToken)
+    {
+        var cooldownErrors = new List<ValidationError>();
+
+        foreach (var caseRef in command.CaseRefs)
+        {
+            // var caseHash = identifierHasher.Hash(caseRef.SummerEbtCaseId);
+            var caseHash = caseHashes[caseRef.SummerEbtCaseId];
+            if (caseHash != null)
+            {
+                var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
+                    householdHash, caseHash, CooldownPeriod, cancellationToken);
+                if (hasCooldown)
+                {
+                    cooldownErrors.Add(new ValidationError(
+                        "CaseRefs",
+                        $"A card replacement was requested for this case within the last 14 days."));
+                }
+            }
+        }
+
+        return cooldownErrors;
     }
 }
