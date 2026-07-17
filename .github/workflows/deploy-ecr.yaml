@@ -137,11 +137,40 @@ jobs:
           global-json-file: global.json
 
       # state + co connectors are now in-repo (apps/connectors/*); only dc remains external.
+      # Same branch-matching as release-iis-dc.yaml: paired contract changes need the
+      # dc-connector branch of the same name; everything else falls back to main.
+      - name: Determine dc-connector ref
+        id: dc-connector-ref
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+          else
+            BRANCH="$REF_NAME"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH"
+            exit 1
+          fi
+          FALLBACK="main"
+          REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
+            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout dc-connector
         uses: actions/checkout@v6
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
 
       - name: Build plugin interfaces (NuGet package)
