@@ -2,7 +2,6 @@
 
 [![State CI](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml/badge.svg)](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml)
 
-
 # About
 
 This platform allows parents/guardians of children eligible for [Summer EBT / Sun Bucks](https://www.fns.usda.gov/summer/sunbucks) to view the status of and manage their benefit.
@@ -14,67 +13,41 @@ This platform allows parents/guardians of children eligible for [Summer EBT / Su
   - See the application status for any applications they submitted
   - View or update their mailing adddress on file
   - Request a replcement Summer EBT card
-  - Opt-in to email communications about benefits
+ 
+As of Summer 2026, the platform is currently in use by Colorado and Washington, DC.
 
-## Product Capabilities
+## Repository structure
 
-| Capability | What it does | Key dependencies | Configured by |
-| --- | --- | --- | --- |
-| **Portal: Authentication** | Users can sign into the Portal, configured via one-time password (OTP) email or OpenID Connect (OIDC) provider | An OIDC provider | See [OIDC Support](#oidc-support)  |
-| **Portal: Identity proofing** | Users proof to an appropriate Identity Assurance Level (IAL) threshold ("step-up") before accessing Personally Identifiable Information (PII). Users below a threshold see masked data or are blocked. | Via OIDC provider or **Socure** Web SDK (frontend) + API (backend) | Configured via `Appsettings` -> `IdProofingRequirements`. For dev, a stub/mock (`NEXT_PUBLIC_MOCK_SOCURE` / `UseStub`) is available. See [ID Proofing](#id-proofing-requirements). |
-| **Portal: Dashboard for SEBT enrollment and benefit status** | Users can view case enrollment data for each child in their household, status of EBT cards, and any outstanding SEBT applications | State endpoint to read household data | Configured via state connectors. For dev, `UseMockHouseholdData: true` is available to mock the state integration |
-| **Portal: Update mailing address** | Users can update their mailing address in their state's system of record, to ensure delivery of cards | State endpoint to write household data | Configured via state connectors |
-| **Portal: Validate mailing address** | When users update their mailing address, they see type-ahead autocomplete and/or their input is validated against USPS on the back end | Enabled through **Smarty** | Frontend enabled with embedded key (`NEXT_PUBLIC_SMARTY_EMBEDDED_KEY`).  Backend enabled with `PassThroughAddressUpdateService`, uses `AuthId`/`AuthToken` |
-| **Portal: Request replacement EBT card** | Users can request a replacement EBT card if it has been lost or stolen | State endpoint to submit card replacement requests | Configured via `SelfServiceRules` |
-| **Enrollment Checker** | Users can check whether their child is already enrolled in SEBT or if they need to apply, without having to log into the portal | State endpoint to check enrollment | This is a standalone NextJS app that uses the Portal API,  deployable as a static site (SSG) or SSR. See [EnrollmentChecker.Web](./src/SEBT.EnrollmentChecker.Web) |
-| **Custom theming, content and localization** | Product look/feel, copy, and localization (translations) can be customized according to state needs | | Configured in `packages/design-system` (tokens + content generation). See [Content & Localization Generation](#content--localization-generation). |
-| **Product analytics** | Optional analytics events to understand user behavior | Currently works with **Google Analytics**, **Amplitude**, **Mixpanel** or **SiteImprove** | See [Analytics](#analytics). |
-| **Caching** | Improves application experience via optional distributed caching | **Redis** (`HybridCache`) | See [Redis](#redis-distributed-cache), falls back to in-memory when unconfigured|
-| **Observability and telemetry** | Provides structured logging and distributed tracing via **Serilog** and **OpenTelemetry** | An OTEL-compatible observability platform  | (see [Jaeger](#jaeger-local-opentelemetry-tracing) locally) |
-
-## Repository layout (monorepo)
-
-This is a monorepo containing the portal app and the shared + CO state connectors. The DC connector
-remains an external repo (`sebt-self-service-portal-dc-connector`).
+This is a monorepo containing all application code, as well as the shared + CO state "connector" code. The DC connector code
+lives in a an external repo ([`sebt-self-service-portal-dc-connector`](https://github.com/codeforamerica/sebt-self-service-portal-dc-connector)).
 
 ```
 apps/
-  portal/                 # the deployable portal: .NET API + Next.js web + enrollment checker
-    src/, test/, SEBT.Portal.sln
+  portal/                 # the deployable application
+    src/
+      SEBT.Portal.Api                 # ASP.NET core entry point (controllers, middleware, plugin loading) - used by Portal and Enrollment checker
+      SEBT.Portal.Core                # Domain models, service interfaces, exceptions, settings
+      SEBT.Portal.Infrastructure             # DB context and migrations, repositories, service implementations, external integrations
+      SEBT.Portal.Infrastructure.Seeding     # Data seeding for development environments
+      SEBT.Portal.UseCases                   # Application layer command/query handlers (auth, households)
+      SEBT.Portal.Kernal/Kernel.AspNetCore   # Base classes, ASP.NET extensions
+      SEBT.Portal.Web                 # Next.js Portal front (see [README](./src/SEBT.Portal.Web/README.md))
+      SEBT.EnrollmentChecker.Web      # Standalone Next.js web app for Enrollment Checker
+    test/, SEBT.Portal.sln
   connectors/
     state/                # MEF plugin contract (interfaces), NuGet-packaged for external consumers
     co/                   # Colorado connector implementation
     dc/                   # placeholder README — the DC connector lives in its external repo
-packages/                 # shared JS libraries: @sebt/design-system, @sebt/analytics
+packages/                 # shared JS libraries: @sebt/design-system (design tokens, locale generation, content), @sebt/analytics
 scripts/                  # repo-wide dev, CI, and git helper scripts
-tofu/                     # infrastructure (OpenTofu)
-SEBT.slnx                 # top-level solution: portal + in-repo connectors
+tofu/                     # infrastructure as code scripts (OpenTofu)
+SEBT.slnx                 # top-level .NET solution: portal + in-repo connectors
+.github/                  # CI/CD Actions, github automations
 ```
 
-Repo-wide config lives at the root: `pnpm-workspace.yaml`, `package.json`, `nuget.config`,
-`global.json`, `Directory.Build.props`, and `.github/`.
+Other repo-wide config lives at the root: `pnpm-workspace.yaml`, `package.json`, `nuget.config`,
+`global.json`, `Directory.Build.props`.
 
-### Local development
-
-- **Build everything (root):** `dotnet build SEBT.slnx` for the backend; `pnpm ci:build:frontend`
-  and `pnpm ci:build:enrollment-checker` for the web apps (the enrollment checker needs
-  `NEXT_PUBLIC_*` values at build time, which those scripts provide).
-- **Run for a state:** `pnpm dev:dc` or `pnpm dev:co` (builds the relevant connector plugins, then
-  starts the API + web). DC uses the external `dc-connector` checked out alongside this repo; CO and
-  the state contract build from `apps/connectors/*`.
-- **Windows:** enable long paths (`git config core.longpaths true`) — the nested `apps/portal/...`
-  paths can exceed the legacy 260-char limit.
-
-### CI/CD (high level)
-
-- `state-ci.yaml` builds/tests the portal + connectors on PRs and pushes. PRs are path-filtered:
-  portal-only changes skip connector-irrelevant jobs and vice versa; pushes always run everything.
-- `deploy-ecr.yaml` builds Docker images and deploys **DC** and **CO** to their dev environments;
-  it builds the in-repo state + CO connectors and checks out the external DC connector.
-- `release-iis-dc.yaml` produces the DC IIS release bundle (validated on every PR).
-- `deploy-enrollment-checker.yaml` builds and deploys the static enrollment checker.
-- `playwright-e2e.yaml` runs Playwright E2E (per state) and Pa11y accessibility checks.
-- `build-and-seed-dc-source.yaml` builds the DC seed/source image from the external DC repo.
 
 ## Technology Stack overview
 
@@ -96,55 +69,49 @@ Repo-wide config lives at the root: `pnpm-workspace.yaml`, `package.json`, `nuge
 - Infrastructure as Code using OpenTofu (Terraform) - see [tofu](./tofu/)
 - Docker with [docker-compose](https://docs.docker.com/compose/) for local development
 
-## Architecture
-
-The product follows Clean Architecture (see [ADR-0002](docs/adr/0002-adopt-clean-architecture.md)). At a glance:
-
-- **Api** — ASP.NET Core entry point: controllers, middleware, plugin loading
-- **UseCases** — application layer command/query handlers (auth, households)
-- **Core** — domain models, service interfaces, exceptions, settings
-- **Infrastructure** — EF Core `DbContext`, repositories, service implementations, migrations
-- **Infrastructure.Seeding** — Development-only data seeding
-- **Kernel** / **Kernel.AspNetCore** — cross-cutting base classes and ASP.NET extensions
-- **Web** — the Next.js portal frontend (see [SEBT.Portal.Web README](./src/SEBT.Portal.Web/README.md))
-- **EnrollmentChecker.Web** — a standalone Next.js enrollment-check app (see [SEBT.EnrollmentChecker.Web](./src/SEBT.EnrollmentChecker.Web))
-- **packages/** — shared workspace packages: `design-system` (tokens, locale generation, content) and `analytics`
-
-
 ## Local Environment Set Up 🧰
 
-> **Note:** The following steps assume you are working on macOS. Steps may differ if you are working on a different operating system.
+> **Note:** The following steps assume you are working on macOS, using [Homebrew package manager](https://brew.sh/). Steps may differ if you are working on a different operating system.
 
-### 1. Make sure you have downloaded and installed prequisite software 👷
+> **On Windows:** you'll want to enable long paths (`git config core.longpaths true`), since the nested `apps/portal/...` paths can exceed the legacy 260-char limit.
 
+
+### Local development
+
+### 1. Make sure you have downloaded and installed prequisite software 
+
+- [Git](https://git-scm.com/install/)
 - [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for running the back end
+  - To install using homebrew: `brew install dotnet`
 - The latest version of [nodeJS](https://nodejs.org/en)
+  - `brew install node`
 - [pnpm](https://pnpm.io/installation/) for managing front end packages and development scripts
-- [Docker](https://www.docker.com/) Desktop for running and managing containers (includes MSSQL database)
+  - `brew install pnpm`
+- [Docker](https://www.docker.com/) Desktop for running and managing containers (this includes MSSQL database, Redis)
 
 ### 2. Clone the repository
 
-The portal, the plugin contract, and the Colorado connector all live in this monorepo — one clone
-covers CO development end to end:
+The self-service portal, enrollment checker, the state plugin contract, and the Colorado connector code all live in this monorepo, so one clone action covers the Colorado implementation end to end:
 
 ```bash
-git clone https://github.com/codeforamerica/sebt-self-service-portal.git
+git clone git@github.com:codeforamerica/sebt-self-service-portal.git
 ```
 
-**Working on DC?** The DC connector is maintained in its own repository (see
-[apps/connectors/dc/README.md](./apps/connectors/dc/README.md)). Clone it as a sibling (same parent
-folder) so `pnpm dev:dc` can build it:
+**To run the DC Portal**
+
+The state connector for DC is maintained in its own repository (see [apps/connectors/dc/README.md](./apps/connectors/dc/README.md)). Clone it as a sibling to this one (same parent
+folder) so it can be used when building and running the DC app (via `pnpm dev:dc`):
 
 ```bash
-git clone https://github.com/codeforamerica/sebt-self-service-portal-dc-connector.git
+git clone git@github.com:codeforamerica/sebt-self-service-portal-dc-connector.git
 ```
 
-> The old standalone `-state-connector` and `-co-connector` repositories were merged into this repo
-> (`apps/connectors/`) and are archived — don't clone them for new work.
+The current DC enrollment checker is a standalone app, in a separate repository: https://github.com/codeforamerica/cfa-dc-sebt-portal/
+
 
 ### 3. Configure local environment
 
-`.env` files are used in this project to set environment variables (eg, database configs). This is a preferred pattern for [12-factor Apps](https://www.12factor.net/config). They are also set to fallback to a generic default. You'll need to create `.env` files for your local environment, based on the example file.
+**`.env` files** are used in this project to set environment variables (eg, database configs). This is a preferred pattern for [12-factor Apps](https://www.12factor.net/config). They are also set to fallback to a generic default. You'll need to create `.env` files for your local environment, based on the example file.
 
 To create your local .env file with configurations for the database and API, run this command in the root of the repo:
 
@@ -158,48 +125,67 @@ You'll want do the same from within `apps/portal/src/SEBT.Portal.Web`:
 cp .env.example .env.local
 ```
 
-You'll also need an API `appsettings` file for your local machine with certain values set (see [state specific configuration](#state-specific-configuration) below):
+You'll also need **API `appsettings.json` files** for your local machine with certain values set:
 
 ```bash
 cd apps/portal/src/SEBT.Portal.Api
+
 cp appsettings.Development.example.json appsettings.Development.json
+cp appsettings.Development.co.json appsettings.co.json   # for colorado local development
+cp appsettings.Development.dc.json appsettings.dc.json   # for DC local development
 ```
+
+For more about how appsettings work, see [state specific configuration](#state-specific-configuration) below.
 
 ### 4. Install dependencies
 
-Front end
+**Front end**
 
 - To install all javascript package dependencies, run `pnpm install` from the root of this repository.
 - You can learn more about the front end in the [SEBT.Portal.Web README](./apps/portal/src/SEBT.Portal.Web/README.md)
 
-Back end
+**Back end**
 
 - .NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). Currently, we are using the
   [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license. Needed tools are defined in the tools manifest in `.config/dotnet-tools.json`. To install them, run `dotnet tool restore` once from the repo root.
 - You'll also want to run `dotnet build SEBT.slnx` from the repo root before starting up the app for the first time — it builds the portal and the in-repo connectors together.
 
+
 ### 5. Start Services 💻
 
-Make sure Docker is installed and the docker daemon is running. When the database spins up locally, all migrations will be run and db seeded automatically (see [database setup](#database-setup) section below).
+Make sure Docker is installed and the docker daemon is running. Several components of the app are Dockerized. 
+
+#### Start database in Docker
+
+Before starting the app, you need to run the container for the MSSQL db (`docker compose up -d mssql`). When the db spins up locally, all migrations will be run and test data seeded automatically (see [database setup](#database-setup) section below).
+
+#### Start Mailpit in Docker (DC Portal only)
+
+[Mailpit](https://mailpit.axllent.org/) is a dev tool that captures all outgoing emails, which is used for simulating OTP auth locally.
+
+You can start this with `docker compose up -d mailpit`. Once the Mailpit docker container is running on your machine, you can access its UI in your browser at <http://localhost:8025>
+
+#### Other dockerized services
+- Redis (caching) - see below
+- Jaegar (telemetry) - see below
+  
+#### Building and running the app
+
+Then, you'll need to build the code + relevant state connector plugins, run the API (`dotnet watch`), and start the front end (`next dev`). Available start commands:
 
 ```bash
-docker compose up -d  # Start all docker containers, including MSSQL Database and Mailpit for testing
+`pnpm dev:dc` to start the DC Portal (using the external `dc-connector` repo alongside this repo)
+`pnpm dev:co`   to start the CO Portal
+`pnpm dev:co-enroll`  to start the CO Enrollment Checker
 ```
 
-```bash
-pnpm dev              # Script to start both API (ie, `dotnet watch`) and frontend (ie, `next dev`)
-```
+To open the app, navigate in your browser to <https://localhost:3000>
 
-To open the app, navigate to <https://localhost:3000>
+## Local Development
 
-## Development
-
-### Other helpful commands
+### Helpful commands
 
 ```bash
-# Start frontend only
-pnpm web:dev
-
 # View logs
 docker compose logs -f
 
@@ -210,23 +196,53 @@ docker compose down
 docker compose down -v
 ```
 
-### Mailpit (Local Email Testing)
+### Testing
 
-[Mailpit](https://mailpit.axllent.org/) captures all outgoing emails in local development. Once the Mailpit docker container is running on your machine, you can access its UI in your browser at <http://localhost:8025>
+#### Back end tests
+```bash
+# from repo root
+pnpm api:test         # Run all backend tests
+pnpm api:test:unit    # Run backend unit tests only
+```
+
+#### Front end tests - portal
+```bash
+# from within SEBT.Portal.Web:
+pnpm test            # Run frontend tests (vitest)
+pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
+pnpm test:a11y       # Run accessibility (pa11y) tests
+```
+
+#### Front end tests - enrollment checker
+```bash
+# from within SEBT.EnrollmentChecker.Web:
+pnpm test            # Run frontend tests (vitest)
+pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
+pnpm test:a11y       # Run accessibility (pa11y) tests
+
+```
+
+####  Run tests locally exactly as they run in CI (Release mode):
+```bash
+# from repo root
+pnpm ci:test          # Test frontend + backend
+pnpm ci:test:frontend    # Test frontend only
+pnpm ci:test:backend     # Test backend only
+```
 
 ### Redis (Distributed Cache)
 
 [Redis](https://redis.io/) is used as an optional distributed cache backing for `HybridCache`. It's included in Docker Compose and runs with TLS enabled to mirror AWS Elasticache in-transit encryption.
 
-#### First-time setup
-
-Before running `docker compose up` for the first time, generate the local TLS certificates:
+Before running Redis the first time, use this script to generate the local TLS certificates:
 
 ```bash
 ./scripts/dev/gen-redis-certs.sh
 ```
 
 This writes self-signed certs to `certs/` (gitignored). The script is idempotent — existing certs are not overwritten. Re-run it if Redis TLS stops working (certs expire after one year).
+
+From there, you can run `docker compose up -d redis`.
 
 #### Ports
 
@@ -261,24 +277,28 @@ When neither is configured, the application falls back to in-memory caching only
 
 [Jaeger](https://github.com/jaegertracing/jaeger) acts as a local OTLP collector for OpenTelemetry tracing. The default configuration for the portal sends traces and metrics via OTLP over gRPC to http://localhost:4317, which is the standard port. Local traces can be viewed in the Jaeger UI at [http://localhost:16686](http://localhost:16686).
 
-### Local Build & Test (Debug mode)
 
+
+### CI/CD (via GitHub Actions)
+
+- `state-ci.yaml` builds/tests the portal + connectors on PRs and pushes. PRs are path-filtered:
+  portal-only changes skip connector-irrelevant jobs and vice versa; pushes always run everything.
+- `deploy-ecr.yaml` builds Docker images and deploys **DC** and **CO** to their dev environments;
+  it builds the in-repo state + CO connectors and checks out the external DC connector.
+- `release-iis-dc.yaml` produces the DC IIS release bundle (validated on every PR).
+- `deploy-enrollment-checker.yaml` builds and deploys the static enrollment checker.
+- `playwright-e2e.yaml` runs Playwright E2E (per state) and Pa11y accessibility checks.
+- `build-and-seed-dc-source.yaml` builds the DC seed/source image from the external DC repo.
+
+#### State-based CI testing
 ```bash
-pnpm api:build        # Build backend only (Debug)
-pnpm api:test         # Test backend only
-```
+pnpm ci:test:states   # Test all states
+pnpm ci:test:state:dc # Test DC state
+pnpm ci:test:state:co # Test CO state
 
-### CI Build & Test (Release mode)
-
-```bash
-pnpm ci:build         # Build frontend + backend (Release)
-pnpm ci:test          # Test frontend + backend
-
-# Individual components
-pnpm ci:build:frontend   # Build frontend only
-pnpm ci:build:backend    # Build backend only
-pnpm ci:test:frontend    # Test frontend only
-pnpm ci:test:backend     # Test backend only
+# Utility commands
+pnpm ci:list          # List all ACT workflows
+pnpm ci:validate      # Validate workflows (dry-run)
 ```
 
 ### Warnings as errors
@@ -295,19 +315,6 @@ If you need to allow a specific warning code, demote it back to a warning in the
 
 Prefer this over `<NoWarn>`, which silences the warning entirely.
 
-### CI Testing (Local)
-
-```bash
-# State-based CI testing
-pnpm ci:test:states   # Test all states
-pnpm ci:test:state:dc # Test DC state
-pnpm ci:test:state:co # Test CO state
-
-# Utility commands
-pnpm ci:list          # List all ACT workflows
-pnpm ci:validate      # Validate workflows (dry-run)
-```
-
 ## Branch Strategy 🌿
 
 **State-Specific Development:**
@@ -321,6 +328,7 @@ deploy/co-*    # CO-only changes (only CO builds in CI)
 
 ```bash
 feature/*      # Changes for all states (all states build in CI)
+chore/*
 main           # Production source for all states
 ```
 
