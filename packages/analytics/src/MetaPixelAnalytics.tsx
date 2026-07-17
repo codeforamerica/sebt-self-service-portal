@@ -17,6 +17,7 @@ export function MetaPixelAnalytics({ pixelId }: MetaPixelAnalyticsProps) {
         dangerouslySetInnerHTML={{ __html: META_PIXEL_STUB_SNIPPET }}
         strategy="afterInteractive"
         onReady={() => {
+          console.log(window)
           (window as any).fbq('init', pixelId)
           (window as any).fbq('track', 'PageView')
         }}
