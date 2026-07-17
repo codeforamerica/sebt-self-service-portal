@@ -3,9 +3,7 @@
 
 ## Git worktrees
 .worktrees/
-
-## Git worktrees
-.worktrees/
+.claude/worktrees/
 
 ## GitHub Actions Local Testing (act)
 .secrets
@@ -32,9 +30,9 @@ certs/
 *.env
 
 # Local/deployed config (use matching .example.json as template)
-src/SEBT.Portal.Api/appsettings.Development.json
-src/SEBT.Portal.Api/appsettings.dc.json
-src/SEBT.Portal.Api/appsettings.co.json
+apps/portal/src/SEBT.Portal.Api/appsettings.Development.json
+apps/portal/src/SEBT.Portal.Api/appsettings.dc.json
+apps/portal/src/SEBT.Portal.Api/appsettings.co.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -499,6 +497,10 @@ packages/design-system/design/sass/_uswds-settings.scss
 
 # Generated design-system locale output (app reads from Web's gitignored copy)
 packages/design-system/content/locales/
+
+# Vestigial generated resource registry — each app uses its own gitignored copy under
+# src/lib/. Kept out of git so a stray bare `generate-locales.js` run can't re-commit it.
+packages/design-system/src/lib/generated-locale-resources.ts
 
 ## macOS Cruft
 .DS_Store

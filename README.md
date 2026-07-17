@@ -32,6 +32,50 @@ This platform allows parents/guardians of children eligible for [Summer EBT / Su
 | **Caching** | Improves application experience via optional distributed caching | **Redis** (`HybridCache`) | See [Redis](#redis-distributed-cache), falls back to in-memory when unconfigured|
 | **Observability and telemetry** | Provides structured logging and distributed tracing via **Serilog** and **OpenTelemetry** | An OTEL-compatible observability platform  | (see [Jaeger](#jaeger-local-opentelemetry-tracing) locally) |
 
+## Repository layout (monorepo)
+
+This is a monorepo containing the portal app and the shared + CO state connectors. The DC connector
+remains an external repo (`sebt-self-service-portal-dc-connector`).
+
+```
+apps/
+  portal/                 # the deployable portal: .NET API + Next.js web + enrollment checker
+    src/, test/, SEBT.Portal.sln
+  connectors/
+    state/                # MEF plugin contract (interfaces), NuGet-packaged for external consumers
+    co/                   # Colorado connector implementation
+    dc/                   # placeholder README — the DC connector lives in its external repo
+packages/                 # shared JS libraries: @sebt/design-system, @sebt/analytics
+scripts/                  # repo-wide dev, CI, and git helper scripts
+tofu/                     # infrastructure (OpenTofu)
+SEBT.slnx                 # top-level solution: portal + in-repo connectors
+```
+
+Repo-wide config lives at the root: `pnpm-workspace.yaml`, `package.json`, `nuget.config`,
+`global.json`, `Directory.Build.props`, and `.github/`.
+
+### Local development
+
+- **Build everything (root):** `dotnet build SEBT.slnx` for the backend; `pnpm ci:build:frontend`
+  and `pnpm ci:build:enrollment-checker` for the web apps (the enrollment checker needs
+  `NEXT_PUBLIC_*` values at build time, which those scripts provide).
+- **Run for a state:** `pnpm dev:dc` or `pnpm dev:co` (builds the relevant connector plugins, then
+  starts the API + web). DC uses the external `dc-connector` checked out alongside this repo; CO and
+  the state contract build from `apps/connectors/*`.
+- **Windows:** enable long paths (`git config core.longpaths true`) — the nested `apps/portal/...`
+  paths can exceed the legacy 260-char limit.
+
+### CI/CD (high level)
+
+- `state-ci.yaml` builds/tests the portal + connectors on PRs and pushes. PRs are path-filtered:
+  portal-only changes skip connector-irrelevant jobs and vice versa; pushes always run everything.
+- `deploy-ecr.yaml` builds Docker images and deploys **DC** and **CO** to their dev environments;
+  it builds the in-repo state + CO connectors and checks out the external DC connector.
+- `release-iis-dc.yaml` produces the DC IIS release bundle (validated on every PR).
+- `deploy-enrollment-checker.yaml` builds and deploys the static enrollment checker.
+- `playwright-e2e.yaml` runs Playwright E2E (per state) and Pa11y accessibility checks.
+- `build-and-seed-dc-source.yaml` builds the DC seed/source image from the external DC repo.
+
 ## Technology Stack overview
 
 **Backend**
@@ -78,19 +122,25 @@ The product follows Clean Architecture (see [ADR-0002](docs/adr/0002-adopt-clean
 - [pnpm](https://pnpm.io/installation/) for managing front end packages and development scripts
 - [Docker](https://www.docker.com/) Desktop for running and managing containers (includes MSSQL database)
 
-### 2. Clone repositories
+### 2. Clone the repository
 
-Clone this repository on your local machine, alongside the [state connector repository](https://github.com/codeforamerica/sebt-self-service-portal-state-connector/) and any revelant state backend connector(s) - for example, [Colorado](https://github.com/codeforamerica/sebt-self-service-portal-co-connector) - as siblings (within the same parent folder). Note that you will need to build and set up all repos as part of your local env setup.
+The portal, the plugin contract, and the Colorado connector all live in this monorepo — one clone
+covers CO development end to end:
 
 ```bash
-git clone git@github.com:codeforamerica/sebt-self-service-portal.git
-
-git clone git@github.com:codeforamerica/sebt-self-service-portal-state-connector.git
-
-# Colorado:
-git clone git@github.com:codeforamerica/sebt-self-service-portal-co-connector.git
-
+git clone https://github.com/codeforamerica/sebt-self-service-portal.git
 ```
+
+**Working on DC?** The DC connector is maintained in its own repository (see
+[apps/connectors/dc/README.md](./apps/connectors/dc/README.md)). Clone it as a sibling (same parent
+folder) so `pnpm dev:dc` can build it:
+
+```bash
+git clone https://github.com/codeforamerica/sebt-self-service-portal-dc-connector.git
+```
+
+> The old standalone `-state-connector` and `-co-connector` repositories were merged into this repo
+> (`apps/connectors/`) and are archived — don't clone them for new work.
 
 ### 3. Configure local environment
 
@@ -102,7 +152,7 @@ To create your local .env file with configurations for the database and API, run
 cp .env.example .env
 ```
 
-You'll want do the same from within `/src/SEBT.Portal.Web`:
+You'll want do the same from within `apps/portal/src/SEBT.Portal.Web`:
 
 ```bash
 cp .env.example .env.local
@@ -111,7 +161,7 @@ cp .env.example .env.local
 You'll also need an API `appsettings` file for your local machine with certain values set (see [state specific configuration](#state-specific-configuration) below):
 
 ```bash
-cd src/SEBT.Portal.Api
+cd apps/portal/src/SEBT.Portal.Api
 cp appsettings.Development.example.json appsettings.Development.json
 ```
 
@@ -120,15 +170,13 @@ cp appsettings.Development.example.json appsettings.Development.json
 Front end
 
 - To install all javascript package dependencies, run `pnpm install` from the root of this repository.
-- You can learn more about the front end in the [SEBT.Portal.Web README](./src/SEBT.Portal.Web/README.md)
+- You can learn more about the front end in the [SEBT.Portal.Web README](./apps/portal/src/SEBT.Portal.Web/README.md)
 
 Back end
 
 - .NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). Currently, we are using the
-  [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license. Needed tools are defined in the tools manifest in `.config/dotnet-tools.json`. To install .NET tools, run `dotnet tool restore` from each solution root (ie, each top-level directory containing a `.sln` or `.slnx` file):
-  - /src/SEBT.Portal.Infrastructure
-  - /src/SEBT.Portal.Api
-- You'll also want to run `dotnet build` from within the root of each repository before starting up the app for the first time.
+  [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license. Needed tools are defined in the tools manifest in `.config/dotnet-tools.json`. To install them, run `dotnet tool restore` once from the repo root.
+- You'll also want to run `dotnet build SEBT.slnx` from the repo root before starting up the app for the first time — it builds the portal and the in-repo connectors together.
 
 ### 5. Start Services 💻
 
@@ -293,7 +341,7 @@ When `STATE` is set, the API looks for `appsettings.{state}.json` in the applica
 
 ```bash
 # Build and run for DC (loads appsettings.dc.json (if present))
-STATE=dc dotnet run --project src/SEBT.Portal.Api
+STATE=dc dotnet run --project apps/portal/src/SEBT.Portal.Api
 
 # Docker Compose uses STATE from .env
 docker compose up
@@ -323,7 +371,7 @@ In `appsettings` under `SEBT.Portal.Api`, set:
 
 The API serves public config via `GET /api/auth/oidc/{stateCode}/config` (no secrets in that response).
 
-See `src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md).
+See `apps/portal/src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md).
 
 ### Development Phone Override (Local dev only)
 
@@ -348,13 +396,13 @@ To let SEBT's DAST (Dynamic Application Security Testing) scanner exercise the e
 3. The request email matches the scanner-specific address (`OtpBypassSettings.Email`).
 4. (Validation only) The submitted OTP matches the fixed scanner code (`OtpBypassSettings.OtpCode`).
 
-**Never enable `bypass_otp` in production, and never use the scanner email for a real user account.** The settings live in [`OtpBypassSettings`](src/SEBT.Portal.Core/AppSettings/OtpBypassSettings.cs); the gating is enforced in [`OtpController`](src/SEBT.Portal.Api/Controllers/Auth/OtpController.cs).
+**Never enable `bypass_otp` in production, and never use the scanner email for a real user account.** The settings live in [`OtpBypassSettings`](apps/portal/src/SEBT.Portal.Core/AppSettings/OtpBypassSettings.cs); the gating is enforced in [`OtpController`](apps/portal/src/SEBT.Portal.Api/Controllers/Auth/OtpController.cs).
 
 ### ID Proofing Requirements
 
 The `IdProofingRequirements` config section controls which IAL (Identity Assurance Level) a user needs to view or modify each type of PII. Keys use a `resource+action` format (e.g. `address+view`, `card+write`). Values can be a uniform level (`"IAL1plus"`) or a per-case-type object for granular control. Unconfigured keys default to `IAL1plus` (fail-safe). Users below the view threshold see masked data (e.g. `****` for street addresses); users below the write threshold are blocked from modifications.
 
-See the [full configuration guide](docs/config/ial/README.md) for all available keys, per-case-type syntax, coherence validation rules, and state-specific examples. See [`appsettings.dc.example.json`](src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](src/SEBT.Portal.Api/appsettings.co.example.json) for working state configurations.
+See the [full configuration guide](docs/config/ial/README.md) for all available keys, per-case-type syntax, coherence validation rules, and state-specific examples. See [`appsettings.dc.example.json`](apps/portal/src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](apps/portal/src/SEBT.Portal.Api/appsettings.co.example.json) for working state configurations.
 
 ## Database Setup
 
@@ -396,37 +444,37 @@ While migrations run automatically, you can also manage them manually by install
 
 ```bash
 dotnet ef migrations list \
-  --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
-  --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
+  --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+  --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
 ```
 
 **Apply pending migrations:**
 
 ```bash
 dotnet ef database update \
-  --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
-  --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
+  --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+  --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
 ```
 
 **Create a new migration:**
 
 ```bash
 dotnet ef migrations add MigrationName \
-  --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
-  --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
+  --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+  --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
 ```
 
 **Remove the last migration (if not applied):**
 
 ```bash
 dotnet ef migrations remove \
-  --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
-  --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
+  --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+  --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
 ```
 
 #### Migration Files
 
-Migrations are stored in `src/SEBT.Portal.Infrastructure/Migrations/`:
+Migrations are stored in `apps/portal/src/SEBT.Portal.Infrastructure/Migrations/`:
 
 - Each migration has a timestamp prefix (e.g., `20251212171249_AddUserOptInTable.cs`)
 - The `PortalDbContextModelSnapshot.cs` file tracks the current model state
@@ -480,8 +528,8 @@ More documentation can be found in the [docs](./docs) folder.
 
 See also:
 
-- [README for SEBT.Portal.Web (front end)](./src/SEBT.Portal.Web/README.md)
-- [README for Figma design token scripts](./src/SEBT.Portal.Web/design/scripts/README.md)
+- [README for SEBT.Portal.Web (front end)](./apps/portal/src/SEBT.Portal.Web/README.md)
+- [README for Figma design token scripts](./packages/design-system/design/scripts/README.md)
 
 We use [Lightweight Architecture Decision Records](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
 for tracking architectural decisions, using [adr tools](https://github.com/npryce/adr-tools) to

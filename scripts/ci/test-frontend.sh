@@ -20,7 +20,7 @@ NC='\033[0m' # No Color
 # Script directory (POSIX-compatible)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-FRONTEND_DIR="$PROJECT_ROOT/src/SEBT.Portal.Web"
+FRONTEND_DIR="$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Web"
 
 # Parse arguments
 SKIP_INSTALL=false
@@ -115,6 +115,7 @@ run_type_check() {
   cd "$FRONTEND_DIR"
 
   pnpm exec tsc --noEmit
+  pnpm exec tsc -p e2e/tsconfig.json --noEmit
   log_success "Type checking passed"
 }
 
