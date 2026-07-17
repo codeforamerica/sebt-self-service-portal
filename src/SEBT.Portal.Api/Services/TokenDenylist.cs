@@ -18,12 +18,23 @@ public sealed class TokenDenylist : ITokenDenylist
     /// </summary>
     internal static readonly TimeSpan ClockSkewPadding = TimeSpan.FromMinutes(2);
 
+    /// <summary>
+    /// Minimum interval between logged lookup failures. Lookups run on every authenticated
+    /// request (the bearer middleware's <c>OnTokenValidated</c>), so a cache outage would
+    /// otherwise emit one error log per request — enough to flood log storage. Only the
+    /// logging is throttled; every failure still fails open.
+    /// </summary>
+    internal static readonly TimeSpan FailureLogInterval = TimeSpan.FromMinutes(1);
+
     private static readonly byte[] DeniedMarker = "1"u8.ToArray();
 
     private readonly IDistributedCache _cache;
     private readonly TimeProvider _timeProvider;
     private readonly ILogger<TokenDenylist> _logger;
     private readonly IOptions<JwtSettings> _jwtSettingsOptions;
+
+    /// <summary>UTC ticks of the last logged lookup failure; guarded by Interlocked.</summary>
+    private long _lastLookupFailureLogTicks;
 
     /// <inheritdoc cref="TokenDenylist"/>
     public TokenDenylist(
@@ -89,8 +100,28 @@ public sealed class TokenDenylist : ITokenDenylist
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Token denylist lookup failed; failing open");
+            LogLookupFailureThrottled(ex);
             return false;
+        }
+    }
+
+    private void LogLookupFailureThrottled(Exception ex)
+    {
+        var now = _timeProvider.GetUtcNow().UtcTicks;
+        var last = Interlocked.Read(ref _lastLookupFailureLogTicks);
+        if (now - last < FailureLogInterval.Ticks)
+        {
+            return;
+        }
+
+        // Only the thread that wins the exchange logs, so concurrent failures during an
+        // outage still produce a single entry per interval.
+        if (Interlocked.CompareExchange(ref _lastLookupFailureLogTicks, now, last) == last)
+        {
+            _logger.LogError(
+                ex,
+                "Token denylist lookup failed; failing open (repeat failures suppressed for {SuppressionInterval})",
+                FailureLogInterval);
         }
     }
 }

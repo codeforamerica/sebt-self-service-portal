@@ -429,6 +429,39 @@ public class AuthControllerTests
             Arg.Any<string>(), Arg.Any<DateTimeOffset>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Logout_WithPortalIssuedJti_DenylistsTokenUntilItsExpiry()
+    {
+        // Arrange
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>())
+            .Build();
+
+        var oidcExchangeService = Substitute.For<IOidcExchangeService>();
+        var tokenDenylist = Substitute.For<ITokenDenylist>();
+
+        var jti = Guid.NewGuid().ToString();
+        var rawToken = CreateJwtWithJti(jti);
+        // The controller reads the expiry off the decoded token, so derive the expected
+        // value the same way — the JWT exp claim truncates to whole seconds on encoding.
+        var expectedExpiry = new DateTimeOffset(
+            new JwtSecurityTokenHandler().ReadJwtToken(rawToken).ValidTo, TimeSpan.Zero);
+
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
+        _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
+            $"{AuthCookies.AuthCookieName}={rawToken}";
+
+        // Act
+        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
+
+        // Assert
+        Assert.IsType<RedirectResult>(result);
+        await tokenDenylist.Received(1).DenyAsync(jti, expectedExpiry, Arg.Any<CancellationToken>());
+    }
+
     /// <summary>
     /// Builds a signed JWT carrying an arbitrary jti claim value, for exercising the
     /// unvalidated decode path in <c>AuthController.Logout</c>.
