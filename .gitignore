@@ -3,9 +3,7 @@
 
 ## Git worktrees
 .worktrees/
-
-## Git worktrees
-.worktrees/
+.claude/worktrees/
 
 ## GitHub Actions Local Testing (act)
 .secrets
