@@ -97,19 +97,23 @@ jobs:
             echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
             exit 1
           fi
-          REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          # Authenticate exactly the way actions/checkout does (basic auth header) —
+          # URL-embedded credentials are rejected for this PAT and would also leak
+          # into error output.
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_PAT}" | base64 | tr -d '\n')"
+          REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
           # Without --exit-code, ls-remote fails only on auth/connection problems;
           # an absent branch is just empty output. Auth failures must fail the job —
           # a silent fallback to main masks them as baffling downstream build errors.
-          if ! LS_OUT=$(git ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
-            echo "::error::dc-connector ls-remote failed: ${LS_OUT//${CONNECTOR_PAT}/***}"
+          if ! LS_OUT=$(git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
             exit 1
           fi
           RESOLVED="$BRANCH"
           SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
           if [ -z "$SHA" ]; then
             RESOLVED="main"
-            SHA=$(git ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+            SHA=$(git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
           fi
           if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
