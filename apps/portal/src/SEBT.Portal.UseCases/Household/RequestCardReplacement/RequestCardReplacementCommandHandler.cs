@@ -178,12 +178,7 @@ public class RequestCardReplacementCommandHandler(
                 command.CaseRefs.Count);
 
             var pluginCaseRefs = command.CaseRefs
-                .Select(r => new PluginCaseRef
-                {
-                    SummerEbtCaseId = r.SummerEbtCaseId,
-                    ApplicationId = r.ApplicationId,
-                    ApplicationStudentId = r.ApplicationStudentId,
-                })
+                .Select(PluginCaseRef.FromDto)
                 .ToList();
 
             var pluginRequest = new PluginCardReplacementRequest
