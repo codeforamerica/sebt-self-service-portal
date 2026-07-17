@@ -174,7 +174,10 @@ jobs:
           # Without --exit-code, ls-remote fails only on auth/connection problems;
           # an absent branch is just empty output. Auth failures must fail the job —
           # a silent fallback to main masks them as baffling downstream build errors.
-          if ! LS_OUT=$(git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+          # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
+          # (actions/checkout persist-credentials) would override ours and 404 on
+          # the private connector repo.
+          if ! LS_OUT=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
             echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
             exit 1
           fi
@@ -182,7 +185,7 @@ jobs:
           SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
           if [ -z "$SHA" ]; then
             RESOLVED="main"
-            SHA=$(git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+            SHA=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
           fi
           if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
             echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
