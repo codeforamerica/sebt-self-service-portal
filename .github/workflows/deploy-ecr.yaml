@@ -138,7 +138,9 @@ jobs:
 
       # state + co connectors are now in-repo (apps/connectors/*); only dc remains external.
       # Same branch-matching as release-iis-dc.yaml: paired contract changes need the
-      # dc-connector branch of the same name; everything else falls back to main.
+      # dc-connector branch of the same name; everything else falls back to main. The
+      # matched branch resolves to a commit SHA so the checkout is pinned — no window
+      # for the branch to move between resolution and checkout.
       - name: Determine dc-connector ref
         id: dc-connector-ref
         env:
@@ -157,13 +159,26 @@ jobs:
             echo "::error::Invalid git ref: branch=$BRANCH"
             exit 1
           fi
-          FALLBACK="main"
           REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          # Without --exit-code, ls-remote fails only on auth/connection problems;
+          # an absent branch is just empty output. Auth failures must fail the job —
+          # a silent fallback to main masks them as baffling downstream build errors.
+          if ! LS_OUT=$(git ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT//${CONNECTOR_PAT}/***}"
+            exit 1
           fi
+          RESOLVED="$BRANCH"
+          SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
+          if [ -z "$SHA" ]; then
+            RESOLVED="main"
+            SHA=$(git ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
+            exit 1
+          fi
+          echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
+          echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout dc-connector
         uses: actions/checkout@v6
