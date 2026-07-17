@@ -151,6 +151,7 @@ public class HouseholdRepositoryTests
                 Arg.Any<PluginPiiVisibility>(),
                 PluginIdentityAssuranceLevel.IAL1plus,
                 userId,
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(pluginData);
 
@@ -171,6 +172,7 @@ public class HouseholdRepositoryTests
             Arg.Any<PluginPiiVisibility>(),
             PluginIdentityAssuranceLevel.IAL1plus,
             userId,
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
