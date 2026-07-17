@@ -27,4 +27,17 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <!--
+    Single source of truth for the plugin-contract version
+    (SEBT.Portal.StatesPlugins.Interfaces). The contract project derives its
+    VersionPrefix from this; consumers' NuGet fallback references float on the
+    matching prerelease/stable range. Bump here when the contract version
+    changes. The external dc-connector repo cannot see this file and pins its
+    own copy — keep them in step (see apps/connectors/dc/README.md).
+  -->
+  <PropertyGroup>
+    <StateConnectorInterfacesVersion>0.0.3</StateConnectorInterfacesVersion>
+    <StateConnectorInterfacesFloatingVersion>$(StateConnectorInterfacesVersion)-*</StateConnectorInterfacesFloatingVersion>
+  </PropertyGroup>
+
 </Project>

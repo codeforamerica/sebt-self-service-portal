@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <!-- Copy package runtime assemblies to output so plugins-co gets them when API loads plugin from that folder -->
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <HomeDir Condition="'$(OS)' == 'Windows_NT'">$(USERPROFILE)</HomeDir>
+        <HomeDir Condition="'$(HomeDir)' == ''">$(HOME)</HomeDir>
+
+        <RestoreAdditionalProjectSources>$(HomeDir)/nuget-store</RestoreAdditionalProjectSources>
+
+        <!-- State connector contract — in-repo (monorepo: apps/connectors/state). NuGet fallback below covers out-of-tree builds. -->
+        <StateConnectorInterfacesProject Condition="'$(StateConnectorInterfacesProject)' == ''">$(MSBuildThisFileDirectory)../../../state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj</StateConnectorInterfacesProject>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+        <RestoreNoCache>true</RestoreNoCache>
+        <RestoreForce>true</RestoreForce>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="libphonenumber-csharp" Version="9.0.27" />
+        <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.4.0" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.4" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.4" />
+        <PackageReference Include="System.Composition" Version="10.0.1" />
+        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="$(StateConnectorInterfacesFloatingVersion)" Condition="!Exists('$(StateConnectorInterfacesProject)')" />
+        <InternalsVisibleTo Include="SEBT.Portal.StatePlugins.CO.Tests" />
+        <!-- Required so NSubstitute/Castle.DynamicProxy can create proxies for internal interfaces (e.g. ICbmsHouseholdCache) in tests. -->
+        <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+    </ItemGroup>
+
+    <ItemGroup Condition="Exists('$(StateConnectorInterfacesProject)')">
+        <ProjectReference Include="$(StateConnectorInterfacesProject)" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\SEBT.Portal.StatePlugins.CO.CbmsApi\SEBT.Portal.StatePlugins.CO.CbmsApi.csproj" />
+    </ItemGroup>
+
+    <!-- Mirror DC connector: use $(OutputPath) so Debug and Release both publish into the portal plugins-co folder.
+         CI passes -p:CopyPlugins=false when it must not stage plugins (e.g. state-agnostic validation builds). -->
+    <Target Name="CopyPlugins" AfterTargets="Build" Condition="'$(CopyPlugins)' != 'false'">
+        <PropertyGroup>
+            <_PluginDestDir Condition="'$(PluginDestDir)' != ''">$(PluginDestDir)</_PluginDestDir>
+            <_PluginDestDir Condition="'$(_PluginDestDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../../portal/src/SEBT.Portal.Api/plugins-co'))</_PluginDestDir>
+        </PropertyGroup>
+        <ItemGroup>
+            <_PluginDlls Include="$(OutputPath)*.dll" />
+        </ItemGroup>
+        <MakeDir Directories="$(_PluginDestDir)" Condition="!Exists('$(_PluginDestDir)')" />
+        <Copy SourceFiles="@(_PluginDlls)" DestinationFolder="$(_PluginDestDir)" SkipUnchangedFiles="true" />
+    </Target>
+</Project>

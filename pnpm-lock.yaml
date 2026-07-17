@@ -118,17 +118,17 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@types/node@25.9.1)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.1.0(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.99.0)(sass@1.99.0)(tsx@4.22.3)(yaml@2.9.0))
 
-  src/SEBT.EnrollmentChecker.Web:
+  apps/portal/src/SEBT.EnrollmentChecker.Web:
     dependencies:
       '@amplitude/analytics-browser':
         specifier: ^2.40.0
         version: 2.42.3
       '@sebt/analytics':
         specifier: workspace:*
-        version: link:../../packages/analytics
+        version: link:../../../../packages/analytics
       '@sebt/design-system':
         specifier: workspace:*
-        version: link:../../packages/design-system
+        version: link:../../../../packages/design-system
       '@t3-oss/env-nextjs':
         specifier: ^0.13.11
         version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
@@ -224,7 +224,7 @@ importers:
         specifier: ^4.1.6
         version: 4.1.6(@types/node@25.9.1)(@vitest/coverage-v8@4.1.6)(jsdom@29.1.1)(msw@2.14.6(@types/node@25.9.1)(typescript@6.0.3))(vite@8.1.0(@types/node@25.9.1)(esbuild@0.28.1)(jiti@2.7.0)(sass-embedded@1.99.0)(sass@1.99.0)(tsx@4.22.3)(yaml@2.9.0))
 
-  src/SEBT.Portal.Web:
+  apps/portal/src/SEBT.Portal.Web:
     dependencies:
       '@amplitude/analytics-browser':
         specifier: ^2.42.3
@@ -234,10 +234,10 @@ importers:
         version: 16.2.6(next@16.2.6(@playwright/test@1.60.0)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.99.0))(react@19.2.6)
       '@sebt/analytics':
         specifier: workspace:*
-        version: link:../../packages/analytics
+        version: link:../../../../packages/analytics
       '@sebt/design-system':
         specifier: workspace:*
-        version: link:../../packages/design-system
+        version: link:../../../../packages/design-system
       '@t3-oss/env-nextjs':
         specifier: ^0.13.11
         version: 0.13.11(typescript@6.0.3)(zod@4.4.3)
