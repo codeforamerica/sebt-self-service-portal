@@ -90,6 +90,13 @@ jobs:
             echo "::error::Invalid git ref: branch=$BRANCH"
             exit 1
           fi
+          # Secrets pasted with stray whitespace corrupt the URL-embedded credential
+          # (checkout's token input is trimmed by Actions; env vars are not).
+          CONNECTOR_PAT="${CONNECTOR_PAT//[$'\r\n\t ']/}"
+          if [ -z "$CONNECTOR_PAT" ]; then
+            echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
+            exit 1
+          fi
           REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
           # Without --exit-code, ls-remote fails only on auth/connection problems;
           # an absent branch is just empty output. Auth failures must fail the job —
