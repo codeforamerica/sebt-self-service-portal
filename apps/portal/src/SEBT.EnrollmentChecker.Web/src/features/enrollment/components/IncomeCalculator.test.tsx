@@ -37,7 +37,7 @@ describe('IncomeCalculator', () => {
   it('renders the alert with the threshold for size 1 by default', () => {
     render(<IncomeCalculator />)
     const alert = screen.getByRole('status')
-    expect(alert).toHaveTextContent('$28,953')
+    expect(alert).toHaveTextContent('$29,526')
   })
 
   it('updates the alert threshold when household size changes to 4', async () => {
@@ -46,7 +46,7 @@ describe('IncomeCalculator', () => {
       name: 'Select the number of people in your household',
     })
     await user.selectOptions(select, '4')
-    expect(screen.getByRole('status')).toHaveTextContent('$59,478')
+    expect(screen.getByRole('status')).toHaveTextContent('$61,050')
   })
 
   it('updates the alert threshold when household size changes to 12', async () => {
@@ -55,7 +55,7 @@ describe('IncomeCalculator', () => {
       name: 'Select the number of people in your household',
     })
     await user.selectOptions(select, '12')
-    expect(screen.getByRole('status')).toHaveTextContent('$140,878')
+    expect(screen.getByRole('status')).toHaveTextContent('$145,114')
   })
 
   it('updates the alert threshold when household size changes to 20', async () => {
@@ -64,7 +64,7 @@ describe('IncomeCalculator', () => {
       name: 'Select the number of people in your household',
     })
     await user.selectOptions(select, '20')
-    expect(screen.getByRole('status')).toHaveTextContent('$222,278')
+    expect(screen.getByRole('status')).toHaveTextContent('$229,178')
   })
 
   it('exposes the alert via role="status" so screen readers announce updates', () => {
@@ -86,6 +86,6 @@ describe('IncomeCalculator', () => {
     await user.selectOptions(select, '4')
     const alert = screen.getByRole('status')
     expect(alert).toHaveTextContent('Si el ingreso total de tu hogar es menos de')
-    expect(alert).toHaveTextContent('$59,478')
+    expect(alert).toHaveTextContent('$61,050')
   })
 })
