@@ -1,4 +1,4 @@
-# ADR 0017: DB Credential Rotation Strategy
+# ADR 0018: DB Credential Rotation Strategy
 
 Date: 2026-07-07
 
