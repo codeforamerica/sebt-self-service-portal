@@ -23,6 +23,17 @@ internal static class OpenTelemetrySetup
         return settings.UseLogExporter == ExporterKind.Otlp;
     }
 
+    /// <summary>
+    /// Clears default MEL providers (Console, Debug, EventSource) so Serilog
+    /// <c>writeToProviders</c> fans out only to the OTLP provider registered later.
+    /// Must be called before <c>UseSerilog</c>; clearing afterward would strip
+    /// <c>SerilogLoggerProvider</c> and break <c>ILogger&lt;T&gt;</c> routing into Serilog.
+    /// </summary>
+    internal static void ClearDefaultLoggerProvidersForOtlp(WebApplicationBuilder builder)
+    {
+        builder.Logging.ClearProviders();
+    }
+
     public static void SetupOpenTelemetry(this WebApplicationBuilder builder)
     {
         var configSection =
@@ -52,11 +63,11 @@ internal static class OpenTelemetrySetup
 
         // OTLP log export is opt-in (Otel:UseLogExporter=otlp). When disabled we register no
         // OpenTelemetry logging provider and Serilog keeps writeToProviders: false, so the
-        // Serilog -> stdout -> CloudWatch path is unaffected. When enabled, clear default MEL
-        // providers first so writeToProviders forwards only to OTLP.
+        // Serilog -> stdout -> CloudWatch path is unaffected. When enabled, Program.cs must
+        // call ClearDefaultLoggerProvidersForOtlp *before* UseSerilog, then this registers
+        // the OTLP provider that writeToProviders forwards to.
         if (IsOtlpLogExportEnabled(builder.Configuration))
         {
-            builder.Logging.ClearProviders();
             builder.Logging.AddOpenTelemetry(ConfigureLogging);
         }
 

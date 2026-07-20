@@ -53,8 +53,16 @@ SerilogSetup.Configure(bootstrapConfig, builder.Configuration, useJsonLogs);
 Log.Logger = bootstrapConfig.CreateLogger();
 
 // writeToProviders forwards events to MEL providers (including OTLP). Enable only when OTLP
-// log export is on; otherwise behavior matches a plain UseSerilog().
+// log export is on; otherwise behavior matches a plain UseSerilog(). Clear default MEL
+// providers *before* UseSerilog so we do not strip SerilogLoggerProvider (needed for
+// ILogger<T> → Serilog → Console), while still avoiding duplicate stdout from the
+// framework Console logger when writeToProviders is on.
 var otlpLogExportEnabled = OpenTelemetrySetup.IsOtlpLogExportEnabled(builder.Configuration);
+if (otlpLogExportEnabled)
+{
+    OpenTelemetrySetup.ClearDefaultLoggerProvidersForOtlp(builder);
+}
+
 builder.Host.UseSerilog(
     (context, configuration) => SerilogSetup.Configure(configuration, context.Configuration, useJsonLogs),
     writeToProviders: otlpLogExportEnabled);

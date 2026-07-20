@@ -117,10 +117,36 @@ public class OpenTelemetrySetupTests
     }
 
     [Fact]
-    public void SetupOpenTelemetry_WhenOtlpLogsOn_ClearsDefaultsAndRegistersOtelLogger()
+    public void ClearDefaultLoggerProvidersForOtlp_RemovesConsoleProvider()
     {
         var builder = CreateWebAppBuilder(useLogExporter: "otlp");
 
+        OpenTelemetrySetup.ClearDefaultLoggerProvidersForOtlp(builder);
+
+        var after = LoggerProviderTypeNames(builder);
+        Assert.DoesNotContain(after, name => name.Contains("ConsoleLoggerProvider", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SetupOpenTelemetry_WhenOtlpLogsOn_RegistersOtelLoggerWithoutClearingDefaults()
+    {
+        // Clear must run before UseSerilog in Program.cs; SetupOpenTelemetry only adds OTLP.
+        var builder = CreateWebAppBuilder(useLogExporter: "otlp");
+
+        builder.SetupOpenTelemetry();
+
+        var after = LoggerProviderTypeNames(builder);
+        Assert.Contains(after, name => name.Contains("Console", StringComparison.Ordinal));
+        Assert.Contains(after, name => name.Contains("OpenTelemetry", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OtlpLogPath_ClearsDefaultsThenRegistersOtelLogger()
+    {
+        // Mirrors Program.cs order (minus UseSerilog): clear defaults, then register OTLP.
+        var builder = CreateWebAppBuilder(useLogExporter: "otlp");
+
+        OpenTelemetrySetup.ClearDefaultLoggerProvidersForOtlp(builder);
         builder.SetupOpenTelemetry();
 
         var after = LoggerProviderTypeNames(builder);
