@@ -43,6 +43,17 @@ variable "domain" {
   description = "Domain name for the application (e.g. dc.sebt-client-portal.dev.codeforamerica.app)."
 }
 
+variable "certificate_sans" {
+  type        = list(string)
+  description = <<-EOT
+    Additional ACM subject alternative names for the API and public Web
+    certificates. Pass wildcard names such as `["*.dev.co.example.app"]` so
+    ephemeral preview hosts like `pr-N` / `api-pr-N` can terminate TLS on the
+    shared ALBs. Defaults to none.
+    EOT
+  default     = []
+}
+
 variable "enable_appconfig" {
   type        = bool
   description = <<-EOT

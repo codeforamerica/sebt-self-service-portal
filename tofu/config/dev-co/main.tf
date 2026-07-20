@@ -88,6 +88,8 @@ module "app" {
 
   apply_immediately          = true
   domain                     = var.domain
+  # Cover pr-N / api-pr-N preview hosts on the shared ALBs (ACM one-level wildcard).
+  certificate_sans           = ["*.${var.domain}"]
   hosted_zone_id             = data.aws_route53_zone.main.zone_id
   environment                = var.environment
   image_tag                  = var.image_tag
