@@ -80,6 +80,7 @@ public class OpenTelemetrySetupTests
         // OTLP log export must be opt-in: with no configuration the CloudWatch/Console path
         // is left untouched, so a plain OtelSettings instance defaults the log exporter off.
         Assert.Equal(ExporterKind.Console, new OpenTelemetrySettings().UseLogExporter);
+        Assert.False(OpenTelemetrySetup.IsOtlpLogExportEnabled(new ConfigurationBuilder().Build()));
     }
 
     [Fact]
@@ -99,5 +100,6 @@ public class OpenTelemetrySetupTests
 
         Assert.NotNull(settings);
         Assert.Equal(ExporterKind.Otlp, settings.UseLogExporter);
+        Assert.True(OpenTelemetrySetup.IsOtlpLogExportEnabled(config));
     }
 }

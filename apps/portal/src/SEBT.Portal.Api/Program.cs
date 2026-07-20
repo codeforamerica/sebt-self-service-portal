@@ -44,29 +44,41 @@ var builder = WebApplication.CreateBuilder(args);
 var useJsonLogs = string.Equals(
     Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
 
-var logConfig = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithOtelTracingSpanId()
-    .Enrich.WithPortalUserInfo();
-
-if (useJsonLogs)
+void ConfigureSerilog(LoggerConfiguration configuration)
 {
-    logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
-}
-else
-{
-    logConfig.WriteTo.Console(
-        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
-}
-
-Log.Logger = logConfig.CreateLogger();
-builder.Host.UseSerilog((cntx, lc) =>
-    lc.ReadFrom.Configuration(cntx.Configuration)
+    configuration
+        .ReadFrom.Configuration(builder.Configuration)
         .Enrich.FromLogContext()
         .Enrich.WithOtelTracingSpanId()
-        .Enrich.WithPortalUserInfo(), writeToProviders: true);
+        .Enrich.WithPortalUserInfo();
+
+    if (useJsonLogs)
+    {
+        configuration.WriteTo.Console(new ExpressionTemplate(
+            "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
+    }
+    else
+    {
+        configuration.WriteTo.Console(
+            outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+    }
+}
+
+var bootstrapConfig = new LoggerConfiguration();
+ConfigureSerilog(bootstrapConfig);
+
+// CreateLogger (not CreateBootstrapLogger): WebApplicationFactory builds multiple hosts in
+// one process; a bootstrap/reloadable logger freezes on the first host and throws
+// "The logger is already frozen" on the next. UseSerilog below replaces Log.Logger with a
+// fresh config from ConfigureSerilog, so Console / LOG_FORMAT stay identical.
+Log.Logger = bootstrapConfig.CreateLogger();
+
+// writeToProviders forwards events to MEL providers (e.g. OTLP). Enable only when OTLP
+// log export is on; otherwise behavior matches a plain UseSerilog().
+var otlpLogExportEnabled = OpenTelemetrySetup.IsOtlpLogExportEnabled(builder.Configuration);
+builder.Host.UseSerilog(
+    (context, configuration) => ConfigureSerilog(configuration),
+    writeToProviders: otlpLogExportEnabled);
 builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();
