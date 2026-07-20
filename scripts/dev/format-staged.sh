@@ -22,6 +22,6 @@ done
 
 echo "Formatting staged .cs files..."
 
-dotnet format whitespace SEBT.Portal.sln $INCLUDE_FLAGS --verbosity quiet --no-restore
+dotnet format whitespace SEBT.slnx $INCLUDE_FLAGS --verbosity quiet --no-restore
 
 echo "Done. Re-stage any formatting fixes before committing."

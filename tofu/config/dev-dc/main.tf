@@ -70,6 +70,10 @@ module "state_secrets" {
       description     = "Socure API credentials for identity verification."
       recovery_window = 7
     }
+    "pii_encryption" = {
+      description     = "PII encryption key ring for the SEBT Portal API (AES-256-GCM)."
+      recovery_window = 7
+    }
   }
 }
 
@@ -118,8 +122,10 @@ module "app" {
   }
 
   state_api_environment_secrets = {
-    "Socure__ApiKey"        = "${module.state_secrets.secrets["socure"].secret_arn}:api_key"
-    "Socure__WebhookSecret" = "${module.state_secrets.secrets["socure"].secret_arn}:webhook_secret"
+    "Socure__ApiKey"                            = "${module.state_secrets.secrets["socure"].secret_arn}:api_key"
+    "Socure__WebhookSecret"                     = "${module.state_secrets.secrets["socure"].secret_arn}:webhook_secret"
+    "PiiEncryption__Keys__0__KeyId"             = "${module.state_secrets.secrets["pii_encryption"].secret_arn}:key_id"
+    "PiiEncryption__Keys__0__KeyMaterialBase64" = "${module.state_secrets.secrets["pii_encryption"].secret_arn}:key_material_base64"
   }
 
   state_web_environment_variables = {}

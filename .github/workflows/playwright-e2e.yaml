@@ -9,9 +9,76 @@ on:
   pull_request:
     branches: ["main"]
 
+# Pinned third-party CI images/tools — avoid mutable :latest tags (Aikido supply-chain checks).
+env:
+  CI_MSSQL_IMAGE: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
+  CI_MAILPIT_IMAGE: axllent/mailpit:v1.30.2@sha256:37a38e48e9338cd7e89dfeb487f37b02ebfcd9cb23111bed2d345e79d37d6dd6
+  CI_DOTNET_EF_VERSION: "10.0.9"
+
 jobs:
+  # Same fail-open change detection as state-ci.yaml: PRs skip jobs whose inputs
+  # didn't change; pushes and CI-infra changes always run everything.
+  changes:
+    name: Detect Changed Areas
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.decide.outputs.backend }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+    steps:
+      - name: Filter changed paths (PRs only)
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+        with:
+          filters: |
+            infra:
+              - '.github/**'
+              - 'scripts/**'
+              - '.husky/**'
+              - 'Dockerfile'
+              - 'compose.yaml'
+              - 'package.json'
+            backend:
+              - 'apps/portal/src/**'
+              - '!apps/portal/src/SEBT.Portal.Web/**'
+              - '!apps/portal/src/SEBT.EnrollmentChecker.Web/**'
+              - 'apps/portal/test/**'
+              - 'apps/connectors/**'
+              - 'SEBT.slnx'
+              - 'global.json'
+              - 'nuget.config'
+              - 'Directory.Build.props'
+              - '.editorconfig'
+            frontend:
+              - 'apps/portal/src/SEBT.Portal.Web/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+
+      - name: Decide which areas run
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INFRA: ${{ steps.filter.outputs.infra }}
+          BACKEND: ${{ steps.filter.outputs.backend }}
+          FRONTEND: ${{ steps.filter.outputs.frontend }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ] || [ "$INFRA" = "true" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=${BACKEND:-false}" >> "$GITHUB_OUTPUT"
+            echo "frontend=${FRONTEND:-false}" >> "$GITHUB_OUTPUT"
+          fi
+
+  # E2E drives the web app alone (MSW mocks the API), so backend-only changes
+  # can't affect it.
   e2e:
     name: Playwright E2E Tests (${{ matrix.state }})
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -38,7 +105,7 @@ jobs:
         run: pnpm install --frozen-lockfile --prefer-offline
 
       - name: Install Playwright browsers
-        run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
+        run: cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
 
       - name: Build frontend for E2E
         env:
@@ -53,7 +120,7 @@ jobs:
           STATE: ${{ matrix.state }}
           NEXT_PUBLIC_STATE: ${{ matrix.state }}
         run: |
-          (cd src/SEBT.Portal.Web && pnpm start) &
+          (cd apps/portal/src/SEBT.Portal.Web && pnpm start) &
           echo "Waiting for server at http://localhost:3000..."
           for i in $(seq 1 90); do
             curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Server ready" && break
@@ -68,17 +135,194 @@ jobs:
         if: ${{ always() }}
         with:
           name: playwright-report-${{ matrix.state }}
-          path: src/SEBT.Portal.Web/playwright-report/
+          path: apps/portal/src/SEBT.Portal.Web/playwright-report/
           retention-days: 7
 
-  a11y:
-    name: Pa11y Accessibility Tests
+  # Integration E2E drives the full stack (real API + web), so it reacts to both areas.
+  e2e-integration-dc:
+    name: Playwright Integration E2E (DC)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     services:
       mssql:
-        image: mcr.microsoft.com/mssql/server:2022-latest
+        image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: YourStrong@Passw0rd
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C -b -o /dev/null || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=10s
+
+      mailpit:
+        image: axllent/mailpit:v1.30.2@sha256:37a38e48e9338cd7e89dfeb487f37b02ebfcd9cb23111bed2d345e79d37d6dd6
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      # state connector (interfaces) is now in-repo at apps/connectors/state — no checkout needed.
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          global-json-file: global.json
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+        with:
+          version: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build backend
+        run: ./.github/workflows/scripts/build-backend.sh --configuration Release
+
+      - name: Build frontend for integration E2E
+        env:
+          STATE: dc
+          NEXT_PUBLIC_STATE: dc
+        run: ./.github/workflows/scripts/build-frontend.sh --production --skip-install
+
+      - name: Install Playwright browsers
+        run: cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
+
+      - name: Install dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef --version "$CI_DOTNET_EF_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Initialize SQL Server Database
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          STATE: dc
+        run: |
+          set -euo pipefail
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          CONN="Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          SA_PASSWORD='YourStrong@Passw0rd'
+          SQLCMD_IMAGE="$CI_MSSQL_IMAGE"
+
+          run_sqlcmd() {
+            docker run --rm --network host "$SQLCMD_IMAGE" \
+              /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P "$SA_PASSWORD" -C -b "$@"
+          }
+
+          # Wait for SQL Server to accept connections from the job host (service health runs inside the container).
+          for i in $(seq 1 30); do
+            if run_sqlcmd -Q 'SELECT 1' -o /dev/null 2>&1; then
+              echo "SQL Server ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "SQL Server did not become ready in time"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "Creating SebtPortal database if missing..."
+          run_sqlcmd -Q "IF DB_ID(N'SebtPortal') IS NULL CREATE DATABASE [SebtPortal];"
+
+          for attempt in $(seq 1 3); do
+            echo "Applying EF migrations (attempt ${attempt}/3)..."
+            if dotnet ef database update \
+              --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+              --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
+              --configuration Release \
+              --no-build \
+              --connection "$CONN"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "EF migrations failed after 3 attempts"
+              exit 1
+            fi
+            sleep 5
+          done
+
+          echo "Verifying SebtPortal schema..."
+          run_sqlcmd -d SebtPortal -Q "IF OBJECT_ID(N'__EFMigrationsHistory', N'U') IS NULL RAISERROR('Missing __EFMigrationsHistory', 16, 1); SELECT TOP 1 MigrationId FROM __EFMigrationsHistory;"
+          echo "Database initialization complete"
+
+      - name: Run Playwright integration E2E tests
+        env:
+          CI: true
+          E2E_FULL_STACK: "1"
+          SKIP_WEB_SERVER: "1"
+          STATE: dc
+          NEXT_PUBLIC_STATE: dc
+          BACKEND_URL: http://localhost:5280
+          MAILPIT_API_URL: http://localhost:8025
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
+          IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
+          Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
+          PluginAssemblyPaths__0: "plugins-dc"
+          Seeding__State: dc
+          Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
+          UseMockHouseholdData: "true"
+          Socure__UseStub: "true"
+          SmtpClientSettings__SmtpServer: "localhost"
+          SmtpClientSettings__SmtpPort: "1025"
+          SmtpClientSettings__EnableSsl: "false"
+          OtpRateLimitSettings__PermitLimit: "30"
+        run: |
+          ASPNETCORE_ENVIRONMENT=Development dotnet run --project apps/portal/src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
+          (cd apps/portal/src/SEBT.Portal.Web && pnpm start) &
+          echo "Waiting for API at http://localhost:5280/health..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:5280/health > /dev/null && echo "API ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:5280/health > /dev/null || (echo "API failed to start" && exit 1)
+          echo "Waiting for web app at http://localhost:3000..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Web ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Web failed to start" && exit 1)
+          echo "Running Playwright integration E2E tests..."
+          pnpm ci:test:e2e:integration
+
+      - name: Upload Playwright integration report
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: ${{ always() }}
+        with:
+          name: playwright-integration-report-dc
+          path: apps/portal/src/SEBT.Portal.Web/playwright-report/
+          retention-days: 7
+
+  # Pa11y runs the full stack (real API + web), so it reacts to both areas.
+  a11y:
+    name: Pa11y Accessibility Tests
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
         env:
           ACCEPT_EULA: Y
           MSSQL_SA_PASSWORD: YourStrong@Passw0rd
@@ -95,45 +339,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
-      - name: Determine state connector ref
-        id: connector-ref
-        env:
-          HEAD_REF: ${{ github.head_ref }}
-          REF_NAME: ${{ github.ref_name }}
-          BASE_REF: ${{ github.base_ref }}
-          EVENT_NAME: ${{ github.event_name }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO_OWNER: ${{ github.repository_owner }}
-        run: |
-          if [ "$EVENT_NAME" = "pull_request" ]; then
-            BRANCH="$HEAD_REF"
-            FALLBACK="$BASE_REF"
-          else
-            BRANCH="$REF_NAME"
-            FALLBACK="main"
-          fi
-          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ ! "$FALLBACK" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-            echo "::error::Invalid git ref: branch=$BRANCH fallback=$FALLBACK"
-            exit 1
-          fi
-          REPO_URL="https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO_OWNER}/sebt-self-service-portal-state-connector.git"
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Checkout state connector
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          repository: codeforamerica/sebt-self-service-portal-state-connector
-          ref: ${{ steps.connector-ref.outputs.ref }}
-          path: state-connector
+      # state connector (interfaces) is now in-repo at apps/connectors/state — no checkout needed.
 
       - name: Setup .NET
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
-          dotnet-version: "10.0.200"
+          global-json-file: global.json
 
       - name: Setup pnpm
         uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
@@ -167,7 +378,7 @@ jobs:
             playwright-${{ runner.os }}-
 
       - name: Install Playwright Chromium for Pa11y
-        run: cd src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
+        run: cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
 
       - name: Run Pa11y accessibility tests
         env:
@@ -181,17 +392,19 @@ jobs:
           IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
           Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
           PluginAssemblyPaths__0: "plugins-dc"
+          Seeding__State: dc
+          Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
           UseMockHouseholdData: "true"
         run: |
-          ASPNETCORE_ENVIRONMENT=Development dotnet run --project src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
-          (cd src/SEBT.Portal.Web && pnpm start) &
+          ASPNETCORE_ENVIRONMENT=Development dotnet run --project apps/portal/src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
+          (cd apps/portal/src/SEBT.Portal.Web && pnpm start) &
           echo "Waiting for server at http://localhost:3000..."
           for i in $(seq 1 90); do
             curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Server ready" && break
             sleep 2
           done
           curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Server failed to start" && exit 1)
-          export PUPPETEER_EXECUTABLE_PATH="$(cd src/SEBT.Portal.Web && node -e "const { chromium } = require('@playwright/test'); console.log(chromium.executablePath());")"
+          export PUPPETEER_EXECUTABLE_PATH="$(cd apps/portal/src/SEBT.Portal.Web && node -e "const { chromium } = require('@playwright/test'); console.log(chromium.executablePath());")"
           if [ -z "$PUPPETEER_EXECUTABLE_PATH" ] || [ ! -x "$PUPPETEER_EXECUTABLE_PATH" ]; then
             echo "Chromium verification failed: Playwright did not report an executable path"
             exit 1
