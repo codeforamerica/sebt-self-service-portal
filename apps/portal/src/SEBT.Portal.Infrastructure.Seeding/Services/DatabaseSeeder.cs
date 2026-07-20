@@ -84,6 +84,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
         if (IsDc)
         {
+            // Digit-only SNAP/TANF IDs: id-proofing UI strips non-digits and requires 7–8 digits.
             users.Add(UserFactory.CreateNonCoLoadedUser(u =>
             {
                 u.Email = _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name);
@@ -91,8 +92,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IalLevel = UserIalLevel.None;
                 u.IdProofingCompletedAt = null;
                 u.Phone = "8185558438";
-                u.SnapId = "SNAP-CO-001";
-                u.TanfId = "TANF-CO-001";
+                u.SnapId = "87654321";
+                u.TanfId = "87654322";
                 u.Ssn = "123456789";
             }));
         }
@@ -212,8 +213,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
                             u.Phone = "8185558438";
-                            u.SnapId = "SNAP-CO-001";
-                            u.TanfId = "TANF-CO-001";
+                            u.SnapId = "87654321";
+                            u.TanfId = "87654322";
                             u.Ssn = "123456789";
                         });
                     }
@@ -413,8 +414,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
                             u.Phone = "8185558438";
-                            u.SnapId = "SNAP-CO-001";
-                            u.TanfId = "TANF-CO-001";
+                            u.SnapId = "87654321";
+                            u.TanfId = "87654322";
                             u.Ssn = "123456789";
                         });
                     }
