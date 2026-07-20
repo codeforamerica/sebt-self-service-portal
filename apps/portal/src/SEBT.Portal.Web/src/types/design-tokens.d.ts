@@ -10,19 +10,19 @@
  */
 export interface DCTheme {
   /** Token: theme-button-border-radius */
-  buttonBorderRadius: string;
+  buttonBorderRadius: string
 
   /** Family tokens designate the overall color set and do not map to explicit values. Therefore, they are blank. */
-  colorPrimaryFamily: string;
+  colorPrimaryFamily: string
 
   /** Token: theme-focus-color */
-  focusColor: string;
+  focusColor: string
 
   /** Token: theme-font-role-alt */
-  fontRoleAlt: string;
+  fontRoleAlt: string
 
   /** Token: theme-font-role-heading */
-  fontRoleHeading: string;
+  fontRoleHeading: string
 
   /** In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist
 
@@ -36,7 +36,7 @@ In your settings configuration, tell $theme-typeface-tokens to create a new type
  ),
 
 Source: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2 */
-  fontTypeSans: string;
+  fontTypeSans: string
 
   /** In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist
 
@@ -50,74 +50,73 @@ In your settings configuration, tell $theme-typeface-tokens to create a new type
  ),
 
 Source: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2 */
-  fontTypeSerif: string;
+  fontTypeSerif: string
 
   /** Token: theme-global-content-styles */
-  globalContentStyles: boolean;
+  globalContentStyles: boolean
 
   /** Token: theme-global-link-styles */
-  globalLinkStyles: boolean;
+  globalLinkStyles: boolean
 
   /** Token: theme-global-paragraph-styles */
-  globalParagraphStyles: boolean;
+  globalParagraphStyles: boolean
 
   /** Token: theme-link-color */
-  linkColor: string;
+  linkColor: string
 
   /** Token: theme-primary */
-  primary: string;
+  primary: string
 
   /** Token: theme-primary-dark */
-  primaryDark: string;
+  primaryDark: string
 
   /** Token: theme-primary-darker */
-  primaryDarker: string;
+  primaryDarker: string
 
   /** Token: theme-primary-light */
-  primaryLight: string;
+  primaryLight: string
 
   /** Token: theme-primary-lighter */
-  primaryLighter: string;
+  primaryLighter: string
 
   /** Token: theme-primary-lightest */
-  primaryLightest: string;
+  primaryLightest: string
 
   /** Token: theme-primary-vivid */
-  primaryVivid: string;
+  primaryVivid: string
 
   /** Token: theme-secondary */
-  secondary: string;
+  secondary: string
 
   /** Token: theme-secondary-dark */
-  secondaryDark: string;
+  secondaryDark: string
 
   /** Token: theme-secondary-darker */
-  secondaryDarker: string;
+  secondaryDarker: string
 
   /** Family tokens designate the overall color set and do not map to explicit values. Therefore, they are blank. */
-  secondaryFamily: string;
+  secondaryFamily: string
 
   /** Token: theme-secondary-light */
-  secondaryLight: string;
+  secondaryLight: string
 
   /** Token: theme-secondary-lighter */
-  secondaryLighter: string;
+  secondaryLighter: string
 
   /** Token: theme-secondary-vivid */
-  secondaryVivid: string;
+  secondaryVivid: string
 
   /** Not well documented but necessary to make type size and line heights consistent with .usa-prose */
-  styleBodyElement: boolean;
+  styleBodyElement: boolean
 
   /** Setting measures to 'none' prevents text from having a fixed width and allows it to flow. */
-  textMeasure: string | number;
+  textMeasure: string | number
 
   /** Setting measures to 'none' prevents text from having a fixed width and allows it to flow. */
-  textMeasureNarrow: string | number;
+  textMeasureNarrow: string | number
 
   /** Setting measures to 'none' prevents text from having a fixed width and allows it to flow. */
-  textMeasureWide: string | number;
-
+  textMeasureWide: string | number
 }
 
 /**
@@ -154,7 +153,7 @@ export const DC_TOKENS: Record<keyof DCTheme, string> = {
   textMeasure: '$theme-text-measure',
   textMeasureNarrow: '$theme-text-measure-narrow',
   textMeasureWide: '$theme-text-measure-wide'
-};
+}
 
 /**
  * Example usage:

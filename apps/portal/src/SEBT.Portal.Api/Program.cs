@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
 using System.Data.Common;
@@ -177,6 +178,7 @@ builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
 builder.Services.AddScoped<IOidcCallbackFailureLogger, OidcCallbackFailureLogger>();
 // pre-auth session store (HybridCache-backed, 15 min TTL)
 builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
+builder.Services.AddSingleton<ITokenDenylist, TokenDenylist>();
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
@@ -226,7 +228,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-            ClockSkew = TimeSpan.FromMinutes(2),
+            ClockSkew = TokenDenylist.ClockSkewPadding,
             NameClaimType = "sub"
         };
         // Preserve JWT claim names (sub, email) so we can read them regardless of handler mapping.
@@ -249,14 +251,14 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                 }
                 return Task.CompletedTask;
             },
-            OnTokenValidated = context =>
+            OnTokenValidated = async context =>
             {
                 // Enforce the absolute session lifetime cap on every authenticated request.
                 // Tokens missing auth_time (e.g., minted before the cap was introduced) or
                 // older than the cap are rejected here so the SPA's 401 handler kicks in.
                 if (context.Principal is null)
                 {
-                    return Task.CompletedTask;
+                    return;
                 }
 
                 var policy = context.HttpContext.RequestServices
@@ -271,8 +273,27 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                     logger.LogInformation(
                         "JWT rejected by absolute session lifetime policy: {Outcome}", outcome);
                     context.Fail($"Absolute session lifetime: {outcome}");
+                    return;
                 }
-                return Task.CompletedTask;
+
+                // Reject tokens revoked by logout. Tokens without a jti cannot have been
+                // denylisted; the lookup fails open so a cache outage never locks users out.
+                var jti = context.Principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+                if (string.IsNullOrEmpty(jti))
+                {
+                    return;
+                }
+
+                var denylist = context.HttpContext.RequestServices
+                    .GetRequiredService<ITokenDenylist>();
+                if (await denylist.IsDeniedAsync(jti, context.HttpContext.RequestAborted))
+                {
+                    AuthCookies.ClearAuthCookie(context.Response);
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILogger<JwtBearerEvents>>();
+                    logger.LogInformation("JWT rejected: token revoked at logout");
+                    context.Fail("Token has been revoked");
+                }
             }
         };
     });
