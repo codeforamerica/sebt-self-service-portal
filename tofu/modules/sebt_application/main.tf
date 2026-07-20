@@ -86,8 +86,8 @@ module "api" {
   } : {}, var.state_api_environment_variables)
 
   environment_secrets = merge({
-    DB_USER                        = "${module.database.secret_arn}:username"
-    DB_PASSWORD                    = "${module.database.secret_arn}:password"
+    DB_USER                        = "${module.database.app_user_secret_arn}:username"
+    DB_PASSWORD                    = "${module.database.app_user_secret_arn}:password"
     "Redis__Password"              = "${module.redis.auth_token_secret_arn}:auth_token"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
