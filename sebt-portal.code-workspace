@@ -5,20 +5,12 @@
       "name": "Portal",
     },
     {
-      "path": "../sebt-self-service-portal-state-connector",
-      "name": "State Connector",
-    },
-    {
       "path": "../sebt-self-service-portal-dc-connector",
       "name": "DC Connector",
     },
-    {
-      "path": "../sebt-self-service-portal-co-connector",
-      "name": "CO Connector",
-    },
   ],
   "settings": {
-    "dotnet.defaultSolution": "Portal/SEBT.Portal.sln",
+    "dotnet.defaultSolution": "Portal/SEBT.slnx",
     "search.exclude": {
       "**/node_modules": true,
       "**/bin": true,
@@ -69,7 +61,7 @@
         "label": "Dev: Frontend Only",
         "type": "shell",
         "command": "pnpm dev",
-        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "options": { "cwd": "${workspaceFolder:Portal}/apps/portal/src/SEBT.Portal.Web" },
         "group": "build",
         "problemMatcher": [],
       },
@@ -77,7 +69,7 @@
         "label": "Test: Frontend",
         "type": "shell",
         "command": "pnpm test",
-        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "options": { "cwd": "${workspaceFolder:Portal}/apps/portal/src/SEBT.Portal.Web" },
         "group": "test",
         "problemMatcher": [],
       },
@@ -86,7 +78,7 @@
         "type": "shell",
         "command": "dotnet test",
         "options": {
-          "cwd": "${workspaceFolder:Portal}/test/SEBT.Portal.Tests",
+          "cwd": "${workspaceFolder:Portal}/apps/portal/test/SEBT.Portal.Tests",
         },
         "group": "test",
         "problemMatcher": "$msCompile",
@@ -95,14 +87,14 @@
         "label": "Generate: Locales",
         "type": "shell",
         "command": "pnpm copy:generate",
-        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "options": { "cwd": "${workspaceFolder:Portal}/apps/portal/src/SEBT.Portal.Web" },
         "problemMatcher": [],
       },
       {
         "label": "Generate: Design Tokens",
         "type": "shell",
         "command": "pnpm tokens",
-        "options": { "cwd": "${workspaceFolder:Portal}/src/SEBT.Portal.Web" },
+        "options": { "cwd": "${workspaceFolder:Portal}/apps/portal/src/SEBT.Portal.Web" },
         "problemMatcher": [],
       },
       {
@@ -110,7 +102,7 @@
         "type": "shell",
         "command": "dotnet build --verbosity minimal && dotnet pack --no-build -o ~/nuget-store --verbosity minimal",
         "options": {
-          "cwd": "${workspaceFolder:State Connector}/src/SEBT.Portal.StatesPlugins.Interfaces",
+          "cwd": "${workspaceFolder:Portal}/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces",
         },
         "problemMatcher": "$msCompile",
       },

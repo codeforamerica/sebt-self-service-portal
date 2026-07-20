@@ -14,7 +14,7 @@ Google Sheet → download CSV → content/states/{state}.csv → pnpm copy:gener
 
 To regenerate manually:
 ```bash
-cd src/SEBT.Portal.Web && pnpm copy:generate
+cd apps/portal/src/SEBT.Portal.Web && pnpm copy:generate
 ```
 
 ---

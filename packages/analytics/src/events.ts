@@ -20,6 +20,16 @@ export const PAGE_LOAD = 'page_load'
  *    the address-update flow these are `flow: 'address_update'` with the route's step.
  */
 export const CTA_CLICK = 'cta_click'
+/**
+ * Fired once per Web Vitals metric (ttfb, fcp, lcp, cls, inp) as it finalizes — at most
+ * five per hard page load. Carries `metric_name`, `metric_value` (ms for timing metrics,
+ * unitless 4-decimal for CLS), `metric_rating`, plus `page_instance_id` and `initial_path`,
+ * which pin late-finalizing metrics (CLS/INP report at page-hide) to the page load they
+ * measured even if the user has since soft-navigated.
+ * CLS and INP are cumulative and can grow after they first finalize; the recorded value is the
+ * metric as of the first page-hide — an accepted tradeoff for strict once-per-load semantics.
+ */
+export const WEB_VITALS = 'web_vitals'
 
 // Authentication
 export const OTP_REQUEST = 'otp_request'
@@ -43,7 +53,11 @@ export const HOUSEHOLD_RESULT = 'household_result'
 
 /** Fired when the user enters the address update form. */
 export const ADDRESS_UPDATE_START = 'address_update_start'
-/** Fired when the address update API call completes. Carries `address_update_status` (page). */
+/**
+ * Fired when the address update API call completes. Carries `address_update_status` and
+ * `address_state_category` (page) — the latter classifies the submitted state as `home_state`
+ * or `out_of_state` relative to the deployment's home state.
+ */
 export const ADDRESS_UPDATE_SUBMIT = 'address_update_submit'
 /** Fired when the address update API call fails. Carries `error_code` (page). */
 export const ADDRESS_UPDATE_ERROR = 'address_update_error'

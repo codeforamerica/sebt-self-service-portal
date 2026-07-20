@@ -554,7 +554,13 @@ const NAMESPACE_APP = {
   idProofing:             'portal',
   optIn:                  'portal',
   offBoarding:            'portal',
-  outage:                 'portal',
+  outage:                 'all',
+  // Portal-only pages sharing CSV section S9 with the outage page (notification opt-in flow).
+  email:                  'portal',
+  enterEmail:             'portal',
+  language:               'portal',
+  signIn:                 'portal',
+  text:                   'portal',
   dashboard:              'portal',
   edit:                   'portal',
   editContactPreferences: 'portal',
@@ -569,6 +575,24 @@ function isNamespaceForApp(namespace, app) {
   // eslint-disable-next-line security/detect-object-injection -- namespace comes from JSON filenames, not user input
   const mapped = NAMESPACE_APP[namespace] ?? 'all'
   return mapped === 'all' || mapped === app
+}
+
+/**
+ * Drop namespaces that belong to another app before validation and JSON emission.
+ * A CSV section can hold pages for multiple apps (e.g. S9 has the shared outage page
+ * alongside portal-only opt-in pages), so section filtering alone would emit orphaned
+ * JSON files the app never imports.
+ */
+function filterStateDataForApp(stateData, app) {
+  if (!app) return stateData
+  const filtered = {}
+  for (const [locale, namespaces] of Object.entries(stateData)) {
+    // eslint-disable-next-line security/detect-object-injection -- locale comes from CONFIG.locales keys
+    filtered[locale] = Object.fromEntries(
+      Object.entries(namespaces).filter(([namespace]) => isNamespaceForApp(namespace, app))
+    )
+  }
+  return filtered
 }
 
 /**
@@ -732,8 +756,8 @@ function main() {
         const rows = parseCSV(csvContent);
         console.log(`   Found ${rows.length - 1} content entries`);
 
-        // Build locale data for this state
-        const stateData = buildStateLocaleData(rows, state);
+        // Build locale data for this state, keeping only this app's namespaces
+        const stateData = filterStateDataForApp(buildStateLocaleData(rows, state), appFilter);
 
         // Validate completeness
         const warnings = validateStateCompleteness(stateData, state);

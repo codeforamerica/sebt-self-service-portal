@@ -1,0 +1,36 @@
+{
+    "stdntEnrollDtls": [
+        {
+            "gurdFstNm": "PERSON",
+            "gurdLstNm": "MOCKDENIED",
+            "gurdPhnNm": "7192833113",
+            "gurdEmailAddr": "sebt.co+denied@codeforamerica.org",
+            "sebtYear": 2026,
+            "sebtAppId": 1198789,
+            "stdFstNm": "Child",
+            "stdLstNm": "Denied",
+            "stdDob": "2017-03-30",
+            "stdntEligSts": "DE",
+            "sebtAppSts": "PI",
+            "eligSrc": "PK",
+            "sebtChldId": 1200545,
+            "sebtChldCwin": 10615710,
+            "addrLn1": "1510 S Lowell Blvd",
+            "addrLn2": "",
+            "cty": "Denver",
+            "staCd": "CO",
+            "zip": "80219",
+            "zip4": "4566",
+            "ebtCardLastFour": "",  //blank because denied?
+            "benAvalDt": "",  //blank because denied?
+            "benExpDt": "",  //blank because denied?
+            "ebtCardSts": "",  //blank because denied?
+            "cardIssDt": "",
+            "cardBal": 0,  //blank because denied?
+            "cbmsCsId": "",  //blank because denied?
+            "dircEligSrc": ""// blank because applied through PEAK
+        }
+    ],
+    "respCd": "00",
+    "respMsg": "Success"
+}

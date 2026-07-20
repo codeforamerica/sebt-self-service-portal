@@ -1,0 +1,36 @@
+{
+    "stdntEnrollDtls": [
+        {
+            "gurdFstNm": "PENDING",
+            "gurdLstNm": "MOCKPERSON",
+            "gurdPhnNm": "7209289672",
+            "gurdEmailAddr": "sebt.co+minimal@codeforamerica.org",
+            "sebtYear": 2026,
+            "sebtAppId": 1198782,
+            "stdFstNm": "CHILD",
+            "stdLstNm": "PERSON",
+            "stdDob": "2013-10-29",
+            "stdntEligSts": "PE",
+            "sebtAppSts": "PI",
+            "eligSrc": "PK", // assuming PEAK
+            "sebtChldId": 1200507,
+            "sebtChldCwin": 10615599,
+            "addrLn1": "1480 S SEE ST",
+            "addrLn2": "3",
+            "cty": "DENVER",
+            "staCd": "CO",
+            "zip": "80219",
+            "zip4": "",
+            "ebtCardLastFour": "",  //blank because pending?
+            "benAvalDt": "", //blank because pending?
+            "benExpDt": "", //blank because pending?
+            "ebtCardSts": "", //blank because pending?
+            "cardIssDt": "", //blank because pending?
+            "cardBal": 0, //blank because pending?
+            "cbmsCsId": "", //blank because pending?
+            "dircEligSrc": "" // blank because applied through PEAK
+        }
+    ],
+    "respCd": "00",
+    "respMsg": "Success"
+}

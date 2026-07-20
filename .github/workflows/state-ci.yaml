@@ -20,6 +20,74 @@ on:
         type: string
 
 jobs:
+  # Detect which areas a PR touches so portal-only changes skip connector/backend
+  # jobs and vice versa. Fail-open by design: pushes and manual dispatches always
+  # run everything, as does any PR that touches CI or build infrastructure.
+  changes:
+    name: Detect Changed Areas
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      backend: ${{ steps.decide.outputs.backend }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+      enrollment: ${{ steps.decide.outputs.enrollment }}
+    steps:
+      - name: Filter changed paths (PRs only)
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+        with:
+          filters: |
+            # Changes to CI or shared build infrastructure invalidate everything.
+            infra:
+              - '.github/**'
+              - 'scripts/**'
+              - '.husky/**'
+              - 'Dockerfile'
+              - 'compose.yaml'
+              - 'package.json'
+            backend:
+              - 'apps/portal/src/**'
+              - '!apps/portal/src/SEBT.Portal.Web/**'
+              - '!apps/portal/src/SEBT.EnrollmentChecker.Web/**'
+              - 'apps/portal/test/**'
+              - 'apps/connectors/**'
+              - 'SEBT.slnx'
+              - 'global.json'
+              - 'nuget.config'
+              - 'Directory.Build.props'
+              - '.editorconfig'
+            frontend:
+              - 'apps/portal/src/SEBT.Portal.Web/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+            enrollment:
+              - 'apps/portal/src/SEBT.EnrollmentChecker.Web/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+
+      - name: Decide which areas run
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INFRA: ${{ steps.filter.outputs.infra }}
+          BACKEND: ${{ steps.filter.outputs.backend }}
+          FRONTEND: ${{ steps.filter.outputs.frontend }}
+          ENROLLMENT: ${{ steps.filter.outputs.enrollment }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ] || [ "$INFRA" = "true" ]; then
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "enrollment=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=${BACKEND:-false}" >> "$GITHUB_OUTPUT"
+            echo "frontend=${FRONTEND:-false}" >> "$GITHUB_OUTPUT"
+            echo "enrollment=${ENROLLMENT:-false}" >> "$GITHUB_OUTPUT"
+          fi
+
   discover-states:
     name: Discover States
     runs-on: ubuntu-latest
@@ -31,13 +99,20 @@ jobs:
 
       - name: Discover state configurations
         id: set-matrix
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_STATE: ${{ github.event.inputs.state }}
         run: |
-          BRANCH="${{ github.ref_name }}"
+          BRANCH="$REF_NAME"
 
           # Priority 1: Manual workflow_dispatch with specific state
-          if [ -n "${{ github.event.inputs.state }}" ]; then
-            echo "Manual trigger for state: ${{ github.event.inputs.state }}"
-            echo "matrix={\"state\":[\"${{ github.event.inputs.state }}\"]}" >> $GITHUB_OUTPUT
+          if [ -n "$INPUT_STATE" ]; then
+            if [[ ! "$INPUT_STATE" =~ ^[a-z]{2}$ ]]; then
+              echo "::error::Invalid state code: $INPUT_STATE"
+              exit 1
+            fi
+            echo "Manual trigger for state: $INPUT_STATE"
+            echo "matrix={\"state\":[\"${INPUT_STATE}\"]}" >> $GITHUB_OUTPUT
 
           # Priority 2: Branch name pattern (deploy/STATE or deploy/STATE-feature)
           elif [[ "$BRANCH" =~ ^deploy/([a-z]{2})(-.*)?$ ]]; then
@@ -58,7 +133,8 @@ jobs:
 
   build-and-test:
     name: ${{ matrix.state }} - Build & Test
-    needs: discover-states
+    needs: [discover-states, changes]
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.discover-states.outputs.matrix) }}
@@ -102,32 +178,11 @@ jobs:
           echo ".NET: ${{ steps.config.outputs.dotnet_version }}"
           echo "Build Config: ${{ steps.config.outputs.build_config }}"
 
-      - name: Determine state connector ref
-        id: connector-ref
-        run: |
-          # Same-named branch as this run (PR head branch or push branch)
-          BRANCH="${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}"
-          # Fallback when that branch does not exist in the state connector repo
-          FALLBACK="${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
-          REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository_owner }}/sebt-self-service-portal-state-connector.git"
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
-            echo "Using state connector branch: ${BRANCH}"
-          else
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
-            echo "Branch '${BRANCH}' not in state connector, using: ${FALLBACK}"
-          fi
-
-      - name: Checkout interfaces repo
-        uses: actions/checkout@v4
-        with:
-          repository: codeforamerica/sebt-self-service-portal-state-connector
-          ref: ${{ steps.connector-ref.outputs.ref }}
-          path: state-connector
+      # state connector (interfaces) is now in-repo at apps/connectors/state — no checkout needed.
 
       # Docker Build Path
       - name: Build Backend (Docker)
-        if: steps.config.outputs.use_docker == 'true'
+        if: steps.config.outputs.use_docker == 'true' && needs.changes.outputs.backend == 'true'
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -136,8 +191,9 @@ jobs:
             bash -c "./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}"
 
       - name: Test Backend (Docker)
-        if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
-        timeout-minutes: 5
+        if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.backend == 'true'
+        # Covers the portal suite plus the in-repo connector suites (CO + interfaces).
+        timeout-minutes: 10
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -147,7 +203,7 @@ jobs:
             bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
 
       - name: Build Frontend (Docker)
-        if: steps.config.outputs.use_docker == 'true'
+        if: steps.config.outputs.use_docker == 'true' && needs.changes.outputs.frontend == 'true'
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -156,7 +212,7 @@ jobs:
             sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
 
       - name: Test Frontend (Docker)
-        if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true'
+        if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.frontend == 'true'
         run: |
           docker run --rm \
             -v ${{ github.workspace }}:/workspace \
@@ -185,35 +241,38 @@ jobs:
           cache: "pnpm"
 
       - name: Build Backend (Native)
-        if: steps.config.outputs.use_docker != 'true'
+        if: steps.config.outputs.use_docker != 'true' && needs.changes.outputs.backend == 'true'
         run: ./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}
 
       - name: Test Backend (Native)
-        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
-        timeout-minutes: 5
+        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.backend == 'true'
+        # Covers the portal suite plus the in-repo connector suites (CO + interfaces).
+        timeout-minutes: 10
         run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
 
       - name: Generate Backend Dependencies CSV
         id: generate-backend-dependencies-csv
-        if: steps.config.outputs.use_docker != 'true'
+        if: steps.config.outputs.use_docker != 'true' && needs.changes.outputs.backend == 'true'
         run: ./.github/workflows/scripts/license-audit.sh
 
       - name: Build Frontend (Native)
-        if: steps.config.outputs.use_docker != 'true'
+        if: steps.config.outputs.use_docker != 'true' && needs.changes.outputs.frontend == 'true'
         run: ./.github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}
 
       - name: Test Frontend (Native)
-        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true'
+        if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.frontend == 'true'
         run: ./.github/workflows/scripts/test-frontend.sh --skip-install
 
-      # Upload artifacts
+      # Upload artifacts. Connector bin/ dirs are intentionally excluded: the
+      # portal consumes connector plugins via the staged plugins-{state}/ dirs
+      # under the API project, and those live inside apps/portal/src already.
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.state }}-build-artifacts
           path: |
-            src/SEBT.Portal.Web/.next/standalone
-            src/**/bin/${{ steps.config.outputs.build_config }}
+            apps/portal/src/SEBT.Portal.Web/.next/standalone
+            apps/portal/src/**/bin/${{ steps.config.outputs.build_config }}
             output/backend-dependencies.csv
           retention-days: 7
 
@@ -223,6 +282,8 @@ jobs:
   # Build steps and tool versions mirror deploy-enrollment-checker.yaml.
   enrollment-checker:
     name: Enrollment Checker - Build & Test
+    needs: changes
+    if: needs.changes.outputs.enrollment == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -258,7 +319,7 @@ jobs:
       # The static export cannot include SSR-only route handlers; the deploy
       # workflow removes them before building, so do the same here for parity.
       - name: Remove SSR-only API routes
-        run: rm -rf src/SEBT.EnrollmentChecker.Web/src/app/api
+        run: rm -rf apps/portal/src/SEBT.EnrollmentChecker.Web/src/app/api
 
       - name: Build static export
         run: BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build

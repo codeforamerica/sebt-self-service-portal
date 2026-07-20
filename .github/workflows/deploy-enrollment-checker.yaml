@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - src/SEBT.EnrollmentChecker.Web/**
+      - apps/portal/src/SEBT.EnrollmentChecker.Web/**
       - packages/**
       - pnpm-lock.yaml
   workflow_dispatch:
@@ -50,7 +50,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Remove SSR-only API routes
-        run: rm -rf src/SEBT.EnrollmentChecker.Web/src/app/api
+        run: rm -rf apps/portal/src/SEBT.EnrollmentChecker.Web/src/app/api
 
       - name: Build static export
         run: BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
@@ -69,7 +69,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: enrollment-checker-out
-          path: src/SEBT.EnrollmentChecker.Web/out/
+          path: apps/portal/src/SEBT.EnrollmentChecker.Web/out/
           retention-days: 1
 
   deploy-co:
