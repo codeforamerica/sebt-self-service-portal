@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 
 import { DataLayer } from './data-layer'
 import { CTA_CLICK } from './events'
+import { initWebVitals } from './web-vitals'
 
 export interface PageContext {
   /** Logical page title */
@@ -66,6 +67,7 @@ export function DataLayerProvider({
     <>
       <PageTracker routes={routes} />
       <CtaTracker />
+      <WebVitalsTracker />
       {children}
     </>
   )
@@ -138,6 +140,26 @@ function CtaTracker() {
 
     document.addEventListener('click', handleClick)
     return () => document.removeEventListener('click', handleClick)
+  }, [])
+
+  return null
+}
+
+/**
+ * Subscribes Web Vitals reporting once per page lifetime. Subscriptions intentionally live
+ * until the page unloads — CLS/INP only finalize at page-hide — so no cleanup is returned
+ * from the effect. The ref guard keeps StrictMode's double-mount and any provider re-render
+ * from double-subscribing.
+ */
+function WebVitalsTracker() {
+  const subscribed = useRef(false)
+
+  useEffect(() => {
+    if (subscribed.current) return
+    if (typeof window === 'undefined' || !window.digitalData?.initialized) return
+    subscribed.current = true
+
+    initWebVitals(window.digitalData)
   }, [])
 
   return null

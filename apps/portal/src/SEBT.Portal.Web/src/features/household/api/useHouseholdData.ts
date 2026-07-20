@@ -40,7 +40,12 @@ export interface UseHouseholdDataOptions {
 /**
  * Hook to fetch household data for the authenticated user.
  * Uses real-time fetching (staleTime: 0) to ensure data freshness
- * per ticket requirement to mitigate stale household/custody data.
+ * per ticket requirement to mitigate stale household/custody data:
+ * every page mount refetches, so navigation always shows fresh data.
+ * Focus refetches are explicitly disabled — `/household/data` fans out
+ * to state agency APIs, so refetching on every tab switch risks rate
+ * limiting and adds load without a freshness benefit beyond what
+ * mount-time refetches already provide.
  * Query keys include the portal userId so a new login in the same tab
  * cannot render the previous user's cached household.
  *
@@ -64,7 +69,8 @@ export function useHouseholdData({
     enabled: !!userId,
     staleTime: 0,
     gcTime: 5 * 60 * 1000, // 5 minutes for back-navigation
-    refetchOnWindowFocus: true,
+    // Explicit (not just the provider default): focus refetches hit state APIs.
+    refetchOnWindowFocus: false,
     retry: householdRetry,
     retryDelay: householdRetryDelay
   })
@@ -80,7 +86,7 @@ export function useHouseholdData({
     enabled: !!userId && shouldFetchCardDetails,
     staleTime: 0,
     gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     retry: householdRetry,
     retryDelay: householdRetryDelay
   })
@@ -120,7 +126,7 @@ export function useHouseholdData({
   const isRedirecting = query.error instanceof ApiError && query.error.isRedirecting
   const isError = query.isError && !isRedirecting
   const isLoading = query.isLoading || isRedirecting
-  // Initial card fetch only; background refetches (refetchOnWindowFocus) keep showing merged card data.
+  // Initial card fetch only; background refetches keep showing merged card data.
   const isLoadingCardDetails = shouldFetchCardDetails && cardDetailsQuery.isLoading
 
   useEffect(() => {

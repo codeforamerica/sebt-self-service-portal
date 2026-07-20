@@ -18,8 +18,8 @@ public class ColoradoAuthenticationServiceTests
         // Assert
         var securityScheme = Assert.Single(options.SwaggerGeneratorOptions.SecuritySchemes);
         Assert.Equal("Bearer", securityScheme.Key);
-        
-        var securityRequirement =  Assert.Single(options.SwaggerGeneratorOptions.SecurityRequirements);
+
+        var securityRequirement = Assert.Single(options.SwaggerGeneratorOptions.SecurityRequirements);
         var securityRequirementKey = Assert.Single(securityRequirement.Keys);
         var openApiSecurityScheme = Assert.IsType<OpenApiSecurityScheme>(securityRequirementKey);
         Assert.Equal("Bearer", openApiSecurityScheme.Reference.Id);

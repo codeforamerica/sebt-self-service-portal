@@ -3,9 +3,7 @@
 
 ## Git worktrees
 .worktrees/
-
-## Git worktrees
-.worktrees/
+.claude/worktrees/
 
 ## GitHub Actions Local Testing (act)
 .secrets
@@ -472,6 +470,10 @@ output
 **/crash.*.log
 # Lambda zip artifacts created by the archive_file data source during tofu plan/apply
 tofu/modules/sebt_ses/lambda/*.zip
+tofu/modules/sebt_database/lambda/.venv/
+tofu/modules/sebt_database/lambda/pymssql/
+tofu/modules/sebt_database/lambda/pymssql-*.dist-info/
+tofu/modules/sebt_database/*.zip
 
 
 # Superpowers brainstorm artifacts
