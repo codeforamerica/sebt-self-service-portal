@@ -13,3 +13,17 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+
+  - package-ecosystem: "pip"
+    directory: "tofu/modules/sebt_database/lambda"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: "pip"
+    directory: "tofu/modules/sebt_ses/lambda"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 7
