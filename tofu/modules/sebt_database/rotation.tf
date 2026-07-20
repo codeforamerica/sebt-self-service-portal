@@ -48,7 +48,7 @@ resource "terraform_data" "lambda_dependencies" {
   provisioner "local-exec" {
     command = <<-EOT
       pip install \
-        --platform manylinux2014_x86_64 \
+        --platform manylinux_2_28_x86_64 \
         --target "${path.module}/lambda" \
         --implementation cp \
         --python-version 3.12 \
