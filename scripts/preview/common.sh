@@ -50,8 +50,9 @@ preview_listener_priority() {
     exit 1
   fi
 
-  if [ "${pr_number}" -gt 14999 ]; then
-    log_error "PR number ${pr_number} exceeds preview listener priority range (max 14999)"
+  # Max PR 14998 keeps slot 1 (web) at priority 49998 within the reserved range.
+  if [ "${pr_number}" -gt 14998 ]; then
+    log_error "PR number ${pr_number} exceeds preview listener priority range (max 14998)"
     exit 1
   fi
 
