@@ -21,6 +21,22 @@ variable "backup_retention_period" {
   }
 }
 
+variable "db_name" {
+  type        = string
+  description = "Database name used for app-user creation and connection tests."
+  default     = "SebtPortal"
+}
+
+variable "ecs_cluster_name" {
+  type        = string
+  description = "Name of the ECS cluster running the API service (for redeployment on credential rotation)."
+}
+
+variable "ecs_service_name" {
+  type        = string
+  description = "Name of the ECS service to redeploy when DB credentials are rotated."
+}
+
 variable "engine" {
   type        = string
   description = "SQL Server engine type."
@@ -86,6 +102,12 @@ variable "project_short" {
   type        = string
   description = "Abbreviated project name for resource naming."
   default     = ""
+}
+
+variable "rotation_interval_days" {
+  type        = number
+  description = "Number of days between automatic DB credential rotations."
+  default     = 30
 }
 
 variable "skip_final_snapshot" {
