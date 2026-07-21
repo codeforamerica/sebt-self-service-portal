@@ -38,27 +38,15 @@ resource "aws_secretsmanager_secret_version" "app_user_initial" {
 
 # ─── Lambda package ──────────────────────────────────────────────────────────
 #
-# pymssql ships native extensions so it must be installed for the Lambda's
+# pymssql ships native extensions, so it must be installed for the Lambda's
 # target platform (manylinux, x86_64, CPython 3.12) rather than the host OS.
-# The terraform_data resource re-runs pip whenever requirements.txt changes.
-
-resource "terraform_data" "lambda_dependencies" {
-  triggers_replace = [filemd5("${path.module}/lambda/requirements.txt")]
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      pip install \
-        --platform manylinux_2_28_x86_64 \
-        --target "${path.module}/lambda" \
-        --implementation cp \
-        --python-version 3.12 \
-        --only-binary :all: \
-        --upgrade \
-        --quiet \
-        -r "${path.module}/lambda/requirements.txt"
-    EOT
-  }
-}
+# CI installs it into lambda/ as an explicit step before running tofu (see
+# deploy-ecr.yaml and plan.yaml), so it's already present by the time this
+# data source reads the directory. Running `tofu apply` locally requires the
+# same install first:
+#   pip install --platform manylinux_2_28_x86_64 --target lambda \
+#     --implementation cp --python-version 3.12 --only-binary :all: \
+#     --upgrade -r lambda/requirements.txt
 
 data "archive_file" "rotation_lambda" {
   type        = "zip"
@@ -71,8 +59,6 @@ data "archive_file" "rotation_lambda" {
     "requirements-test.txt",
     "test_rotate_db_credentials.py",
   ]
-
-  depends_on = [terraform_data.lambda_dependencies]
 }
 
 # ─── Lambda security group ────────────────────────────────────────────────────
