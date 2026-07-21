@@ -226,12 +226,13 @@ resource "aws_lambda_function" "rotation" {
 
   environment {
     variables = {
-      ADMIN_SECRET_ARN = aws_db_instance.main.master_user_secret[0].secret_arn
-      DB_HOST          = aws_db_instance.main.address
-      DB_PORT          = tostring(local.port)
-      DB_NAME          = var.db_name
-      ECS_CLUSTER      = var.ecs_cluster_name
-      ECS_SERVICE      = var.ecs_service_name
+      ADMIN_SECRET_ARN    = aws_db_instance.main.master_user_secret[0].secret_arn
+      DB_HOST             = aws_db_instance.main.address
+      DB_PORT             = tostring(local.port)
+      DB_NAME             = var.db_name
+      ADDITIONAL_DB_NAMES = join(",", var.additional_db_names)
+      ECS_CLUSTER         = var.ecs_cluster_name
+      ECS_SERVICE         = var.ecs_service_name
     }
   }
 

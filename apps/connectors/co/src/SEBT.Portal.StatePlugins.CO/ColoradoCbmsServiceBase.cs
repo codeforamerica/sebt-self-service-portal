@@ -71,13 +71,13 @@ public abstract class ColoradoCbmsServiceBase
         sb.Append($", ntfnOptInSw={b.NtfnOptInSw ?? "null"}");
         sb.Append($", ntfnSrc={b.NtfnSrc ?? "null"}");
         sb.Append($", optOut={b.OptOut ?? "null"}");
-        
+
         return sb.ToString();
     }
 
     private static string FormatAddressForLog(Address? a)
     {
-        if (a is null) 
+        if (a is null)
         {
             return "null";
         }
@@ -90,7 +90,7 @@ public abstract class ColoradoCbmsServiceBase
         sb.Append($", zip={Len(a.Zip)}");
         sb.Append($", zip4={a.Zip4 is not null}");
         sb.Append(')');
-        
+
         return sb.ToString();
     }
 

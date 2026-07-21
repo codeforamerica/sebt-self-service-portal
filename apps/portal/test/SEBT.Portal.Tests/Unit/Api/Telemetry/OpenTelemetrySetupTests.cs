@@ -1,9 +1,14 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry;
 using OpenTelemetry.Logs;
+using SEBT.Portal.Api.Telemetry;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Tests.Helpers;
+using Serilog;
 
 namespace SEBT.Portal.Tests.Unit.Api.Telemetry;
 
@@ -75,29 +80,152 @@ public class OpenTelemetrySetupTests
     }
 
     [Fact]
-    public void UseLogExporter_DefaultsToConsole_SoOtlpIsOptIn()
+    public void IsOtlpLogExportEnabled_DefaultsToFalse_SoWriteToProvidersStaysOff()
     {
-        // OTLP log export must be opt-in: with no configuration the CloudWatch/Console path
-        // is left untouched, so a plain OtelSettings instance defaults the log exporter off.
-        Assert.Equal(ExporterKind.Console, new OpenTelemetrySettings().UseLogExporter);
+        // Program.cs passes this to UseSerilog(writeToProviders:). Opt-in default keeps
+        // Serilog from fanning out to MEL providers when OTLP is off.
+        Assert.False(OpenTelemetrySetup.IsOtlpLogExportEnabled(new ConfigurationBuilder().Build()));
     }
 
     [Fact]
-    public void UseLogExporter_BindsToOtlp_WhenConfigured()
+    public void IsOtlpLogExportEnabled_IsTrue_WhenConfiguredOtlp()
     {
-        // Mirrors the binding path in OpenTelemetrySetup.SetupOpenTelemetry: the "Otel" section
-        // is bound onto OtelSettings, and the config binder maps the string case-insensitively
-        // onto the ExporterKind enum.
-        var config = new ConfigurationBuilder()
+        var config = BuildOtelConfig(useLogExporter: "otlp");
+
+        Assert.True(OpenTelemetrySetup.IsOtlpLogExportEnabled(config));
+    }
+
+    [Fact]
+    public void IsOtlpLogExportEnabled_IsFalse_WhenConfiguredConsole()
+    {
+        var config = BuildOtelConfig(useLogExporter: "console");
+
+        Assert.False(OpenTelemetrySetup.IsOtlpLogExportEnabled(config));
+    }
+
+    [Fact]
+    public void SetupOpenTelemetry_WhenOtlpLogsOff_LeavesDefaultLoggerProviders()
+    {
+        var builder = CreateWebAppBuilder(useLogExporter: "console");
+        var before = LoggerProviderTypeNames(builder);
+
+        builder.SetupOpenTelemetry();
+
+        var after = LoggerProviderTypeNames(builder);
+        Assert.Contains(after, name => name.Contains("Console", StringComparison.Ordinal));
+        Assert.DoesNotContain(after, name => name.Contains("OpenTelemetry", StringComparison.Ordinal));
+        Assert.Equal(before.Count, after.Count);
+    }
+
+    [Fact]
+    public void ClearDefaultLoggerProvidersForOtlp_RemovesConsoleProvider()
+    {
+        var builder = CreateWebAppBuilder(useLogExporter: "otlp");
+
+        OpenTelemetrySetup.ClearDefaultLoggerProvidersForOtlp(builder);
+
+        var after = LoggerProviderTypeNames(builder);
+        Assert.DoesNotContain(after, name => name.Contains("ConsoleLoggerProvider", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SetupOpenTelemetry_WhenOtlpLogsOn_RegistersOtelLoggerWithoutClearingDefaults()
+    {
+        // Clear must run before UseSerilog in Program.cs; SetupOpenTelemetry only adds OTLP.
+        var builder = CreateWebAppBuilder(useLogExporter: "otlp");
+
+        builder.SetupOpenTelemetry();
+
+        var after = LoggerProviderTypeNames(builder);
+        Assert.Contains(after, name => name.Contains("Console", StringComparison.Ordinal));
+        Assert.Contains(after, name => name.Contains("OpenTelemetry", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OtlpLogPath_ClearsDefaultsThenRegistersOtelLogger()
+    {
+        // Mirrors Program.cs order (minus UseSerilog): clear defaults, then register OTLP.
+        var builder = CreateWebAppBuilder(useLogExporter: "otlp");
+
+        OpenTelemetrySetup.ClearDefaultLoggerProvidersForOtlp(builder);
+        builder.SetupOpenTelemetry();
+
+        var after = LoggerProviderTypeNames(builder);
+        Assert.DoesNotContain(after, name => name.Contains("ConsoleLoggerProvider", StringComparison.Ordinal));
+        Assert.Contains(after, name => name.Contains("OpenTelemetry", StringComparison.Ordinal));
+    }
+
+    private static IConfiguration BuildOtelConfig(string useLogExporter) =>
+        new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                [$"{OpenTelemetrySettings.SectionName}:{nameof(OpenTelemetrySettings.UseLogExporter)}"] = "otlp",
+                [$"{OpenTelemetrySettings.SectionName}:{nameof(OpenTelemetrySettings.UseLogExporter)}"] =
+                    useLogExporter,
             })
             .Build();
 
-        var settings = config.GetSection(OpenTelemetrySettings.SectionName).Get<OpenTelemetrySettings>();
+    private static WebApplicationBuilder CreateWebAppBuilder(string useLogExporter)
+    {
+        var builder = WebApplication.CreateBuilder(Array.Empty<string>());
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [$"{OpenTelemetrySettings.SectionName}:{nameof(OpenTelemetrySettings.UseLogExporter)}"] =
+                useLogExporter,
+            // Keep traces/metrics on console so tests do not require an OTLP endpoint.
+            [$"{OpenTelemetrySettings.SectionName}:{nameof(OpenTelemetrySettings.UseTracingExporter)}"] =
+                "console",
+            [$"{OpenTelemetrySettings.SectionName}:{nameof(OpenTelemetrySettings.UseMetricsExporter)}"] =
+                "console",
+        });
+        return builder;
+    }
 
-        Assert.NotNull(settings);
-        Assert.Equal(ExporterKind.Otlp, settings.UseLogExporter);
+    private static List<string> LoggerProviderTypeNames(WebApplicationBuilder builder) =>
+        builder.Services
+            .Where(descriptor => descriptor.ServiceType == typeof(ILoggerProvider))
+            .Select(descriptor =>
+                descriptor.ImplementationType?.Name
+                ?? descriptor.ImplementationInstance?.GetType().Name
+                ?? descriptor.ImplementationFactory?.Method.ReturnType.Name
+                ?? "unknown")
+            .ToList();
+}
+
+/// <summary>
+/// Verifies Serilog Console formatting used for the stdout → CloudWatch path.
+/// </summary>
+public class SerilogSetupTests
+{
+    [Fact]
+    public void Configure_WithJsonLogs_WritesDatadogShapedConsoleLine()
+    {
+        var output = ConsoleOutputCapture.Capture(() =>
+        {
+            var configuration = new LoggerConfiguration();
+            SerilogSetup.Configure(configuration, new ConfigurationBuilder().Build(), useJsonLogs: true);
+            using var log = configuration.CreateLogger();
+            log.Information("cloudwatch-probe");
+        });
+
+        Assert.Contains("cloudwatch-probe", output, StringComparison.Ordinal);
+        Assert.Contains("\"status\"", output, StringComparison.Ordinal);
+        Assert.Contains("\"message\"", output, StringComparison.Ordinal);
+        Assert.Contains("\"date\"", output, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Configure_WithTextLogs_WritesHumanReadableConsoleLine()
+    {
+        var output = ConsoleOutputCapture.Capture(() =>
+        {
+            var configuration = new LoggerConfiguration();
+            SerilogSetup.Configure(configuration, new ConfigurationBuilder().Build(), useJsonLogs: false);
+            using var log = configuration.CreateLogger();
+            log.Information("local-dev-probe");
+        });
+
+        Assert.Contains("local-dev-probe", output, StringComparison.Ordinal);
+        Assert.Contains("INF", output, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"status\"", output, StringComparison.Ordinal);
     }
 }
