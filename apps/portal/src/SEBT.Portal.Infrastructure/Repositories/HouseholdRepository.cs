@@ -169,6 +169,7 @@ public class HouseholdRepository : IHouseholdRepository
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
         Guid portalUserId,
+        string? socureReferenceId = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(piiVisibility);
@@ -196,6 +197,7 @@ public class HouseholdRepository : IHouseholdRepository
             pluginPii,
             pluginIal,
             portalUserId,
+            socureReferenceId,
             cancellationToken);
 
         if (pluginHousehold == null)

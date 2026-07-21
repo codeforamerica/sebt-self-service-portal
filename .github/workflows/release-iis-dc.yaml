@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout portal
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
 
@@ -68,6 +68,10 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
 
+      # Paired contract changes need the dc-connector branch of the same name;
+      # everything else falls back to main. The matched branch resolves to a
+      # commit SHA so the checkout is pinned — no window for the branch to move
+      # between resolution and checkout.
       - name: Determine dc-connector ref
         id: dc-connector-ref
         env:
@@ -86,17 +90,44 @@ jobs:
             echo "::error::Invalid git ref: branch=$BRANCH"
             exit 1
           fi
-          FALLBACK="main"
-          REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          # Secrets pasted with stray whitespace corrupt the URL-embedded credential
+          # (checkout's token input is trimmed by Actions; env vars are not).
+          CONNECTOR_PAT="${CONNECTOR_PAT//[$'\r\n\t ']/}"
+          if [ -z "$CONNECTOR_PAT" ]; then
+            echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
+            exit 1
           fi
+          # Authenticate exactly the way actions/checkout does (basic auth header) —
+          # URL-embedded credentials are rejected for this PAT and would also leak
+          # into error output.
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_PAT}" | base64 | tr -d '\n')"
+          REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          # Without --exit-code, ls-remote fails only on auth/connection problems;
+          # an absent branch is just empty output. Auth failures must fail the job —
+          # a silent fallback to main masks them as baffling downstream build errors.
+          # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
+          # (actions/checkout persist-credentials) would override ours and 404 on
+          # the private connector repo.
+          if ! LS_OUT=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
+            exit 1
+          fi
+          RESOLVED="$BRANCH"
+          SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
+          if [ -z "$SHA" ]; then
+            RESOLVED="main"
+            SHA=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
+            exit 1
+          fi
+          echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
+          echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
 
       # state connector (interfaces) is now in-repo at apps/connectors/state.
       - name: Checkout dc-connector (DC plugin implementation)
-        uses: actions/checkout@v4
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
@@ -104,17 +135,17 @@ jobs:
           path: dc-connector
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           global-json-file: global.json
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
         with:
           version: "10"
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: "24"
           cache: "pnpm"
@@ -196,7 +227,7 @@ jobs:
 
       - name: Upload workflow artifact
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: sebt-dc-iis-${{ steps.ver.outputs.version }}
           path: |
