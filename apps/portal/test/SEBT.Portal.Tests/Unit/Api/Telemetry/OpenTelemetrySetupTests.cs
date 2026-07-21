@@ -7,6 +7,7 @@ using OpenTelemetry;
 using OpenTelemetry.Logs;
 using SEBT.Portal.Api.Telemetry;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Tests.Helpers;
 using Serilog;
 
 namespace SEBT.Portal.Tests.Unit.Api.Telemetry;
@@ -198,7 +199,7 @@ public class SerilogSetupTests
     [Fact]
     public void Configure_WithJsonLogs_WritesDatadogShapedConsoleLine()
     {
-        var output = CaptureConsoleOutput(() =>
+        var output = ConsoleOutputCapture.Capture(() =>
         {
             var configuration = new LoggerConfiguration();
             SerilogSetup.Configure(configuration, new ConfigurationBuilder().Build(), useJsonLogs: true);
@@ -215,7 +216,7 @@ public class SerilogSetupTests
     [Fact]
     public void Configure_WithTextLogs_WritesHumanReadableConsoleLine()
     {
-        var output = CaptureConsoleOutput(() =>
+        var output = ConsoleOutputCapture.Capture(() =>
         {
             var configuration = new LoggerConfiguration();
             SerilogSetup.Configure(configuration, new ConfigurationBuilder().Build(), useJsonLogs: false);
@@ -226,21 +227,5 @@ public class SerilogSetupTests
         Assert.Contains("local-dev-probe", output, StringComparison.Ordinal);
         Assert.Contains("INF", output, StringComparison.Ordinal);
         Assert.DoesNotContain("\"status\"", output, StringComparison.Ordinal);
-    }
-
-    private static string CaptureConsoleOutput(Action act)
-    {
-        var original = Console.Out;
-        using var writer = new StringWriter();
-        Console.SetOut(writer);
-        try
-        {
-            act();
-            return writer.ToString();
-        }
-        finally
-        {
-            Console.SetOut(original);
-        }
     }
 }
