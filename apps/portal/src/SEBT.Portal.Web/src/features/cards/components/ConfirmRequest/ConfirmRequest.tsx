@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { setReplacementFlash } from '@/features/cards/utils/replacementFlash'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { trackCardReplacementSubmit } from '@/lib/analytics-helpers'
 import { useDataLayer } from '@sebt/analytics'
@@ -63,6 +64,15 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
       {
         onSuccess: () => {
           trackCardReplacementSubmit({ setPageData, trackEvent }, null)
+          // Hand the replaced cards to the dashboard banner in memory — names
+          // and card digits are PII and must not ride the URL.
+          setReplacementFlash(
+            cases.map((c) => ({
+              childFirstName: c.childFirstName,
+              childLastName: c.childLastName,
+              ebtCardLastFour: c.ebtCardLastFour ?? null
+            }))
+          )
           router.push('/dashboard?flash=card_replaced')
         },
         onError: (err) => {
