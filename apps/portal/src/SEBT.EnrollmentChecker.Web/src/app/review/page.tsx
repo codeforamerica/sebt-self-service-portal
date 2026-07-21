@@ -34,7 +34,7 @@ export default function Page() {
     setErrorKind(null)
     setIsSubmitting(true)
     try {
-      if (process.env.NEXT_PUBLIC_META_PIXEL && process.env.NEXT_PUBLIC_META_PIXEL_ACTION) {
+      if (window.fbq && process.env.NEXT_PUBLIC_META_PIXEL && process.env.NEXT_PUBLIC_META_PIXEL_ACTION) {
         window.fbq('trackSingleCustom', process.env.NEXT_PUBLIC_META_PIXEL, process.env.NEXT_PUBLIC_META_PIXEL_ACTION)
       }
       const response = await checkEnrollment(state.children, config.apiBaseUrl)
