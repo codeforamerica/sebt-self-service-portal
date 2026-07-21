@@ -7,13 +7,17 @@ credentials remain valid throughout the ECS rolling restart, closing the
 credential staleness window entirely.
 
 Environment variables (set by OpenTofu):
-    ADMIN_SECRET_ARN — ARN of the Secrets Manager secret holding RDS admin
-                       credentials (the RDS-managed master-user secret).
-    DB_HOST          — RDS SQL Server hostname.
-    DB_PORT          — SQL Server port (default: "1433").
-    DB_NAME          — Target database name for user creation and connection tests.
-    ECS_CLUSTER      — ECS cluster name to redeploy after finishSecret.
-    ECS_SERVICE      — ECS service name to redeploy after finishSecret.
+    ADMIN_SECRET_ARN     — ARN of the Secrets Manager secret holding RDS admin
+                           credentials (the RDS-managed master-user secret).
+    DB_HOST              — RDS SQL Server hostname.
+    DB_PORT              — SQL Server port (default: "1433").
+    DB_NAME              — Target database name for user creation and connection tests.
+    ADDITIONAL_DB_NAMES  — Comma-separated list of extra databases on the same RDS
+                           instance where the app user also needs a database-level
+                           user provisioned (e.g. DC's DcSource database). Empty/unset
+                           means no extras — the typical case for CO.
+    ECS_CLUSTER          — ECS cluster name to redeploy after finishSecret.
+    ECS_SERVICE          — ECS service name to redeploy after finishSecret.
 """
 
 import json
@@ -105,7 +109,6 @@ def set_secret(client, secret_arn, token):
 
     host = os.environ["DB_HOST"]
     port = int(os.environ.get("DB_PORT", "1433"))
-    dbname = pending["dbname"]
 
     # Server-level operations (CREATE/ALTER LOGIN) require master db context.
     master_conn = pymssql.connect(
@@ -126,40 +129,44 @@ def set_secret(client, secret_arn, token):
     finally:
         master_conn.close()
 
-    # Database-level operations (CREATE USER, role grant) require the target db.
-    db_conn = pymssql.connect(
-        server=host,
-        port=port,
-        user=admin["username"],
-        password=admin["password"],
-        database=dbname,
-        tds_version="7.4",
-    )
-    try:
-        cursor = db_conn.cursor()
-        _ensure_db_user_exists(cursor, pending["username"])
-        db_conn.commit()
-    finally:
-        db_conn.close()
+    # Database-level operations (CREATE USER, role grant) run against every
+    # database the app user needs access to, not just the primary one.
+    for dbname in _target_db_names(pending["dbname"]):
+        db_conn = pymssql.connect(
+            server=host,
+            port=port,
+            user=admin["username"],
+            password=admin["password"],
+            database=dbname,
+            tds_version="7.4",
+        )
+        try:
+            cursor = db_conn.cursor()
+            _ensure_db_user_exists(cursor, pending["username"])
+            db_conn.commit()
+            logger.info("Ensured db user exists in %s", dbname)
+        finally:
+            db_conn.close()
 
 
 def test_secret(client, secret_arn, token):
-    """Verify the AWSPENDING credentials by opening a test connection."""
+    """Verify the AWSPENDING credentials by opening a test connection to every target database."""
     pending = _get_secret_dict(client, secret_arn, stage="AWSPENDING", version_id=token)
 
-    conn = pymssql.connect(
-        server=os.environ["DB_HOST"],
-        port=int(os.environ.get("DB_PORT", "1433")),
-        user=pending["username"],
-        password=pending["password"],
-        database=pending["dbname"],
-        tds_version="7.4",
-    )
-    try:
-        conn.cursor().execute("SELECT 1")
-        logger.info("Test connection succeeded for pending login")
-    finally:
-        conn.close()
+    for dbname in _target_db_names(pending["dbname"]):
+        conn = pymssql.connect(
+            server=os.environ["DB_HOST"],
+            port=int(os.environ.get("DB_PORT", "1433")),
+            user=pending["username"],
+            password=pending["password"],
+            database=dbname,
+            tds_version="7.4",
+        )
+        try:
+            conn.cursor().execute("SELECT 1")
+            logger.info("Test connection succeeded for pending login against %s", dbname)
+        finally:
+            conn.close()
 
 
 def finish_secret(client, secret_arn, token):
@@ -188,6 +195,19 @@ def finish_secret(client, secret_arn, token):
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+def _target_db_names(primary_dbname):
+    """Return every database the app user login should be provisioned in.
+
+    Combines the primary database (from the secret) with any additional
+    state-specific databases configured via ADDITIONAL_DB_NAMES (e.g. DC's
+    DcSource database, which lives on the same RDS instance but doesn't
+    exist for other states like CO).
+    """
+    additional = os.environ.get("ADDITIONAL_DB_NAMES", "")
+    extras = [name.strip() for name in additional.split(",") if name.strip()]
+    return [primary_dbname] + extras
+
 
 def _other_user(username):
     """Return the inactive app user (the one not currently active)."""
@@ -278,10 +298,14 @@ def _restart_ecs_service():
         logger.info("Triggered rolling ECS restart for %s/%s", cluster, service)
     except Exception:
         # The secret is already rotated; running tasks remain on the active
-        # user's valid credentials. A manual redeploy will pick up the new
-        # secret at next launch.
+        # user's valid credentials until the next natural redeploy. Not
+        # fatal to rotation, but silent — log a distinct, alertable marker
+        # so an external monitor (e.g. a Datadog log monitor) can page on
+        # it instead of this failing invisibly.
         logger.exception(
-            "Failed to trigger ECS restart for %s/%s — manual redeploy required",
+            "DB_ROTATION_ECS_RESTART_FAILED cluster=%s service=%s — "
+            "credentials rotated successfully but the ECS restart failed; "
+            "manual redeploy required to pick up the new secret",
             cluster,
             service,
         )

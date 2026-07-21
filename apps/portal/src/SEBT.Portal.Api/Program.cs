@@ -12,7 +12,6 @@ using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Telemetry;
 using Serilog;
-using Serilog.Templates;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
@@ -44,29 +43,29 @@ var builder = WebApplication.CreateBuilder(args);
 var useJsonLogs = string.Equals(
     Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
 
-var logConfig = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithOtelTracingSpanId()
-    .Enrich.WithPortalUserInfo();
+var bootstrapConfig = new LoggerConfiguration();
+SerilogSetup.Configure(bootstrapConfig, builder.Configuration, useJsonLogs);
 
-if (useJsonLogs)
+// CreateLogger (not CreateBootstrapLogger): WebApplicationFactory builds multiple hosts in
+// one process; a bootstrap/reloadable logger freezes on the first host and throws
+// "The logger is already frozen" on the next. UseSerilog below replaces Log.Logger with a
+// fresh config from SerilogSetup, so Console / LOG_FORMAT stay identical.
+Log.Logger = bootstrapConfig.CreateLogger();
+
+// writeToProviders forwards events to MEL providers (including OTLP). Enable only when OTLP
+// log export is on; otherwise behavior matches a plain UseSerilog(). Clear default MEL
+// providers *before* UseSerilog so we do not strip SerilogLoggerProvider (needed for
+// ILogger<T> → Serilog → Console), while still avoiding duplicate stdout from the
+// framework Console logger when writeToProviders is on.
+var otlpLogExportEnabled = OpenTelemetrySetup.IsOtlpLogExportEnabled(builder.Configuration);
+if (otlpLogExportEnabled)
 {
-    logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
-}
-else
-{
-    logConfig.WriteTo.Console(
-        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+    OpenTelemetrySetup.ClearDefaultLoggerProvidersForOtlp(builder);
 }
 
-Log.Logger = logConfig.CreateLogger();
-builder.Host.UseSerilog((cntx, lc) =>
-    lc.ReadFrom.Configuration(cntx.Configuration)
-        .Enrich.FromLogContext()
-        .Enrich.WithOtelTracingSpanId()
-        .Enrich.WithPortalUserInfo(), writeToProviders: true);
+builder.Host.UseSerilog(
+    (context, configuration) => SerilogSetup.Configure(configuration, context.Configuration, useJsonLogs),
+    writeToProviders: otlpLogExportEnabled);
 builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();
