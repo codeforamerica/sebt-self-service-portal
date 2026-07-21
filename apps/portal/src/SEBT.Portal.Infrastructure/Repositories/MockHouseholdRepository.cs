@@ -132,6 +132,7 @@ public class MockHouseholdRepository : IHouseholdRepository
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
         Guid portalUserId,
+        string? socureReferenceId = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);
