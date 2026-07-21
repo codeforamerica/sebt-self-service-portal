@@ -1,3 +1,9 @@
+variable "additional_db_names" {
+  type        = list(string)
+  description = "Additional databases on this RDS instance (beyond db_name) where the app-user login also needs a database-level user provisioned, e.g. DC's DcSource database. Empty means only db_name is provisioned — the typical case for CO, which has no equivalent database."
+  default     = []
+}
+
 variable "allocated_storage" {
   type        = number
   description = "Allocated storage in GB."
@@ -25,12 +31,6 @@ variable "db_name" {
   type        = string
   description = "Database name used for app-user creation and connection tests."
   default     = "SebtPortal"
-}
-
-variable "additional_db_names" {
-  type        = list(string)
-  description = "Additional databases on this RDS instance (beyond db_name) where the app-user login also needs a database-level user provisioned, e.g. DC's DcSource database. Empty means only db_name is provisioned — the typical case for CO, which has no equivalent database."
-  default     = []
 }
 
 variable "ecs_cluster_name" {
