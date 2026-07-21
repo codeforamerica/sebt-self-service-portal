@@ -192,9 +192,10 @@ module "database" {
   ingress_security_groups = [module.api.security_group_id]
   ingress_cidrs           = var.db_ingress_cidrs
 
-  db_name          = "SebtPortal"
-  ecs_cluster_name = module.api.cluster_name
-  ecs_service_name = module.api.cluster_name
+  db_name             = "SebtPortal"
+  additional_db_names = var.dc_source_db_name != "" ? [var.dc_source_db_name] : []
+  ecs_cluster_name    = module.api.cluster_name
+  ecs_service_name    = local.api_ecs_service_name
 
   skip_final_snapshot = var.skip_final_snapshot
   apply_immediately   = var.apply_immediately
