@@ -368,13 +368,5 @@ export class DataLayer {
 declare global {
   interface Window {
     digitalData?: DataLayerRoot
-    fbq: {
-      (...args: any[]): void;
-      push: (...args: any[]) => void;
-      loaded: boolean;
-      version: string;
-      queue: any[];
-      disablePushState?: boolean;
-    };
   }
 }
