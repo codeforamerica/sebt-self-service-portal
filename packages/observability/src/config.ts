@@ -98,9 +98,6 @@ export function resolveOtelConfig(
     logs: parseMode(env.OTEL_LOGS_EXPORTER) ?? defaultMode
   }
 
-  // Assign optional attributes only when present so they stay absent (not
-  // explicitly undefined) under exactOptionalPropertyTypes — the strict TS
-  // flag, enabled in our tsconfig, that forbids `undefined` on an optional prop.
   const serviceVersion = cleanString(env.OTEL_SERVICE_VERSION)
   if (serviceVersion) {
     config.serviceVersion = serviceVersion
