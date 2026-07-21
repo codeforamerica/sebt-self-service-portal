@@ -36,7 +36,7 @@
     own copy — keep them in step (see apps/connectors/dc/README.md).
   -->
   <PropertyGroup>
-    <StateConnectorInterfacesVersion>0.0.3</StateConnectorInterfacesVersion>
+    <StateConnectorInterfacesVersion>0.0.4</StateConnectorInterfacesVersion>
     <StateConnectorInterfacesFloatingVersion>$(StateConnectorInterfacesVersion)-*</StateConnectorInterfacesFloatingVersion>
   </PropertyGroup>
 

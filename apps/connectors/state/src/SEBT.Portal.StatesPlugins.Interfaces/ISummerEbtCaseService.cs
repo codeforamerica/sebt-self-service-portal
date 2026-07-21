@@ -68,8 +68,9 @@ public interface ISummerEbtCaseService : IStatePlugin
     /// </summary>
     /// <param name="benefitIdentifierIc">SNAP/TANF identifier matched to warehouse <c>PortalID</c>.</param>
     /// <param name="guardianDateOfBirth">Guardian DOB used with IC in the warehouse lookup.</param>
-    /// <param name="guardianLoginEmail">Authenticated guardian email for the returned household envelope.</param>
+    /// <param name="guardianLoginEmail">Authenticated guardian email for the returned household envelope. DC also merges this into the GuardianIdentifiers JSON as <c>Email</c> so the state's data team can correlate warehouse calls.</param>
     /// <param name="portalUserId">The portal's User.Id (Guid V7). DC merges this into the GuardianIdentifiers JSON as PortalUUID so the warehouse can correlate calls back to portal records.</param>
+    /// <param name="socureReferenceId">Socure's reference ID (UUID) from the guardian's identity verification, when one exists. DC merges this into the GuardianIdentifiers JSON as <c>SocureUUID</c>; omitted from the JSON when null or whitespace.</param>
     Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndDobAsync(
         string benefitIdentifierIc,
         DateOnly guardianDateOfBirth,
@@ -77,5 +78,6 @@ public interface ISummerEbtCaseService : IStatePlugin
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
         Guid portalUserId,
+        string? socureReferenceId = null,
         CancellationToken cancellationToken = default);
 }

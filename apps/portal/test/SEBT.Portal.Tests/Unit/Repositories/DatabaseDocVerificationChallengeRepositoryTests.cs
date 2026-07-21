@@ -47,6 +47,98 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
         return userEntity.Id;
     }
 
+    // --- GetLatestSocureReferenceIdByUserIdAsync ---
+
+    [Fact]
+    public async Task GetLatestSocureReferenceIdByUserIdAsync_ReturnsMostRecentNonNullReferenceId()
+    {
+        using var context = _fixture.CreateContext();
+        var userEntity = UserFactory.CreateUserEntity();
+        context.Users.Add(userEntity);
+        await context.SaveChangesAsync();
+
+        var baseTime = DateTime.UtcNow;
+        // Oldest has a reference id, middle has none (abandoned before a Socure
+        // session started), newest has the one that should win.
+        context.DocVerificationChallenges.AddRange(
+            new DocVerificationChallengeEntity
+            {
+                PublicId = Guid.NewGuid(),
+                UserId = userEntity.Id,
+                Status = (int)DocVerificationStatus.Rejected,
+                SocureReferenceId = "ref-oldest",
+                CreatedAt = baseTime.AddHours(-2),
+                UpdatedAt = baseTime.AddHours(-2)
+            },
+            new DocVerificationChallengeEntity
+            {
+                PublicId = Guid.NewGuid(),
+                UserId = userEntity.Id,
+                Status = (int)DocVerificationStatus.Expired,
+                SocureReferenceId = null,
+                CreatedAt = baseTime.AddHours(-1),
+                UpdatedAt = baseTime.AddHours(-1)
+            },
+            new DocVerificationChallengeEntity
+            {
+                PublicId = Guid.NewGuid(),
+                UserId = userEntity.Id,
+                Status = (int)DocVerificationStatus.Verified,
+                SocureReferenceId = "ref-newest",
+                CreatedAt = baseTime.AddMinutes(-30),
+                UpdatedAt = baseTime.AddMinutes(-30)
+            });
+        await context.SaveChangesAsync();
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
+
+        var referenceId = await repo.GetLatestSocureReferenceIdByUserIdAsync(userEntity.Id);
+
+        Assert.Equal("ref-newest", referenceId);
+    }
+
+    [Fact]
+    public async Task GetLatestSocureReferenceIdByUserIdAsync_ReturnsNullWhenUserHasNoChallengesWithReferenceId()
+    {
+        using var context = _fixture.CreateContext();
+        var userId = await SeedChallengeAsync(context,
+            status: (int)DocVerificationStatus.Created,
+            expiresAt: null);
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
+
+        var referenceId = await repo.GetLatestSocureReferenceIdByUserIdAsync(userId);
+
+        Assert.Null(referenceId);
+    }
+
+    [Fact]
+    public async Task GetLatestSocureReferenceIdByUserIdAsync_DoesNotReturnAnotherUsersReferenceId()
+    {
+        using var context = _fixture.CreateContext();
+        var userWithChallenge = UserFactory.CreateUserEntity();
+        var userWithout = UserFactory.CreateUserEntity();
+        context.Users.AddRange(userWithChallenge, userWithout);
+        await context.SaveChangesAsync();
+
+        context.DocVerificationChallenges.Add(new DocVerificationChallengeEntity
+        {
+            PublicId = Guid.NewGuid(),
+            UserId = userWithChallenge.Id,
+            Status = (int)DocVerificationStatus.Verified,
+            SocureReferenceId = "ref-other-user",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
+
+        var referenceId = await repo.GetLatestSocureReferenceIdByUserIdAsync(userWithout.Id);
+
+        Assert.Null(referenceId);
+    }
+
     // --- GetActiveByUserIdAsync expiration filtering (N2) ---
 
     [Fact]

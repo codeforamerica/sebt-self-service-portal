@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -64,8 +65,9 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Clears the local session cookie and redirects to the IdP's end_session_endpoint
-    /// (RP-Initiated Logout) when OIDC is configured, or to <c>/login</c> otherwise.
+    /// Revokes the surrendered session token's jti (best-effort) before clearing the local
+    /// session cookie, then redirects to the IdP's end_session_endpoint (RP-Initiated Logout)
+    /// when OIDC is configured, or to <c>/login</c> otherwise.
     /// The entire redirect chain is browser-level — no JavaScript processes the IdP
     /// logout URL, eliminating XSS as a vector for redirect tampering.
     /// </summary>
@@ -75,8 +77,11 @@ public class AuthController(
     public async Task<IActionResult> Logout(
         [FromServices] IConfiguration config,
         [FromServices] IOidcExchangeService oidcExchangeService,
+        [FromServices] ITokenDenylist tokenDenylist,
         CancellationToken cancellationToken = default)
     {
+        await DenylistSessionTokenAsync(tokenDenylist, cancellationToken);
+
         AuthCookies.ClearAuthCookie(Response);
 
         var discoveryEndpoint = config["Oidc:DiscoveryEndpoint"];
@@ -112,6 +117,47 @@ public class AuthController(
         }
 
         return Redirect("/login");
+    }
+
+    /// <summary>
+    /// Best-effort revocation of the surrendered session token: parses the cookie JWT
+    /// without validating it (the token is being discarded; even expired or otherwise
+    /// invalid tokens are fine to ignore) and denylists its jti until the token's own
+    /// expiry passes. Never blocks logout — cookie clearing is the primary mechanism.
+    /// Because the JWT is unvalidated, its claims are untrusted input: only a jti that
+    /// parses as a Guid is denylisted, since the portal's JwtTokenService mints only Guid
+    /// jtis. A non-Guid jti indicates a forged token, not a real session.
+    /// </summary>
+    private async Task DenylistSessionTokenAsync(ITokenDenylist tokenDenylist, CancellationToken cancellationToken)
+    {
+        var rawToken = Request.Cookies[AuthCookies.AuthCookieName];
+        if (string.IsNullOrEmpty(rawToken))
+        {
+            return;
+        }
+
+        try
+        {
+            var jwt = new JwtSecurityTokenHandler().ReadJwtToken(rawToken);
+            var jti = jwt.Claims.FirstOrDefault(c => c.Type == JwtRegisteredClaimNames.Jti)?.Value;
+            if (string.IsNullOrEmpty(jti))
+            {
+                logger.LogInformation("Logout: session token has no jti; skipping revocation");
+                return;
+            }
+
+            if (!Guid.TryParse(jti, out _))
+            {
+                logger.LogInformation("Logout: session token jti is not a portal-issued id; skipping revocation");
+                return;
+            }
+
+            await tokenDenylist.DenyAsync(jti, new DateTimeOffset(jwt.ValidTo, TimeSpan.Zero), cancellationToken);
+        }
+        catch (ArgumentException ex)
+        {
+            logger.LogWarning(ex, "Logout: session cookie is not a parseable JWT; skipping revocation");
+        }
     }
 
     /// <summary>

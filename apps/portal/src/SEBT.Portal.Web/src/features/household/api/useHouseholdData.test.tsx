@@ -7,7 +7,7 @@
  * - Custom retry logic (no retry on 4xx, retry on 5xx)
  * - Exponential backoff retry delay
  */
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -355,6 +355,40 @@ describe('useHouseholdData', () => {
       // With staleTime: 0, data should be immediately stale
       const queryState = queryClient.getQueryState(householdDataQueryKey(TEST_USER_ID))
       expect(queryState?.isInvalidated || queryState?.dataUpdatedAt).toBeTruthy()
+    })
+
+    it('does not refetch when the window regains focus', async () => {
+      let fetchCount = 0
+      server.use(
+        http.get('/api/household/data', () => {
+          fetchCount++
+          return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+        })
+      )
+
+      // A bare QueryClient carries React Query's library default of
+      // refetchOnWindowFocus: true, so this pins the hook's own explicit
+      // opt-out rather than the app provider's default.
+      const queryClient = new QueryClient()
+
+      const { result } = renderHook(() => useHouseholdData(), {
+        wrapper: ({ children }) => (
+          <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        )
+      })
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true)
+      })
+      expect(fetchCount).toBe(1)
+
+      focusManager.setFocused(false)
+      focusManager.setFocused(true)
+
+      // Give any wrongly-triggered refetch time to hit the mock server
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      expect(fetchCount).toBe(1)
+      focusManager.setFocused(undefined)
     })
   })
 
