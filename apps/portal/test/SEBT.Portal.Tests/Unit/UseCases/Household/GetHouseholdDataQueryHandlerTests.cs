@@ -19,6 +19,8 @@ public class GetHouseholdDataQueryHandlerTests
     private readonly IHouseholdIdentifierResolver _resolver = Substitute.For<IHouseholdIdentifierResolver>();
     private readonly IHouseholdRepository _repository = Substitute.For<IHouseholdRepository>();
     private readonly IUserRepository _userRepository = Substitute.For<IUserRepository>();
+    private readonly IDocVerificationChallengeRepository _docVerificationChallengeRepository =
+        Substitute.For<IDocVerificationChallengeRepository>();
     private readonly IPiiVisibilityService _piiVisibilityService = Substitute.For<IPiiVisibilityService>();
     private readonly IIdProofingService _idProofingService = Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
@@ -32,6 +34,7 @@ public class GetHouseholdDataQueryHandlerTests
             _resolver,
             _repository,
             _userRepository,
+            _docVerificationChallengeRepository,
             _piiVisibilityService,
             _idProofingService,
             _selfServiceEvaluator,
@@ -172,6 +175,7 @@ public class GetHouseholdDataQueryHandlerTests
                 Arg.Any<PiiVisibility>(),
                 UserIalLevel.IAL1plus,
                 Arg.Any<Guid>(),
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(fallbackHousehold);
 
@@ -190,6 +194,60 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<PiiVisibility>(),
             UserIalLevel.IAL1plus,
             Arg.Any<Guid>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Theory]
+    [InlineData("socure-ref-uuid-1234")]
+    [InlineData(null)]
+    public async Task Handle_IcDobFallback_PassesLatestSocureReferenceIdToRepository(string? socureReferenceId)
+    {
+        var email = "guardian@example.com";
+        var normalizedEmail = EmailNormalizer.Normalize(email);
+        var userId = Guid.Parse("d4444444-4444-4444-8444-444444444444");
+        var dob = new DateOnly(1984, 3, 5);
+        var principal = CreateUserWithSub(email, UserIalLevel.IAL1plus, userId);
+
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>())
+            .Returns(new HouseholdIdentifier(PreferredHouseholdIdType.Email, normalizedEmail));
+
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(),
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        _userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = userId,
+                Email = email,
+                IsCoLoaded = true,
+                DateOfBirth = dob,
+                SnapId = "IC000001"
+            });
+
+        _docVerificationChallengeRepository
+            .GetLatestSocureReferenceIdByUserIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(socureReferenceId);
+
+        var handler = CreateHandler();
+        await handler.Handle(new GetHouseholdDataQuery { User = principal });
+
+        await _repository.Received(1).GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+            normalizedEmail,
+            "IC000001",
+            dob,
+            Arg.Any<PiiVisibility>(),
+            UserIalLevel.IAL1plus,
+            userId,
+            socureReferenceId,
             Arg.Any<CancellationToken>());
     }
 
@@ -229,6 +287,7 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<PiiVisibility>(),
             Arg.Any<UserIalLevel>(),
             Arg.Any<Guid>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
