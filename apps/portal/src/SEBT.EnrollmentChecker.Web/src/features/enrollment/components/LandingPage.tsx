@@ -14,10 +14,12 @@ export function LandingPage() {
   const router = useRouter()
   const { clearState } = useEnrollment()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
+  const [currentUrl, setCurrentUrl] = useState("")
 
   // The landing page is a fresh-start screen — clicking the logo from any
   // deep page lands here, and the cached children should not persist.
   useEffect(() => {
+    setCurrentUrl(window.location.href)
     clearState()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [])
@@ -61,7 +63,7 @@ export function LandingPage() {
         </div>
 
         {process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING && (
-          <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING} />
+          <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING} href={currentUrl} />
         )}
 
         {/* FAQ Accordion — follows USWDS accordion pattern */}

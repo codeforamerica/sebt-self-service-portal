@@ -3,11 +3,19 @@
 import { Button } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+import { useMemo, useState } from 'react'
 import { AdentifiPixels } from '@sebt/analytics'
 
 export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
   const router = useRouter()
+
+  const [currentUrl, setCurrentUrl] = useState("")
+
+  useMemo(() => {
+    // This code runs only in the browser
+    setCurrentUrl(window.location.href);
+  }, []);
 
   return (
     <div className="usa-section">
@@ -35,7 +43,7 @@ export function DisclaimerPage() {
       </div>
 
       {process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW && (
-        <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW} />
+        <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW} href={currentUrl} />
       )}
     </div>
   )
