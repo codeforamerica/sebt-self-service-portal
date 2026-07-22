@@ -13,9 +13,9 @@ export function AdentifiPixels({ pixelId }: AdentifiPixelsProps) {
   const [fullUrl, setFullUrl] = useState('')
 
   useEffect(() => {
-    const r = Buffer.from(crypto.randomUUID()).toString('base64')
+    const r = Math.random() * 10000000000000000
     
-    setNonce(r);
+    setNonce(r + '');
 
     if (window && window.location?.origin) {
       const url = `${window.location.origin}${pathname || ''}`;
