@@ -3,8 +3,14 @@ import { describe, expect, it } from 'vitest'
 import { AdentifiPixels } from './AdentifiPixels'
 
 describe('AdentifiPixels', () => {
-  it('returns img tag with nonce', () => {
-    const { container } = render(<AdentifiPixels pixelId="test-pixel" />)
+  it('returns empty tag when href is empty', () => {
+    const { container } = render(<AdentifiPixels pixelId="test-pixel" href="" />)
+
+    expect(container.querySelector('img')).toBeNull()
+  })
+
+  it('returns img tag with nonce when href is full', () => {
+    const { container } = render(<AdentifiPixels pixelId="test-pixel" href="enrollment/" />)
 
     const img = container.querySelector('img')
 
