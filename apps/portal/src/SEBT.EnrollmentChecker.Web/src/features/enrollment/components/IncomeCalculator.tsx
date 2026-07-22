@@ -24,11 +24,15 @@ export function IncomeCalculator() {
   const formattedThreshold = currencyFormatter.format(getIncomeThreshold(Number(householdSize)))
   const rawAlert = t('applyForSebtAccordionBodyAlertIncome')
 
+  // The source copy hardcodes a placeholder amount; the English and Amharic
+  // strings wrap it in literal [ ] brackets. Swap it for the household-size
+  // threshold at render, and let the optional brackets in the pattern absorb
+  // the [ ] so they don't render around the amount.
   // TODO: Use t('applyForSebtAccordionBodyAlertIncome', { threshold }) once the
-  // Google Sheet for co.csv is updated to interpolate {{threshold}}. The CSV is
-  // owned by content team and exported from Google Sheets; we cannot edit it
-  // directly. See .claude/rules/localization.md.
-  const alertText = rawAlert.replace(/\$[\d,]+/, formattedThreshold)
+  // source copy uses a {{threshold}} placeholder instead of a hardcoded value.
+  // The CSV is owned by content team and exported from Google Sheets. See
+  // .claude/rules/localization.md.
+  const alertText = rawAlert.replace(/\[?\$[\d,]+\]?/, formattedThreshold)
 
   return (
     <div data-testid="income-calculator">

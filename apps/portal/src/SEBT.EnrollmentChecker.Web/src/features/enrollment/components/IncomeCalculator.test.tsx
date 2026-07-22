@@ -40,6 +40,13 @@ describe('IncomeCalculator', () => {
     expect(alert).toHaveTextContent('$29,526')
   })
 
+  it('renders the threshold amount without surrounding brackets', () => {
+    render(<IncomeCalculator />)
+    const alert = screen.getByRole('status')
+    expect(alert.textContent).not.toMatch(/[[\]]/)
+    expect(alert).toHaveTextContent('$29,526')
+  })
+
   it('updates the alert threshold when household size changes to 4', async () => {
     render(<IncomeCalculator />)
     const select = screen.getByRole('combobox', {
