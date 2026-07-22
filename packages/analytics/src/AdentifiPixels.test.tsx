@@ -1,16 +1,34 @@
 import { render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { AdentifiPixels } from './AdentifiPixels'
+
+let originalLocation
+
+beforeAll(() => {
+  originalLocation = window.location;
+});
+
+afterEach(() => {
+  vi.restoreAllMocks(); // Clean up mock states
+});
 
 describe('AdentifiPixels', () => {
   it('returns empty tag when href is empty', () => {
-    const { container } = render(<AdentifiPixels pixelId="test-pixel" href="" />)
+    vi.spyOn(window, 'location', 'get').mockImplementation(() => ({
+      ...originalLocation,
+      href: 'http://localhost:3000/dashboard?user=alex',
+      pathname: '/dashboard',
+      search: '?user=alex',
+      origin: null,
+    }));
+
+    const { container } = render(<AdentifiPixels pixelId="test-pixel" />)
 
     expect(container.querySelector('img')).toBeNull()
   })
 
-  it('returns img tag with nonce when href is full', () => {
-    const { container } = render(<AdentifiPixels pixelId="test-pixel" href="enrollment/" />)
+  it('returns img tag with nonce', () => {
+    const { container } = render(<AdentifiPixels pixelId="test-pixel" />)
 
     const img = container.querySelector('img')
 

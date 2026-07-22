@@ -1,26 +1,35 @@
 'use client'
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 interface AdentifiPixelsProps {
   pixelId: string
-  href: string
 }
 
-export function AdentifiPixels({ pixelId, href }: AdentifiPixelsProps) {
-  const [nonce, setNonce] = useState("");
+export function AdentifiPixels({ pixelId }: AdentifiPixelsProps) {
+  const [nonce, setNonce] = useState('')
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [fullUrl, setFullUrl] = useState('')
 
-  useMemo(() => {
+  useEffect(() => {
     const r = Buffer.from(crypto.randomUUID()).toString('base64')
     
     setNonce(r);
-  }, []) // Empty array ensures this only runs once when the component mounts
 
-  const url = encodeURIComponent(href)
+    if (window && window.location?.origin) {
+      const url = `${window.location.origin}${pathname || ''}?${(searchParams || '').toString()}`;
+
+      setFullUrl(url)
+    }
+  }, [pathname, searchParams])
+
+  const url = encodeURIComponent(fullUrl)
   const src = `https://px.adentifi.com/Pixels?a_id=${pixelId};p_url=${url};uq=${nonce}`
 
   // on initial load href may be blank
-  if (!href) {
+  if (!fullUrl) {
     return <></>
   }
 
