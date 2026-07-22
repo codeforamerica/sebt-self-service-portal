@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 interface AdentifiPixelsProps {
   pixelId: string
@@ -10,6 +10,7 @@ interface AdentifiPixelsProps {
 export function AdentifiPixels({ pixelId }: AdentifiPixelsProps) {
   const [nonce, setNonce] = useState('')
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [fullUrl, setFullUrl] = useState('')
 
   useEffect(() => {
@@ -18,11 +19,11 @@ export function AdentifiPixels({ pixelId }: AdentifiPixelsProps) {
     setNonce(r);
 
     if (window && window.location?.origin) {
-      const url = `${window.location.origin}${pathname || ''}`;
+      const url = `${window.location.origin}${pathname || ''}?${(searchParams || '').toString()}`;
 
       setFullUrl(url)
     }
-  }, [pathname])
+  }, [pathname, searchParams])
 
   const url = encodeURIComponent(fullUrl)
   const src = `https://px.adentifi.com/Pixels?a_id=${pixelId};p_url=${url};uq=${nonce}`
