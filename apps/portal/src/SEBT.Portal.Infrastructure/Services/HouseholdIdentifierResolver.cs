@@ -81,7 +81,7 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
             var phoneFromClaims = GetValueFromClaims(principal, PreferredHouseholdIdType.Phone);
             if (!string.IsNullOrWhiteSpace(phoneFromClaims))
             {
-                var normalized = phoneFromClaims.Trim();
+                var normalized = PhoneNormalizer.Normalize(phoneFromClaims.Trim());
                 if (!string.IsNullOrWhiteSpace(normalized))
                 {
                     _logger?.LogInformation("Using phone from JWT claims for household lookup");

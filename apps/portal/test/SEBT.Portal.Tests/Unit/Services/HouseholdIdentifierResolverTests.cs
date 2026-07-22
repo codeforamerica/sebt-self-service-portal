@@ -126,10 +126,19 @@ public class HouseholdIdentifierResolverTests
         Assert.Equal(EmailNormalizer.Normalize(email), result.Value);
     }
 
-    [Fact]
-    public async Task ResolveAsync_WhenPrefersPhoneAndUserHasPhone_ReturnsPhoneIdentifier()
+    [Theory]
+    [InlineData("3035551234", "3035551234")]
+    [InlineData("+13035551234", "3035551234")]
+    [InlineData("303-555-1234", "3035551234")]
+    [InlineData("1-303-555-1234", "3035551234")]
+    [InlineData("+1-303-555-1234", "3035551234")]
+    [InlineData("303 555 1234", "3035551234")]
+    [InlineData("+1303 555 1234", "3035551234")]
+    [InlineData("+1 303 555 1234", "3035551234")]
+    [InlineData("+1.303.555.1234", "3035551234")]
+    public async Task ResolveAsync_WhenPrefersPhoneAndUserHasPhone_ReturnsPhoneIdentifier(string input, string expectedOutput)
     {
-        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "8185558439");
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = input);
         var settings = new StateHouseholdIdSettings
         {
             PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
@@ -144,7 +153,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("8185558439", result.Value);
+        Assert.Equal(expectedOutput, result.Value);
     }
 
     /// <summary>
