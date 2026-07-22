@@ -560,4 +560,35 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             await _dataSeeder.SaveChangesAsync(cancellationToken);
         }
     }
+
+    /// <inheritdoc />
+    public async Task ReseedUserScenarioAsync(
+        string scenarioName,
+        bool useMockHouseholdData,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scenarioName);
+
+        var scenario = SeedScenarios.UserScenarios
+            .FirstOrDefault(s => string.Equals(s.Name, scenarioName, StringComparison.Ordinal));
+        if (scenario is null)
+        {
+            throw new ArgumentException(
+                $"Unknown seed scenario '{scenarioName}'.",
+                nameof(scenarioName));
+        }
+
+        if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+        {
+            throw new InvalidOperationException(
+                $"Seed scenario '{scenarioName}' is DC-only and cannot be reseeded when Seeding:State is '{_settings.State}'.");
+        }
+
+        var normalizedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(scenario.Name));
+        await _dataSeeder.RemoveUserOptInsByEmailAsync([normalizedEmail], cancellationToken);
+        await _dataSeeder.RemoveUsersByEmailAsync([normalizedEmail], cancellationToken);
+        await _dataSeeder.SaveChangesAsync(cancellationToken);
+
+        await SeedTestUsersAsync(useMockHouseholdData, cancellationToken);
+    }
 }

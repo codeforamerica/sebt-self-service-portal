@@ -87,7 +87,7 @@ export interface MockHouseholdData {
   userProfile: { firstName: string; middleName: string; lastName: string }
   benefitIssuanceType: IssuanceTypeInt
   /** Backend enum: 0=NonCoLoaded, 1=CoLoadedOnly, 2=MixedOrApplicantExcluded */
-  coLoadedCohort?: number
+  coLoadedCohort?: 0 | 1 | 2
   allowedActions?: MockAllowedActions
 }
 
@@ -212,7 +212,7 @@ interface HouseholdDataOptions {
   applications?: MockApplication[]
   benefitIssuanceType?: IssuanceTypeInt
   addressOnFile?: MockAddress
-  coLoadedCohort?: number
+  coLoadedCohort?: 0 | 1 | 2
   allowedActions?: MockAllowedActions
   userProfile?: { firstName: string; middleName: string; lastName: string }
 }

@@ -38,5 +38,8 @@ export const DC_CANCELLED_EMAIL = dcSeedEmail('cancelled')
 /** Co-loaded SNAP household pending ID proofing — post-OTP routes to id-proofing. */
 export const DC_CO_LOADED_PENDING_ID_PROOFING_EMAIL = dcSeedEmail('co-loaded-pending-id-proofing')
 
+/** SeedScenarios name for the co-loaded-pending persona (dev reseed helper). */
+export const DC_CO_LOADED_PENDING_ID_PROOFING_SCENARIO = 'co-loaded-pending-id-proofing'
+
 /** On-file SNAP account ID for co-loaded-pending seed persona (digit-only for id-proofing UI). */
 export const DC_CO_LOADED_PENDING_SNAP_ACCOUNT_ID = '87654321'

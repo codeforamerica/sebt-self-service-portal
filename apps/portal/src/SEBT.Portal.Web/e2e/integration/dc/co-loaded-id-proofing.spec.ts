@@ -1,16 +1,27 @@
 import { expect, test } from '@playwright/test'
 
-import { skipUnlessFullStack } from '../../fixtures/full-stack'
+import { isFullStackE2E, skipUnlessFullStack } from '../../fixtures/full-stack'
 import { submitIdProofingForm } from '../../fixtures/id-proofing-dc'
 import { loginWithEmailOtpExpecting } from '../../fixtures/login-dc'
+import { reseedUserScenario } from '../../fixtures/reseed'
 import {
   DC_CO_LOADED_PENDING_ID_PROOFING_EMAIL,
+  DC_CO_LOADED_PENDING_ID_PROOFING_SCENARIO,
   DC_CO_LOADED_PENDING_SNAP_ACCOUNT_ID
 } from '../../fixtures/seed-users'
 import { skipUnlessState } from '../../fixtures/state'
 
 test.describe('DC co-loaded id proofing (full stack)', () => {
   test.describe.configure({ mode: 'serial', timeout: 60_000 })
+
+  test.beforeAll(async () => {
+    if (!isFullStackE2E) {
+      return
+    }
+
+    // restore before the suite so a prior interrupted run does not leave the user stuck out of pending.
+    await reseedUserScenario(DC_CO_LOADED_PENDING_ID_PROOFING_SCENARIO)
+  })
 
   test.beforeEach(() => {
     skipUnlessFullStack()
