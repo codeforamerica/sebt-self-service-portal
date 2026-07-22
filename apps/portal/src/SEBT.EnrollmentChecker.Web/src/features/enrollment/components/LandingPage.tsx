@@ -16,14 +16,10 @@ export function LandingPage() {
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
   const [currentUrl, setCurrentUrl] = useState("")
 
-  useEffect(() => {
-    // This code runs only in the browser
-    setCurrentUrl(window.location.href);
-  }, []);
-
   // The landing page is a fresh-start screen — clicking the logo from any
   // deep page lands here, and the cached children should not persist.
   useEffect(() => {
+    setCurrentUrl(window.location.href)
     clearState()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [])

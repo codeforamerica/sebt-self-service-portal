@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 
 interface AdentifiPixelsProps {
   pixelId: string
@@ -10,7 +10,7 @@ interface AdentifiPixelsProps {
 export function AdentifiPixels({ pixelId, href }: AdentifiPixelsProps) {
   const [nonce, setNonce] = useState("");
 
-  useEffect(() => {
+  useMemo(() => {
     const r = Buffer.from(crypto.randomUUID()).toString('base64')
     
     setNonce(r);

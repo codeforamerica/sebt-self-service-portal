@@ -3,7 +3,7 @@
 import { Button } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AdentifiPixels } from '@sebt/analytics'
 
 export function DisclaimerPage() {
@@ -12,7 +12,7 @@ export function DisclaimerPage() {
 
   const [currentUrl, setCurrentUrl] = useState("")
 
-  useEffect(() => {
+  useMemo(() => {
     // This code runs only in the browser
     setCurrentUrl(window.location.href);
   }, []);
