@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AdentifiPixels } from '@sebt/analytics'
 
 import { useEnrollment } from '../context/EnrollmentContext'
 
@@ -58,6 +59,10 @@ export function LandingPage() {
             {t('actionEspañol')}
           </Button>
         </div>
+
+        {process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING && (
+          <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING} href={window.location.href} />
+        )}
 
         {/* FAQ Accordion — follows USWDS accordion pattern */}
         <div className="usa-accordion margin-top-4">
