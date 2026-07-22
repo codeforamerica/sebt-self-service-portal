@@ -6,7 +6,7 @@ import { headingFont, primaryFont } from '@/design/fonts'
 import { env } from '@/lib/env'
 import { buildRootMetadata } from '@/lib/metadata'
 import { Providers } from '@/providers/Providers'
-import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
+import { AmplitudeAnalytics, MetaPixelAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
 import { getState } from '@sebt/design-system/src/lib/state'
 import type { Viewport } from 'next'
 import './globals.css'
@@ -17,6 +17,7 @@ const state = getState()
 const amplitudeApiKey = env.NEXT_PUBLIC_AMPLITUDE_API_KEY
 const mixpanelToken = env.NEXT_PUBLIC_MIXPANEL_TOKEN
 const siteImproveId = env.NEXT_PUBLIC_SITEIMPROVE_ID
+const metaPixelId = env.NEXT_PUBLIC_META_PIXEL
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -37,6 +38,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {process.env.NEXT_PUBLIC_BUILD_SHA && (
           <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />
         )}
+        {/* Meta Pixel - only rendered when NEXT_PUBLIC_META_PIXEL is configured */}
+        {metaPixelId && <MetaPixelAnalytics pixelId={metaPixelId} />}
       </head>
       <body>
         <Providers>
