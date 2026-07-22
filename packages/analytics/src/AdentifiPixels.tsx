@@ -10,5 +10,10 @@ export function AdentifiPixels({ pixelId, href }: AdentifiPixelsProps) {
   const url = encodeURIComponent(href)
   const src = `https://px.adentifi.com/Pixels?a_id=${pixelId};p_url=${url};uq=${nonce}`
 
+  // on initial load href may be blank
+  if (!href) {
+    return <></>
+  }
+
   return <img src={src} width={1} height={1} style={{display: 'none'}} alt='' />
 }
