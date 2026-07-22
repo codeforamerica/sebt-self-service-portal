@@ -54,6 +54,20 @@ def _make_client(token, current_user="appuser"):
 # _other_user
 # ---------------------------------------------------------------------------
 
+def test_target_db_names_returns_primary_only_when_no_additional():
+    assert rot._target_db_names("SebtPortal") == ["SebtPortal"]
+
+
+@patch.dict(os.environ, {"ADDITIONAL_DB_NAMES": "DcSource"})
+def test_target_db_names_includes_additional_dbs():
+    assert rot._target_db_names("SebtPortal") == ["SebtPortal", "DcSource"]
+
+
+@patch.dict(os.environ, {"ADDITIONAL_DB_NAMES": " DcSource , , OtherDb "})
+def test_target_db_names_strips_whitespace_and_drops_empties():
+    assert rot._target_db_names("SebtPortal") == ["SebtPortal", "DcSource", "OtherDb"]
+
+
 def test_other_user_returns_clone_when_given_primary():
     assert rot._other_user("appuser") == "appuser_clone"
 
@@ -147,6 +161,27 @@ def test_set_secret_opens_connections_and_commits(mock_pymssql):
     mock_conn.close.assert_called()
 
 
+@patch.dict(os.environ, {"ADMIN_SECRET_ARN": "admin-arn", "DB_HOST": "db", "DB_PORT": "1433",
+                         "DB_NAME": "SebtPortal", "ADDITIONAL_DB_NAMES": "DcSource",
+                         "ECS_CLUSTER": "cluster", "ECS_SERVICE": "svc"})
+@patch("rotate_db_credentials.pymssql")
+def test_set_secret_provisions_db_user_in_additional_databases(mock_pymssql):
+    mock_conn = MagicMock()
+    mock_pymssql.connect.return_value = mock_conn
+
+    client = MagicMock()
+    client.get_secret_value.side_effect = [
+        {"SecretString": json.dumps({"username": "appuser_clone", "password": "NewPw1!",
+                                     "host": "db", "port": "1433", "dbname": "SebtPortal"})},
+        {"SecretString": json.dumps({"username": "admin", "password": "AdminPw1!"})},
+    ]
+
+    rot.set_secret(client, "secret-arn", "new-token")
+
+    called_dbs = [kwargs["database"] for _, kwargs in mock_pymssql.connect.call_args_list]
+    assert called_dbs == ["master", "SebtPortal", "DcSource"]
+
+
 # ---------------------------------------------------------------------------
 # test_secret
 # ---------------------------------------------------------------------------
@@ -168,6 +203,27 @@ def test_test_secret_succeeds_on_valid_connection(mock_pymssql):
 
     mock_conn.cursor.return_value.execute.assert_called_once_with("SELECT 1")
     mock_conn.close.assert_called_once()
+
+
+@patch.dict(os.environ, {"ADMIN_SECRET_ARN": "admin-arn", "DB_HOST": "db", "DB_PORT": "1433",
+                         "DB_NAME": "SebtPortal", "ADDITIONAL_DB_NAMES": "DcSource",
+                         "ECS_CLUSTER": "cluster", "ECS_SERVICE": "svc"})
+@patch("rotate_db_credentials.pymssql")
+def test_test_secret_tests_connection_to_every_target_database(mock_pymssql):
+    mock_conn = MagicMock()
+    mock_pymssql.connect.return_value = mock_conn
+
+    client = MagicMock()
+    client.get_secret_value.return_value = {
+        "SecretString": json.dumps({"username": "appuser_clone", "password": "NewPw1!",
+                                    "host": "db", "port": "1433", "dbname": "SebtPortal"})
+    }
+
+    rot.test_secret(client, "secret-arn", "new-token")
+
+    called_dbs = [kwargs["database"] for _, kwargs in mock_pymssql.connect.call_args_list]
+    assert called_dbs == ["SebtPortal", "DcSource"]
+    assert mock_conn.cursor.return_value.execute.call_count == 2
 
 
 @patch.dict(os.environ, {"ADMIN_SECRET_ARN": "admin-arn", "DB_HOST": "db", "DB_PORT": "1433",

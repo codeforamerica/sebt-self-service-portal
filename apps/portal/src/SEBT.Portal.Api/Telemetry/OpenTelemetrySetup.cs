@@ -12,6 +12,28 @@ internal static class OpenTelemetrySetup
 {
     internal const string ServiceName = "sebt-portal-api";
 
+    /// <summary>
+    /// Shared gate for OTLP log export. Used by Program.cs (<c>writeToProviders</c>) and
+    /// <see cref="SetupOpenTelemetry"/> so both stay in sync.
+    /// </summary>
+    internal static bool IsOtlpLogExportEnabled(IConfiguration configuration)
+    {
+        var settings = configuration.GetSection(OpenTelemetrySettings.SectionName)
+            .Get<OpenTelemetrySettings>() ?? new OpenTelemetrySettings();
+        return settings.UseLogExporter == ExporterKind.Otlp;
+    }
+
+    /// <summary>
+    /// Clears default MEL providers (Console, Debug, EventSource) so Serilog
+    /// <c>writeToProviders</c> fans out only to the OTLP provider registered later.
+    /// Must be called before <c>UseSerilog</c>; clearing afterward would strip
+    /// <c>SerilogLoggerProvider</c> and break <c>ILogger&lt;T&gt;</c> routing into Serilog.
+    /// </summary>
+    internal static void ClearDefaultLoggerProvidersForOtlp(WebApplicationBuilder builder)
+    {
+        builder.Logging.ClearProviders();
+    }
+
     public static void SetupOpenTelemetry(this WebApplicationBuilder builder)
     {
         var configSection =
@@ -27,7 +49,6 @@ internal static class OpenTelemetrySetup
         builder.Services.Configure<AspNetCoreTraceInstrumentationOptions>(configSection.GetSection("AspNetCoreInstrumentation"));
         builder.Services.Configure<OtlpExporterOptions>(configSection.GetSection("OtlpExporter"));
 
-        // Get the OtelSettings instance from configuration, or use defaults if not present.
         var otelSettings = configSection
             .Get<OpenTelemetrySettings>() ?? new OpenTelemetrySettings();
 
@@ -41,9 +62,11 @@ internal static class OpenTelemetrySetup
             .WithMetrics(metricsBuilder => ConfigureMetrics(metricsBuilder, otelSettings));
 
         // OTLP log export is opt-in (Otel:UseLogExporter=otlp). When disabled we register no
-        // OpenTelemetry logging provider at all and Serilog runs writeToProviders: false, so the
-        // Serilog -> stdout -> CloudWatch path is completely unaffected by deploying this code.
-        if (otelSettings.UseLogExporter == ExporterKind.Otlp)
+        // OpenTelemetry logging provider and Serilog keeps writeToProviders: false, so the
+        // Serilog -> stdout -> CloudWatch path is unaffected. When enabled, Program.cs must
+        // call ClearDefaultLoggerProvidersForOtlp *before* UseSerilog, then this registers
+        // the OTLP provider that writeToProviders forwards to.
+        if (IsOtlpLogExportEnabled(builder.Configuration))
         {
             builder.Logging.AddOpenTelemetry(ConfigureLogging);
         }

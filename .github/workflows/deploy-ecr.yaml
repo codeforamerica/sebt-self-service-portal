@@ -66,7 +66,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Post plan to PR
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const { data: comments } = await github.rest.issues.listComments({
@@ -137,11 +137,69 @@ jobs:
           global-json-file: global.json
 
       # state + co connectors are now in-repo (apps/connectors/*); only dc remains external.
+      # Same branch-matching as release-iis-dc.yaml: paired contract changes need the
+      # dc-connector branch of the same name; everything else falls back to main. The
+      # matched branch resolves to a commit SHA so the checkout is pinned — no window
+      # for the branch to move between resolution and checkout.
+      - name: Determine dc-connector ref
+        id: dc-connector-ref
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+          else
+            BRANCH="$REF_NAME"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH"
+            exit 1
+          fi
+          # Secrets pasted with stray whitespace corrupt the URL-embedded credential
+          # (checkout's token input is trimmed by Actions; env vars are not).
+          CONNECTOR_PAT="${CONNECTOR_PAT//[$'\r\n\t ']/}"
+          if [ -z "$CONNECTOR_PAT" ]; then
+            echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
+            exit 1
+          fi
+          # Authenticate exactly the way actions/checkout does (basic auth header) —
+          # URL-embedded credentials are rejected for this PAT and would also leak
+          # into error output.
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_PAT}" | base64 | tr -d '\n')"
+          REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          # Without --exit-code, ls-remote fails only on auth/connection problems;
+          # an absent branch is just empty output. Auth failures must fail the job —
+          # a silent fallback to main masks them as baffling downstream build errors.
+          # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
+          # (actions/checkout persist-credentials) would override ours and 404 on
+          # the private connector repo.
+          if ! LS_OUT=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
+            exit 1
+          fi
+          RESOLVED="$BRANCH"
+          SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
+          if [ -z "$SHA" ]; then
+            RESOLVED="main"
+            SHA=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
+            exit 1
+          fi
+          echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
+          echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout dc-connector
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
           token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
 
       - name: Build plugin interfaces (NuGet package)
@@ -188,7 +246,7 @@ jobs:
             -o /tmp/docker-images.tar
 
       - name: Upload Docker images
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docker-images
           path: /tmp/docker-images.tar
@@ -261,6 +319,14 @@ jobs:
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DB rotation Lambda dependencies
+        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
 
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
@@ -350,6 +416,14 @@ jobs:
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DB rotation Lambda dependencies
+        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
+
       - name: Install OpenTofu
         uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f # v1
         with:
@@ -383,7 +457,7 @@ jobs:
     steps:
       - name: Create GitHub deployment for DC
         if: needs.deploy-dc.result == 'success'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const rawUrl = '${{ needs.deploy-dc.outputs.web_url }}';
@@ -414,7 +488,7 @@ jobs:
 
       - name: Create GitHub deployment for CO
         if: needs.deploy-co.result == 'success'
-        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';

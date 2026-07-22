@@ -21,6 +21,16 @@ locals {
     DD_API_KEY = data.aws_secretsmanager_secret.datadog_key["this"].arn
   } : {}
 
+  # tofu-modules-aws-fargate-service (module.api) doesn't expose a
+  # service_name output — only cluster_name. Its cluster and service happen
+  # to share the same name today (HENNGE/ecs/aws: join("-", compact([project,
+  # environment, service]))), but that's an implementation detail of the
+  # upstream module, not a contract. Reconstruct it explicitly here so a
+  # future naming-scheme change in that module doesn't silently break the
+  # rotation Lambda's ecs:UpdateService call. If the module ever adds a
+  # service_name output, switch to that instead.
+  api_ecs_service_name = join("-", compact(["${var.project}-${var.state}", var.environment, "api"]))
+
   # Allow the AWS Security Agent penetration test to bypass the WAF in the
   # development environment by matching its unique User-Agent. "allow" is a
   # terminating action, so matching requests skip all subsequent rules

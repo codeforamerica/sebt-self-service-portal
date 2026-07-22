@@ -82,6 +82,20 @@ public class DatabaseDocVerificationChallengeRepository(
         return entity == null ? null : MapToDomainModel(entity, piiSymmetricEncryption);
     }
 
+    public async Task<string?> GetLatestSocureReferenceIdByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        // Projection on purpose: the full domain mapping decrypts PII fields this caller
+        // never needs.
+        return await dbContext.DocVerificationChallenges
+            .AsNoTracking()
+            .Where(c => c.UserId == userId && c.SocureReferenceId != null)
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => c.SocureReferenceId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task CreateAsync(
         DocVerificationChallenge challenge,
         CancellationToken cancellationToken = default)
