@@ -14,6 +14,12 @@ export function LandingPage() {
   const router = useRouter()
   const { clearState } = useEnrollment()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
+  const [currentUrl, setCurrentUrl] = useState("")
+
+  useEffect(() => {
+    // This code runs only in the browser
+    setCurrentUrl(window.location.href);
+  }, []);
 
   // The landing page is a fresh-start screen — clicking the logo from any
   // deep page lands here, and the cached children should not persist.
@@ -61,7 +67,7 @@ export function LandingPage() {
         </div>
 
         {process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING && (
-          <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING} href={window.location.href} />
+          <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING} href={currentUrl} />
         )}
 
         {/* FAQ Accordion — follows USWDS accordion pattern */}
