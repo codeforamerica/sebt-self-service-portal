@@ -3,10 +3,18 @@
 import { Button } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+import { useEffect, useState } from 'react'
 
 export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
   const router = useRouter()
+
+  const [currentUrl, setCurrentUrl] = useState("")
+
+  useEffect(() => {
+    // This code runs only in the browser
+    setCurrentUrl(window.location.href);
+  }, []);
 
   return (
     <div className="usa-section">
@@ -32,6 +40,10 @@ export function DisclaimerPage() {
           <Button onClick={() => router.push('/check')}>{t('continue', { ns: 'common' })}</Button>
         </div>
       </div>
+
+      {process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW && (
+        <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW} href={currentUrl} />
+      )}
     </div>
   )
 }
