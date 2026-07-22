@@ -16,10 +16,10 @@ public static class CbmsSebtApiClientFactory
     {
         PooledConnectionLifetime = TimeSpan.FromMinutes(2),
     });
-    
-    private static readonly Lazy<HttpClient> TokenHttpClient = new(() => 
+
+    private static readonly Lazy<HttpClient> TokenHttpClient = new(() =>
         new HttpClient(SharedHandler.Value, disposeHandler: false));
-    
+
     private static readonly ConcurrentDictionary<Uri, HttpClient> HttpClients = new();
 
     /// <summary>

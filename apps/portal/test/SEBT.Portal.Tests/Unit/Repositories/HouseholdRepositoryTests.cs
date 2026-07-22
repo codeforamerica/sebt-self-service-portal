@@ -129,8 +129,10 @@ public class HouseholdRepositoryTests
             Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public async Task GetHouseholdByBenefitIdentifierAndGuardianDobAsync_DelegatesToPlugin_AndMapsCore()
+    [Theory]
+    [InlineData("socure-ref-uuid-1234")]
+    [InlineData(null)]
+    public async Task GetHouseholdByBenefitIdentifierAndGuardianDobAsync_DelegatesToPluginAndForwardsSocureReferenceId(string? socureReferenceId)
     {
         var loginEmail = "guardian@example.com";
         var dob = new DateOnly(1984, 3, 5);
@@ -151,6 +153,7 @@ public class HouseholdRepositoryTests
                 Arg.Any<PluginPiiVisibility>(),
                 PluginIdentityAssuranceLevel.IAL1plus,
                 userId,
+                Arg.Any<string?>(),
                 Arg.Any<CancellationToken>())
             .Returns(pluginData);
 
@@ -160,7 +163,8 @@ public class HouseholdRepositoryTests
             dob,
             FullPii,
             UserIalLevel.IAL1plus,
-            userId);
+            userId,
+            socureReferenceId);
 
         Assert.NotNull(result);
         Assert.Equal(EmailNormalizer.Normalize(loginEmail), result!.Email);
@@ -171,6 +175,7 @@ public class HouseholdRepositoryTests
             Arg.Any<PluginPiiVisibility>(),
             PluginIdentityAssuranceLevel.IAL1plus,
             userId,
+            socureReferenceId,
             Arg.Any<CancellationToken>());
     }
 

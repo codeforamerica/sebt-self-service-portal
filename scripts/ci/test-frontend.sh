@@ -109,6 +109,17 @@ run_tests() {
   fi
 }
 
+# Run shared workspace package tests (packages/*). The web app's own `pnpm run
+# test` only covers apps/portal/src/SEBT.Portal.Web/src; without this the shared
+# @sebt/analytics and @sebt/design-system suites never run in CI.
+run_package_tests() {
+  log_info "Running shared package tests (packages/*)..."
+  cd "$PROJECT_ROOT"
+
+  pnpm --filter "./packages/*" --if-present run test
+  log_success "Package tests passed"
+}
+
 # Run type checking
 run_type_check() {
   log_info "Running TypeScript type checking..."
@@ -131,6 +142,7 @@ main() {
   run_type_check
   run_lint
   run_tests
+  run_package_tests
 
   echo ""
   log_success "=== All frontend tests passed ==="
