@@ -1,12 +1,21 @@
 'use client'
 
+import { useState, useEffect } from "react";
+
 interface AdentifiPixelsProps {
   pixelId: string
   href: string
 }
 
 export function AdentifiPixels({ pixelId, href }: AdentifiPixelsProps) {
-  const nonce = Math.random() * 10000000000000
+  const [nonce, setNonce] = useState("");
+
+  useEffect(() => {
+    const r = Buffer.from(crypto.randomUUID()).toString('base64')
+    
+    setNonce(r);
+  }, []) // Empty array ensures this only runs once when the component mounts
+
   const url = encodeURIComponent(href)
   const src = `https://px.adentifi.com/Pixels?a_id=${pixelId};p_url=${url};uq=${nonce}`
 
