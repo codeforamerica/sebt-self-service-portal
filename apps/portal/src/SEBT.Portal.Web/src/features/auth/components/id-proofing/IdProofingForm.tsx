@@ -365,11 +365,21 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       )}
 
       {/* Date of birth */}
-      <fieldset className={`usa-fieldset${dobFieldsetError ? ' usa-form-group--error' : ''}`}>
+      <fieldset
+        className={`usa-fieldset${dobFieldsetError ? ' usa-form-group--error' : ''}`}
+        aria-describedby={`${formId}-dob-hint`}
+      >
         <legend className="usa-legend">
           {t('labelDob')}
           <span className="text-secondary-dark"> *</span>
         </legend>
+
+        <span
+          className="usa-hint"
+          id={`${formId}-dob-hint`}
+        >
+          {t('helperDob')}
+        </span>
 
         {dobFieldsetError && (
           <span
