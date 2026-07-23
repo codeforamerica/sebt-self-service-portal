@@ -37,6 +37,8 @@ interface ApiRouteOverrides {
    * For 403 IAL step-up, include `requiredIal` (see useHouseholdData).
    */
   householdDataProblem?: Record<string, unknown>
+  /** JWT-derived co-loaded claim returned by /api/auth/status. Defaults to false. */
+  isCoLoaded?: boolean
 }
 
 /**
@@ -75,6 +77,7 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
     title: 'Forbidden',
     status: householdDataStatus
   }
+  const isCoLoaded = overrides.isCoLoaded ?? false
 
   // The trailing `*` on GET routes tolerates the per-request `?_=<uuid>`
   // cache-bust query string that apiFetch appends to defeat edge-cache leaks
@@ -96,7 +99,8 @@ export async function setupApiRoutes(page: Page, overrides: ApiRouteOverrides = 
         // ~Apr 2026; stays fresh inside the 5-year window
         idProofingCompletedAt: 1775000000,
         // Server computes this from completedAt + ValidityDays; E2E must provide a future value
-        idProofingExpiresAt: 1775000000 + 1826 * 86400
+        idProofingExpiresAt: 1775000000 + 1826 * 86400,
+        isCoLoaded
       })
     })
   })
