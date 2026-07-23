@@ -13,6 +13,8 @@ interface ReviewPageProps {
 }
 
 export function ReviewPage({ onSubmit, isSubmitting = false }: ReviewPageProps) {
+  // confirmInfo title/body exist only in the CO sheet (DC marks them !N/A!);
+  // a DC build renders raw key names on this screen.
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
