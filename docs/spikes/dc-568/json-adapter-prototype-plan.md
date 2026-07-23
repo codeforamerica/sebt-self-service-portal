@@ -137,68 +137,96 @@ public sealed record StateBackendCapabilities(
 
 ## Config samples (same schema, per-state values)
 
+Structure: operations keyed by the closed `OperationType` enum (presence ⇒ capability, so the manifest is *derived*, not duplicated); mappings live under each operation; `enums` shared at state level (targets validated against the C# enum at startup, fail-loud); secrets are config-key references, never values.
+
 ```yaml
 # state-backends/dc.yaml — DC via the thin REST wrapper
 id: DC
 baseUrl: ${DC_WRAPPER_BASEURL}
+
 auth:
   scheme: api_key                          # ← differs from CO
   header: X-Api-Key
-  keyRef: DC_WRAPPER_API_KEY
-capabilities:
-  specVersion: "1.0"
-  serviceMode: full
-  cardDetails: { modes: [batch] }
-  cardReplacement: { supported: true, statusTracking: false }
-  addressUpdate: true
-  enrollmentCheck: true
+  keyRef: StateBackend:Auth:ApiKey         # config KEY, resolved from env / /run/secrets — never the value
+
 identifiers:
   preferred: [email]
-lookup:
-  operation: "POST /households/lookup"
-  responseRoot: "$.resultSets[0]"          # raw multi-result-set passthrough
-mappings:
-  fields:
-    caseId: SummerEBTCaseID
-    childName: ChildName
-    issueDate: IssueDate
-  disaggregation:
-    rule: presence                         # {presence | valueInSet}
-    discriminatorField: ApplicationId
-    groupApplicationsBy: ApplicationId
-    caseInclusion: all                     # named predicate — NOT an expression DSL
-  enums:
-    cardStatus: { default: Unknown, map: { PROCESSED: Processed } }
-    issuanceType: { strategy: bespoke }    # explicit (c) escape hatch: substring inference stays code
+
+enums:                                     # shared state-level vocabulary; every target validated vs the C# enum at startup (fail-loud)
+  cardStatus:   { default: Unknown, map: { PROCESSED: Processed } }
+  issuanceType: { strategy: bespoke }      # explicit (c) escape hatch: DC substring inference stays code
+
+operations:                                # keyed by closed OperationType enum; an operation's presence IS its capability
+  householdLookup:
+    endpoint: "POST /households/lookup"
+    request:                               # canonical input → state param shape (capped binding vocab: from / compose / const)
+      guardianEmail:       { from: signal.email }
+      guardianIdentifiers: { compose: { IC: signal.ic, DOB: signal.dob } }
+    response:
+      root: "$.resultSets[0]"              # raw multi-result-set passthrough from the wrapper
+      fields:
+        caseId:    SummerEBTCaseID
+        childName: ChildName
+        issueDate: IssueDate
+      disaggregation:
+        rule: presence                     # {presence | valueInSet}
+        discriminatorField: ApplicationId
+        groupApplicationsBy: ApplicationId
+        caseInclusion: all                 # named predicate — NOT an expression DSL
+  cardReplacement:
+    statusTracking: false                  # per-op capability flag → folded into the derived manifest
+    endpoint: "POST /card-replacements"
+    request:
+      caseId:         { from: caseId }
+      idempotencyKey: { from: idempotencyKey }
 ```
 
 ```yaml
 # state-backends/co.yaml — CO via CBMS (existing JSON REST)
 id: CO
 baseUrl: ${CBMS_BASEURL}
+
 auth:
   scheme: client_credentials               # ← differs from DC
-  tokenUrl: ${CBMS_TOKEN_URL}
-  clientIdRef: CBMS_CLIENT_ID
-  clientSecretRef: CBMS_CLIENT_SECRET
+  tokenUrl: ${CBMS_TOKEN_URL}              # not secret — endpoint
+  clientId: ${CBMS_CLIENT_ID}              # not secret — identifier
+  clientSecretRef: StateBackend:Auth:ClientSecret   # config KEY only; value from env / /run/secrets / vault, resolved at token fetch
+  scope: sebt
+
 identifiers:
   preferred: [phone]
-lookup:
-  operation: "POST /sebt/get-account-details"
-  responseRoot: "$.stdntEnrollDtls"
-mappings:
-  fields:
-    caseId: sebtChldCwin
-    childName: chldNm
-  disaggregation:
-    rule: valueInSet
-    discriminatorField: eligSrc
-    applicationValues: [CBMS, PK]
-    groupApplicationsBy: sebtAppId
-    caseInclusion: whenApprovedOrNotApplicationBased
-  enums:
-    caseStatus: { default: Unknown, map: { AP: Approved, DE: Denied } }
-    cardStatus: { default: Unknown, map: { ACTIVE: Active, "LOST, AUTO REISSUE": Lost } }
+
+enums:
+  caseStatus: { default: Unknown, map: { AP: Approved, DE: Denied } }
+  cardStatus: { default: Unknown, map: { ACTIVE: Active, "LOST, AUTO REISSUE": Lost } }
+
+operations:
+  householdLookup:
+    endpoint: "POST /sebt/get-account-details"
+    request:
+      phone: { from: signal.phone }
+    response:
+      root: "$.stdntEnrollDtls"
+      fields:
+        caseId:    sebtChldCwin
+        childName: chldNm
+      disaggregation:
+        rule: valueInSet
+        discriminatorField: eligSrc
+        applicationValues: [CBMS, PK]      # these values mean "application-based"
+        groupApplicationsBy: sebtAppId
+        caseInclusion: whenApprovedOrNotApplicationBased   # named predicate from the capped vocabulary
+  cardReplacement:
+    statusTracking: false
+    endpoint: "PATCH /sebt/update-std-dtls"   # CO reuses one endpoint for card replacement + address update…
+    request:
+      caseId:         { from: caseId }
+      idempotencyKey: { from: idempotencyKey }
+  addressUpdate:
+    endpoint: "PATCH /sebt/update-std-dtls"   # …declared independently per operation — coincidental sharing, not factored out
+    request:
+      caseIds: { from: caseIds }
+      address: { from: address }
 ```
 
 ## Open items

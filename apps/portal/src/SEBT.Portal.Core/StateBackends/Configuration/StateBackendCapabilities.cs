@@ -1,4 +1,4 @@
-namespace SEBT.Portal.Core.StateBackends;
+namespace SEBT.Portal.Core.StateBackends.Configuration;
 
 public enum StateBackendServiceMode
 {

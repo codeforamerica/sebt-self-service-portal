@@ -1,4 +1,5 @@
 ﻿using SEBT.Portal.Core.StateBackends;
+using SEBT.Portal.Core.StateBackends.Configuration;
 
 namespace SEBT.Portal.Infrastructure.StateBackends;
 

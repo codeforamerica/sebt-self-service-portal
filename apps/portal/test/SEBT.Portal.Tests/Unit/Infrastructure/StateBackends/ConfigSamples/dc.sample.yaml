@@ -1,0 +1,15 @@
+baseUrl: http://localhost:8085
+auth:
+  scheme: api_key
+  header: X-Api-Key
+  keyRef: dc-api-key
+operations:
+  householdLookup:
+    method: post
+    path: /households/lookup
+  cardReplacement:
+    method: post
+    path: /cards/replace
+  health:
+    method: get
+    path: /health
