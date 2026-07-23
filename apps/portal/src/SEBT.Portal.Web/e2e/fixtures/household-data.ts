@@ -71,6 +71,13 @@ interface MockAddress {
   postalCode: string
 }
 
+export interface MockAllowedActions {
+  canUpdateAddress: boolean
+  canRequestReplacementCard: boolean
+  addressUpdateDeniedMessageKey?: string | null
+  cardReplacementDeniedMessageKey?: string | null
+}
+
 export interface MockHouseholdData {
   email: string
   phone: string
@@ -80,7 +87,8 @@ export interface MockHouseholdData {
   userProfile: { firstName: string; middleName: string; lastName: string }
   benefitIssuanceType: IssuanceTypeInt
   /** Backend enum: 0=NonCoLoaded, 1=CoLoadedOnly, 2=MixedOrApplicantExcluded */
-  coLoadedCohort?: number
+  coLoadedCohort?: 0 | 1 | 2
+  allowedActions?: MockAllowedActions
 }
 
 /** A date string well outside the 14-day cooldown window. */
@@ -204,7 +212,15 @@ interface HouseholdDataOptions {
   applications?: MockApplication[]
   benefitIssuanceType?: IssuanceTypeInt
   addressOnFile?: MockAddress
-  coLoadedCohort?: number
+  coLoadedCohort?: 0 | 1 | 2
+  allowedActions?: MockAllowedActions
+  userProfile?: { firstName: string; middleName: string; lastName: string }
+}
+
+/** Fully co-loaded SNAP household: self-service address/card actions denied. */
+export const CO_LOADED_ONLY_ALLOWED_ACTIONS: MockAllowedActions = {
+  canUpdateAddress: false,
+  canRequestReplacementCard: false
 }
 
 export function makeHouseholdData(overrides: HouseholdDataOptions = {}): MockHouseholdData {
@@ -214,10 +230,33 @@ export function makeHouseholdData(overrides: HouseholdDataOptions = {}): MockHou
     summerEbtCases: overrides.summerEbtCases ?? [makeSummerEbtCase()],
     applications: overrides.applications ?? [makeApplication()],
     addressOnFile: overrides.addressOnFile ?? ADDRESS_DEFAULTS[currentState],
-    userProfile: { firstName: 'Jane', middleName: 'M', lastName: 'Doe' },
+    userProfile: overrides.userProfile ?? { firstName: 'Jane', middleName: 'M', lastName: 'Doe' },
     benefitIssuanceType: overrides.benefitIssuanceType ?? 1,
-    coLoadedCohort: overrides.coLoadedCohort ?? 0
+    coLoadedCohort: overrides.coLoadedCohort ?? 0,
+    ...(overrides.allowedActions !== undefined ? { allowedActions: overrides.allowedActions } : {})
   }
+}
+
+/** SNAP co-loaded-only household used by DC co-loaded info-page / dashboard E2E. */
+export function makeCoLoadedOnlyHousehold(overrides: HouseholdDataOptions = {}): MockHouseholdData {
+  return makeHouseholdData({
+    benefitIssuanceType: 3, // SnapEbtCard
+    coLoadedCohort: 1, // CoLoadedOnly
+    allowedActions: CO_LOADED_ONLY_ALLOWED_ACTIONS,
+    summerEbtCases: [
+      makeSummerEbtCase({
+        summerEBTCaseID: 'SNAP-CO-001',
+        childFirstName: 'Sophia',
+        childLastName: 'Martinez',
+        issuanceType: 3,
+        eligibilityType: 'SNAP',
+        ebtCaseNumber: 'SNAP-CO-001',
+        allowAddressChange: false,
+        allowCardReplacement: false
+      })
+    ],
+    ...overrides
+  })
 }
 
 export const DEFAULT_FEATURE_FLAGS = {
