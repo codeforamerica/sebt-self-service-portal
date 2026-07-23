@@ -31,4 +31,16 @@ public interface IDatabaseSeeder
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task ClearSeededDataAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes and recreates a single known seed scenario user so mutable E2E suites
+    /// can restore a clean starting state without clearing the whole seed set.
+    /// </summary>
+    /// <param name="scenarioName">A name from <c>SeedScenarios</c>.</param>
+    /// <param name="useMockHouseholdData">Whether to reseed via the mock-household path.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task ReseedUserScenarioAsync(
+        string scenarioName,
+        bool useMockHouseholdData,
+        CancellationToken cancellationToken = default);
 }
