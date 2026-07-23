@@ -4,6 +4,7 @@ import { Button } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
+import { env } from '@/lib/env'
 
 export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
@@ -34,8 +35,8 @@ export function DisclaimerPage() {
         </div>
       </div>
 
-      {process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW && (
-        <AdentifiPixels pixelId={process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW} />
+      {env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW && (
+        <AdentifiPixels pixelId={env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW} />
       )}
     </div>
   )

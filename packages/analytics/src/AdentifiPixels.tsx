@@ -32,5 +32,5 @@ export function AdentifiPixels({ pixelId }: AdentifiPixelsProps) {
     return <></>
   }
 
-  return <img src={src} width={1} height={1} style={{display: 'none'}} alt='' />
+  return <img src={src} width={1} height={1} className="display-none" alt='' />
 }
