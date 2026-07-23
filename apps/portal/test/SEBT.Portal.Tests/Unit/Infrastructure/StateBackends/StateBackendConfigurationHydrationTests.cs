@@ -37,4 +37,34 @@ public class StateBackendConfigurationHydrationTests
         Assert.False(capabilities.AddressUpdate);
         Assert.False(capabilities.EnrollmentCheck);
     }
+
+    [Fact]
+    public void Hydrates_CoStateBackendConfiguration_FromEmbeddedYaml()
+    {
+        string yaml = SampleLoader.Load("co.sample.yaml");
+        var config = StateBackendConfigurationLoader.Load(yaml);
+
+        Assert.Equal(new Uri("http://localhost:8086"), config.BaseUrl);
+
+        // Exercises the OTHER auth discriminator branch (client_credentials) + the OAuth subtype.
+        StateBackendOAuthClientCredentialsAuthScheme oauthAuth =
+            Assert.IsType<StateBackendOAuthClientCredentialsAuthScheme>(config.Auth);
+        Assert.Equal(new Uri("http://localhost:8086/oauth/token"), oauthAuth.TokenUrl);
+        Assert.Equal("co-client", oauthAuth.ClientId);
+        Assert.Equal("co-client-secret", oauthAuth.ClientSecretRef);
+
+        HouseholdLookupOperationConfig? householdLookup = config.Operations.HouseholdLookup;
+        Assert.NotNull(householdLookup);
+        Assert.Equal(StateBackendHttpMethod.Post, householdLookup.Method);
+        Assert.Equal("/sebt/get-account-details", householdLookup.Path);
+
+        AddressUpdateOperationConfig? addressUpdate = config.Operations.AddressUpdate;
+        Assert.NotNull(addressUpdate);
+        Assert.Equal(StateBackendHttpMethod.Patch, addressUpdate.Method);
+
+        // Capability derivation differs from the DC sample: CO models AddressUpdate.
+        StateBackendCapabilities capabilities = config.Capabilities;
+        Assert.True(capabilities.AddressUpdate);
+        Assert.False(capabilities.EnrollmentCheck);
+    }
 }

@@ -1,15 +1,19 @@
-baseUrl: http://localhost:8085
+baseUrl: http://localhost:8086
 auth:
-  scheme: api_key
-  header: X-Api-Key
-  keyRef: dc-api-key
+  scheme: client_credentials
+  tokenUrl: http://localhost:8086/oauth/token
+  clientId: co-client
+  clientSecretRef: co-client-secret
 operations:
   householdLookup:
     method: post
-    path: /households/lookup
+    path: /sebt/get-account-details
   cardReplacement:
-    method: post
-    path: /cards/replace
+    method: patch
+    path: /sebt/update-std-dtls
+  addressUpdate:
+    method: patch
+    path: /sebt/update-std-dtls
   health:
     method: get
-    path: /health
+    path: /ping
