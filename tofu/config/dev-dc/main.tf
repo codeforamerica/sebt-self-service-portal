@@ -56,25 +56,56 @@ data "aws_route53_zone" "main" {
   name = "dc.sebt-portal.codeforamerica.app"
 }
 
-# Store DC-specific secrets in Secrets Manager. Each block represents a
-# separate set of secrets for a specific service or integration.
+# Store DC-specific secrets in Secrets Manager. Each key represents a
+# separate secret for a specific service or integration.
 module "state_secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.1.1"
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
   service     = "state-secrets"
 
   secrets = {
-    "socure" = {
-      description     = "Socure API credentials for identity verification."
+    "jwt_secret_key" = {
+      description     = "JWT signing secret for the SEBT Portal API."
       recovery_window = 7
     }
-    "pii_encryption" = {
-      description     = "PII encryption key ring for the SEBT Portal API (AES-256-GCM)."
+    "identifier_hasher_secret_key" = {
+      description     = "Identifier hashing secret for the SEBT Portal API."
+      recovery_window = 7
+    }
+    "socure_api_key" = {
+      description     = "Socure API key for identity verification."
+      recovery_window = 7
+    }
+    "socure_webhook_secret" = {
+      description     = "Socure webhook signing secret for identity verification."
+      recovery_window = 7
+    }
+    "pii_encryption_key_id" = {
+      description     = "Active PII encryption key ID for the SEBT Portal API (AES-256-GCM)."
+      recovery_window = 7
+    }
+    "pii_encryption_key_material_base64" = {
+      description     = "Active PII encryption key material for the SEBT Portal API (AES-256-GCM)."
       recovery_window = 7
     }
   }
+}
+
+# Sync DC's state-specific secrets to Doppler.
+module "state_secrets_doppler" {
+  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=1.1.0"
+  depends_on = [module.state_secrets]
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+  service     = "state-secrets"
+
+  kms_key_arns             = [module.state_secrets.kms_key_arn]
+  doppler_project          = "safety-net-sebt-self-service-portal"
+  doppler_environment_slug = "dev_dc_state_secrets"
+  doppler_workspace_id     = "08430c37e2a2889dc220"
 }
 
 # Deploy the application services (API + Web) using the shared wrapper module.
@@ -122,10 +153,12 @@ module "app" {
   }
 
   state_api_environment_secrets = {
-    "Socure__ApiKey"                            = "${module.state_secrets.secrets["socure"].secret_arn}:api_key"
-    "Socure__WebhookSecret"                     = "${module.state_secrets.secrets["socure"].secret_arn}:webhook_secret"
-    "PiiEncryption__Keys__0__KeyId"             = "${module.state_secrets.secrets["pii_encryption"].secret_arn}:key_id"
-    "PiiEncryption__Keys__0__KeyMaterialBase64" = "${module.state_secrets.secrets["pii_encryption"].secret_arn}:key_material_base64"
+    "JwtSettings__SecretKey"                    = module.state_secrets.secrets["jwt_secret_key"].secret_arn
+    "IdentifierHasher__SecretKey"               = module.state_secrets.secrets["identifier_hasher_secret_key"].secret_arn
+    "Socure__ApiKey"                            = module.state_secrets.secrets["socure_api_key"].secret_arn
+    "Socure__WebhookSecret"                     = module.state_secrets.secrets["socure_webhook_secret"].secret_arn
+    "PiiEncryption__Keys__0__KeyId"             = module.state_secrets.secrets["pii_encryption_key_id"].secret_arn
+    "PiiEncryption__Keys__0__KeyMaterialBase64" = module.state_secrets.secrets["pii_encryption_key_material_base64"].secret_arn
   }
 
   state_web_environment_variables = {}
