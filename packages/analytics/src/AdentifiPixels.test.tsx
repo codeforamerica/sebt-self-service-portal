@@ -16,10 +16,7 @@ describe('AdentifiPixels', () => {
   it('returns empty tag when href is empty', () => {
     vi.spyOn(window, 'location', 'get').mockImplementation(() => ({
       ...originalLocation,
-      href: 'http://localhost:3000/dashboard?user=alex',
-      pathname: '/dashboard',
-      search: '?user=alex',
-      origin: null,
+      href: null,
     }));
 
     const { container } = render(<AdentifiPixels pixelId="test-pixel" />)
