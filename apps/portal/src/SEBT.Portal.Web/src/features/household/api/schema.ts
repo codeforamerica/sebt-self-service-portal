@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
-// Backend enum values map to these strings
+// Backend enum values map to these strings. The API serializes these enums as integers, so the
+// ordinals below are a contract with SEBT.Portal.Core.Models.Household. Changing either side
+// without the other silently mislabels every household. Backend guard: EnumWireContractTests.
 const APPLICATION_STATUS_MAP: Record<number, string> = {
   0: 'Unknown',
   1: 'Pending',

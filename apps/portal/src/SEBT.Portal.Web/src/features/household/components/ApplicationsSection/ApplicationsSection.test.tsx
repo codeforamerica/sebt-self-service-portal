@@ -1,5 +1,6 @@
+import { i18n } from '@sebt/design-system/client'
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
 import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
@@ -7,6 +8,14 @@ import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
 import type { Application, HouseholdData } from '../../api'
 
 import { ApplicationsSection } from './ApplicationsSection'
+
+const CASE_NUMBER_LABEL_KEY = 'applicationsTableHeadingNumber'
+
+// The test i18n instance loads DC resources, and DC marks the case-number label `!N/A!`
+// in dc.csv, so the key is absent. States that do author it (CO) render the block.
+function authorCaseNumberLabel() {
+  i18n.addResource('en', 'dashboard', CASE_NUMBER_LABEL_KEY, 'Case number')
+}
 
 const mockApplication: Application = {
   applicationNumber: 'APP-2026-001',
@@ -54,10 +63,23 @@ function renderWithFlags(flags: FeatureFlagsContextValue = defaultFlags) {
   )
 }
 
+// DC omits this label, so no test may inherit it. Cleared before as well as after each test:
+// clearing only afterwards would let an earlier test, or a stray injection at import time,
+// silently decide the outcome of "omits the case number when the state does not author a label".
+function clearCaseNumberLabel() {
+  const bundle = i18n.getResourceBundle('en', 'dashboard') as Record<string, string> | undefined
+  if (bundle) {
+    delete bundle.applicationsTableHeadingNumber
+  }
+}
+
 describe('ApplicationsSection', () => {
   beforeEach(() => {
     mockReturnData = defaultMockData
+    clearCaseNumberLabel()
   })
+
+  afterEach(clearCaseNumberLabel)
 
   it('renders section heading', () => {
     renderWithFlags()
@@ -65,9 +87,19 @@ describe('ApplicationsSection', () => {
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
   })
 
-  it('renders case number', () => {
+  it('omits the case number when the state does not author a label', () => {
     renderWithFlags()
 
+    expect(screen.queryByText(CASE_NUMBER_LABEL_KEY)).not.toBeInTheDocument()
+    expect(screen.queryByText('CASE-DC-2026-001')).not.toBeInTheDocument()
+  })
+
+  it('renders the case number when the state authors a label', () => {
+    authorCaseNumberLabel()
+
+    renderWithFlags()
+
+    expect(screen.getByText('Case number')).toBeInTheDocument()
     expect(screen.getByText('CASE-DC-2026-001')).toBeInTheDocument()
   })
 
@@ -113,6 +145,27 @@ describe('ApplicationsSection', () => {
     expect(statusText).toHaveClass('text-green')
   })
 
+  it('renders a safe default label for an unmapped status', () => {
+    const unknownApp: Application = { ...mockApplication, applicationStatus: 'Unknown' }
+    mockReturnData = { ...defaultMockData, applications: [unknownApp] }
+
+    renderWithFlags()
+
+    expect(screen.getByText('Status unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
+  })
+
+  it('renders an unmapped status with neutral rather than positive text', () => {
+    const unknownApp: Application = { ...mockApplication, applicationStatus: 'Unknown' }
+    mockReturnData = { ...defaultMockData, applications: [unknownApp] }
+
+    renderWithFlags()
+
+    const statusText = screen.getByText('Status unavailable')
+    expect(statusText).not.toHaveClass('text-green')
+    expect(statusText).toHaveClass('text-base-dark')
+  })
+
   it('renders nothing when no applications', () => {
     mockReturnData = {
       ...defaultMockData,
@@ -140,13 +193,14 @@ describe('ApplicationsSection', () => {
 
     renderWithFlags()
 
-    // Verify both case numbers are shown
-    expect(screen.getByText('CASE-DC-2026-001')).toBeInTheDocument()
-    expect(screen.getByText('CASE-DC-2026-002')).toBeInTheDocument()
+    // Children are rendered unconditionally, unlike the flag- and label-gated case number.
+    expect(screen.getByText('Sophia Martinez, James Martinez')).toBeInTheDocument()
     expect(screen.getByText('Emily Brown')).toBeInTheDocument()
   })
 
   it('hides case number when show_case_number flag is off', () => {
+    authorCaseNumberLabel()
+
     renderWithFlags({
       flags: { ...TEST_FEATURE_FLAGS, show_case_number: false },
       isLoading: false,
