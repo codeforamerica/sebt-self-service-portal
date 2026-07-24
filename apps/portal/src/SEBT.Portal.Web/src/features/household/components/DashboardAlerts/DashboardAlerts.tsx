@@ -1,14 +1,16 @@
 'use client'
 
-import { Alert, Button } from '@sebt/design-system'
+import { Alert, Button, getState } from '@sebt/design-system'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { clearReplacementFlash, getReplacementFlash } from '@/features/cards/utils/replacementFlash'
 import { useHouseholdData } from '@/features/household'
 
 import type { Address } from '../../api'
+import { fillReplacementHeading } from './replacementHeading'
 
 /** Renders a mailing address as stacked lines. */
 function AddressLines({ address }: { address: Address }) {
@@ -36,7 +38,7 @@ function AddressLines({ address }: { address: Address }) {
  * exists, any producer can deep-link to /dashboard?addressVerification=true.
  */
 export function DashboardAlerts() {
-  const { t } = useTranslation('dashboard')
+  const { t, i18n } = useTranslation('dashboard')
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -53,6 +55,14 @@ export function DashboardAlerts() {
     contactUpdateFailed: searchParams.get('contactUpdateFailed') === 'true',
     addressVerification: searchParams.get('addressVerification') === 'true'
   }))
+
+  // Replaced-card details are handed off in memory by the confirm screen (they
+  // are PII, so they never ride URL params or web storage). Read on first
+  // render, clear once mounted.
+  const [replacedCards] = useState(() => getReplacementFlash())
+  useEffect(() => {
+    clearReplacementFlash()
+  }, [])
 
   // "Yes, this is my address" dismisses the check-address prompt in place. There is no
   // backend acknowledgment yet, so this is local-only.
@@ -76,6 +86,17 @@ export function DashboardAlerts() {
     return null
   }
 
+  // CO identifies cards by their last four digits, DC by the child's name; the
+  // per-state alertAddressTitle template expects the matching list. Resolved in
+  // the render path so the heading follows a language switch.
+  const replacedItems =
+    getState() === 'co'
+      ? replacedCards.map((c) => c.ebtCardLastFour).filter((d): d is string => Boolean(d))
+      : replacedCards.map((c) => `${c.childFirstName} ${c.childLastName}`)
+  const cardReplacedHeading = alerts.cardReplaced
+    ? fillReplacementHeading(t('alertAddressTitle'), replacedItems, i18n.language)
+    : null
+
   return (
     <div className="margin-bottom-3 display-flex flex-column gap-2">
       {alerts.addressUpdated && <Alert variant="success">{t('alertAddressUpdated')}</Alert>}
@@ -83,7 +104,7 @@ export function DashboardAlerts() {
       {alerts.cardReplaced && (
         <Alert
           variant="success"
-          heading={t('alertCardReplacedHeading', 'Your replacement card request has been recorded')}
+          {...(cardReplacedHeading !== null ? { heading: cardReplacedHeading } : {})}
         >
           {householdData?.addressOnFile && <AddressLines address={householdData.addressOnFile} />}
           {t('alertAddressBody')}

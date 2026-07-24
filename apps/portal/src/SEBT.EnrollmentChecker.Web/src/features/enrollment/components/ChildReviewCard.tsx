@@ -17,6 +17,8 @@ function formatBirthdate(dateOfBirth: string, locale: string): string {
 }
 
 export function ChildReviewCard({ child, onEdit, onRemove }: ChildReviewCardProps) {
+  // The confirmInfo table* keys exist only in the CO sheet (DC marks them
+  // !N/A!); a DC build renders raw key names on this card.
   const { t, i18n } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
 
