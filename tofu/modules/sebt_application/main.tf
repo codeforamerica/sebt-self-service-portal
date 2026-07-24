@@ -91,10 +91,8 @@ module "api" {
     "Redis__Password"              = "${module.redis.auth_token_secret_arn}:auth_token"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
-    "JwtSettings__SecretKey"       = "${module.secrets.secrets["auth"].secret_arn}:jwt_secret_key"
-    "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["auth"].secret_arn}:identifier_hasher_secret_key"
-    "Smarty__AuthId"               = "${module.secrets.secrets["smarty"].secret_arn}:auth_id"
-    "Smarty__AuthToken"            = "${module.secrets.secrets["smarty"].secret_arn}:auth_token"
+    "Smarty__AuthId"               = module.secrets.secrets["smarty_auth_id"].secret_arn
+    "Smarty__AuthToken"            = module.secrets.secrets["smarty_auth_token"].secret_arn
   }, var.state_api_environment_secrets)
 
   # Forward application traces to Datadog APM when the integration API key is
@@ -160,22 +158,41 @@ module "web" {
 
 # Store application secrets in Secrets Manager.
 module "secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.1.1"
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
   service     = "api"
 
   secrets = {
-    "auth" = {
-      description     = "JWT and identifier hashing secrets for the SEBT Portal API."
+    "smarty_auth_id" = {
+      description     = "Smarty address validation API auth ID."
       recovery_window = var.secret_recovery_period
     }
-    "smarty" = {
-      description     = "Smarty address validation API credentials."
+    "smarty_auth_token" = {
+      description     = "Smarty address validation API auth token."
       recovery_window = var.secret_recovery_period
     }
   }
+}
+
+# Sync the API's secrets to Doppler so they can be managed from a single
+# place instead of the AWS console. Doppler pushes to this existing secret's
+# ARN; it doesn't create its own. Smarty's credentials are a single shared
+# vendor account used by every state, so both DC and CO read from the same
+# root "dev" config instead of a per-state branch.
+module "doppler" {
+  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=1.1.0"
+  depends_on = [module.secrets]
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+  service     = "api"
+
+  kms_key_arns             = [module.secrets.kms_key_arn]
+  doppler_project          = "safety-net-sebt-self-service-portal"
+  doppler_environment_slug = "dev"
+  doppler_workspace_id     = "08430c37e2a2889dc220"
 }
 
 # Create the RDS SQL Server database.
