@@ -1,4 +1,5 @@
 import { env } from '@/env'
+import { resolveApiProxyUrl } from '@/lib/apiProxyPath'
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = env.BACKEND_URL
@@ -15,14 +16,13 @@ type RouteContext = {
 async function proxyRequest(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { path } = await context.params
 
-  // Reject path segments that could escape /api/ (e.g., ".." → /api/../internal/metrics)
-  if (path?.some((segment) => segment === '..' || segment === '.')) {
+  // Guard against path traversal — literal or URL-encoded — smuggling the request
+  // out of /api/ (e.g. /api/x%2f..%2f..%2fhealth resolving to the backend's /health
+  // or /swagger). Returns null when the request must be rejected. See @/lib/apiProxyPath.
+  const url = resolveApiProxyUrl(path, BACKEND_URL, request.nextUrl.search)
+  if (url === null) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
   }
-
-  const pathname = path ? `/api/${path.join('/')}` : '/api'
-  const url = new URL(pathname, BACKEND_URL)
-  url.search = request.nextUrl.search
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)

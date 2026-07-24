@@ -181,8 +181,12 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
                 {group.childFirstName} {group.childLastName}&apos;s card
                 {currentState === 'co' && group.ebtCardLastFour && (
                   <span className="usa-checkbox__label-description">
-                    {/* TODO update with {t('cardNumber')} */}
-                    Card number: {group.ebtCardLastFour} (last 4 digits)
+                    {/* The DC sheet marks optionalId.cardNumber !N/A!; the defaultValue
+                        covers bundles without it. */}
+                    {tOptional('cardNumber', 'Card number: [9999] (last 4 digits)').replace(
+                      '[9999]',
+                      group.ebtCardLastFour
+                    )}
                   </span>
                 )}
               </label>
