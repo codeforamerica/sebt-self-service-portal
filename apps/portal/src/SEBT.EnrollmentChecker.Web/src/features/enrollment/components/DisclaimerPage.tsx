@@ -3,6 +3,8 @@
 import { Button } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
+import { AdentifiPixels } from '@sebt/analytics'
+import { env } from '@/lib/env'
 
 export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
@@ -32,6 +34,10 @@ export function DisclaimerPage() {
           <Button onClick={() => router.push('/check')}>{t('continue', { ns: 'common' })}</Button>
         </div>
       </div>
+
+      {env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW && (
+        <AdentifiPixels pixelId={env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW} />
+      )}
     </div>
   )
 }
