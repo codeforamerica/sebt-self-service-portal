@@ -1,6 +1,6 @@
-# Local Keycloak OIDC (dev / POC only)
+# Local Keycloak OIDC (dev/demo only)
 
-Keycloak stands in for PingOne / myColorado during local CO development so you can exercise the portal’s OIDC login, logout, and step-up flows without a third-party IdP.
+Keycloak stands in for PingOne/MyColorado during local CO development so you can exercise the portal’s OIDC login, logout, and step-up flows without a third-party IdP.
 
 Never deploy this to production. The compose service is gated behind a Docker Compose profile and uses insecure `start-dev` defaults.
 
@@ -43,12 +43,6 @@ Alternatively, edit user emails in the Keycloak admin UI to match your existing 
 
 Password for all users: `password`
 
-| Username | Email | Phone attribute | Notes |
-| --- | --- | --- | --- |
-| `co-loaded` | `sebt.co+co-loaded@example.com` | `8185558437` | Matches default `DevelopmentPhoneOverride` and co-loaded mock household |
-| `verified` | `sebt.co+verified@example.com` | `3035551009` | Verified-style persona |
-| `ial1-only` | `sebt.co+non-co-loaded@example.com` | `3035551999` | No Socure verification attributes; use for IAL1 / step-up |
-
 Login client (`sebt-portal`) emits `email`, `phone` / `phone_number`, and profile claims.  
 Step-up client (`sebt-portal-stepup`) also emits `socureIdVerificationLevel` / `socureIdVerificationDate` from user attributes when present.
 
@@ -73,5 +67,6 @@ docker compose --profile keycloak up -d keycloak
 
 ## Related
 
+- [ADR-0019](../adr/0019-keycloak-local-oidc-stand-in.md): why Keycloak as the local OIDC stand-in
 - [ADR-0008](../adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md): portal OIDC flow
 - [ADR-0012](../adr/0012-oidc-rp-initiated-logout.md): RP-initiated logout
