@@ -68,11 +68,26 @@ function parseProtocol(value: string | undefined): OtlpProtocol {
 }
 
 /**
+ * Default mode for a single signal. A signal is exported over OTLP when the
+ * general endpoint is set (which enables all signals) or when its own
+ * signal-specific endpoint is set; otherwise it stays dark ('none'). This keeps
+ * a lone signal-specific endpoint from silently enabling the other two.
+ */
+function signalDefault(
+  hasGeneralEndpoint: boolean,
+  signalEndpoint: string | undefined
+): ExporterMode {
+  return hasGeneralEndpoint || cleanString(signalEndpoint) !== undefined ? 'otlp' : 'none'
+}
+
+/**
  * Resolve OpenTelemetry configuration from the environment.
  *
- * The default per-signal mode is driven by whether any OTLP endpoint is
- * configured: endpoint present -> 'otlp'; absent -> 'none'. "None" is the
- * inert/dark state — e.g. a deployed environment not yet pointed at a collector.
+ * Each signal's default mode is driven per-signal: the general
+ * OTEL_EXPORTER_OTLP_ENDPOINT enables all three, while a signal-specific
+ * endpoint (OTEL_EXPORTER_OTLP_{TRACES,METRICS,LOGS}_ENDPOINT) enables only that
+ * signal. Absent any applicable endpoint a signal defaults to 'none' — the
+ * inert/dark state, e.g. a deployed environment not yet pointed at a collector.
  *
  * Each signal can be overridden independently with the standard
  * OTEL_{TRACES,METRICS,LOGS}_EXPORTER variables (otlp | console | none), which
@@ -82,20 +97,20 @@ export function resolveOtelConfig(
   env: NodeJS.ProcessEnv,
   options: ResolveOtelConfigOptions
 ): OtelConfig {
-  const hasEndpoint =
-    cleanString(env.OTEL_EXPORTER_OTLP_ENDPOINT) !== undefined ||
-    cleanString(env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) !== undefined ||
-    cleanString(env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT) !== undefined ||
-    cleanString(env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT) !== undefined
-
-  const defaultMode: ExporterMode = hasEndpoint ? 'otlp' : 'none'
+  const hasGeneralEndpoint = cleanString(env.OTEL_EXPORTER_OTLP_ENDPOINT) !== undefined
 
   const config: OtelConfig = {
     serviceName: cleanString(env.OTEL_SERVICE_NAME) ?? options.defaultServiceName,
     protocol: parseProtocol(env.OTEL_EXPORTER_OTLP_PROTOCOL),
-    traces: parseMode(env.OTEL_TRACES_EXPORTER) ?? defaultMode,
-    metrics: parseMode(env.OTEL_METRICS_EXPORTER) ?? defaultMode,
-    logs: parseMode(env.OTEL_LOGS_EXPORTER) ?? defaultMode
+    traces:
+      parseMode(env.OTEL_TRACES_EXPORTER) ??
+      signalDefault(hasGeneralEndpoint, env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT),
+    metrics:
+      parseMode(env.OTEL_METRICS_EXPORTER) ??
+      signalDefault(hasGeneralEndpoint, env.OTEL_EXPORTER_OTLP_METRICS_ENDPOINT),
+    logs:
+      parseMode(env.OTEL_LOGS_EXPORTER) ??
+      signalDefault(hasGeneralEndpoint, env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT)
   }
 
   const serviceVersion = cleanString(env.OTEL_SERVICE_VERSION)

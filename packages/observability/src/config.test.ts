@@ -28,13 +28,15 @@ describe('resolveOtelConfig', () => {
     expect(config.logs).toBe('otlp')
   })
 
-  it('treats a signal-specific endpoint as enough to default that signal to otlp', () => {
+  it('enables only the signal whose signal-specific endpoint is set', () => {
     const config = resolveOtelConfig(
       { OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'http://localhost:4318/v1/traces' },
       options
     )
 
     expect(config.traces).toBe('otlp')
+    expect(config.metrics).toBe('none')
+    expect(config.logs).toBe('none')
   })
 
   it('uses the default service name when OTEL_SERVICE_NAME is unset', () => {
