@@ -164,7 +164,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
             // configured discovery URL is itself http.
             var retriever = new HttpDocumentRetriever(DiscoveryHttpClient)
             {
-                RequireHttps = url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)
+                RequireHttps = DiscoveryRequiresHttps(url)
             };
             return new ConfigurationManager<OpenIdConnectConfiguration>(
                 url,
@@ -174,6 +174,13 @@ public sealed class OidcExchangeService : IOidcExchangeService
 
         return await configManager.GetConfigurationAsync(cancellationToken);
     }
+
+    /// <summary>
+    /// Whether discovery document retrieval must use HTTPS for the given endpoint URL.
+    /// True for <c>https://</c> IdPs; false for local <c>http://</c> stand-ins such as Keycloak.
+    /// </summary>
+    internal static bool DiscoveryRequiresHttps(string discoveryEndpoint) =>
+        discoveryEndpoint.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc/>
     public async Task<OidcExchangeResult> ExchangeCodeAsync(
