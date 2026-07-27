@@ -111,7 +111,7 @@ module "api" {
 # via an internet facing Application Load Balancer. It communicates with the                                                                      
 # API service internally through the VPC.                                                                                                         
 module "web" {
-  source  = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
+  source  = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.13.0"
   project = "${var.project}-${var.state}"
   # TODO Make project_short a variable
   project_short = "sebt"
