@@ -6,18 +6,21 @@
 // (script injection via untrusted input) -- low risk here since the content is our own
 // plan output, but the fix is free and avoids the anti-pattern either way.
 //
-// Full plan output also includes one "Refreshing state..."/"Reading..." line per
-// resource, which dwarfs the actual diff on a repo this size and can make the combined
-// dc+co comment too large for actions/github-script's underlying node process to even
-// start (an OS argument/environment size limit, not a GitHub API rejection). Keep only
-// the actual plan: from the summary/actions header down through the "Plan: X to add..."
-// line, dropping the refresh noise before it and the deprecation warnings after it. A
-// hard length cap is a safety net in case even that section is still too large, or the
-// expected markers aren't found (e.g. a real error, which is shown in full rather than
-// silently cut).
-const MAX_PLAN_LENGTH = 30000;
+// Two independent size constraints to account for:
+//   1. GitHub hard-rejects comment bodies over 65536 characters (a 422 error) -- a real,
+//      unavoidable limit no matter how the plan itself is generated.
+//   2. Full plan output used to include one "Refreshing state..."/"Reading..." line per
+//      resource, dwarfing the actual diff on a repo this size. That's now handled at the
+//      source by running `tofu plan -concise`. extractPlanSummary below still trims from
+//      the actions header through the "Plan: X to add..." line (in case -concise ever
+//      leaves something behind, and to drop the trailing deprecation warnings), and
+//      falls back to showing the full text if no known markers are found, so a real
+//      error isn't silently hidden.
+const COMMENT_LIMIT = 65536;
+const MARKDOWN_OVERHEAD_PER_SECTION = 60; // "## Plan output — dev-xx\n\n```\n" + "\n```\n\n"
+const TRUNCATION_NOTICE = "\n\n... (truncated — see the full output in the workflow run)";
 
-function summarizePlan(plan) {
+function extractPlanSummary(plan) {
   if (!plan) return plan;
 
   const startMarkers = [
@@ -31,19 +34,29 @@ function summarizePlan(plan) {
       startIndex = idx;
     }
   }
-  // Couldn't find a known marker -- likely an error. Show it in full (subject to the
-  // length cap below) rather than hide it.
+  // Couldn't find a known marker -- likely an error. Show it in full rather than hide it.
   let summary = startIndex === -1 ? plan : plan.slice(startIndex);
 
   const planLine = summary.match(/Plan: \d+ to add, \d+ to change, \d+ to destroy\./);
   if (planLine) {
     summary = summary.slice(0, planLine.index + planLine[0].length);
   }
-
-  if (summary.length > MAX_PLAN_LENGTH) {
-    summary = summary.slice(0, MAX_PLAN_LENGTH) + "\n\n... (truncated — see the full output in the workflow run)";
-  }
   return summary;
+}
+
+// Splits `budget` characters between two plans. A plan shorter than its even share just
+// uses what it needs; the unused portion goes to the other plan instead of being wasted
+// on a fixed 50/50 split.
+function splitBudget(a, b, budget) {
+  const half = Math.floor(budget / 2);
+  if (a.length <= half) return [a.length, Math.min(b.length, budget - a.length)];
+  if (b.length <= half) return [Math.min(a.length, budget - b.length), b.length];
+  return [half, budget - half];
+}
+
+function truncate(plan, limit) {
+  if (plan.length <= limit) return plan;
+  return plan.slice(0, Math.max(0, limit - TRUNCATION_NOTICE.length)) + TRUNCATION_NOTICE;
 }
 
 module.exports = async ({ github, context }) => {
@@ -56,8 +69,15 @@ module.exports = async ({ github, context }) => {
     (comment) => comment.user.type === "Bot" && comment.body.includes("## Plan output")
   );
 
-  const dcPlan = summarizePlan(process.env.DC_PLAN);
-  const coPlan = summarizePlan(process.env.CO_PLAN);
+  let dcPlan = extractPlanSummary(process.env.DC_PLAN) || "";
+  let coPlan = extractPlanSummary(process.env.CO_PLAN) || "";
+
+  const budget = COMMENT_LIMIT - 2 * MARKDOWN_OVERHEAD_PER_SECTION;
+  if (dcPlan.length + coPlan.length > budget) {
+    const [dcLimit, coLimit] = splitBudget(dcPlan, coPlan, budget);
+    dcPlan = truncate(dcPlan, dcLimit);
+    coPlan = truncate(coPlan, coLimit);
+  }
 
   let output = "";
   if (dcPlan) {
