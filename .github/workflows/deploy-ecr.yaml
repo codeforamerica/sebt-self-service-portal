@@ -65,84 +65,18 @@ jobs:
     if: always() && (needs.plan-dc.outputs.plan || needs.plan-co.outputs.plan)
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
       - name: Post plan to PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DC_PLAN: ${{ needs.plan-dc.outputs.plan }}
+          CO_PLAN: ${{ needs.plan-co.outputs.plan }}
         with:
           script: |
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && comment.body.includes('## Plan output');
-            });
-
-            // Full plan output includes one "Refreshing state..."/"Reading..." line per
-            // resource, which dwarfs the actual diff on a repo this size and can make the
-            // combined dc+co output too large for actions/github-script's underlying node
-            // process to even start (OS argument/environment size limit, not a GitHub API
-            // rejection). Keep only the actual plan: from the summary/actions header down
-            // through the "Plan: X to add..." line, dropping the refresh noise before it
-            // and the deprecation warnings after it. A hard length cap is a safety net in
-            // case even that section is still too large, or the expected markers aren't
-            // found (e.g. a real error, which is shown in full rather than silently cut).
-            const MAX_PLAN_LENGTH = 30000;
-            function summarizePlan(plan) {
-              if (!plan) return plan;
-
-              const startMarkers = [
-                'OpenTofu used the selected providers to generate the following execution plan',
-                'No changes. Your infrastructure matches the configuration.',
-              ];
-              let startIndex = -1;
-              for (const marker of startMarkers) {
-                const idx = plan.indexOf(marker);
-                if (idx !== -1 && (startIndex === -1 || idx < startIndex)) {
-                  startIndex = idx;
-                }
-              }
-              // Couldn't find a known marker — likely an error. Show it in full (subject
-              // to the length cap below) rather than hide it.
-              let summary = startIndex === -1 ? plan : plan.slice(startIndex);
-
-              const planLine = summary.match(/Plan: \d+ to add, \d+ to change, \d+ to destroy\./);
-              if (planLine) {
-                summary = summary.slice(0, planLine.index + planLine[0].length);
-              }
-
-              if (summary.length > MAX_PLAN_LENGTH) {
-                summary = summary.slice(0, MAX_PLAN_LENGTH) + '\n\n... (truncated — see the full output in the workflow run)';
-              }
-              return summary;
-            }
-
-            let output = '';
-              const dcPlan = summarizePlan(`${{ needs.plan-dc.outputs.plan }}`);
-              const coPlan = summarizePlan(`${{ needs.plan-co.outputs.plan }}`);
-
-              if (dcPlan) {
-                output += `## Plan output — dev-dc\n\n\`\`\`\n${dcPlan}\n\`\`\`\n\n`;
-              }
-              if (coPlan) {
-                output += `## Plan output — dev-co\n\n\`\`\`\n${coPlan}\n\`\`\``;
-              }
-
-              if (botComment) {
-                github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: botComment.id,
-                  body: output,
-                });
-              } else {
-                github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: output,
-                });
-              }
+            const postPlanComment = require('./.github/workflows/scripts/post-plan-comment.js');
+            await postPlanComment({ github, context });
 
   # Build and deploy only on push to main or manual trigger, not on PRs
   build:
