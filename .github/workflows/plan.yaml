@@ -85,4 +85,4 @@ jobs:
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
         working-directory: tofu/config/${{ inputs.config }}
-        run: tofu plan -no-color -input=false -var="image_tag=${IMAGE_TAG}"
+        run: tofu plan -concise -no-color -input=false -var="image_tag=${IMAGE_TAG}"
