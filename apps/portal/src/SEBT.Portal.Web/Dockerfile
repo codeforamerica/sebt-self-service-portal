@@ -29,6 +29,9 @@ COPY packages/design-system/ ./packages/design-system/
 # Copy analytics workspace package (required by web imports of @sebt/analytics)
 COPY packages/analytics/ ./packages/analytics/
 
+# Copy observability workspace package (required by web imports of @sebt/observability)
+COPY packages/observability/ ./packages/observability/
+
 # Copy web workspace
 COPY apps/portal/src/SEBT.Portal.Web/ ./apps/portal/src/SEBT.Portal.Web/
 

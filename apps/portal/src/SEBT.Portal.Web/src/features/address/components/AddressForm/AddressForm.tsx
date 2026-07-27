@@ -31,7 +31,14 @@ interface AddressFormProps {
 // re-translate at render time when the user switches language (DC-454). Most keys live in the
 // `validation` namespace; the street-address ones live in `confirmInfo`. `code` is the
 // taxonomy-aligned analytics error_code reported when client-side validation blocks submit.
-type FieldErrorDescriptor = { ns: 'validation' | 'confirmInfo'; key: string; code?: string }
+type FieldErrorDescriptor = {
+  ns: 'validation' | 'confirmInfo'
+  key: string
+  code?: string
+  // Shown when the key is absent from the active state's bundle (e.g. a row
+  // the content sheet marks !N/A! for one state).
+  defaultValue?: string
+}
 
 interface FieldErrors {
   streetAddress1?: FieldErrorDescriptor
@@ -141,8 +148,12 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
   // Resolve a field-error descriptor at render time: confirmInfo keys via `t`, validation
   // keys via `tValidation`. Call sites guard on the descriptor being present.
-  const resolveFieldError = (d: FieldErrorDescriptor): string =>
-    d.ns === 'validation' ? tValidation(d.key) : t(d.key)
+  const resolveFieldError = (d: FieldErrorDescriptor): string => {
+    if (d.ns === 'validation') {
+      return d.defaultValue === undefined ? tValidation(d.key) : tValidation(d.key, d.defaultValue)
+    }
+    return d.defaultValue === undefined ? t(d.key) : t(d.key, d.defaultValue)
+  }
 
   const isSubmitting = updateAddress.isPending
   const hasErrors = Object.keys(fieldErrors).length > 0
@@ -170,7 +181,14 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
       errors.streetAddress1 = required
     } else if (streetAddress1.trim().length > 30) {
       // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
-      errors.streetAddress1 = { ns: 'confirmInfo', key: 'helperStreetAddress', code: 'TOO_LONG' }
+      // Both state sheets mark confirmInfo.helperStreetAddress !N/A!, so no
+      // bundle carries it; the defaultValue keeps this error usable.
+      errors.streetAddress1 = {
+        ns: 'confirmInfo',
+        key: 'helperStreetAddress',
+        code: 'TOO_LONG',
+        defaultValue: 'Enter a street address shorter than 30 characters.'
+      }
     }
     if (!city.trim()) errors.city = required
     if (!stateValue.trim()) errors.state = required
