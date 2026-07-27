@@ -131,7 +131,7 @@ services:
   # Local OIDC IdP for CO development (this will NEVER be used for production).
   # Docs: docs/development/keycloak-oidc.md
   keycloak:
-    image: quay.io/keycloak/keycloak:26.2
+    image: quay.io/keycloak/keycloak:26.2@sha256:4883630ef9db14031cde3e60700c9a9a8eaf1b5c24db1589d6a2d43de38ba2a9
     container_name: sebt_keycloak
     profiles:
       - keycloak
