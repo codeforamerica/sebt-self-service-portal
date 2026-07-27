@@ -14,7 +14,7 @@ module "api" {
   source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.13.0"
 
   project       = "${var.project}-${var.state}"
-  project_short = "sebt"
+  project_short = var.project_short
   environment   = var.environment
   service       = "api"
   service_short = "api"
@@ -111,7 +111,7 @@ module "api" {
 module "web" {
   source        = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.14.0"
   project       = "${var.project}-${var.state}"
-  project_short = "sebt"
+  project_short = var.project_short
   environment   = var.environment
   service       = "web"
   service_short = "web"
@@ -199,7 +199,7 @@ module "database" {
   source = "../sebt_database"
 
   project         = "${var.project}-${var.state}"
-  project_short   = "sebt"
+  project_short   = var.project_short
   environment     = var.environment
   vpc_id          = var.vpc_id
   subnets         = var.private_subnets
@@ -224,7 +224,7 @@ module "redis" {
   source = "../sebt_redis"
 
   project       = "${var.project}-${var.state}"
-  project_short = "sebt"
+  project_short = var.project_short
   environment   = var.environment
   vpc_id        = var.vpc_id
   subnets       = var.private_subnets
