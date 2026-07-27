@@ -11,7 +11,7 @@ module "appconfig" {
 # within the VPC. It runs the .NET backend API on Fargate behind an internal
 # Application Load Balancer.
 module "api" {
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.13.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.14.0"
 
   project       = "${var.project}-${var.state}"
   project_short = var.project_short
