@@ -88,7 +88,6 @@ const CONFIG = {
   outputDir: outDirOverride
     ? path.resolve(process.cwd(), outDirOverride)
     : join(contentDir, 'locales'),
-  hashFile: join(contentDir, '.copy-hash'),
   locales: {
     am: 'Amharic',    
     en: 'English',
@@ -175,6 +174,11 @@ const CONFIG = {
     'bulk order new cards': 'replacementCards',
   },
 };
+
+// The hash lives inside each output directory so every consumer (portal,
+// enrollment checker, package default) caches independently — a shared hash
+// file would let the first app's regeneration silently skip the second's.
+CONFIG.hashFile = join(CONFIG.outputDir, '.copy-hash');
 
 /**
  * Parse CSV content into rows
@@ -426,6 +430,9 @@ function calculateCombinedHash(stateFiles) {
   // Include the script itself so logic changes invalidate the cache
   hash.update(readFileSync(fileURLToPath(import.meta.url), 'utf8'));
 
+  // Include output-shaping CLI args so e.g. a --sections change regenerates
+  hash.update(JSON.stringify({ app: appFilter, sections: allowedSections }));
+
   for (const { state, csvPath } of stateFiles) {
     if (existsSync(csvPath)) {
       const content = readFileSync(csvPath, 'utf8');
@@ -473,6 +480,7 @@ function needsRegeneration(stateFiles) {
  */
 function saveHash(stateFiles) {
   const hash = calculateCombinedHash(stateFiles);
+  mkdirSync(CONFIG.outputDir, { recursive: true });
   writeFileSync(CONFIG.hashFile, hash, 'utf8');
 }
 
@@ -568,6 +576,13 @@ const NAMESPACE_APP = {
   stepUpDisclaimer:       'portal',
   stepUpFailure:          'portal',
   proto:                  'portal',
+  // S11 error/maintenance pages — namespaces derive from the CSV page names.
+  // No code consumes these yet; classification keeps each app's bundle free of
+  // the other app's page copy.
+  '404Portal':                  'portal',
+  maintenancePortal:            'portal',
+  '404EnrollmentChecker':       'enrollment',
+  maintenanceEnrollmentChecker: 'enrollment',
 }
 
 function isNamespaceForApp(namespace, app) {

@@ -2,6 +2,8 @@ import { act, render, screen } from '@testing-library/react'
 import { useEffect } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { i18n } from '@sebt/design-system/client'
+import enCoDev from '@/content/locales/en/co/dev.json'
+import esCoDev from '@/content/locales/es/co/dev.json'
 import { EnrollmentProvider, useEnrollment } from '@/features/enrollment/context/EnrollmentContext'
 import { checkEnrollment } from '@/features/enrollment/api/checkEnrollment'
 import Page from './page'
@@ -86,17 +88,17 @@ describe('review Page — submit error copy', () => {
     })
   }
 
-  it('shows helpful copy, not the raw key, when the check fails with a server error', async () => {
+  it('shows the generic error copy, not the raw key, when the check fails with a server error', async () => {
     mockedCheckEnrollment.mockRejectedValue(new Error('enrollment check failed: 500'))
     await renderAndSubmit()
-    expect(await screen.findByText(/system maintenance/i)).toBeInTheDocument()
-    expect(screen.queryByText('submitError')).toBeNull()
+    expect(await screen.findByText(enCoDev.enrollmentCheckerErrorResponse)).toBeInTheDocument()
+    expect(screen.queryByText('enrollmentCheckerErrorResponse')).toBeNull()
   })
 
-  it('shows the Spanish maintenance copy when the language is Spanish', async () => {
+  it('shows the Spanish generic error copy when the language is Spanish', async () => {
     mockedCheckEnrollment.mockRejectedValue(new Error('enrollment check failed: 503'))
     await renderAndSubmit('es')
-    expect(await screen.findByText(/mantenimiento del sistema/i)).toBeInTheDocument()
+    expect(await screen.findByText(esCoDev.enrollmentCheckerErrorResponse)).toBeInTheDocument()
   })
 
   it('shows helpful copy, not the raw key, on a rate-limit (429) failure', async () => {
@@ -111,14 +113,14 @@ describe('review Page — submit error copy', () => {
   it('re-translates the error banner immediately when the language flips, without a resubmit', async () => {
     mockedCheckEnrollment.mockRejectedValue(new Error('enrollment check failed: 502'))
     await renderAndSubmit()
-    expect(await screen.findByText(/system maintenance/i)).toBeInTheDocument()
+    expect(await screen.findByText(enCoDev.enrollmentCheckerErrorResponse)).toBeInTheDocument()
 
     await act(async () => {
       await i18n.changeLanguage('es')
     })
 
-    expect(await screen.findByText(/mantenimiento del sistema/i)).toBeInTheDocument()
-    expect(screen.queryByText(/system maintenance/i)).toBeNull()
+    expect(await screen.findByText(esCoDev.enrollmentCheckerErrorResponse)).toBeInTheDocument()
+    expect(screen.queryByText(enCoDev.enrollmentCheckerErrorResponse)).toBeNull()
     expect(mockedCheckEnrollment).toHaveBeenCalledTimes(1)
   })
 })

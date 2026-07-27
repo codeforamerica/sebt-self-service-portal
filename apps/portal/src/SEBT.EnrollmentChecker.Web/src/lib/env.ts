@@ -24,9 +24,13 @@ export const env = createEnv({
     NEXT_PUBLIC_PORTAL_URL: z.string().url(),
     NEXT_PUBLIC_APPLICATION_URL: z.string().url(),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1).optional(),
+    NEXT_PUBLIC_META_PIXEL: z.string().min(1).optional(),
+    NEXT_PUBLIC_META_PIXEL_ACTION: z.string().min(1).optional(),
     NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(1).optional(),
     NEXT_PUBLIC_SITEIMPROVE_ID: z.string().min(1).optional(),
-    NEXT_PUBLIC_GA_ID: z.string().regex(/^G-/).optional()
+    NEXT_PUBLIC_GA_ID: z.string().regex(/^G-/).optional(),
+    NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING: z.string().min(1).optional(),
+    NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW: z.string().min(1).optional()
   },
   runtimeEnv: {
     NODE_ENV: process.env.NODE_ENV,
@@ -40,9 +44,13 @@ export const env = createEnv({
     NEXT_PUBLIC_PORTAL_URL: process.env.NEXT_PUBLIC_PORTAL_URL,
     NEXT_PUBLIC_APPLICATION_URL: process.env.NEXT_PUBLIC_APPLICATION_URL,
     NEXT_PUBLIC_AMPLITUDE_API_KEY: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
+    NEXT_PUBLIC_META_PIXEL: process.env.NEXT_PUBLIC_META_PIXEL,
+    NEXT_PUBLIC_META_PIXEL_ACTION: process.env.NEXT_PUBLIC_META_PIXEL_ACTION,
     NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
     NEXT_PUBLIC_SITEIMPROVE_ID: process.env.NEXT_PUBLIC_SITEIMPROVE_ID,
-    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID
+    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
+    NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING: process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING,
+    NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW: process.env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW
   },
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
   emptyStringAsUndefined: true
