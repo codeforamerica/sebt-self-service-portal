@@ -11,7 +11,7 @@ module "appconfig" {
 # within the VPC. It runs the .NET backend API on Fargate behind an internal
 # Application Load Balancer.
 module "api" {
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.14.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=10d4c56eb6c156c7a670ee19e40caad476c81a1b" # 1.14.0
 
   project       = "${var.project}-${var.state}"
   project_short = var.project_short
@@ -109,7 +109,7 @@ module "api" {
 # via an internet facing Application Load Balancer. It communicates with the                                                                      
 # API service internally through the VPC.                                                                                                         
 module "web" {
-  source        = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.14.0"
+  source        = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=10d4c56eb6c156c7a670ee19e40caad476c81a1b" # 1.14.0
   project       = "${var.project}-${var.state}"
   project_short = var.project_short
   environment   = var.environment
@@ -170,7 +170,7 @@ module "web" {
 
 # Store application secrets in Secrets Manager.
 module "secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.1.1"
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=1880642d0546106d0c1f568304c0326b32b8cdbb" # 2.1.1
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
@@ -194,7 +194,7 @@ module "secrets" {
 # vendor account used by every state, so both DC and CO read from the same
 # root "dev" config instead of a per-state branch.
 module "doppler" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=1.1.0"
+  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=e8ba5edac1eaf156702c89e0c9cd84f86dcafbfc" # 1.1.0
   depends_on = [module.secrets]
 
   project     = "${var.project}-${var.state}"

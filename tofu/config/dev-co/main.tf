@@ -59,7 +59,7 @@ data "aws_route53_zone" "main" {
 # Store Colorado-specific secrets in Secrets Manager. Each key represents a
 # separate secret for a specific service or integration.
 module "state_secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.1.1"
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=1880642d0546106d0c1f568304c0326b32b8cdbb" # 2.1.1
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
@@ -107,7 +107,7 @@ module "state_secrets" {
 
 # Sync Colorado's state-specific secrets to Doppler.
 module "state_secrets_doppler" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=1.1.0"
+  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=e8ba5edac1eaf156702c89e0c9cd84f86dcafbfc" # 1.1.0
   depends_on = [module.state_secrets]
 
   project     = "${var.project}-${var.state}"
