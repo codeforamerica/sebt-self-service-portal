@@ -56,7 +56,15 @@ function splitBudget(a, b, budget) {
 
 function truncate(plan, limit) {
   if (plan.length <= limit) return plan;
-  return plan.slice(0, Math.max(0, limit - TRUNCATION_NOTICE.length)) + TRUNCATION_NOTICE;
+
+  // Preserve the trailing "Plan: X to add..." summary line -- the single most useful
+  // line for a quick scan -- by cutting from the middle instead of the tail. Falls back
+  // to a plain head-truncation when there's no summary line to preserve (e.g. the
+  // no-changes case, which is short enough to never hit this path anyway, or an error).
+  const tailMatch = plan.match(/\n?Plan: \d+ to add, \d+ to change, \d+ to destroy\.\s*$/);
+  const tail = tailMatch ? tailMatch[0] : "";
+  const headBudget = Math.max(0, limit - tail.length - TRUNCATION_NOTICE.length);
+  return plan.slice(0, headBudget) + TRUNCATION_NOTICE + tail;
 }
 
 module.exports = async ({ github, context }) => {
