@@ -226,6 +226,8 @@ When neither is configured, the application falls back to in-memory caching only
 
 [Jaeger](https://github.com/jaegertracing/jaeger) acts as a local OTLP collector for OpenTelemetry tracing. The default configuration for the portal sends traces and metrics via OTLP over gRPC to http://localhost:4317, which is the standard port. Local traces can be viewed in the Jaeger UI at [http://localhost:16686](http://localhost:16686).
 
+The Next.js web apps (`SEBT.Portal.Web`, `SEBT.EnrollmentChecker.Web`) also emit OTLP here, but only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set — they stay inert otherwise. `.env.example` points it at `http://localhost:4317`; copy that into `.env.local` to see web-tier traces alongside the API's.
+
 ### Local Build & Test (Debug mode)
 
 ```bash
