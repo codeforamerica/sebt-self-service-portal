@@ -26,16 +26,17 @@ Login UI uses the custom `sebt` theme under `docker/keycloak/themes/sebt` (potat
 
 1. Copy values from [`appsettings.keycloak.example.json`](../../apps/portal/src/SEBT.Portal.Api/appsettings.keycloak.example.json) into your local `appsettings.co.json` / `appsettings.Development.json`, or set the equivalent env vars (`Oidc__DiscoveryEndpoint`, and so on).
 2. Keep `Oidc:CompleteLoginSigningKey` at least 32 characters.
-3. For mock households to resolve by email, set seeding to match Keycloak fixture users:
+3. Leave `DevelopmentPhoneOverride:Phone` empty so household lookup uses the JWT `phone` claim. A non-empty override can load a household that does not match the signed-in user.
+4. For mock households to resolve by email, set seeding to match Keycloak fixture users (same pattern as `appsettings.co.example.json`):
 
 ```json
 "Seeding": {
-  "EmailPattern": "sebt.co+{0}@example.com",
+  "EmailPattern": "sebt.co+{0}@codeforamerica.org",
   "State": "co"
 }
 ```
 
-4. Run CO as usual (`pnpm dev:co`). The API and browser must both reach Keycloak at `http://localhost:8180` (host-run API/Web is the expected path).
+5. Run CO as usual (`pnpm dev:co`). The API and browser must both reach Keycloak at `http://localhost:8180` (host-run API/Web is the expected path).
 
 Alternatively, edit user emails in the Keycloak admin UI to match your existing `Seeding:EmailPattern`.
 
