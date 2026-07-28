@@ -116,9 +116,11 @@ operations:
         lastName: lastName
         dob: dateOfBirth
     response:
-      # The single result object is the response root; matchWhen reads the boolean eligibility flag.
+      # The single result object is the response root; the anyRowValueIn strategy reads the boolean
+      # eligibility flag (one result, so no fan-in).
       root: $
-      matchWhen:
+      match:
+        strategy: anyRowValueIn
         field: isEligible
         valueIn: ["true"]
   health:

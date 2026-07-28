@@ -156,8 +156,9 @@ public class StateBackendConfigurationHydrationTests
         Assert.NotNull(dcEnrollment.Response);
         Assert.Equal("$", dcEnrollment.Response.Root);
         Assert.Null(dcEnrollment.Response.IndexField);
-        Assert.Equal("isEligible", dcEnrollment.Response.MatchWhen.Field);
-        Assert.Equal(new[] { "true" }, dcEnrollment.Response.MatchWhen.ValueIn);
+        Assert.Equal(EnrollmentMatchStrategy.AnyRowValueIn, dcEnrollment.Response.Match.Strategy);
+        Assert.Equal("isEligible", dcEnrollment.Response.Match.Field);
+        Assert.Equal(new[] { "true" }, dcEnrollment.Response.Match.ValueIn);
 
         Assert.NotNull(config.Operations.Health);
 
@@ -237,7 +238,8 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("respCd", coAddressSuccess.Field);
         Assert.Equal(new[] { "200", "00" }, coAddressSuccess.ValueIn);
 
-        // The CO enrollment op hydrates: the transposeMonthDay candidate-expansion brick + fan-in.
+        // The CO enrollment op hydrates: the transposeMonthDay candidate-expansion brick + CO's REAL
+        // confidenceThreshold match (argmax by score + strict `>`).
         EnrollmentCheckOperationConfig? coEnrollment = config.Operations.EnrollmentCheck;
         Assert.NotNull(coEnrollment);
         Assert.Equal(StateBackendHttpMethod.Post, coEnrollment.Method);
@@ -254,8 +256,9 @@ public class StateBackendConfigurationHydrationTests
         Assert.NotNull(coEnrollment.Response);
         Assert.Equal("$.stdntDtls", coEnrollment.Response.Root);
         Assert.Equal("stdReqInd", coEnrollment.Response.IndexField);
-        Assert.Equal("sebtEligSts", coEnrollment.Response.MatchWhen.Field);
-        Assert.Equal(new[] { "Y" }, coEnrollment.Response.MatchWhen.ValueIn);
+        Assert.Equal(EnrollmentMatchStrategy.ConfidenceThreshold, coEnrollment.Response.Match.Strategy);
+        Assert.Equal("mtchCnfd", coEnrollment.Response.Match.ScoreField);
+        Assert.Equal(90.0, coEnrollment.Response.Match.Threshold);
 
         // Capability derivation: CO models AddressUpdate and EnrollmentCheck.
         StateBackendCapabilities capabilities = config.Capabilities;

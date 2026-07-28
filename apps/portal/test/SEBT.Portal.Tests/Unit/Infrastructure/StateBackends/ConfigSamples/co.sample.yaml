@@ -64,10 +64,13 @@ operations:
     response:
       root: $.stdntDtls
       indexField: stdReqInd
-      # A row matches when its eligibility flag is Y; fan-in (any candidate row) is implicit.
-      matchWhen:
-        field: sebtEligSts
-        valueIn: ["Y"]
+      # CO's REAL match: pick the child's highest-confidence candidate row (argmax by mtchCnfd) and
+      # match iff that best is STRICTLY greater than the threshold. The argmax + `>` are fixed code;
+      # config only names the strategy and supplies the score field + threshold.
+      match:
+        strategy: confidenceThreshold
+        scoreField: mtchCnfd
+        threshold: 90
   health:
     method: get
     path: /ping

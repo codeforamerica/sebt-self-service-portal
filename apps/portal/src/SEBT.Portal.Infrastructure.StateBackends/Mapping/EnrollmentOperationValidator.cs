@@ -15,6 +15,10 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 ///   <item><see cref="EnrollmentCallMode.PerChild"/> combined with a candidate
 ///     <see cref="EnrollmentRequestBinding.Expand"/> is NOT supported yet — no real state needs it,
 ///     so the combo is refused rather than built.</item>
+///   <item>The <see cref="EnrollmentMatch"/> strategy's required params must be present:
+///     <see cref="EnrollmentMatchStrategy.AnyRowValueIn"/> needs <c>field</c> + <c>valueIn</c>;
+///     <see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/> needs <c>scoreField</c> +
+///     <c>threshold</c>. Missing (or wrong-strategy) params fail loud.</item>
 /// </list>
 /// </summary>
 internal static class EnrollmentOperationValidator
@@ -24,6 +28,8 @@ internal static class EnrollmentOperationValidator
     {
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(mapping);
+
+        ValidateMatch(mapping.Match);
 
         switch (callMode)
         {
@@ -55,6 +61,36 @@ internal static class EnrollmentOperationValidator
 
             default:
                 throw new NotSupportedException($"Unsupported enrollment callMode '{callMode}'.");
+        }
+    }
+
+    // Fail loud when the chosen match strategy is missing its required params (or is handed the
+    // other strategy's params). The comparison lives in code — config only names the strategy.
+    private static void ValidateMatch(EnrollmentMatch match)
+    {
+        switch (match.Strategy)
+        {
+            case EnrollmentMatchStrategy.AnyRowValueIn:
+                if (string.IsNullOrEmpty(match.Field) || match.ValueIn is not { Count: > 0 })
+                {
+                    throw new InvalidOperationException(
+                        "Enrollment match strategy 'AnyRowValueIn' requires a 'field' and a non-empty 'valueIn'.");
+                }
+
+                break;
+
+            case EnrollmentMatchStrategy.ConfidenceThreshold:
+                if (string.IsNullOrEmpty(match.ScoreField) || match.Threshold is null)
+                {
+                    throw new InvalidOperationException(
+                        "Enrollment match strategy 'ConfidenceThreshold' requires a 'scoreField' and a 'threshold'.");
+                }
+
+                break;
+
+            default:
+                throw new NotSupportedException(
+                    $"Unsupported enrollment match strategy '{match.Strategy}'.");
         }
     }
 }

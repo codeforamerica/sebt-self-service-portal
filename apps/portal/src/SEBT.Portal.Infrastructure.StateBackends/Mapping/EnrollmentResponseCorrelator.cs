@@ -7,14 +7,20 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
 /// Response-side fan-in for the enrollment op (DC-568 spike). Selects the response rows at
-/// <see cref="EnrollmentResponseMapping.Root"/>, classifies each row as a match via the single
-/// closed <see cref="EnrollmentResponseMapping.MatchWhen"/> condition (a body field's value in a
-/// set — the eligibility flag), and fans those verdicts back in by the echoed correlation index:
-/// a child (1-based request index) matches when ANY of its candidate rows matched.
+/// <see cref="EnrollmentResponseMapping.Root"/> and decides each child's match via the named
+/// <see cref="EnrollmentResponseMapping.Match"/> strategy, fanning verdicts back in by the echoed
+/// correlation index (a 1-based request index):
 ///
-/// HARD CAP: the match predicate is the write-classifier's <c>valueIn(field)</c> kind ONLY — no
-/// numeric thresholds, no confidence scoring, no fuzzy matching. A row whose index doesn't map to a
-/// requested child is ignored (fan-in is per requested child, in request order).
+/// <list type="bullet">
+///   <item><see cref="EnrollmentMatchStrategy.AnyRowValueIn"/>: a child matches when ANY of its
+///     candidate rows has the eligibility flag in the set (the original brick).</item>
+///   <item><see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/>: group a child's candidate rows
+///     by index, take the MAX score, and match iff <c>max &gt; threshold</c> (STRICT — mirrors CO's
+///     argmax + <c>&gt; threshold</c>). A missing/non-numeric score contributes nothing.</item>
+/// </list>
+///
+/// HARD CAP: exactly these two NAMED strategies. The argmax + strict <c>&gt;</c> are code, never
+/// config. A row whose index doesn't map to a requested child is ignored.
 /// </summary>
 internal static class EnrollmentResponseCorrelator
 {
@@ -28,21 +34,16 @@ internal static class EnrollmentResponseCorrelator
         string indexField = mapping.IndexField
             ?? throw new InvalidOperationException("Batch enrollment response mapping requires an indexField.");
 
-        // Collect the set of correlation indices whose rows matched.
-        var matchedIndices = new HashSet<string>(StringComparer.Ordinal);
         JsonElement rows = SelectPath(root, mapping.Root);
 
-        if (rows.ValueKind == JsonValueKind.Array)
+        HashSet<string> matchedIndices = mapping.Match.Strategy switch
         {
-            foreach (JsonElement row in rows.EnumerateArray())
-            {
-                string? index = ReadString(row, indexField);
-                if (index is not null && RowMatches(mapping.MatchWhen, row))
-                {
-                    matchedIndices.Add(index);
-                }
-            }
-        }
+            EnrollmentMatchStrategy.AnyRowValueIn => CorrelateAnyRowValueIn(mapping.Match, rows, indexField),
+            EnrollmentMatchStrategy.ConfidenceThreshold =>
+                CorrelateConfidenceThreshold(mapping.Match, rows, indexField),
+            _ => throw new NotSupportedException(
+                $"Unsupported enrollment match strategy '{mapping.Match.Strategy}'."),
+        };
 
         var results = new List<EnrollmentChildResult>(request.Children.Count);
         for (int i = 0; i < request.Children.Count; i++)
@@ -56,21 +57,110 @@ internal static class EnrollmentResponseCorrelator
 
     /// <summary>
     /// PerChild evaluation: selects the single result object at <see cref="EnrollmentResponseMapping.Root"/>
-    /// and applies the closed <see cref="EnrollmentResponseMapping.MatchWhen"/> predicate to it. No
-    /// correlation index — one call reads one child's verdict.
+    /// and applies the named <see cref="EnrollmentResponseMapping.Match"/> strategy to it. No
+    /// correlation index and no argmax — one call reads one child's verdict.
     /// </summary>
     public static bool EvaluateSingleResult(EnrollmentResponseMapping mapping, JsonElement root)
     {
         ArgumentNullException.ThrowIfNull(mapping);
 
         JsonElement result = SelectPath(root, mapping.Root);
-        return RowMatches(mapping.MatchWhen, result);
+
+        return mapping.Match.Strategy switch
+        {
+            EnrollmentMatchStrategy.AnyRowValueIn => RowValueInSet(mapping.Match, result),
+            EnrollmentMatchStrategy.ConfidenceThreshold => ScoreExceedsThreshold(mapping.Match, result),
+            _ => throw new NotSupportedException(
+                $"Unsupported enrollment match strategy '{mapping.Match.Strategy}'."),
+        };
     }
 
-    private static bool RowMatches(EnrollmentMatchCondition condition, JsonElement row)
+    // Any-candidate fan-in: an index matches when ANY of its rows has the flag in the set.
+    private static HashSet<string> CorrelateAnyRowValueIn(
+        EnrollmentMatch match, JsonElement rows, string indexField)
     {
-        string? value = ReadString(row, condition.Field);
-        return value is not null && condition.ValueIn.Contains(value, StringComparer.Ordinal);
+        var matchedIndices = new HashSet<string>(StringComparer.Ordinal);
+
+        if (rows.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement row in rows.EnumerateArray())
+            {
+                string? index = ReadString(row, indexField);
+                if (index is not null && RowValueInSet(match, row))
+                {
+                    matchedIndices.Add(index);
+                }
+            }
+        }
+
+        return matchedIndices;
+    }
+
+    // Argmax fan-in: group a child's rows by index, take the MAX score, match iff max > threshold
+    // (STRICT). A missing/non-numeric score contributes nothing to its index's max.
+    private static HashSet<string> CorrelateConfidenceThreshold(
+        EnrollmentMatch match, JsonElement rows, string indexField)
+    {
+        var maxByIndex = new Dictionary<string, double>(StringComparer.Ordinal);
+
+        if (rows.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement row in rows.EnumerateArray())
+            {
+                string? index = ReadString(row, indexField);
+                if (index is null || !TryReadScore(match, row, out double score))
+                {
+                    continue;
+                }
+
+                if (!maxByIndex.TryGetValue(index, out double current) || score > current)
+                {
+                    maxByIndex[index] = score;
+                }
+            }
+        }
+
+        double threshold = match.Threshold!.Value;
+        var matchedIndices = new HashSet<string>(StringComparer.Ordinal);
+        foreach ((string index, double max) in maxByIndex)
+        {
+            if (max > threshold)
+            {
+                matchedIndices.Add(index);
+            }
+        }
+
+        return matchedIndices;
+    }
+
+    private static bool RowValueInSet(EnrollmentMatch match, JsonElement row)
+    {
+        string? value = ReadString(row, match.Field!);
+        return value is not null && match.ValueIn!.Contains(value, StringComparer.Ordinal);
+    }
+
+    // A single result's score strictly exceeds the threshold. Missing/non-numeric → not a match.
+    private static bool ScoreExceedsThreshold(EnrollmentMatch match, JsonElement result) =>
+        TryReadScore(match, result, out double score) && score > match.Threshold!.Value;
+
+    // Reads the score field as a number. A missing property or a non-numeric value is NOT a match.
+    private static bool TryReadScore(EnrollmentMatch match, JsonElement record, out double score)
+    {
+        score = 0;
+
+        if (record.ValueKind != JsonValueKind.Object
+            || !record.TryGetProperty(match.ScoreField!, out JsonElement value))
+        {
+            return false;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.Number => value.TryGetDouble(out score),
+            JsonValueKind.String => double.TryParse(
+                value.GetString(), NumberStyles.Float, CultureInfo.InvariantCulture, out score),
+            _ => false,
+        };
     }
 
     private static string? ReadString(JsonElement record, string property)

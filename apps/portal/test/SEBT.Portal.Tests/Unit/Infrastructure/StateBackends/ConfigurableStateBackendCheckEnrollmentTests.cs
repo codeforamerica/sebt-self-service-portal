@@ -40,8 +40,9 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                     {
                         Root = "$.stdntDtls",
                         IndexField = "stdReqInd",
-                        MatchWhen = new EnrollmentMatchCondition
+                        Match = new EnrollmentMatch
                         {
+                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
                             Field = "sebtEligSts",
                             ValueIn = new List<string> { "Y" },
                         },
@@ -79,10 +80,89 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                     {
                         Root = "$.results",
                         IndexField = "reqInd",
-                        MatchWhen = new EnrollmentMatchCondition
+                        Match = new EnrollmentMatch
                         {
+                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
                             Field = "eligible",
                             ValueIn = new List<string> { "true" },
+                        },
+                    },
+                },
+            },
+        };
+
+    // ---- CO REAL match: batch confidenceThreshold. Group a child's candidate rows by index, take
+    // the max score, match iff max > threshold (strict). Threshold 90. ----
+
+    private static StateBackendConfiguration CoConfidenceThresholdConfiguration() =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                EnrollmentCheck = new EnrollmentCheckOperationConfig
+                {
+                    Method = StateBackendHttpMethod.Post,
+                    Path = "/sebt/check-enrollment",
+                    CallMode = EnrollmentCallMode.Batch,
+                    Request = new EnrollmentRequestBinding
+                    {
+                        IndexField = "stdReqInd",
+                        Expand = CandidateExpansion.TransposeMonthDay,
+                        Map = new Dictionary<string, string>
+                        {
+                            ["firstName"] = "stdFirstName",
+                            ["lastName"] = "stdLastName",
+                            ["dob"] = "stdDob",
+                        },
+                    },
+                    Response = new EnrollmentResponseMapping
+                    {
+                        Root = "$.stdntDtls",
+                        IndexField = "stdReqInd",
+                        Match = new EnrollmentMatch
+                        {
+                            Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
+                            ScoreField = "mtchCnfd",
+                            Threshold = 90.0,
+                        },
+                    },
+                },
+            },
+        };
+
+    // ---- PerChild + confidenceThreshold: single result's score > threshold, no argmax. ----
+
+    private static StateBackendConfiguration PerChildConfidenceThresholdConfiguration() =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                EnrollmentCheck = new EnrollmentCheckOperationConfig
+                {
+                    Method = StateBackendHttpMethod.Post,
+                    Path = "/enrollment/check",
+                    CallMode = EnrollmentCallMode.PerChild,
+                    Request = new EnrollmentRequestBinding
+                    {
+                        Map = new Dictionary<string, string>
+                        {
+                            ["firstName"] = "firstName",
+                            ["lastName"] = "lastName",
+                            ["dob"] = "dateOfBirth",
+                        },
+                    },
+                    Response = new EnrollmentResponseMapping
+                    {
+                        Root = "$",
+                        Match = new EnrollmentMatch
+                        {
+                            Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
+                            ScoreField = "mtchCnfd",
+                            Threshold = 90.0,
                         },
                     },
                 },
@@ -118,8 +198,9 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                     {
                         // The single result object is the response root.
                         Root = "$",
-                        MatchWhen = new EnrollmentMatchCondition
+                        Match = new EnrollmentMatch
                         {
+                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
                             Field = "isEligible",
                             ValueIn = new List<string> { "true" },
                         },
@@ -212,6 +293,130 @@ public class ConfigurableStateBackendCheckEnrollmentTests
 
         EnrollmentChildResult child = Assert.Single(result.Results);
         Assert.True(child.IsMatch);
+    }
+
+    // ---- CO REAL match: batch confidenceThreshold (argmax by score + STRICT `>` threshold) ----
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_CoConfidenceThreshold_ArgmaxPicksHigherRow_MatchesWhenBestExceedsThreshold()
+    {
+        // Arrange — 04/08 is transposable, so the request emits two candidate rows under index "1".
+        // The backend returns two candidate rows for the child: the transposed row scores higher.
+        var request = new EnrollmentCheckRequest(
+            new[] { new EnrollmentChild("chk-1", "Dimple", "Wibert", new DateOnly(2015, 4, 8)) });
+
+        // Entered row scores 40 (below threshold); the transposed candidate scores 95 (above).
+        // Argmax must pick 95, and 95 > 90 → match.
+        const string responseJson =
+            """
+            {
+              "stdntDtls": [
+                { "stdReqInd": "1", "mtchCnfd": 40.0 },
+                { "stdReqInd": "1", "mtchCnfd": 95.0 }
+              ]
+            }
+            """;
+
+        // Act
+        (_, EnrollmentCheckResult result) = await RunAsync(
+            CoConfidenceThresholdConfiguration(), request, responseJson);
+
+        // Assert — the higher-confidence candidate row wins the argmax and clears the threshold.
+        EnrollmentChildResult child = Assert.Single(result.Results);
+        Assert.Equal("chk-1", child.CheckId);
+        Assert.True(child.IsMatch);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_CoConfidenceThreshold_BestBelowThreshold_NoMatch()
+    {
+        // Arrange — day 25 > 12, so no transposition candidate; a single row scoring below threshold.
+        var request = new EnrollmentCheckRequest(
+            new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
+
+        const string responseJson =
+            """
+            { "stdntDtls": [ { "stdReqInd": "1", "mtchCnfd": 85.0 } ] }
+            """;
+
+        // Act
+        (_, EnrollmentCheckResult result) = await RunAsync(
+            CoConfidenceThresholdConfiguration(), request, responseJson);
+
+        // Assert — best score 85 ≤ 90 → no match.
+        EnrollmentChildResult child = Assert.Single(result.Results);
+        Assert.False(child.IsMatch);
+    }
+
+    [Theory]
+    // STRICT `>`: exactly 90.0 is NOT a match; 90.01 is.
+    [InlineData(90.0, false)]
+    [InlineData(90.01, true)]
+    public async Task CheckEnrollmentAsync_CoConfidenceThreshold_StrictBoundaryAt90(double score, bool expectedMatch)
+    {
+        // Arrange — day 25 > 12, so exactly one row; its score sits on/just past the boundary.
+        var request = new EnrollmentCheckRequest(
+            new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
+
+        string responseJson =
+            $$"""
+            { "stdntDtls": [ { "stdReqInd": "1", "mtchCnfd": {{score.ToString(System.Globalization.CultureInfo.InvariantCulture)}} } ] }
+            """;
+
+        // Act
+        (_, EnrollmentCheckResult result) = await RunAsync(
+            CoConfidenceThresholdConfiguration(), request, responseJson);
+
+        // Assert — strict `>`: 90.0 → not a match; 90.01 → match.
+        EnrollmentChildResult child = Assert.Single(result.Results);
+        Assert.Equal(expectedMatch, child.IsMatch);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_CoConfidenceThreshold_MissingScore_NotAMatch()
+    {
+        // Arrange — the score field is absent on the row; a missing score is not a match.
+        var request = new EnrollmentCheckRequest(
+            new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
+
+        const string responseJson =
+            """
+            { "stdntDtls": [ { "stdReqInd": "1" } ] }
+            """;
+
+        // Act
+        (_, EnrollmentCheckResult result) = await RunAsync(
+            CoConfidenceThresholdConfiguration(), request, responseJson);
+
+        // Assert
+        EnrollmentChildResult child = Assert.Single(result.Results);
+        Assert.False(child.IsMatch);
+    }
+
+    // ---- PerChild + confidenceThreshold: single result's score > threshold, no argmax ----
+
+    [Theory]
+    [InlineData(95.0, true)]
+    [InlineData(90.0, false)]
+    public async Task CheckEnrollmentAsync_PerChildConfidenceThreshold_SingleResultScoreComparedStrictly(
+        double score, bool expectedMatch)
+    {
+        // Arrange — one child, one call, one result object carrying the score.
+        var request = new EnrollmentCheckRequest(
+            new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
+
+        string responseJson =
+            $$"""
+            { "mtchCnfd": {{score.ToString(System.Globalization.CultureInfo.InvariantCulture)}} }
+            """;
+
+        // Act
+        (_, EnrollmentCheckResult result) = await RunAsync(
+            PerChildConfidenceThresholdConfiguration(), request, responseJson);
+
+        // Assert — the single result composes the confidenceThreshold strategy with perChild mode.
+        EnrollmentChildResult child = Assert.Single(result.Results);
+        Assert.Equal(expectedMatch, child.IsMatch);
     }
 
     [Fact]
@@ -384,6 +589,68 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                 new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
                 "{}"));
         Assert.Contains("not supported", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_ConfidenceThreshold_MissingScoreFieldOrThreshold_Throws()
+    {
+        StateBackendConfiguration config = CoConfidenceThresholdConfiguration();
+        var operation = config.Operations.EnrollmentCheck!;
+        config = config with
+        {
+            Operations = config.Operations with
+            {
+                EnrollmentCheck = operation with
+                {
+                    Response = operation.Response! with
+                    {
+                        Match = new EnrollmentMatch
+                        {
+                            // confidenceThreshold with NO scoreField/threshold → fail loud.
+                            Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
+                        },
+                    },
+                },
+            },
+        };
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => RunAsync(
+                config,
+                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
+                "{}"));
+        Assert.Contains("scoreField", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_AnyRowValueIn_MissingFieldOrValueIn_Throws()
+    {
+        StateBackendConfiguration config = BatchNoExpandConfiguration();
+        var operation = config.Operations.EnrollmentCheck!;
+        config = config with
+        {
+            Operations = config.Operations with
+            {
+                EnrollmentCheck = operation with
+                {
+                    Response = operation.Response! with
+                    {
+                        Match = new EnrollmentMatch
+                        {
+                            // anyRowValueIn with NO field/valueIn → fail loud.
+                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
+                        },
+                    },
+                },
+            },
+        };
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => RunAsync(
+                config,
+                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
+                "{}"));
+        Assert.Contains("valueIn", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---- transposeMonthDay strategy unit behavior ----

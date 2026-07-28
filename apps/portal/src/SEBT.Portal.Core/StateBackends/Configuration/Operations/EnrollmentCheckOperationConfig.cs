@@ -91,11 +91,10 @@ public enum CandidateExpansion
 }
 
 /// <summary>
-/// Correlates response rows back to children and decides per-row match. <see cref="Root"/> selects
-/// the row array; <see cref="IndexField"/> is the source property carrying the echoed correlation
-/// index; <see cref="MatchWhen"/> is a single closed predicate (a body field's value in a set — the
-/// eligibility flag) deciding whether ONE row is a match. Fan-in (a child matches when ANY of its
-/// rows matched) is implicit.
+/// Correlates response rows back to children and decides match. <see cref="Root"/> selects the row
+/// array; <see cref="IndexField"/> is the source property carrying the echoed correlation index;
+/// <see cref="Match"/> is a named-strategy brick selecting how a match is decided. Fan-in (a child
+/// matches when ANY of its candidate rows matched) is implicit for batch mode.
 /// </summary>
 public sealed record EnrollmentResponseMapping
 {
@@ -109,21 +108,60 @@ public sealed record EnrollmentResponseMapping
     /// </summary>
     public string? IndexField { get; init; }
 
-    /// <summary>The single closed predicate deciding whether ONE row is a match.</summary>
-    public required EnrollmentMatchCondition MatchWhen { get; init; }
+    /// <summary>The named-strategy match brick deciding whether a child matches.</summary>
+    public required EnrollmentMatch Match { get; init; }
 }
 
 /// <summary>
-/// The row-level match predicate: a body <see cref="Field"/>'s value is in <see cref="ValueIn"/>.
-/// This is the write-classifier's <c>valueIn(field)</c> kind reused as a boolean predicate — no
-/// outcome routing, no numeric thresholds, no fuzzy matching. HARD CAP: this is the ONLY row-match
-/// shape. If a real state needs confidence scoring or approximate matching, STOP.
+/// The closed set of enrollment match strategies. HARD CAP: exactly these two named strategies. The
+/// argmax + strict <c>&gt;</c> comparison of <see cref="ConfidenceThreshold"/> live in fixed code —
+/// config NEVER exposes comparison or boolean operators. If a real state needs a third shape, STOP
+/// and add a NAMED strategy; do NOT add a general numeric-condition brick.
 /// </summary>
-public sealed record EnrollmentMatchCondition
+public enum EnrollmentMatchStrategy
 {
-    /// <summary>Source body property inspected on each row.</summary>
-    public required string Field { get; init; }
+    /// <summary>
+    /// A body field's value is in a set (the eligibility flag). Batch = per-row field∈set with
+    /// any-candidate fan-in; PerChild = the single result's field∈set.
+    /// </summary>
+    AnyRowValueIn,
 
-    /// <summary>The row matches when <see cref="Field"/>'s value is one of these (ordinal).</summary>
-    public required List<string> ValueIn { get; init; }
+    /// <summary>
+    /// A confidence score strictly exceeds a threshold. Batch = group a child's candidate rows by
+    /// index, take the max score, match iff <c>max &gt; threshold</c> (mirrors CO's argmax + strict
+    /// <c>&gt;</c>); PerChild = the single result's <c>score &gt; threshold</c> (no argmax needed).
+    /// A missing/non-numeric score is not a match.
+    /// </summary>
+    ConfidenceThreshold,
+}
+
+/// <summary>
+/// The named-strategy match brick. A flat record whose relevant fields depend on
+/// <see cref="Strategy"/>: <see cref="AnyRowValueIn"/> uses <see cref="Field"/> + <see cref="ValueIn"/>;
+/// <see cref="ConfidenceThreshold"/> uses <see cref="ScoreField"/> + <see cref="Threshold"/>. The
+/// enrollment validator fails loud when the params for the chosen strategy are missing or the wrong
+/// ones are supplied. NO comparison/boolean operators appear here — the <c>&gt;</c> lives in code.
+/// </summary>
+public sealed record EnrollmentMatch
+{
+    /// <summary>Which named strategy decides a match. Required — the shape is never inferred.</summary>
+    public required EnrollmentMatchStrategy Strategy { get; init; }
+
+    /// <summary>Source body property inspected on each row. Required for <see cref="EnrollmentMatchStrategy.AnyRowValueIn"/>.</summary>
+    public string? Field { get; init; }
+
+    /// <summary>
+    /// The row matches when <see cref="Field"/>'s value is one of these (ordinal). Required for
+    /// <see cref="EnrollmentMatchStrategy.AnyRowValueIn"/>.
+    /// </summary>
+    public List<string>? ValueIn { get; init; }
+
+    /// <summary>Source body property carrying the numeric confidence score. Required for <see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/>.</summary>
+    public string? ScoreField { get; init; }
+
+    /// <summary>
+    /// The score must be strictly greater than this to match. Required for
+    /// <see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/>.
+    /// </summary>
+    public double? Threshold { get; init; }
 }
