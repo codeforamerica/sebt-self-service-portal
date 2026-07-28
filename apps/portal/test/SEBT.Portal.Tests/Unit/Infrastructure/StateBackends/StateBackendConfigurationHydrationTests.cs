@@ -123,6 +123,18 @@ public class StateBackendConfigurationHydrationTests
             CaseInclusionPredicate.WhenApprovedOrNotApplicationBased,
             disaggregation.CaseInclusion);
 
+        // The status field the WhenApprovedOrNotApplicationBased predicate reads: CO's sebtAppSts,
+        // resolved to canonical ApplicationStatus through a named domain-centered enum table.
+        FieldMapping applicationStatus = householdLookup.Response!.Fields["applicationStatus"];
+        Assert.Equal("sebtAppSts", applicationStatus.From);
+        Assert.Equal("applicationStatus", applicationStatus.Enum);
+
+        Assert.NotNull(config.Enums);
+        StateBackendEnumTable applicationStatusTable = config.Enums["applicationStatus"];
+        Assert.Equal(new[] { "AP" }, applicationStatusTable.Map["Approved"]);
+        Assert.Equal(new[] { "DE" }, applicationStatusTable.Map["Denied"]);
+        Assert.Equal("Unknown", applicationStatusTable.Default);
+
         AddressUpdateOperationConfig? addressUpdate = config.Operations.AddressUpdate;
         Assert.NotNull(addressUpdate);
         Assert.Equal(StateBackendHttpMethod.Patch, addressUpdate.Method);

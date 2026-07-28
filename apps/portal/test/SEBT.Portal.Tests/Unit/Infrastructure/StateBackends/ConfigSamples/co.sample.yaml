@@ -18,6 +18,9 @@ operations:
           from: sebtChldCwin
         childFirstName:
           from: chldNm
+        applicationStatus:
+          from: sebtAppSts
+          enum: applicationStatus
       disaggregation:
         rule: valueInSet
         discriminatorField: eligSrc
@@ -33,3 +36,12 @@ operations:
   health:
     method: get
     path: /ping
+enums:
+  # CBMS application processing status (sebtAppSts). Domain-centered: OUR value -> state token(s).
+  # 2-letter CBMS codes; unlisted tokens fall through to Unknown (not Approved -> excluded if app-based).
+  applicationStatus:
+    map:
+      Approved: [AP]
+      Denied: [DE]
+      Pending: [PD, PE]
+    default: Unknown

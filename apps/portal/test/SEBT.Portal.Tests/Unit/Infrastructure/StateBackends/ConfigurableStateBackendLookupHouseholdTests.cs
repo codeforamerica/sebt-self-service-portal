@@ -496,6 +496,106 @@ public class ConfigurableStateBackendLookupHouseholdTests
         mockHttp.VerifyNoOutstandingExpectation();
     }
 
+    // CO-shaped with an application status: two app-based records (CBMS/PK) share sebtAppId
+    // APP-CO-1 — one Approved (AP), one Denied (DE) — plus one streamlined (SCHOOL) record.
+    private const string CoStatusDisaggregationResponse =
+        """
+        {
+          "stdntEnrollDtls": [
+            { "sebtChldCwin": "CO-001", "chldNm": "Ada", "eligSrc": "CBMS", "sebtAppId": "APP-CO-1", "sebtAppSts": "AP" },
+            { "sebtChldCwin": "CO-002", "chldNm": "Alan", "eligSrc": "PK", "sebtAppId": "APP-CO-1", "sebtAppSts": "DE" },
+            { "sebtChldCwin": "CO-003", "chldNm": "Grace", "eligSrc": "SCHOOL", "sebtAppId": null, "sebtAppSts": null }
+          ]
+        }
+        """;
+
+    private static StateBackendConfiguration WithCoStatusInclusion()
+    {
+        StateBackendConfiguration configuration = BuildConfiguration();
+        return configuration with
+        {
+            Enums = new Dictionary<string, StateBackendEnumTable>
+            {
+                ["applicationStatus"] = new()
+                {
+                    Map = new Dictionary<string, List<string>>
+                    {
+                        ["Approved"] = new() { "AP" },
+                        ["Denied"] = new() { "DE" },
+                        ["Pending"] = new() { "PD", "PE" },
+                    },
+                    Default = "Unknown",
+                },
+            },
+            Operations = configuration.Operations with
+            {
+                HouseholdLookup = configuration.Operations.HouseholdLookup! with
+                {
+                    Response = new StateBackendResponseMapping
+                    {
+                        Root = "$.stdntEnrollDtls",
+                        Fields = new Dictionary<string, FieldMapping>
+                        {
+                            ["summerEBTCaseID"] = new() { From = "sebtChldCwin" },
+                            ["childFirstName"] = new() { From = "chldNm" },
+                            ["applicationStatus"] = new() { From = "sebtAppSts", Enum = "applicationStatus" },
+                        },
+                        Disaggregation = new StateBackendDisaggregation
+                        {
+                            Rule = DisaggregationRule.ValueInSet,
+                            DiscriminatorField = "eligSrc",
+                            ApplicationValues = new List<string> { "CBMS", "PK" },
+                            GroupApplicationsBy = "sebtAppId",
+                            CaseInclusion = CaseInclusionPredicate.WhenApprovedOrNotApplicationBased,
+                        },
+                    },
+                },
+            },
+        };
+    }
+
+    [Fact]
+    public async Task LookupHouseholdAsync_WhenApprovedOrNotApplicationBased_IncludesApprovedAndStreamlinedCases()
+    {
+        // Arrange
+        StateBackendConfiguration configuration = WithCoStatusInclusion();
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .Expect(HttpMethod.Post, "http://backend.test/households/lookup")
+            .Respond("application/json", CoStatusDisaggregationResponse);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var backend = new ConfigurableStateBackend(configuration, httpClient);
+        var request = new HouseholdLookupRequest(
+            new[] { new IdentitySignal("phone", "5551234567", Verified: true) });
+
+        // Act
+        HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
+
+        // Assert
+        Assert.Equal(HouseholdLookupStatus.Found, result.Status);
+        Assert.NotNull(result.Household);
+
+        // Cases: app-based+Approved (CO-001) and streamlined (CO-003) are included.
+        // The app-based+Denied record (CO-002) is NOT a case.
+        List<SummerEbtCase> cases = result.Household.SummerEbtCases;
+        Assert.Equal(2, cases.Count);
+        Assert.Equal("CO-001", cases[0].SummerEBTCaseID);
+        Assert.Equal(ApplicationStatus.Approved, cases[0].ApplicationStatus);
+        Assert.Equal("APP-CO-1", cases[0].ApplicationId);
+
+        Assert.Equal("CO-003", cases[1].SummerEBTCaseID);
+        Assert.Null(cases[1].ApplicationId);
+
+        // The denied record is still part of the (pending) application it belongs to.
+        List<Application> applications = result.Household.Applications;
+        Assert.Single(applications);
+        Assert.Equal("APP-CO-1", applications[0].ApplicationNumber);
+
+        mockHttp.VerifyNoOutstandingExpectation();
+    }
+
     [Fact]
     public async Task LookupHouseholdAsync_ReturnsNotFound_WhenRootSelectsNoRecords()
     {

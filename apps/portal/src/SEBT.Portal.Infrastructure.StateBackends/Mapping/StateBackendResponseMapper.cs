@@ -18,10 +18,11 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 ///     field's exact <see cref="FieldMapping.Format"/>; enums resolve through the named
 ///     <see cref="FieldMapping.Enum"/> table. The only supported "bricks" are from/format/enum.
 ///   * Disaggregation supports classification (<see cref="DisaggregationRule.Presence"/> /
-///     <see cref="DisaggregationRule.ValueInSet"/>), <see cref="CaseInclusionPredicate.All"/>
-///     case inclusion, and grouping application-based records into applications by a single field.
-///     <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/> is NOT implemented —
-///     it needs an approval-status field map not yet wired (design fork #2).
+///     <see cref="DisaggregationRule.ValueInSet"/>), the <see cref="CaseInclusionPredicate.All"/> and
+///     <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/> case-inclusion
+///     predicates, and grouping application-based records into applications by a single field. The
+///     approval-aware predicate reads the mapped canonical <see cref="ApplicationStatus"/> — supply it
+///     via an <c>applicationStatus</c> field mapping + enum table (it takes no config parameters).
 /// </summary>
 internal static class StateBackendResponseMapper
 {
@@ -39,6 +40,7 @@ internal static class StateBackendResponseMapper
             ["applicationId"] = FieldTarget.String((c, v) => c.ApplicationId = v),
             ["ebtCardIssueDate"] = FieldTarget.DateTime((c, v) => c.EbtCardIssueDate = v),
             ["ebtCardStatus"] = FieldTarget.Enum<CardStatus>((c, v) => c.EbtCardStatus = v),
+            ["applicationStatus"] = FieldTarget.Enum<ApplicationStatus>((c, v) => c.ApplicationStatus = v),
         };
 
     /// <summary>
@@ -96,6 +98,8 @@ internal static class StateBackendResponseMapper
 
         foreach (JsonElement record in records.EnumerateArray())
         {
+            // Map to canonical first — the inclusion predicate reads the canonical model (e.g.
+            // ApplicationStatus), never raw state fields.
             SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers);
 
             // Without disaggregation, records map 1:1 into a flat case list.
@@ -105,10 +109,11 @@ internal static class StateBackendResponseMapper
                 continue;
             }
 
-            RequireSupportedCaseInclusion(disaggregation.CaseInclusion);
+            bool isApplicationBased = IsApplicationBased(record, disaggregation);
 
-            if (IsApplicationBased(record, disaggregation)
-                && GroupKey(record, disaggregation) is { } key)
+            // Every application-based record (regardless of case inclusion) belongs to its grouped
+            // application: an app-based-but-not-included record is still part of a pending application.
+            if (isApplicationBased && GroupKey(record, disaggregation) is { } key)
             {
                 summerEbtCase.ApplicationId = key;
 
@@ -118,8 +123,10 @@ internal static class StateBackendResponseMapper
                 }
             }
 
-            // CaseInclusion.All: every record yields a case.
-            household.SummerEbtCases.Add(summerEbtCase);
+            if (IncludeAsCase(disaggregation.CaseInclusion, isApplicationBased, summerEbtCase.ApplicationStatus))
+            {
+                household.SummerEbtCases.Add(summerEbtCase);
+            }
         }
 
         foreach (string key in applicationKeys)
@@ -131,16 +138,26 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Named case-inclusion predicates are a closed vocabulary. Only <see cref="CaseInclusionPredicate.All"/>
-    /// is implemented in this spike; the approval-aware predicate needs a status field map (fork #2).
+    /// Named case-inclusion predicates are a closed vocabulary — each reads only the canonical model,
+    /// never raw state fields, so they need no config parameters.
+    ///   * <see cref="CaseInclusionPredicate.All"/> includes every record.
+    ///   * <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/> includes a record
+    ///     when it is not application-based, or when its mapped canonical
+    ///     <see cref="ApplicationStatus"/> is <see cref="ApplicationStatus.Approved"/>. An unknown or
+    ///     unmapped status is not Approved, so an application-based record with such a status is
+    ///     excluded (fail-closed for inclusion).
     /// </summary>
-    private static void RequireSupportedCaseInclusion(CaseInclusionPredicate caseInclusion)
+    private static bool IncludeAsCase(
+        CaseInclusionPredicate caseInclusion, bool isApplicationBased, ApplicationStatus applicationStatus)
     {
-        if (caseInclusion != CaseInclusionPredicate.All)
+        return caseInclusion switch
         {
-            throw new NotSupportedException(
-                $"Case inclusion predicate '{caseInclusion}' is not implemented by the response mapper.");
-        }
+            CaseInclusionPredicate.All => true,
+            CaseInclusionPredicate.WhenApprovedOrNotApplicationBased =>
+                !isApplicationBased || applicationStatus == ApplicationStatus.Approved,
+            _ => throw new NotSupportedException(
+                $"Case inclusion predicate '{caseInclusion}' is not implemented by the response mapper."),
+        };
     }
 
     private static bool IsApplicationBased(JsonElement record, StateBackendDisaggregation disaggregation)
