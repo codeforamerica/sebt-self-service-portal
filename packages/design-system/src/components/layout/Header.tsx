@@ -32,12 +32,12 @@ export function Header({ state = 'dc' }: HeaderProps) {
             <Link
               href="/"
               title="Home"
-              aria-label="Home"
+              aria-label={`Home - ${t('bannerImageAltText')}`}
               className="display-flex flex-align-center"
             >
               <Image
                 src={`/images/states/${state}/logo.svg`}
-                alt={t('bannerImageAltText')}
+                alt=""
                 width={width}
                 height={height}
                 priority
