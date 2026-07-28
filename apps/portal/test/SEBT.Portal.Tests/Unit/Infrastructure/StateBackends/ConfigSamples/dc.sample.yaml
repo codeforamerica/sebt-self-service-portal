@@ -100,6 +100,22 @@ operations:
           field: resultCode
           valueIn: [OK]
       default: BackendError
+  enrollmentCheck:
+    method: post
+    path: /enrollment/check
+    request:
+      # No expand: DC emits a single row per child (no DOB transposition).
+      indexField: reqInd
+      map:
+        firstName: firstName
+        lastName: lastName
+        dob: dateOfBirth
+    response:
+      root: $.results
+      indexField: reqInd
+      matchWhen:
+        field: eligible
+        valueIn: ["true"]
   health:
     method: get
     path: /health

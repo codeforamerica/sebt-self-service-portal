@@ -38,24 +38,46 @@ public class ConfigurableStateBackend : IStateBackend
     public StateBackendCapabilities Capabilities => 
         _configuration.Capabilities;
 
-    public Task<EnrollmentCheckResult> CheckEnrollmentAsync(EnrollmentCheckRequest request, CancellationToken cancellationToken = default)
+    public async Task<EnrollmentCheckResult> CheckEnrollmentAsync(EnrollmentCheckRequest request, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         if (!Capabilities.EnrollmentCheck)
         {
             throw new NotSupportedException("Enrollment check is not supported by the state backend.");
         }
 
-        throw new NotImplementedException();
-    }
+        EnrollmentCheckOperationConfig operation = _configuration.Operations.EnrollmentCheck
+            ?? throw new NotSupportedException("Enrollment check is not configured for the state backend.");
 
-    public Task<CardDetails?> GetCardDetailsAsync(string caseId, CancellationToken cancellationToken = default)
-    {
-        if (Capabilities.CardDetails == CardDetailsCapability.None)
-        {
-            throw new NotSupportedException("Fetching card details is not supported by the state backend.");
-        }
+        EnrollmentRequestBinding binding = operation.Request
+            ?? throw new NotSupportedException("Enrollment check has no request binding configured.");
 
-        throw new NotImplementedException();
+        EnrollmentResponseMapping mapping = operation.Response
+            ?? throw new NotSupportedException("Enrollment check has no response mapping configured.");
+
+        using HttpRequestMessage httpRequest = BuildRequest(operation);
+
+        // Request-side candidate expansion: one row per child, plus a DOB-transposed candidate under
+        // the same correlation index when the binding's expand strategy applies.
+        JsonArray rows = EnrollmentRequestBuilder.BuildRows(binding, request);
+        httpRequest.Content = new StringContent(
+            rows.ToJsonString(), Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await _httpClient
+            .SendAsync(httpRequest, cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        await using Stream stream = await response.Content
+            .ReadAsStreamAsync(cancellationToken)
+            .ConfigureAwait(false);
+        using JsonDocument document = await JsonDocument
+            .ParseAsync(stream, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+
+        // Response-side fan-in: a child matches when ANY of its candidate rows matched.
+        return EnrollmentResponseCorrelator.Correlate(mapping, document.RootElement, request);
     }
 
     public async Task<StateBackendHealth> GetHealthAsync(CancellationToken cancellationToken = default)

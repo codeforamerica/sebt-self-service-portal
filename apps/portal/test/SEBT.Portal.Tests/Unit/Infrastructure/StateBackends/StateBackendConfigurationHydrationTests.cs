@@ -139,14 +139,33 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "OK" }, dcAddressSuccess.ValueIn);
         Assert.Equal(CardReplacementOutcome.BackendError, dcAddressClassifier.Default);
 
+        // The DC enrollment op hydrates: single-row request (NO expansion) + fan-in response mapping.
+        EnrollmentCheckOperationConfig? dcEnrollment = config.Operations.EnrollmentCheck;
+        Assert.NotNull(dcEnrollment);
+        Assert.Equal(StateBackendHttpMethod.Post, dcEnrollment.Method);
+        Assert.Equal("/enrollment/check", dcEnrollment.Path);
+
+        Assert.NotNull(dcEnrollment.Request);
+        Assert.Equal(CandidateExpansion.None, dcEnrollment.Request.Expand);
+        Assert.Equal("reqInd", dcEnrollment.Request.IndexField);
+        Assert.Equal("firstName", dcEnrollment.Request.Map["firstName"]);
+        Assert.Equal("dateOfBirth", dcEnrollment.Request.Map["dob"]);
+
+        Assert.NotNull(dcEnrollment.Response);
+        Assert.Equal("$.results", dcEnrollment.Response.Root);
+        Assert.Equal("reqInd", dcEnrollment.Response.IndexField);
+        Assert.Equal("eligible", dcEnrollment.Response.MatchWhen.Field);
+        Assert.Equal(new[] { "true" }, dcEnrollment.Response.MatchWhen.ValueIn);
+
         Assert.NotNull(config.Operations.Health);
 
-        // Capability-derivation smoke assert: EnrollmentCheck is unmodeled; the modeled
-        // cardReplacement op derives a per-case capability, and addressUpdate derives its capability.
+        // Capability-derivation smoke assert: the modeled cardReplacement op derives a per-case
+        // capability, addressUpdate derives its capability, and the modeled enrollment op derives
+        // EnrollmentCheck.
         StateBackendCapabilities capabilities = config.Capabilities;
         Assert.Equal(CardReplacementCapability.PerCase, capabilities.CardReplacement);
         Assert.True(capabilities.AddressUpdate);
-        Assert.False(capabilities.EnrollmentCheck);
+        Assert.True(capabilities.EnrollmentCheck);
     }
 
     [Fact]
@@ -216,10 +235,29 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("respCd", coAddressSuccess.Field);
         Assert.Equal(new[] { "200", "00" }, coAddressSuccess.ValueIn);
 
-        // Capability derivation differs from the DC sample: CO models AddressUpdate.
+        // The CO enrollment op hydrates: the transposeMonthDay candidate-expansion brick + fan-in.
+        EnrollmentCheckOperationConfig? coEnrollment = config.Operations.EnrollmentCheck;
+        Assert.NotNull(coEnrollment);
+        Assert.Equal(StateBackendHttpMethod.Post, coEnrollment.Method);
+        Assert.Equal("/sebt/check-enrollment", coEnrollment.Path);
+
+        Assert.NotNull(coEnrollment.Request);
+        Assert.Equal(CandidateExpansion.TransposeMonthDay, coEnrollment.Request.Expand);
+        Assert.Equal("stdReqInd", coEnrollment.Request.IndexField);
+        Assert.Equal("stdFirstName", coEnrollment.Request.Map["firstName"]);
+        Assert.Equal("stdLastName", coEnrollment.Request.Map["lastName"]);
+        Assert.Equal("stdDob", coEnrollment.Request.Map["dob"]);
+
+        Assert.NotNull(coEnrollment.Response);
+        Assert.Equal("$.stdntDtls", coEnrollment.Response.Root);
+        Assert.Equal("stdReqInd", coEnrollment.Response.IndexField);
+        Assert.Equal("sebtEligSts", coEnrollment.Response.MatchWhen.Field);
+        Assert.Equal(new[] { "Y" }, coEnrollment.Response.MatchWhen.ValueIn);
+
+        // Capability derivation: CO models AddressUpdate and EnrollmentCheck.
         StateBackendCapabilities capabilities = config.Capabilities;
         Assert.True(capabilities.AddressUpdate);
-        Assert.False(capabilities.EnrollmentCheck);
+        Assert.True(capabilities.EnrollmentCheck);
     }
 
     // A canonical value that is NOT a real member of the target C# enum must fail loud at validation.

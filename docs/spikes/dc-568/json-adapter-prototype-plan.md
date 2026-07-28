@@ -107,8 +107,9 @@ public interface IStateBackend
     Task<HouseholdLookupResult> LookupHouseholdAsync(
         HouseholdLookupRequest request, CancellationToken cancellationToken = default);
 
-    Task<CardDetails?> GetCardDetailsAsync(                                 // only if Capabilities.CardDetails.Modes has PerCase
-        string caseId, CancellationToken cancellationToken = default);
+    // Per-case card fetch (GetCardDetailsAsync) is a known future mode, deferred: DC/CO are batch
+    // (card details arrive inline in the household lookup), so no per-case fetch is exercised today.
+    // Re-add the method + a `cardDetails` operation config when a real PerCase state appears.
 
     Task<CardReplacementResult> RequestCardReplacementAsync(               // idempotency key required; cooldown stays portal-side
         CardReplacementRequest request, CancellationToken cancellationToken = default);

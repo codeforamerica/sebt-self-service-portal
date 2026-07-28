@@ -10,10 +10,6 @@ public interface IStateBackend
     Task<HouseholdLookupResult> LookupHouseholdAsync(
         HouseholdLookupRequest request, CancellationToken cancellationToken = default);
 
-    // only if Capabilities.CardDetails.Modes has PerCase
-    Task<CardDetails?> GetCardDetailsAsync(
-        string caseId, CancellationToken cancellationToken = default);
-
     Task<CardReplacementResult> RequestCardReplacementAsync(
         CardReplacementRequest request, CancellationToken cancellationToken = default);
 
@@ -159,7 +155,25 @@ public sealed record CardReplacementResult
         new() { IsSuccess = false, IsPolicyRejection = false, ErrorCode = code, ErrorMessage = message };
 }
 
-public sealed record EnrollmentCheckRequest();
-public sealed record EnrollmentCheckResult();
+/// <summary>
+/// An enrollment-eligibility check for a batch of children. Each child carries the identity fields
+/// a backend match reads (name + date of birth) plus a caller-supplied <see cref="EnrollmentChild.CheckId"/>
+/// the result echoes back. Transport-free: the driver turns each child into one or more backend
+/// request rows (see the enrollment op's <c>expand</c> strategy) and correlates the response back
+/// to the originating child.
+/// </summary>
+public sealed record EnrollmentCheckRequest(IReadOnlyList<EnrollmentChild> Children);
+
+/// <summary>One child to check. <see cref="CheckId"/> is an opaque caller correlation id echoed on the result.</summary>
+public sealed record EnrollmentChild(string CheckId, string FirstName, string LastName, DateOnly DateOfBirth);
+
+/// <summary>The per-child enrollment outcomes, one entry per requested child, in request order.</summary>
+public sealed record EnrollmentCheckResult(IReadOnlyList<EnrollmentChildResult> Results);
+
+/// <summary>
+/// One child's enrollment outcome. <see cref="IsMatch"/> is the fan-in verdict: true when ANY of the
+/// child's candidate request rows produced a matching backend row.
+/// </summary>
+public sealed record EnrollmentChildResult(string CheckId, bool IsMatch);
 
 public sealed record StateBackendHealth(bool IsHealthy);

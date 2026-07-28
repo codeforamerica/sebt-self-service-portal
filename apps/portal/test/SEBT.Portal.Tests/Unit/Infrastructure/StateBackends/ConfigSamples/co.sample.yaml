@@ -47,6 +47,25 @@ operations:
           field: respCd
           valueIn: ["200", "00"]
       default: BackendError
+  enrollmentCheck:
+    method: post
+    path: /sebt/check-enrollment
+    request:
+      # Closed candidate-expansion brick: emit the entered DOB plus its month/day-swapped
+      # candidate (when valid AND different) under one shared correlation index.
+      expand: transposeMonthDay
+      indexField: stdReqInd
+      map:
+        firstName: stdFirstName
+        lastName: stdLastName
+        dob: stdDob
+    response:
+      root: $.stdntDtls
+      indexField: stdReqInd
+      # A row matches when its eligibility flag is Y; fan-in (any candidate row) is implicit.
+      matchWhen:
+        field: sebtEligSts
+        valueIn: ["Y"]
   health:
     method: get
     path: /ping
