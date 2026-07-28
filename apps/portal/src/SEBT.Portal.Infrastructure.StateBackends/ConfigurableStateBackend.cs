@@ -56,6 +56,30 @@ public class ConfigurableStateBackend : IStateBackend
         EnrollmentResponseMapping mapping = operation.Response
             ?? throw new NotSupportedException("Enrollment check has no response mapping configured.");
 
+        // Fail loud on an incoherent callMode / indexField / expand combination before dispatching.
+        EnrollmentOperationValidator.Validate(operation.CallMode, binding, mapping);
+
+        return operation.CallMode switch
+        {
+            EnrollmentCallMode.Batch =>
+                await CheckEnrollmentBatchAsync(operation, binding, mapping, request, cancellationToken)
+                    .ConfigureAwait(false),
+            EnrollmentCallMode.PerChild =>
+                await CheckEnrollmentPerChildAsync(operation, binding, mapping, request, cancellationToken)
+                    .ConfigureAwait(false),
+            _ => throw new NotSupportedException(
+                $"Unsupported enrollment callMode '{operation.CallMode}'."),
+        };
+    }
+
+    // Batch fan-out (CO): ONE call carries every child as a correlated row; verdicts fan in by index.
+    private async Task<EnrollmentCheckResult> CheckEnrollmentBatchAsync(
+        EnrollmentCheckOperationConfig operation,
+        EnrollmentRequestBinding binding,
+        EnrollmentResponseMapping mapping,
+        EnrollmentCheckRequest request,
+        CancellationToken cancellationToken)
+    {
         using HttpRequestMessage httpRequest = BuildRequest(operation);
 
         // Request-side candidate expansion: one row per child, plus a DOB-transposed candidate under
@@ -78,6 +102,45 @@ public class ConfigurableStateBackend : IStateBackend
 
         // Response-side fan-in: a child matches when ANY of its candidate rows matched.
         return EnrollmentResponseCorrelator.Correlate(mapping, document.RootElement, request);
+    }
+
+    // PerChild fan-out (DC): the driver loops the batch and makes ONE call per child, reading a single
+    // result object each, then aggregates the per-child verdicts in request order.
+    private async Task<EnrollmentCheckResult> CheckEnrollmentPerChildAsync(
+        EnrollmentCheckOperationConfig operation,
+        EnrollmentRequestBinding binding,
+        EnrollmentResponseMapping mapping,
+        EnrollmentCheckRequest request,
+        CancellationToken cancellationToken)
+    {
+        var results = new List<EnrollmentChildResult>(request.Children.Count);
+
+        foreach (EnrollmentChild child in request.Children)
+        {
+            using HttpRequestMessage httpRequest = BuildRequest(operation);
+
+            JsonObject body = EnrollmentRequestBuilder.BuildSingleChildBody(binding, child);
+            httpRequest.Content = new StringContent(
+                body.ToJsonString(), Encoding.UTF8, "application/json");
+
+            using HttpResponseMessage response = await _httpClient
+                .SendAsync(httpRequest, cancellationToken)
+                .ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            await using Stream stream = await response.Content
+                .ReadAsStreamAsync(cancellationToken)
+                .ConfigureAwait(false);
+            using JsonDocument document = await JsonDocument
+                .ParseAsync(stream, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            bool isMatch = EnrollmentResponseCorrelator.EvaluateSingleResult(
+                mapping, document.RootElement);
+            results.Add(new EnrollmentChildResult(child.CheckId, isMatch));
+        }
+
+        return new EnrollmentCheckResult(results);
     }
 
     public async Task<StateBackendHealth> GetHealthAsync(CancellationToken cancellationToken = default)

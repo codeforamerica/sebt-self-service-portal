@@ -139,22 +139,24 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "OK" }, dcAddressSuccess.ValueIn);
         Assert.Equal(CardReplacementOutcome.BackendError, dcAddressClassifier.Default);
 
-        // The DC enrollment op hydrates: single-row request (NO expansion) + fan-in response mapping.
+        // The DC enrollment op hydrates: PerChild fan-out (no index, no expansion) + single-object
+        // match on the boolean eligibility flag.
         EnrollmentCheckOperationConfig? dcEnrollment = config.Operations.EnrollmentCheck;
         Assert.NotNull(dcEnrollment);
         Assert.Equal(StateBackendHttpMethod.Post, dcEnrollment.Method);
         Assert.Equal("/enrollment/check", dcEnrollment.Path);
+        Assert.Equal(EnrollmentCallMode.PerChild, dcEnrollment.CallMode);
 
         Assert.NotNull(dcEnrollment.Request);
         Assert.Equal(CandidateExpansion.None, dcEnrollment.Request.Expand);
-        Assert.Equal("reqInd", dcEnrollment.Request.IndexField);
+        Assert.Null(dcEnrollment.Request.IndexField);
         Assert.Equal("firstName", dcEnrollment.Request.Map["firstName"]);
         Assert.Equal("dateOfBirth", dcEnrollment.Request.Map["dob"]);
 
         Assert.NotNull(dcEnrollment.Response);
-        Assert.Equal("$.results", dcEnrollment.Response.Root);
-        Assert.Equal("reqInd", dcEnrollment.Response.IndexField);
-        Assert.Equal("eligible", dcEnrollment.Response.MatchWhen.Field);
+        Assert.Equal("$", dcEnrollment.Response.Root);
+        Assert.Null(dcEnrollment.Response.IndexField);
+        Assert.Equal("isEligible", dcEnrollment.Response.MatchWhen.Field);
         Assert.Equal(new[] { "true" }, dcEnrollment.Response.MatchWhen.ValueIn);
 
         Assert.NotNull(config.Operations.Health);
@@ -241,6 +243,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(StateBackendHttpMethod.Post, coEnrollment.Method);
         Assert.Equal("/sebt/check-enrollment", coEnrollment.Path);
 
+        Assert.Equal(EnrollmentCallMode.Batch, coEnrollment.CallMode);
         Assert.NotNull(coEnrollment.Request);
         Assert.Equal(CandidateExpansion.TransposeMonthDay, coEnrollment.Request.Expand);
         Assert.Equal("stdReqInd", coEnrollment.Request.IndexField);

@@ -103,18 +103,23 @@ operations:
   enrollmentCheck:
     method: post
     path: /enrollment/check
+    # PerChild fan-out: the driver loops the batch and makes ONE call per child. No correlation
+    # index (each call is a single child), no DOB expansion. NOTE: the single-child wrapper endpoint
+    # that accepts one child and returns { isEligible: bool } is NOT built yet — it lands in phase 4/5
+    # alongside the DC state-backend adapter. This config declares the shape the driver will drive.
+    callMode: perChild
     request:
-      # No expand: DC emits a single row per child (no DOB transposition).
-      indexField: reqInd
+      # firstName/lastName/dob only — the spike's EnrollmentChild carries no schoolName. The DC
+      # sproc also reads schoolName; adding it to the closed request vocabulary is a later slice.
       map:
         firstName: firstName
         lastName: lastName
         dob: dateOfBirth
     response:
-      root: $.results
-      indexField: reqInd
+      # The single result object is the response root; matchWhen reads the boolean eligibility flag.
+      root: $
       matchWhen:
-        field: eligible
+        field: isEligible
         valueIn: ["true"]
   health:
     method: get

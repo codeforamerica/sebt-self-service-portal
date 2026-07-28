@@ -24,6 +24,10 @@ internal static class EnrollmentResponseCorrelator
         ArgumentNullException.ThrowIfNull(mapping);
         ArgumentNullException.ThrowIfNull(request);
 
+        // Batch mode: the validator guarantees a non-null index field before we get here.
+        string indexField = mapping.IndexField
+            ?? throw new InvalidOperationException("Batch enrollment response mapping requires an indexField.");
+
         // Collect the set of correlation indices whose rows matched.
         var matchedIndices = new HashSet<string>(StringComparer.Ordinal);
         JsonElement rows = SelectPath(root, mapping.Root);
@@ -32,7 +36,7 @@ internal static class EnrollmentResponseCorrelator
         {
             foreach (JsonElement row in rows.EnumerateArray())
             {
-                string? index = ReadString(row, mapping.IndexField);
+                string? index = ReadString(row, indexField);
                 if (index is not null && RowMatches(mapping.MatchWhen, row))
                 {
                     matchedIndices.Add(index);
@@ -48,6 +52,19 @@ internal static class EnrollmentResponseCorrelator
         }
 
         return new EnrollmentCheckResult(results);
+    }
+
+    /// <summary>
+    /// PerChild evaluation: selects the single result object at <see cref="EnrollmentResponseMapping.Root"/>
+    /// and applies the closed <see cref="EnrollmentResponseMapping.MatchWhen"/> predicate to it. No
+    /// correlation index — one call reads one child's verdict.
+    /// </summary>
+    public static bool EvaluateSingleResult(EnrollmentResponseMapping mapping, JsonElement root)
+    {
+        ArgumentNullException.ThrowIfNull(mapping);
+
+        JsonElement result = SelectPath(root, mapping.Root);
+        return RowMatches(mapping.MatchWhen, result);
     }
 
     private static bool RowMatches(EnrollmentMatchCondition condition, JsonElement row)

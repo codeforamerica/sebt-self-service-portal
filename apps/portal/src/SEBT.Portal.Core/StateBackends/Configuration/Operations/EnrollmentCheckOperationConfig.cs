@@ -14,11 +14,39 @@ namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 /// </summary>
 public sealed record EnrollmentCheckOperationConfig() : StateBackendReadOperationConfig
 {
+    /// <summary>
+    /// How the driver fans a child batch out to backend calls. <see cref="EnrollmentCallMode.Batch"/>
+    /// makes ONE call carrying every child as a correlated row (CO); <see cref="EnrollmentCallMode.PerChild"/>
+    /// loops the batch and makes ONE call per child (DC). Required — both samples must set it so the
+    /// call shape is never inferred.
+    /// </summary>
+    public required EnrollmentCallMode CallMode { get; init; }
+
     /// <summary>How to build each outgoing request row from a child. Null when unmodeled.</summary>
     public EnrollmentRequestBinding? Request { get; init; }
 
     /// <summary>How to correlate + classify response rows back to children. Null when unmodeled.</summary>
     public EnrollmentResponseMapping? Response { get; init; }
+}
+
+/// <summary>
+/// The closed set of enrollment call-fan-out modes. HARD CAP: exactly these two. A chunked batch
+/// (max N children per call) would be a future <c>batchSize</c> variation — do NOT grow this enum
+/// to model it without stopping first.
+/// </summary>
+public enum EnrollmentCallMode
+{
+    /// <summary>
+    /// One backend call carrying every child as a correlated row. Children are correlated back by
+    /// the request/response <c>indexField</c>, with expansion + any-candidate fan-in (CO).
+    /// </summary>
+    Batch,
+
+    /// <summary>
+    /// The driver loops the child batch and makes ONE call per child (request bound from that single
+    /// child), reading a single result object per call — no correlation index (DC).
+    /// </summary>
+    PerChild,
 }
 
 /// <summary>
@@ -32,8 +60,12 @@ public sealed record EnrollmentRequestBinding
     /// <summary>OUR child-field name → dotted target path in the request row.</summary>
     public required Dictionary<string, string> Map { get; init; }
 
-    /// <summary>Dotted target path carrying the 1-based correlation index for the row.</summary>
-    public required string IndexField { get; init; }
+    /// <summary>
+    /// Dotted target path carrying the 1-based correlation index for the row. Required for
+    /// <see cref="EnrollmentCallMode.Batch"/> (rows are correlated by index); MUST be null for
+    /// <see cref="EnrollmentCallMode.PerChild"/> (each call is a single child — no index).
+    /// </summary>
+    public string? IndexField { get; init; }
 
     /// <summary>
     /// Optional, closed candidate-expansion strategy applied to the DOB input. Null (or
@@ -70,8 +102,12 @@ public sealed record EnrollmentResponseMapping
     /// <summary>Path to the array of response rows (e.g. <c>$.stdntDtls</c>). Same capped path grammar as reads.</summary>
     public required string Root { get; init; }
 
-    /// <summary>Source property on each row carrying the echoed correlation index.</summary>
-    public required string IndexField { get; init; }
+    /// <summary>
+    /// Source property on each row carrying the echoed correlation index. Required for
+    /// <see cref="EnrollmentCallMode.Batch"/> (verdicts fan in by index); MUST be null for
+    /// <see cref="EnrollmentCallMode.PerChild"/> (one call reads a single result object — no index).
+    /// </summary>
+    public string? IndexField { get; init; }
 
     /// <summary>The single closed predicate deciding whether ONE row is a match.</summary>
     public required EnrollmentMatchCondition MatchWhen { get; init; }

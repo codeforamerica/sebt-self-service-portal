@@ -24,6 +24,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                 {
                     Method = StateBackendHttpMethod.Post,
                     Path = "/sebt/check-enrollment",
+                    CallMode = EnrollmentCallMode.Batch,
                     Request = new EnrollmentRequestBinding
                     {
                         IndexField = "stdReqInd",
@@ -49,9 +50,9 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-    // ---- DC-shaped config: single row per child, no expansion, straightforward eligibility flag ----
+    // ---- Batch config, no expansion: single row per child, correlated by index ----
 
-    private static StateBackendConfiguration DcConfiguration() =>
+    private static StateBackendConfiguration BatchNoExpandConfiguration() =>
         new()
         {
             BaseUrl = new Uri("http://backend.test"),
@@ -62,6 +63,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                 {
                     Method = StateBackendHttpMethod.Post,
                     Path = "/enrollment/check",
+                    CallMode = EnrollmentCallMode.Batch,
                     Request = new EnrollmentRequestBinding
                     {
                         IndexField = "reqInd",
@@ -80,6 +82,45 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                         MatchWhen = new EnrollmentMatchCondition
                         {
                             Field = "eligible",
+                            ValueIn = new List<string> { "true" },
+                        },
+                    },
+                },
+            },
+        };
+
+    // ---- DC-shaped config: PerChild fan-out. The driver loops the batch and makes ONE call per
+    // child; each call returns a single result object { isEligible: bool }. No correlation index. ----
+
+    private static StateBackendConfiguration DcPerChildConfiguration() =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                EnrollmentCheck = new EnrollmentCheckOperationConfig
+                {
+                    Method = StateBackendHttpMethod.Post,
+                    Path = "/enrollment/check",
+                    CallMode = EnrollmentCallMode.PerChild,
+                    Request = new EnrollmentRequestBinding
+                    {
+                        // PerChild: no index — each call is one child.
+                        Map = new Dictionary<string, string>
+                        {
+                            ["firstName"] = "firstName",
+                            ["lastName"] = "lastName",
+                            ["dob"] = "dateOfBirth",
+                        },
+                    },
+                    Response = new EnrollmentResponseMapping
+                    {
+                        // The single result object is the response root.
+                        Root = "$",
+                        MatchWhen = new EnrollmentMatchCondition
+                        {
+                            Field = "isEligible",
                             ValueIn = new List<string> { "true" },
                         },
                     },
@@ -174,9 +215,9 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     }
 
     [Fact]
-    public async Task CheckEnrollmentAsync_Dc_SingleRowRequest_StraightforwardMatch()
+    public async Task CheckEnrollmentAsync_BatchNoExpand_SingleRowRequest_StraightforwardMatch()
     {
-        // Arrange — two children; DC config does no expansion, so one row each.
+        // Arrange — two children; no expansion, so one row each.
         var request = new EnrollmentCheckRequest(
             new[]
             {
@@ -195,7 +236,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             """;
 
         // Act
-        (string body, EnrollmentCheckResult result) = await RunAsync(DcConfiguration(), request, responseJson);
+        (string body, EnrollmentCheckResult result) = await RunAsync(BatchNoExpandConfiguration(), request, responseJson);
 
         // Assert — one row per child (no expansion), both under their own index.
         using JsonDocument document = JsonDocument.Parse(body);
@@ -210,6 +251,139 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.True(result.Results[0].IsMatch);
         Assert.Equal("chk-2", result.Results[1].CheckId);
         Assert.False(result.Results[1].IsMatch);
+    }
+
+    // ---- PerChild fan-out: the driver loops children, ONE call each, no correlation index ----
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_PerChild_MakesOneCallPerChild_AndAggregatesPerChildMatch()
+    {
+        // Arrange — two children. The driver must issue TWO separate HTTP calls, each bound from a
+        // single child, each returning a single { isEligible } result object.
+        var request = new EnrollmentCheckRequest(
+            new[]
+            {
+                new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)),
+                new EnrollmentChild("chk-2", "Alan", "Turing", new DateOnly(2016, 7, 3)),
+            });
+
+        var capturedBodies = new List<string>();
+        var mockHttp = new MockHttpMessageHandler();
+        // Respond by inspecting the single-child request body: Ada eligible, Alan not.
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/enrollment/check")
+            .Respond(message =>
+            {
+                string body = message.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                capturedBodies.Add(body);
+                bool eligible = body.Contains("Ada", StringComparison.Ordinal);
+                var response = new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        $$"""{ "isEligible": {{(eligible ? "true" : "false")}} }""",
+                        System.Text.Encoding.UTF8,
+                        "application/json"),
+                };
+                return response;
+            });
+
+        var backend = new ConfigurableStateBackend(DcPerChildConfiguration(), mockHttp.ToHttpClient());
+
+        // Act
+        EnrollmentCheckResult result = await backend.CheckEnrollmentAsync(request);
+
+        // Assert — TWO separate HTTP calls, one per child.
+        Assert.Equal(2, capturedBodies.Count);
+
+        // Each call's body is a SINGLE child object (not an array) with no correlation index.
+        using JsonDocument first = JsonDocument.Parse(capturedBodies[0]);
+        Assert.Equal(JsonValueKind.Object, first.RootElement.ValueKind);
+        Assert.Equal("Ada", first.RootElement.GetProperty("firstName").GetString());
+        Assert.False(first.RootElement.TryGetProperty("reqInd", out _));
+
+        using JsonDocument second = JsonDocument.Parse(capturedBodies[1]);
+        Assert.Equal("Alan", second.RootElement.GetProperty("firstName").GetString());
+
+        // Aggregated per-child verdicts, in request order.
+        Assert.Equal(2, result.Results.Count);
+        Assert.Equal("chk-1", result.Results[0].CheckId);
+        Assert.True(result.Results[0].IsMatch);
+        Assert.Equal("chk-2", result.Results[1].CheckId);
+        Assert.False(result.Results[1].IsMatch);
+    }
+
+    // ---- fail-loud validation of the call-mode / index-field / expand combinations ----
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_Batch_WithoutIndexField_Throws()
+    {
+        StateBackendConfiguration config = BatchNoExpandConfiguration();
+        var operation = config.Operations.EnrollmentCheck!;
+        config = config with
+        {
+            Operations = config.Operations with
+            {
+                EnrollmentCheck = operation with
+                {
+                    Request = operation.Request! with { IndexField = null },
+                },
+            },
+        };
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => RunAsync(
+                config,
+                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
+                "{}"));
+        Assert.Contains("indexField", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_PerChild_WithIndexField_Throws()
+    {
+        StateBackendConfiguration config = DcPerChildConfiguration();
+        var operation = config.Operations.EnrollmentCheck!;
+        config = config with
+        {
+            Operations = config.Operations with
+            {
+                EnrollmentCheck = operation with
+                {
+                    Request = operation.Request! with { IndexField = "reqInd" },
+                },
+            },
+        };
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => RunAsync(
+                config,
+                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
+                "{}"));
+        Assert.Contains("indexField", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_PerChild_WithExpand_ThrowsNotSupported()
+    {
+        StateBackendConfiguration config = DcPerChildConfiguration();
+        var operation = config.Operations.EnrollmentCheck!;
+        config = config with
+        {
+            Operations = config.Operations with
+            {
+                EnrollmentCheck = operation with
+                {
+                    Request = operation.Request! with { Expand = CandidateExpansion.TransposeMonthDay },
+                },
+            },
+        };
+
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => RunAsync(
+                config,
+                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
+                "{}"));
+        Assert.Contains("not supported", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---- transposeMonthDay strategy unit behavior ----

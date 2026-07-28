@@ -26,6 +26,10 @@ internal static class EnrollmentRequestBuilder
         ArgumentNullException.ThrowIfNull(binding);
         ArgumentNullException.ThrowIfNull(request);
 
+        // Batch mode: the validator guarantees a non-null index field before we get here.
+        string indexField = binding.IndexField
+            ?? throw new InvalidOperationException("Batch enrollment request binding requires an indexField.");
+
         var rows = new JsonArray();
 
         for (int i = 0; i < request.Children.Count; i++)
@@ -33,22 +37,41 @@ internal static class EnrollmentRequestBuilder
             EnrollmentChild child = request.Children[i];
             string index = (i + 1).ToString(CultureInfo.InvariantCulture);
 
-            rows.Add(BuildRow(binding, child, child.DateOfBirth, index));
+            rows.Add(BuildRow(binding, child, child.DateOfBirth, indexField, index));
 
             // Candidate expansion: emit the month/day-swapped DOB under the SAME index, but only
             // when the swap yields a valid AND different date.
             if (binding.Expand == CandidateExpansion.TransposeMonthDay
                 && EnrollmentCandidateExpander.TryTransposeMonthDay(child.DateOfBirth) is { } transposed)
             {
-                rows.Add(BuildRow(binding, child, transposed, index));
+                rows.Add(BuildRow(binding, child, transposed, indexField, index));
             }
         }
 
         return rows;
     }
 
+    /// <summary>
+    /// Builds a single child's request body for PerChild fan-out: the same <c>map</c> vocabulary as a
+    /// batch row, but WITHOUT a correlation index (each call is one child).
+    /// </summary>
+    public static JsonObject BuildSingleChildBody(EnrollmentRequestBinding binding, EnrollmentChild child)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(child);
+
+        var body = new JsonObject();
+
+        foreach ((string inputName, string targetPath) in binding.Map)
+        {
+            WriteAtPath(body, targetPath, JsonValue.Create(ResolveInput(inputName, child, child.DateOfBirth)));
+        }
+
+        return body;
+    }
+
     private static JsonObject BuildRow(
-        EnrollmentRequestBinding binding, EnrollmentChild child, DateOnly dob, string index)
+        EnrollmentRequestBinding binding, EnrollmentChild child, DateOnly dob, string indexField, string index)
     {
         var row = new JsonObject();
 
@@ -57,7 +80,7 @@ internal static class EnrollmentRequestBuilder
             WriteAtPath(row, targetPath, JsonValue.Create(ResolveInput(inputName, child, dob)));
         }
 
-        WriteAtPath(row, binding.IndexField, JsonValue.Create(index));
+        WriteAtPath(row, indexField, JsonValue.Create(index));
 
         return row;
     }
