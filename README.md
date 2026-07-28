@@ -467,6 +467,10 @@ To help test different workflows and users in different states, the seeder will 
 
 Seeding only runs if no users exist in the database, preventing duplicate data on subsequent runs.
 
+#### Dev reseed endpoint
+
+`POST /api/dev/seed/reseed/{scenarioName}` restores a single seed persona for mutable full-stack E2E suites. It is gated by `Seeding:EnableDevEndpoints` (default **false**) and is excluded from OpenAPI. Local launch profiles and Docker Compose set the flag to `true` (CI uses the same launch profile). Do **not** enable it on deployed hosts, including public lower environments that still use `ASPNETCORE_ENVIRONMENT=Development`.
+
 #### Clearing Seeded Data
 
 There's occasionally going to be instances where you'd want have the auto-seeded data be not be created for certain types of testing. For those instances, there's a small console app to help with this.
