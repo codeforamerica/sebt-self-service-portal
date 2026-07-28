@@ -110,6 +110,13 @@ internal static class StateBackendResponseMapper
             // ApplicationStatus), never raw state fields.
             SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers, keywordResolvers);
 
+            // When configured, the case's id is an OPAQUE, self-describing token composed from the
+            // named routing fields — the fields a later write needs to route the backend call.
+            if (mapping.CaseId is { } caseIdComposition)
+            {
+                summerEbtCase.SummerEBTCaseID = ComposeCaseId(record, caseIdComposition);
+            }
+
             // Without disaggregation, records map 1:1 into a flat case list.
             if (disaggregation is null)
             {
@@ -193,6 +200,21 @@ internal static class StateBackendResponseMapper
 
         string? value = ReadString(record, groupField);
         return string.IsNullOrEmpty(value) ? null : value;
+    }
+
+    // Packs the composition's named routing fields off the record into an opaque caseId token.
+    // Each OUR-keyed routing field carries the value of its source property (empty when absent —
+    // the token round-trips whatever the read produced; downstream write binding fails loud if a
+    // required routing input is missing).
+    private static string ComposeCaseId(JsonElement record, CaseIdComposition composition)
+    {
+        var fields = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach ((string routingName, string sourceProperty) in composition.Fields)
+        {
+            fields[routingName] = ReadString(record, sourceProperty) ?? string.Empty;
+        }
+
+        return OpaqueCaseId.Compose(fields);
     }
 
     private static string? ReadString(JsonElement record, string property)

@@ -23,4 +23,12 @@ public sealed record StateBackendResponseMapping
     /// Uses the closed vocabulary in <see cref="StateBackendDisaggregation"/>.
     /// </summary>
     public StateBackendDisaggregation? Disaggregation { get; init; }
+
+    /// <summary>
+    /// Optional composition of the case's opaque, self-describing caseId token. When present, the
+    /// mapper packs the named record fields into a small JSON object and URL-safe base64-encodes
+    /// it into <see cref="Models.Household.SummerEbtCase.SummerEBTCaseID"/>. A later write decodes
+    /// the token to recover the routing fields. See <see cref="CaseIdComposition"/>.
+    /// </summary>
+    public CaseIdComposition? CaseId { get; init; }
 }

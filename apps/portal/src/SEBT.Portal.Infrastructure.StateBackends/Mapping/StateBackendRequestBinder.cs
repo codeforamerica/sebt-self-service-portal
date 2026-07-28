@@ -43,6 +43,44 @@ internal static class StateBackendRequestBinder
         return body;
     }
 
+    /// <summary>
+    /// Write-path binding: builds the outgoing body from constants plus a CLOSED set of named
+    /// inputs — the routing fields decoded from the incoming opaque caseId. Same domain-centered
+    /// constants + map vocabulary as the read path; the map's LHS names refer to decoded routing
+    /// fields. A map input with no matching routing field fails loud (never silently drops).
+    /// </summary>
+    public static JsonObject BuildBody(RequestBinding binding, IReadOnlyDictionary<string, string> inputs)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(inputs);
+
+        var body = new JsonObject();
+
+        if (binding.Constants is { } constants)
+        {
+            foreach ((string targetPath, object value) in constants)
+            {
+                WriteAtPath(body, targetPath, JsonValue.Create(value));
+            }
+        }
+
+        if (binding.Map is { } map)
+        {
+            foreach ((string inputName, string targetPath) in map)
+            {
+                if (!inputs.TryGetValue(inputName, out string? value))
+                {
+                    throw new InvalidOperationException(
+                        $"Request map input '{inputName}' resolved to no value.");
+                }
+
+                WriteAtPath(body, targetPath, JsonValue.Create(value));
+            }
+        }
+
+        return body;
+    }
+
     // Closed resolution set: household-identity signals addressable by IdentitySignal.Type, plus
     // a small fixed set of caller-context names. Fail loud when an input resolves to nothing.
     private static JsonNode ResolveInput(string inputName, HouseholdLookupRequest request)

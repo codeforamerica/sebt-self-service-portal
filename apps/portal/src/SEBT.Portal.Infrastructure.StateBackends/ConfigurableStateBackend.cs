@@ -13,14 +13,25 @@ public class ConfigurableStateBackend : IStateBackend
 {
     private readonly StateBackendConfiguration _configuration;
     private readonly HttpClient _httpClient;
+    private readonly Func<string> _idempotencyKeyFactory;
 
     public ConfigurableStateBackend(StateBackendConfiguration configuration, HttpClient httpClient)
+        : this(configuration, httpClient, () => Guid.NewGuid().ToString())
+    {
+    }
+
+    // The idempotency-key factory is injectable so tests can assert a deterministic key. In
+    // production it generates a fresh UUID per call.
+    public ConfigurableStateBackend(
+        StateBackendConfiguration configuration, HttpClient httpClient, Func<string> idempotencyKeyFactory)
     {
         ArgumentNullException.ThrowIfNull(configuration);
         ArgumentNullException.ThrowIfNull(httpClient);
+        ArgumentNullException.ThrowIfNull(idempotencyKeyFactory);
 
         _configuration = configuration;
         _httpClient = httpClient;
+        _idempotencyKeyFactory = idempotencyKeyFactory;
         _httpClient.BaseAddress ??= _configuration.BaseUrl;
     }
 
@@ -124,15 +135,107 @@ public class ConfigurableStateBackend : IStateBackend
         return new HouseholdLookupResult(HouseholdLookupStatus.Found, household);
     }
 
-    public Task<CardReplacementResult> RequestCardReplacementAsync(CardReplacementRequest request, CancellationToken cancellationToken = default)
+    public async Task<CardReplacementResult> RequestCardReplacementAsync(CardReplacementRequest request, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         if (Capabilities.CardReplacement == CardReplacementCapability.None)
         {
             throw new NotSupportedException("Card replacement is not supported by the state backend.");
         }
 
-        throw new NotImplementedException();
+        CardReplacementOperationConfig operation = _configuration.Operations.CardReplacement
+            ?? throw new NotSupportedException("Card replacement is not configured for the state backend.");
+
+        ResultClassifier classifier = operation.Result
+            ?? throw new NotSupportedException("Card replacement has no result classifier configured.");
+
+        // Fail loud on a malformed classifier before performing the call.
+        CardReplacementClassifier.Validate(classifier);
+
+        // Decode the opaque caseId into its routing fields, then expose them (plus the request's
+        // reason) as inputs to the domain-centered request binding.
+        Dictionary<string, string> inputs = BuildCardReplacementInputs(request);
+
+        using HttpRequestMessage httpRequest = BuildRequest(operation);
+
+        if (operation.Request is { } binding)
+        {
+            JsonObject body = StateBackendRequestBinder.BuildBody(binding, inputs);
+            httpRequest.Content = new StringContent(
+                body.ToJsonString(), Encoding.UTF8, "application/json");
+        }
+
+        // Idempotency-Key guards against duplicate replacement issuance on retry. Fresh per call
+        // in production; injectable for deterministic tests.
+        httpRequest.Headers.Add("Idempotency-Key", _idempotencyKeyFactory());
+
+        using HttpResponseMessage response = await _httpClient
+            .SendAsync(httpRequest, cancellationToken)
+            .ConfigureAwait(false);
+
+        JsonElement? body2 = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
+
+        CardReplacementOutcome outcome = CardReplacementClassifier.Classify(
+            classifier, (int)response.StatusCode, body2);
+
+        return ToResult(outcome);
     }
+
+    private static Dictionary<string, string> BuildCardReplacementInputs(CardReplacementRequest request)
+    {
+        IReadOnlyDictionary<string, string> routingFields = OpaqueCaseId.Decode(request.CaseId);
+
+        var inputs = new Dictionary<string, string>(routingFields, StringComparer.Ordinal);
+
+        // "reason" is caller context, not a routing field — a fixed pass-through input name.
+        if (request.Reason is { } reason)
+        {
+            inputs["reason"] = reason;
+        }
+
+        return inputs;
+    }
+
+    private static async Task<JsonElement?> TryParseBodyAsync(
+        HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using Stream stream = await response.Content
+                .ReadAsStreamAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (stream.CanSeek && stream.Length == 0)
+            {
+                return null;
+            }
+
+            using JsonDocument document = await JsonDocument
+                .ParseAsync(stream, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            // Clone so the element survives the JsonDocument being disposed.
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            // A non-JSON body still classifies on status-only conditions / the default.
+            return null;
+        }
+    }
+
+    private static CardReplacementResult ToResult(CardReplacementOutcome outcome) =>
+        outcome switch
+        {
+            CardReplacementOutcome.Success => CardReplacementResult.Success(),
+            CardReplacementOutcome.PolicyRejection => CardReplacementResult.PolicyRejected(
+                "POLICY_REJECTION", "The household is not eligible to request a replacement via the portal."),
+            CardReplacementOutcome.BackendError => CardReplacementResult.BackendError(
+                "BACKEND_ERROR", "The state backend returned an error."),
+            _ => throw new NotSupportedException(
+                $"Card-replacement outcome '{outcome}' is not supported."),
+        };
 
     public Task<AddressUpdateResult> UpdateAddressAsync(AddressUpdateRequest request, CancellationToken cancellationToken = default)
     {

@@ -53,8 +53,55 @@ public sealed record CardDetails();
 public sealed record AddressUpdateRequest();
 public sealed record AddressUpdateResult();
 
-public sealed record CardReplacementRequest();
-public sealed record CardReplacementResult();
+/// <summary>
+/// A card-replacement request routed by an OPAQUE, self-describing <see cref="CaseId"/> token.
+/// The token was composed on a prior read (see the response mapping's caseId composition): it
+/// packs the routing fields a write needs. The driver decodes it and feeds the decoded fields
+/// into the request binding — the portal never has to understand the token's shape.
+/// </summary>
+/// <remarks>
+/// Cooldown, persistence, and hashing stay PORTAL-side. This request carries only what the
+/// driver needs to perform the backend call.
+/// </remarks>
+public sealed record CardReplacementRequest(string CaseId)
+{
+    /// <summary>Optional reason the UI collected. Null when unspecified.</summary>
+    public string? Reason { get; init; }
+}
+
+/// <summary>
+/// Canonical card-replacement outcome. Mirrors the state-connector contract's result shape:
+/// success, a policy rejection (household not eligible), or a backend error.
+/// </summary>
+public sealed record CardReplacementResult
+{
+    /// <summary>Whether the replacement was successfully initiated.</summary>
+    public bool IsSuccess { get; init; }
+
+    /// <summary>
+    /// Whether the failure is a policy rejection (household not eligible for portal card
+    /// replacement) rather than a technical backend error.
+    /// </summary>
+    public bool IsPolicyRejection { get; init; }
+
+    /// <summary>Machine-readable error code for frontend/analytics consumption.</summary>
+    public string? ErrorCode { get; init; }
+
+    /// <summary>Human-readable error message.</summary>
+    public string? ErrorMessage { get; init; }
+
+    /// <summary>The replacement was initiated successfully.</summary>
+    public static CardReplacementResult Success() =>
+        new() { IsSuccess = true };
+
+    /// <summary>The household is not eligible to request a replacement via the portal.</summary>
+    public static CardReplacementResult PolicyRejected(string code, string message) =>
+        new() { IsSuccess = false, IsPolicyRejection = true, ErrorCode = code, ErrorMessage = message };
+
+    /// <summary>The state backend returned an error.</summary>
+    public static CardReplacementResult BackendError(string code, string message) =>
+        new() { IsSuccess = false, IsPolicyRejection = false, ErrorCode = code, ErrorMessage = message };
+}
 
 public sealed record EnrollmentCheckRequest();
 public sealed record EnrollmentCheckResult();

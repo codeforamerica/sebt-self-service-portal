@@ -24,7 +24,9 @@ public record StateBackendConfiguration
             "",
             ServiceMode: StateBackendServiceMode.Full,
             CardDetailsCapability.None, // TODO
-            CardReplacementCapability.None, // TODO
+            Operations.CardReplacement != null
+                ? CardReplacementCapability.PerCase
+                : CardReplacementCapability.None,
             Operations.AddressUpdate != null,
             Operations.EnrollmentCheck != null);
 }

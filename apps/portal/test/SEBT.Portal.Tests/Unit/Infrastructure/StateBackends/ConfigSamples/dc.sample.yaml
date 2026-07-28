@@ -47,9 +47,36 @@ operations:
         discriminatorField: ApplicationId
         groupApplicationsBy: ApplicationId
         caseInclusion: all
+      # The case's id is an OPAQUE, self-describing token composed from the routing fields a write
+      # needs. Config lists WHICH fields; encode/decode is a fixed platform primitive.
+      caseId:
+        fields:
+          caseId: SummerEBTCaseID
+          applicationId: ApplicationId
   cardReplacement:
     method: post
     path: /cards/replace
+    request:
+      constants:
+        source: portal
+      # Map LHS are the decoded caseId routing fields (+ the caller-context "reason"); RHS are the
+      # backend's write-body target paths.
+      map:
+        caseId: summerEbtCaseId
+        applicationId: applicationId
+        reason: reason
+    result:
+      # Ordered, first-match-wins. Each condition is EXACTLY ONE of three closed kinds:
+      # statusIn / valueIn(field) / messageContains(messageField). NO combinators, NO nesting.
+      conditions:
+        # DC: a "policy" message is a policy rejection — evaluated BEFORE success (order matters).
+        - outcome: PolicyRejection
+          messageField: message
+          messageContains: [policy]
+        - outcome: Success
+          field: resultCode
+          valueIn: [OK]
+      default: BackendError
   health:
     method: get
     path: /health

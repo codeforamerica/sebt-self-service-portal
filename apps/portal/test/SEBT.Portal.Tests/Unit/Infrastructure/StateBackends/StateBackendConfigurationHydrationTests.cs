@@ -89,10 +89,39 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("ApplicationId", disaggregation.GroupApplicationsBy);
         Assert.Equal(CaseInclusionPredicate.All, disaggregation.CaseInclusion);
 
+        // The opaque caseId composition hydrates: OUR routing-field name → source property.
+        CaseIdComposition caseId = Assert.IsType<CaseIdComposition>(response.CaseId);
+        Assert.Equal("SummerEBTCaseID", caseId.Fields["caseId"]);
+        Assert.Equal("ApplicationId", caseId.Fields["applicationId"]);
+
+        // The card-replacement write op hydrates: request binding + ordered result classifier.
+        CardReplacementOperationConfig? cardReplacement = config.Operations.CardReplacement;
+        Assert.NotNull(cardReplacement);
+        Assert.Equal(StateBackendHttpMethod.Post, cardReplacement.Method);
+        Assert.Equal("/cards/replace", cardReplacement.Path);
+
+        Assert.NotNull(cardReplacement.Request);
+        Assert.Equal("portal", cardReplacement.Request.Constants!["source"]);
+        Assert.Equal("summerEbtCaseId", cardReplacement.Request.Map!["caseId"]);
+        Assert.Equal("applicationId", cardReplacement.Request.Map["applicationId"]);
+        Assert.Equal("reason", cardReplacement.Request.Map["reason"]);
+
+        ResultClassifier classifier = Assert.IsType<ResultClassifier>(cardReplacement.Result);
+        Assert.Equal(2, classifier.Conditions.Count);
+        Assert.Equal(CardReplacementOutcome.PolicyRejection, classifier.Conditions[0].Outcome);
+        Assert.Equal("message", classifier.Conditions[0].MessageField);
+        Assert.Equal(new[] { "policy" }, classifier.Conditions[0].MessageContains);
+        Assert.Equal(CardReplacementOutcome.Success, classifier.Conditions[1].Outcome);
+        Assert.Equal("resultCode", classifier.Conditions[1].Field);
+        Assert.Equal(new[] { "OK" }, classifier.Conditions[1].ValueIn);
+        Assert.Equal(CardReplacementOutcome.BackendError, classifier.Default);
+
         Assert.NotNull(config.Operations.Health);
 
-        // Capability-derivation smoke assert: nothing modeled AddressUpdate/EnrollmentCheck here.
+        // Capability-derivation smoke assert: nothing modeled AddressUpdate/EnrollmentCheck here;
+        // the modeled cardReplacement op derives a per-case capability.
         StateBackendCapabilities capabilities = config.Capabilities;
+        Assert.Equal(CardReplacementCapability.PerCase, capabilities.CardReplacement);
         Assert.False(capabilities.AddressUpdate);
         Assert.False(capabilities.EnrollmentCheck);
     }
