@@ -33,6 +33,20 @@ operations:
   addressUpdate:
     method: patch
     path: /sebt/update-std-dtls
+    request:
+      # Batch shape: each decoded caseId's per-case write-id is COLLECTED into a PATCH array.
+      collect:
+        writeId: cases
+      # Scalar address fields bind through the same map vocabulary.
+      map:
+        line1: stdAddr
+        zip: stdZip
+    result:
+      conditions:
+        - outcome: Success
+          field: respCd
+          valueIn: ["200", "00"]
+      default: BackendError
   health:
     method: get
     path: /ping

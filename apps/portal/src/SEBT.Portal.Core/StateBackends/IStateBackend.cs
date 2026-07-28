@@ -17,7 +17,7 @@ public interface IStateBackend
     Task<CardReplacementResult> RequestCardReplacementAsync(
         CardReplacementRequest request, CancellationToken cancellationToken = default);
 
-    // may report per-case failures when non-atomic
+    // single backend call → single result (no per-case success channel)
     Task<AddressUpdateResult> UpdateAddressAsync(
         AddressUpdateRequest request, CancellationToken cancellationToken = default);
 
@@ -50,8 +50,64 @@ public sealed record HouseholdLookupResult(HouseholdLookupStatus Status, Househo
 
 public sealed record CardDetails();
 
-public sealed record AddressUpdateRequest();
-public sealed record AddressUpdateResult();
+/// <summary>
+/// A mailing-address update for a household, routed by a BATCH of opaque, self-describing
+/// <see cref="CaseIds"/> tokens (same token shape card replacement uses — packed on a prior read,
+/// decoded here). Address update is household-level, so the write may span every case the
+/// household owns: DC resolves one household identifier shared across the batch; CO collects each
+/// case's per-case write-id into a PATCH array. The driver decodes the tokens and feeds the
+/// decoded routing fields (plus the address scalars) into the request binding.
+/// </summary>
+/// <remarks>
+/// Transport-free: this carries only what the driver needs. There is no per-case success channel —
+/// both backends perform a single call and report a single outcome (see <see cref="AddressUpdateResult"/>).
+/// </remarks>
+public sealed record AddressUpdateRequest(IReadOnlyList<string> CaseIds, AddressUpdateAddress Address);
+
+/// <summary>The validated mailing-address scalars to persist. Transport-free.</summary>
+public sealed record AddressUpdateAddress
+{
+    public string? Line1 { get; init; }
+    public string? Line2 { get; init; }
+    public string? City { get; init; }
+    public string? State { get; init; }
+    public string? Zip { get; init; }
+}
+
+/// <summary>
+/// Canonical address-update outcome. Mirrors the state-connector contract's result shape:
+/// success, a policy rejection (household not eligible), or a backend error. No per-case failure
+/// channel — a single backend call yields a single result.
+/// </summary>
+public sealed record AddressUpdateResult
+{
+    /// <summary>Whether the address was successfully persisted.</summary>
+    public bool IsSuccess { get; init; }
+
+    /// <summary>
+    /// Whether the failure is a policy rejection (household not eligible for portal address
+    /// updates) rather than a technical backend error.
+    /// </summary>
+    public bool IsPolicyRejection { get; init; }
+
+    /// <summary>Machine-readable error code for frontend/analytics consumption.</summary>
+    public string? ErrorCode { get; init; }
+
+    /// <summary>Human-readable error message.</summary>
+    public string? ErrorMessage { get; init; }
+
+    /// <summary>The address was persisted successfully.</summary>
+    public static AddressUpdateResult Success() =>
+        new() { IsSuccess = true };
+
+    /// <summary>The household is not eligible to update their address via the portal.</summary>
+    public static AddressUpdateResult PolicyRejected(string code, string message) =>
+        new() { IsSuccess = false, IsPolicyRejection = true, ErrorCode = code, ErrorMessage = message };
+
+    /// <summary>The state backend returned an error.</summary>
+    public static AddressUpdateResult BackendError(string code, string message) =>
+        new() { IsSuccess = false, IsPolicyRejection = false, ErrorCode = code, ErrorMessage = message };
+}
 
 /// <summary>
 /// A card-replacement request routed by an OPAQUE, self-describing <see cref="CaseId"/> token.

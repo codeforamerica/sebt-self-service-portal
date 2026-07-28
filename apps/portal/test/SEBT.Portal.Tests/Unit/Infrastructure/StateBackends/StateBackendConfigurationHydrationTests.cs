@@ -116,13 +116,36 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "OK" }, classifier.Conditions[1].ValueIn);
         Assert.Equal(CardReplacementOutcome.BackendError, classifier.Default);
 
+        // The DC address-update write op hydrates: constants + the SHARED batch shape + scalar map
+        // (address fields) + the reused result classifier.
+        AddressUpdateOperationConfig? dcAddressUpdate = config.Operations.AddressUpdate;
+        Assert.NotNull(dcAddressUpdate);
+        Assert.Equal(StateBackendHttpMethod.Post, dcAddressUpdate.Method);
+        Assert.Equal("/households/address", dcAddressUpdate.Path);
+
+        Assert.NotNull(dcAddressUpdate.Request);
+        Assert.Equal("portal", dcAddressUpdate.Request.Constants!["source"]);
+        Assert.Equal("householdIdentifier", dcAddressUpdate.Request.Shared!["householdEmail"]);
+        Assert.Null(dcAddressUpdate.Request.Collect);
+        Assert.Equal("address.line1", dcAddressUpdate.Request.Map!["line1"]);
+        Assert.Equal("address.city", dcAddressUpdate.Request.Map["city"]);
+        Assert.Equal("address.state", dcAddressUpdate.Request.Map["state"]);
+        Assert.Equal("address.zip", dcAddressUpdate.Request.Map["zip"]);
+
+        ResultClassifier dcAddressClassifier = Assert.IsType<ResultClassifier>(dcAddressUpdate.Result);
+        ResultCondition dcAddressSuccess = Assert.Single(dcAddressClassifier.Conditions);
+        Assert.Equal(CardReplacementOutcome.Success, dcAddressSuccess.Outcome);
+        Assert.Equal("resultCode", dcAddressSuccess.Field);
+        Assert.Equal(new[] { "OK" }, dcAddressSuccess.ValueIn);
+        Assert.Equal(CardReplacementOutcome.BackendError, dcAddressClassifier.Default);
+
         Assert.NotNull(config.Operations.Health);
 
-        // Capability-derivation smoke assert: nothing modeled AddressUpdate/EnrollmentCheck here;
-        // the modeled cardReplacement op derives a per-case capability.
+        // Capability-derivation smoke assert: EnrollmentCheck is unmodeled; the modeled
+        // cardReplacement op derives a per-case capability, and addressUpdate derives its capability.
         StateBackendCapabilities capabilities = config.Capabilities;
         Assert.Equal(CardReplacementCapability.PerCase, capabilities.CardReplacement);
-        Assert.False(capabilities.AddressUpdate);
+        Assert.True(capabilities.AddressUpdate);
         Assert.False(capabilities.EnrollmentCheck);
     }
 
@@ -178,6 +201,20 @@ public class StateBackendConfigurationHydrationTests
         AddressUpdateOperationConfig? addressUpdate = config.Operations.AddressUpdate;
         Assert.NotNull(addressUpdate);
         Assert.Equal(StateBackendHttpMethod.Patch, addressUpdate.Method);
+        Assert.Equal("/sebt/update-std-dtls", addressUpdate.Path);
+
+        // CO uses the OTHER batch shape: COLLECT per-case write-ids into an array (no shared field).
+        Assert.NotNull(addressUpdate.Request);
+        Assert.Equal("cases", addressUpdate.Request.Collect!["writeId"]);
+        Assert.Null(addressUpdate.Request.Shared);
+        Assert.Equal("stdAddr", addressUpdate.Request.Map!["line1"]);
+        Assert.Equal("stdZip", addressUpdate.Request.Map["zip"]);
+
+        ResultClassifier coAddressClassifier = Assert.IsType<ResultClassifier>(addressUpdate.Result);
+        ResultCondition coAddressSuccess = Assert.Single(coAddressClassifier.Conditions);
+        Assert.Equal(CardReplacementOutcome.Success, coAddressSuccess.Outcome);
+        Assert.Equal("respCd", coAddressSuccess.Field);
+        Assert.Equal(new[] { "200", "00" }, coAddressSuccess.ValueIn);
 
         // Capability derivation differs from the DC sample: CO models AddressUpdate.
         StateBackendCapabilities capabilities = config.Capabilities;

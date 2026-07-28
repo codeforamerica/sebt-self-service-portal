@@ -21,4 +21,21 @@ public sealed record RequestBinding
 
     /// <summary>OUR input name → dotted target path in the state's request body.</summary>
     public Dictionary<string, string>? Map { get; init; }
+
+    /// <summary>
+    /// BATCH shape (address update). A household-level routing field resolved ONCE across every
+    /// decoded caseId — LHS is a decoded routing-field name, RHS is a dotted target path. The
+    /// binder FAILS LOUD if the caseIds disagree on the value (DC: the shared household email).
+    /// </summary>
+    public Dictionary<string, string>? Shared { get; init; }
+
+    /// <summary>
+    /// BATCH shape (address update). A per-case routing field gathered into an ARRAY at a dotted
+    /// target path — LHS is a decoded routing-field name, RHS is the array's target path. One
+    /// array element per decoded caseId (CO: the per-case write-ids into the PATCH array).
+    ///
+    /// HARD CAP: <see cref="Shared"/> + <see cref="Collect"/> are the ONLY batch shapes. No
+    /// per-case conditionals, filtering, or transforms. If a real case needs more, STOP.
+    /// </summary>
+    public Dictionary<string, string>? Collect { get; init; }
 }

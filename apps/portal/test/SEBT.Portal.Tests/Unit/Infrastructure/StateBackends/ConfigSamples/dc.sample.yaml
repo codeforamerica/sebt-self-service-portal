@@ -77,6 +77,29 @@ operations:
           field: resultCode
           valueIn: [OK]
       default: BackendError
+  addressUpdate:
+    method: post
+    path: /households/address
+    request:
+      constants:
+        source: portal
+      # Batch shape: one household identifier resolved across ALL decoded caseIds; the binder fails
+      # loud if the cases disagree. LHS is a decoded routing field; RHS is the write-body path.
+      shared:
+        householdEmail: householdIdentifier
+      # Scalar address fields bind through the same map vocabulary as other writes.
+      map:
+        line1: address.line1
+        city: address.city
+        state: address.state
+        zip: address.zip
+    result:
+      # Same capped 3-kind classifier as card replacement — reused, not a second classifier.
+      conditions:
+        - outcome: Success
+          field: resultCode
+          valueIn: [OK]
+      default: BackendError
   health:
     method: get
     path: /health

@@ -1,19 +1,309 @@
+using System.Net;
+using System.Text.Json;
+using RichardSzalay.MockHttp;
+using SEBT.Portal.Core.StateBackends;
+using SEBT.Portal.Core.StateBackends.Configuration;
+using SEBT.Portal.Core.StateBackends.Configuration.Auth;
+using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends;
+using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 public class ConfigurableStateBackendUpdateAddressTests
 {
+    private const string FixedIdempotencyKey = "22222222-2222-2222-2222-222222222222";
+
+    // ---- DC address-update binding ---------------------------------------------------------------
+    // DC grounding: UpdateMailingAddress @householdIdentifier=email + @resultCode. The household
+    // email is SHARED across every decoded caseId; the address scalars bind via the scalar map.
+    private static AddressUpdateOperationConfig DcAddressUpdate() =>
+        new()
+        {
+            Method = StateBackendHttpMethod.Post,
+            Path = "/households/address",
+            Request = new RequestBinding
+            {
+                Constants = new Dictionary<string, object>
+                {
+                    ["source"] = "portal",
+                },
+                // Batch: one household identifier resolved across all caseIds; fail loud on disagreement.
+                Shared = new Dictionary<string, string>
+                {
+                    ["householdEmail"] = "householdIdentifier",
+                },
+                // Scalar address fields bind through the same map vocabulary.
+                Map = new Dictionary<string, string>
+                {
+                    ["line1"] = "address.line1",
+                    ["city"] = "address.city",
+                    ["state"] = "address.state",
+                    ["zip"] = "address.zip",
+                },
+            },
+            Result = new ResultClassifier
+            {
+                Conditions = new List<ResultCondition>
+                {
+                    new()
+                    {
+                        Outcome = CardReplacementOutcome.Success,
+                        Field = "resultCode",
+                        ValueIn = new List<string> { "OK" },
+                    },
+                },
+                Default = CardReplacementOutcome.BackendError,
+            },
+        };
+
+    // ---- CO address-update binding ---------------------------------------------------------------
+    // CO grounding: PATCH /sebt/update-std-dtls with an ARRAY of per-case entries + respCd. Each
+    // decoded caseId's per-case write-id is COLLECTED into the array.
+    private static AddressUpdateOperationConfig CoAddressUpdate() =>
+        new()
+        {
+            Method = StateBackendHttpMethod.Patch,
+            Path = "/sebt/update-std-dtls",
+            Request = new RequestBinding
+            {
+                Collect = new Dictionary<string, string>
+                {
+                    ["writeId"] = "cases",
+                },
+                Map = new Dictionary<string, string>
+                {
+                    ["line1"] = "stdAddr",
+                    ["zip"] = "stdZip",
+                },
+            },
+            Result = new ResultClassifier
+            {
+                Conditions = new List<ResultCondition>
+                {
+                    new()
+                    {
+                        Outcome = CardReplacementOutcome.Success,
+                        Field = "respCd",
+                        ValueIn = new List<string> { "200", "00" },
+                    },
+                },
+                Default = CardReplacementOutcome.BackendError,
+            },
+        };
+
+    private static StateBackendConfiguration BuildConfiguration(AddressUpdateOperationConfig addressUpdate) =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "dc-api-key" },
+            Operations = new StateBackendOperations
+            {
+                AddressUpdate = addressUpdate,
+            },
+        };
+
+    private static ConfigurableStateBackend BuildBackend(
+        MockHttpMessageHandler mockHttp, AddressUpdateOperationConfig addressUpdate) =>
+        new(BuildConfiguration(addressUpdate), mockHttp.ToHttpClient(), () => FixedIdempotencyKey);
+
+    private static AddressUpdateAddress SampleAddress() =>
+        new()
+        {
+            Line1 = "123 Main St",
+            City = "Washington",
+            State = "DC",
+            Zip = "20001",
+        };
+
+    // ---- 1. caseId batch decode ------------------------------------------------------------------
+
     [Fact]
-    public void ConfigurableStateBackend_TODO()
+    public void OpaqueCaseIds_Batch_EachDecodesToItsOwnRoutingFields()
     {
-        // Arrange
-        // TODO: construct ConfigurableStateBackend for this operation
+        // Arrange — two cases, each carrying a shared household email and a per-case write-id.
+        string a = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["writeId"] = "W-1",
+            ["householdEmail"] = "family@example.test",
+        });
+        string b = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["writeId"] = "W-2",
+            ["householdEmail"] = "family@example.test",
+        });
 
         // Act
-        // TODO
+        IReadOnlyDictionary<string, string> da = OpaqueCaseId.Decode(a);
+        IReadOnlyDictionary<string, string> db = OpaqueCaseId.Decode(b);
 
-        // Assert
-        Assert.Fail();
+        // Assert — the per-case field differs; the shared field agrees.
+        Assert.Equal("W-1", da["writeId"]);
+        Assert.Equal("W-2", db["writeId"]);
+        Assert.Equal("family@example.test", da["householdEmail"]);
+        Assert.Equal("family@example.test", db["householdEmail"]);
+    }
+
+    // ---- 2. DC body: shared householdEmail + address scalars, classified -------------------------
+
+    [Fact]
+    public async Task UpdateAddressAsync_Dc_BuildsBody_FromSharedHouseholdEmailAndAddressScalars()
+    {
+        // Arrange — two caseIds that AGREE on the shared household email.
+        var caseIds = new List<string>
+        {
+            OpaqueCaseId.Compose(new Dictionary<string, string>
+            {
+                ["writeId"] = "W-1",
+                ["householdEmail"] = "family@example.test",
+            }),
+            OpaqueCaseId.Compose(new Dictionary<string, string>
+            {
+                ["writeId"] = "W-2",
+                ["householdEmail"] = "family@example.test",
+            }),
+        };
+
+        string? capturedBody = null;
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/households/address")
+            .With(message =>
+            {
+                capturedBody = message.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                return true;
+            })
+            .Respond("application/json", """{ "resultCode": "OK" }""");
+
+        var backend = BuildBackend(mockHttp, DcAddressUpdate());
+        var request = new AddressUpdateRequest(caseIds, SampleAddress());
+
+        // Act
+        AddressUpdateResult result = await backend.UpdateAddressAsync(request);
+
+        // Assert — shared field resolved once; address scalars + constant present.
+        Assert.NotNull(capturedBody);
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        JsonElement root = document.RootElement;
+
+        Assert.Equal("portal", root.GetProperty("source").GetString());
+        Assert.Equal("family@example.test", root.GetProperty("householdIdentifier").GetString());
+        JsonElement address = root.GetProperty("address");
+        Assert.Equal("123 Main St", address.GetProperty("line1").GetString());
+        Assert.Equal("Washington", address.GetProperty("city").GetString());
+        Assert.Equal("DC", address.GetProperty("state").GetString());
+        Assert.Equal("20001", address.GetProperty("zip").GetString());
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task UpdateAddressAsync_Dc_ClassifiesBackendError_ByDefault()
+    {
+        // Arrange
+        var caseIds = new List<string>
+        {
+            OpaqueCaseId.Compose(new Dictionary<string, string>
+            {
+                ["writeId"] = "W-1",
+                ["householdEmail"] = "family@example.test",
+            }),
+        };
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/households/address")
+            .Respond(
+                HttpStatusCode.InternalServerError,
+                "application/json",
+                """{ "resultCode": "ERR" }""");
+
+        var backend = BuildBackend(mockHttp, DcAddressUpdate());
+
+        // Act
+        AddressUpdateResult result = await backend.UpdateAddressAsync(
+            new AddressUpdateRequest(caseIds, SampleAddress()));
+
+        // Assert — nothing matches → default BackendError.
+        Assert.False(result.IsSuccess);
+        Assert.False(result.IsPolicyRejection);
+    }
+
+    // ---- 3. CO body: collect per-case write-ids into an array, classified ------------------------
+
+    [Fact]
+    public async Task UpdateAddressAsync_Co_CollectsPerCaseWriteIds_IntoArray()
+    {
+        // Arrange — three caseIds; each per-case write-id becomes an array element.
+        var caseIds = new List<string>
+        {
+            OpaqueCaseId.Compose(new Dictionary<string, string> { ["writeId"] = "CWIN-1" }),
+            OpaqueCaseId.Compose(new Dictionary<string, string> { ["writeId"] = "CWIN-2" }),
+            OpaqueCaseId.Compose(new Dictionary<string, string> { ["writeId"] = "CWIN-3" }),
+        };
+
+        string? capturedBody = null;
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Patch, "http://backend.test/sebt/update-std-dtls")
+            .With(message =>
+            {
+                capturedBody = message.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                return true;
+            })
+            .Respond("application/json", """{ "respCd": "00" }""");
+
+        var backend = BuildBackend(mockHttp, CoAddressUpdate());
+        var request = new AddressUpdateRequest(caseIds, SampleAddress());
+
+        // Act
+        AddressUpdateResult result = await backend.UpdateAddressAsync(request);
+
+        // Assert — one array element per decoded caseId, in order; address scalars present.
+        Assert.NotNull(capturedBody);
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        JsonElement root = document.RootElement;
+
+        JsonElement cases = root.GetProperty("cases");
+        Assert.Equal(JsonValueKind.Array, cases.ValueKind);
+        Assert.Equal(3, cases.GetArrayLength());
+        Assert.Equal("CWIN-1", cases[0].GetString());
+        Assert.Equal("CWIN-2", cases[1].GetString());
+        Assert.Equal("CWIN-3", cases[2].GetString());
+
+        Assert.Equal("123 Main St", root.GetProperty("stdAddr").GetString());
+        Assert.Equal("20001", root.GetProperty("stdZip").GetString());
+
+        Assert.True(result.IsSuccess);
+    }
+
+    // ---- 4. shared-disagreement fails loud -------------------------------------------------------
+
+    [Fact]
+    public async Task UpdateAddressAsync_FailsLoud_WhenSharedFieldDisagreesAcrossCaseIds()
+    {
+        // Arrange — two caseIds carrying DIFFERENT household emails: a shared field cannot resolve.
+        var caseIds = new List<string>
+        {
+            OpaqueCaseId.Compose(new Dictionary<string, string>
+            {
+                ["writeId"] = "W-1",
+                ["householdEmail"] = "one@example.test",
+            }),
+            OpaqueCaseId.Compose(new Dictionary<string, string>
+            {
+                ["writeId"] = "W-2",
+                ["householdEmail"] = "two@example.test",
+            }),
+        };
+
+        var mockHttp = new MockHttpMessageHandler();
+        // No backend call should occur — binding fails loud before the request.
+        var backend = BuildBackend(mockHttp, DcAddressUpdate());
+
+        // Act + Assert
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => backend.UpdateAddressAsync(new AddressUpdateRequest(caseIds, SampleAddress())));
+        Assert.Contains("householdEmail", ex.Message);
     }
 }

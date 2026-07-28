@@ -237,13 +237,102 @@ public class ConfigurableStateBackend : IStateBackend
                 $"Card-replacement outcome '{outcome}' is not supported."),
         };
 
-    public Task<AddressUpdateResult> UpdateAddressAsync(AddressUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<AddressUpdateResult> UpdateAddressAsync(AddressUpdateRequest request, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         if (!Capabilities.AddressUpdate)
         {
             throw new NotSupportedException("Address update is not supported by the state backend.");
         }
 
-        throw new NotImplementedException();
+        AddressUpdateOperationConfig operation = _configuration.Operations.AddressUpdate
+            ?? throw new NotSupportedException("Address update is not configured for the state backend.");
+
+        ResultClassifier classifier = operation.Result
+            ?? throw new NotSupportedException("Address update has no result classifier configured.");
+
+        // Fail loud on a malformed classifier before performing the call. Same capped 3-kind
+        // classifier as card replacement — no second classifier.
+        CardReplacementClassifier.Validate(classifier);
+
+        using HttpRequestMessage httpRequest = BuildRequest(operation);
+
+        if (operation.Request is { } binding)
+        {
+            // Decode the BATCH of opaque caseIds into their routing fields, then bind the body from
+            // the shared/collect batch shapes plus the scalar address fields.
+            IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
+                .Select(OpaqueCaseId.Decode)
+                .ToList();
+
+            Dictionary<string, string> addressInputs = BuildAddressInputs(request.Address);
+
+            JsonObject body = StateBackendRequestBinder.BuildAddressBody(
+                binding, decodedCaseIds, addressInputs);
+            httpRequest.Content = new StringContent(
+                body.ToJsonString(), Encoding.UTF8, "application/json");
+        }
+
+        // Idempotency-Key guards against a duplicate write on retry. Fresh per call in production;
+        // injectable for deterministic tests.
+        httpRequest.Headers.Add("Idempotency-Key", _idempotencyKeyFactory());
+
+        using HttpResponseMessage response = await _httpClient
+            .SendAsync(httpRequest, cancellationToken)
+            .ConfigureAwait(false);
+
+        JsonElement? body2 = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
+
+        CardReplacementOutcome outcome = CardReplacementClassifier.Classify(
+            classifier, (int)response.StatusCode, body2);
+
+        return ToAddressResult(outcome);
     }
+
+    // Address scalars exposed to the scalar request binding under fixed input names. Only non-null
+    // fields are included; a config that maps a field the address lacks fails loud in the binder.
+    private static Dictionary<string, string> BuildAddressInputs(AddressUpdateAddress address)
+    {
+        var inputs = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        if (address.Line1 is { } line1)
+        {
+            inputs["line1"] = line1;
+        }
+
+        if (address.Line2 is { } line2)
+        {
+            inputs["line2"] = line2;
+        }
+
+        if (address.City is { } city)
+        {
+            inputs["city"] = city;
+        }
+
+        if (address.State is { } state)
+        {
+            inputs["state"] = state;
+        }
+
+        if (address.Zip is { } zip)
+        {
+            inputs["zip"] = zip;
+        }
+
+        return inputs;
+    }
+
+    private static AddressUpdateResult ToAddressResult(CardReplacementOutcome outcome) =>
+        outcome switch
+        {
+            CardReplacementOutcome.Success => AddressUpdateResult.Success(),
+            CardReplacementOutcome.PolicyRejection => AddressUpdateResult.PolicyRejected(
+                "POLICY_REJECTION", "The household is not eligible to update their address via the portal."),
+            CardReplacementOutcome.BackendError => AddressUpdateResult.BackendError(
+                "BACKEND_ERROR", "The state backend returned an error."),
+            _ => throw new NotSupportedException(
+                $"Address-update outcome '{outcome}' is not supported."),
+        };
 }
