@@ -19,6 +19,7 @@ internal static class StateBackendConfigurationLoader
         return new DeserializerBuilder()
             .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .WithTypeConverter(new UriYamlTypeConverter())
+            .WithTypeConverter(new FieldSourcesYamlTypeConverter())
             // Infer bool/number for unquoted scalars bound to `object` (e.g. a request binding's
             // `const: true` must hydrate as a real bool so the emitted JSON body is `true`, not "true").
             .WithAttemptingUnquotedStringTypeDeserialization()

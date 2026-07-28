@@ -71,8 +71,9 @@ One implementation of `IStateBackend`, parameterized entirely by config. Primiti
 - **Enum-token maps:** value → canonical enum + default.
 - **Disaggregation strategy:** capped predicate vocabulary (`presence` | `valueInSet`, named
   `caseInclusion` predicates). NOT an arbitrary-boolean DSL.
-- **`strategy: bespoke` escape hatch:** explicit marker where (c) code still owns logic
-  (e.g. DC's substring issuance inference) — don't fake it as config.
+- **Keyword-rules brick:** contains-match over one-or-more free-text sources, ordered,
+  first-match-wins (e.g. DC's substring issuance inference). Capped: no regex/conditionals/transforms.
+  This closed the last issuance escape hatch — issuance is now fully config-driven.
 
 Config approach: **YAML for mapping/capability rulesets** (comments, anchors, readable
 nested maps), **JSON/env + secrets for operational values**. Parse YAML with **YamlDotNet**
@@ -154,7 +155,8 @@ identifiers:
 
 enums:                                     # shared state-level vocabulary; every target validated vs the C# enum at startup (fail-loud)
   cardStatus:   { default: Unknown, map: { PROCESSED: Processed } }
-  issuanceType: { strategy: bespoke }      # explicit (c) escape hatch: DC substring inference stays code
+  # issuanceType inference is now config-driven via a keywordRules brick on the field mapping
+  # (see the householdLookup response fields) — no bespoke escape hatch needed.
 
 operations:                                # keyed by closed OperationType enum; an operation's presence IS its capability
   householdLookup:

@@ -31,6 +31,17 @@ operations:
         ebtCardStatus:
           from: CardStatus
           enum: cardStatus
+        # Issuance type is inferred from free-text fields via contains-match, first-match-wins.
+        # `from` lists one OR MORE source fields; a keyword found in ANY of them counts.
+        issuanceType:
+          from: [HouseholdType, EligibilityType]
+          keywordRules:
+            order: [SummerEbt, SnapEbtCard, TanfEbtCard]  # first-match-wins — order is load-bearing
+            map:
+              SummerEbt:   [OSSE, NSLP]                   # OUR value -> substrings that indicate it
+              SnapEbtCard: [FOOD, SNAP]
+              TanfEbtCard: [CASH, TANF]
+            default: Unknown
       disaggregation:
         rule: presence
         discriminatorField: ApplicationId

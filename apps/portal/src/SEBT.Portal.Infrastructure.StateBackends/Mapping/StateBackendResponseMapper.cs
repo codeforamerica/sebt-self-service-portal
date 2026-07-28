@@ -41,6 +41,7 @@ internal static class StateBackendResponseMapper
             ["ebtCardIssueDate"] = FieldTarget.DateTime((c, v) => c.EbtCardIssueDate = v),
             ["ebtCardStatus"] = FieldTarget.Enum<CardStatus>((c, v) => c.EbtCardStatus = v),
             ["applicationStatus"] = FieldTarget.Enum<ApplicationStatus>((c, v) => c.ApplicationStatus = v),
+            ["issuanceType"] = FieldTarget.Enum<IssuanceType>((c, v) => c.IssuanceType = v),
         };
 
     /// <summary>
@@ -55,6 +56,12 @@ internal static class StateBackendResponseMapper
         {
             foreach ((string canonicalField, FieldMapping fieldMapping) in mapping.Fields)
             {
+                if (fieldMapping.KeywordRules is { } keywordRules)
+                {
+                    ValidateKeywordRules(canonicalField, keywordRules);
+                    continue;
+                }
+
                 if (fieldMapping.Enum is not { } tableName)
                 {
                     continue;
@@ -87,8 +94,9 @@ internal static class StateBackendResponseMapper
             return household;
         }
 
-        // Fail loud on bad enum tables before mapping any records.
+        // Fail loud on bad enum tables / keyword rules before mapping any records.
         Dictionary<string, EnumResolver> enumResolvers = BuildEnumResolvers(configuration, mapping);
+        Dictionary<string, KeywordRuleResolver> keywordResolvers = BuildKeywordResolvers(mapping);
 
         StateBackendDisaggregation? disaggregation = mapping.Disaggregation;
 
@@ -100,7 +108,7 @@ internal static class StateBackendResponseMapper
         {
             // Map to canonical first — the inclusion predicate reads the canonical model (e.g.
             // ApplicationStatus), never raw state fields.
-            SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers);
+            SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers, keywordResolvers);
 
             // Without disaggregation, records map 1:1 into a flat case list.
             if (disaggregation is null)
@@ -202,19 +210,29 @@ internal static class StateBackendResponseMapper
     private static SummerEbtCase MapCase(
         JsonElement record,
         Dictionary<string, FieldMapping> fields,
-        Dictionary<string, EnumResolver> enumResolvers)
+        Dictionary<string, EnumResolver> enumResolvers,
+        Dictionary<string, KeywordRuleResolver> keywordResolvers)
     {
         var summerEbtCase = new SummerEbtCase();
 
         foreach ((string canonicalField, FieldMapping fieldMapping) in fields)
         {
-            if (!record.TryGetProperty(fieldMapping.From, out JsonElement value)
+            FieldTarget target = ResolveTarget(canonicalField);
+
+            // The keyword-rules brick scans one-or-more free-text sources and always yields a value
+            // (a keyword match or the default) — it has no single-source presence guard.
+            if (fieldMapping.KeywordRules is not null)
+            {
+                target.SetEnum!(summerEbtCase, keywordResolvers[canonicalField].Resolve(record));
+                continue;
+            }
+
+            if (!record.TryGetProperty(fieldMapping.From.Single, out JsonElement value)
                 || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             {
                 continue;
             }
 
-            FieldTarget target = ResolveTarget(canonicalField);
             ApplyField(summerEbtCase, canonicalField, target, fieldMapping, value, enumResolvers);
         }
 
@@ -292,6 +310,70 @@ internal static class StateBackendResponseMapper
         }
 
         return resolvers;
+    }
+
+    // Builds a validated keyword-rule resolver for every keywordRules field in this mapping.
+    // Fails loud (invalid canonical value / order not covering map keys) before any record is mapped.
+    private static Dictionary<string, KeywordRuleResolver> BuildKeywordResolvers(
+        StateBackendResponseMapping mapping)
+    {
+        var resolvers = new Dictionary<string, KeywordRuleResolver>(StringComparer.Ordinal);
+
+        foreach ((string canonicalField, FieldMapping fieldMapping) in mapping.Fields)
+        {
+            if (fieldMapping.KeywordRules is not { } keywordRules)
+            {
+                continue;
+            }
+
+            (Type enumType, List<(object Value, List<string> Keywords)> ordered, object defaultValue) =
+                ValidateKeywordRules(canonicalField, keywordRules);
+
+            resolvers[canonicalField] = new KeywordRuleResolver(
+                fieldMapping.From.All, ordered, defaultValue);
+        }
+
+        return resolvers;
+    }
+
+    // Validates a keywordRules brick against its enum-typed target, fail-loud:
+    //   * the target field must be enum-typed;
+    //   * every `order` entry, `map` key, and `default` must be a real member of that enum;
+    //   * `order` must cover every `map` key (each keyword set is reachable).
+    // Returns the target enum type, the ordered (value, keywords) pairs, and the parsed default.
+    private static (Type EnumType, List<(object Value, List<string> Keywords)> Ordered, object Default)
+        ValidateKeywordRules(string canonicalField, KeywordRules keywordRules)
+    {
+        FieldTarget target = ResolveTarget(canonicalField);
+        if (target.EnumType is not { } enumType)
+        {
+            throw new InvalidOperationException(
+                $"Field '{canonicalField}' declares keywordRules but is not an enum-typed target.");
+        }
+
+        // Order must cover every map key so no keyword set is silently unreachable.
+        foreach (string mapKey in keywordRules.Map.Keys)
+        {
+            if (!keywordRules.Order.Contains(mapKey, StringComparer.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Field '{canonicalField}' keywordRules 'order' does not cover map key '{mapKey}'.");
+            }
+        }
+
+        var ordered = new List<(object Value, List<string> Keywords)>();
+        foreach (string ourValue in keywordRules.Order)
+        {
+            object parsed = ParseEnumMember($"keywordRules[{canonicalField}]", enumType, ourValue);
+            List<string> keywords = keywordRules.Map.TryGetValue(ourValue, out List<string>? mapped)
+                ? mapped
+                : new List<string>();
+            ordered.Add((parsed, keywords));
+        }
+
+        object defaultValue = ParseEnumMember($"keywordRules[{canonicalField}]", enumType, keywordRules.Default);
+
+        return (enumType, ordered, defaultValue);
     }
 
     // Inverts a domain-centered table (our value → tokens) into a token → our-value lookup,
@@ -462,6 +544,60 @@ internal static class StateBackendResponseMapper
                 EnumType = typeof(TEnum),
                 SetEnum = (target, value) => setter(target, (TEnum)value),
             };
+    }
+
+    /// <summary>
+    /// A validated keyword-rule resolver: scans a record's source values for the ordered keyword
+    /// sets, first-match-wins, returning the matched canonical enum value or the default. Matching
+    /// is case-insensitive substring-contains — mirroring DC's <c>InferIssuanceType</c>.
+    /// </summary>
+    private sealed class KeywordRuleResolver
+    {
+        private readonly IReadOnlyList<string> _sources;
+        private readonly List<(object Value, List<string> Keywords)> _ordered;
+        private readonly object _default;
+
+        public KeywordRuleResolver(
+            IReadOnlyList<string> sources,
+            List<(object Value, List<string> Keywords)> ordered,
+            object defaultValue)
+        {
+            _sources = sources;
+            _ordered = ordered;
+            _default = defaultValue;
+        }
+
+        public object Resolve(JsonElement record)
+        {
+            // Collect the free-text source values once, uppercased for case-insensitive contains.
+            var haystacks = new List<string>(_sources.Count);
+            foreach (string source in _sources)
+            {
+                string? value = ReadString(record, source);
+                if (!string.IsNullOrEmpty(value))
+                {
+                    haystacks.Add(value.ToUpperInvariant());
+                }
+            }
+
+            // First canonical value whose ANY keyword is contained in ANY source wins.
+            foreach ((object value, List<string> keywords) in _ordered)
+            {
+                foreach (string keyword in keywords)
+                {
+                    string needle = keyword.ToUpperInvariant();
+                    foreach (string haystack in haystacks)
+                    {
+                        if (haystack.Contains(needle, StringComparison.Ordinal))
+                        {
+                            return value;
+                        }
+                    }
+                }
+            }
+
+            return _default;
+        }
     }
 
     /// <summary>A validated token → canonical-enum-value lookup with a fallback default.</summary>

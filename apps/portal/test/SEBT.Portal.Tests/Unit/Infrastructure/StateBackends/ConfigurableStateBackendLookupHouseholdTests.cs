@@ -596,6 +596,103 @@ public class ConfigurableStateBackendLookupHouseholdTests
         mockHttp.VerifyNoOutstandingExpectation();
     }
 
+    // DC-shaped issuance inference: free-text HouseholdType/EligibilityType that a keywordRules
+    // brick classifies into canonical IssuanceType via contains-match, first-match-wins.
+    //   * OSSE (in HouseholdType) -> SummerEbt
+    //   * SNAP (in EligibilityType) -> SnapEbtCard
+    //   * a record carrying BOTH an OSSE and a SNAP keyword -> SummerEbt (earlier in order wins)
+    //   * a record with no keyword -> the default (Unknown)
+    private const string DcIssuanceResponse =
+        """
+        {
+          "resultSets": [
+            [
+              { "SummerEBTCaseID": "SEBT-001", "HouseholdType": "OSSE ENROLLED", "EligibilityType": "DIRECT CERT" },
+              { "SummerEBTCaseID": "SEBT-002", "HouseholdType": "STANDARD", "EligibilityType": "SNAP HOUSEHOLD" },
+              { "SummerEBTCaseID": "SEBT-003", "HouseholdType": "OSSE ENROLLED", "EligibilityType": "SNAP HOUSEHOLD" },
+              { "SummerEBTCaseID": "SEBT-004", "HouseholdType": "STANDARD", "EligibilityType": "NONE" }
+            ]
+          ]
+        }
+        """;
+
+    private static StateBackendConfiguration WithIssuanceKeywordRules()
+    {
+        StateBackendConfiguration configuration = BuildConfiguration();
+        return configuration with
+        {
+            Operations = configuration.Operations with
+            {
+                HouseholdLookup = configuration.Operations.HouseholdLookup! with
+                {
+                    Response = new StateBackendResponseMapping
+                    {
+                        Root = "$.resultSets[0]",
+                        Fields = new Dictionary<string, FieldMapping>
+                        {
+                            ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
+                            ["issuanceType"] = new()
+                            {
+                                From = new[] { "HouseholdType", "EligibilityType" },
+                                KeywordRules = new KeywordRules
+                                {
+                                    // Order is load-bearing: SummerEbt is evaluated before SnapEbtCard.
+                                    Order = new List<string> { "SummerEbt", "SnapEbtCard", "TanfEbtCard" },
+                                    Map = new Dictionary<string, List<string>>
+                                    {
+                                        ["SummerEbt"] = new() { "OSSE", "NSLP" },
+                                        ["SnapEbtCard"] = new() { "FOOD", "SNAP" },
+                                        ["TanfEbtCard"] = new() { "CASH", "TANF" },
+                                    },
+                                    Default = "Unknown",
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        };
+    }
+
+    [Fact]
+    public async Task LookupHouseholdAsync_InfersIssuanceType_FromKeywordRules_FirstMatchWins()
+    {
+        // Arrange
+        StateBackendConfiguration configuration = WithIssuanceKeywordRules();
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .Expect(HttpMethod.Post, "http://backend.test/households/lookup")
+            .Respond("application/json", DcIssuanceResponse);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var backend = new ConfigurableStateBackend(configuration, httpClient);
+        var request = new HouseholdLookupRequest(
+            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+
+        // Act
+        HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
+
+        // Assert
+        Assert.Equal(HouseholdLookupStatus.Found, result.Status);
+        List<SummerEbtCase> cases = result.Household!.SummerEbtCases;
+        Assert.Equal(4, cases.Count);
+
+        // OSSE keyword (in HouseholdType) -> SummerEbt.
+        Assert.Equal(IssuanceType.SummerEbt, cases[0].IssuanceType);
+
+        // SNAP keyword (in EligibilityType) -> SnapEbtCard.
+        Assert.Equal(IssuanceType.SnapEbtCard, cases[1].IssuanceType);
+
+        // BOTH OSSE and SNAP present -> SummerEbt wins (earlier in `order`). First-match-wins.
+        Assert.Equal(IssuanceType.SummerEbt, cases[2].IssuanceType);
+
+        // No keyword -> default.
+        Assert.Equal(IssuanceType.Unknown, cases[3].IssuanceType);
+
+        mockHttp.VerifyNoOutstandingExpectation();
+    }
+
     [Fact]
     public async Task LookupHouseholdAsync_ReturnsNotFound_WhenRootSelectsNoRecords()
     {

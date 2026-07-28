@@ -64,6 +64,17 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("CardStatus", cardStatus.From);
         Assert.Equal("cardStatus", cardStatus.Enum);
 
+        // The keywordRules brick hydrates: multi-source `from`, ordered `order`, domain-centered
+        // `map` (OUR value -> substrings that indicate it), and a `default`.
+        FieldMapping issuanceType = response.Fields["issuanceType"];
+        Assert.Equal(new[] { "HouseholdType", "EligibilityType" }, issuanceType.From.All);
+        KeywordRules keywordRules = Assert.IsType<KeywordRules>(issuanceType.KeywordRules);
+        Assert.Equal(new[] { "SummerEbt", "SnapEbtCard", "TanfEbtCard" }, keywordRules.Order);
+        Assert.Equal(new[] { "OSSE", "NSLP" }, keywordRules.Map["SummerEbt"]);
+        Assert.Equal(new[] { "FOOD", "SNAP" }, keywordRules.Map["SnapEbtCard"]);
+        Assert.Equal(new[] { "CASH", "TANF" }, keywordRules.Map["TanfEbtCard"]);
+        Assert.Equal("Unknown", keywordRules.Default);
+
         // The referenced enum table hydrates domain-centered: OUR value → state token(s), plus default.
         Assert.NotNull(config.Enums);
         StateBackendEnumTable cardStatusTable = config.Enums["cardStatus"];
@@ -184,6 +195,56 @@ public class StateBackendConfigurationHydrationTests
             () => StateBackendResponseMapper.ValidateEnumTables(config));
         Assert.Contains("ISSUED", ex.Message);
     }
+
+    // A keywordRules order/map value that is NOT a real IssuanceType member must fail loud at
+    // validation — the same fail-loud discipline as the enum tables.
+    [Fact]
+    public void ValidateEnumTables_FailsLoud_WhenKeywordRuleValueIsNotARealIssuanceType()
+    {
+        StateBackendConfiguration config = BuildIssuanceKeywordConfig(
+            new KeywordRules
+            {
+                Order = new List<string> { "SummerEbt", "Snap" }, // "Snap" is not an IssuanceType member
+                Map = new Dictionary<string, List<string>>
+                {
+                    ["SummerEbt"] = new() { "OSSE" },
+                    ["Snap"] = new() { "SNAP" },
+                },
+                Default = "Unknown",
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendResponseMapper.ValidateEnumTables(config));
+        Assert.Contains("Snap", ex.Message);
+    }
+
+    // Minimal config whose household lookup infers issuanceType via a keywordRules brick.
+    private static StateBackendConfiguration BuildIssuanceKeywordConfig(KeywordRules keywordRules) =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                HouseholdLookup = new HouseholdLookupOperationConfig
+                {
+                    Method = StateBackendHttpMethod.Post,
+                    Path = "/lookup",
+                    Response = new StateBackendResponseMapping
+                    {
+                        Root = "$.records",
+                        Fields = new Dictionary<string, FieldMapping>
+                        {
+                            ["issuanceType"] = new()
+                            {
+                                From = new[] { "HouseholdType", "EligibilityType" },
+                                KeywordRules = keywordRules,
+                            },
+                        },
+                    },
+                },
+            },
+        };
 
     // Minimal config whose household lookup maps ebtCardStatus through a named "cardStatus" table.
     private static StateBackendConfiguration BuildEnumConfig(StateBackendEnumTable cardStatusTable) =>
