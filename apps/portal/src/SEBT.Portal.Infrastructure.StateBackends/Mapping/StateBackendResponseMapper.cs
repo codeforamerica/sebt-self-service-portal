@@ -1,17 +1,22 @@
+using System.Globalization;
 using System.Text.Json;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.StateBackends.Configuration;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
 /// Maps a state backend's raw JSON response into canonical domain types, driven by
-/// <see cref="StateBackendResponseMapping"/>.
+/// <see cref="StateBackendResponseMapping"/> and the backend's named enum tables.
 ///
 /// DC-568 spike scope (deliberately capped — see the prototype plan's STOP rule):
 ///   * Root selection supports ONLY simple dotted property access and <c>[index]</c> element
 ///     access (e.g. <c>$.resultSets[0]</c>). No JSONPath filters, wildcards, or recursion.
-///   * Field mapping targets a CLOSED set of canonical <see cref="SummerEbtCase"/> string fields.
+///   * Field mapping targets a CLOSED set of canonical fields (see <see cref="FieldTargets"/>).
+///     Coercion is driven by the canonical field's known type: strings copy; dates parse with the
+///     field's exact <see cref="FieldMapping.Format"/>; enums resolve through the named
+///     <see cref="FieldMapping.Enum"/> table. The only supported "bricks" are from/format/enum.
 ///   * Disaggregation supports classification (<see cref="DisaggregationRule.Presence"/> /
 ///     <see cref="DisaggregationRule.ValueInSet"/>), <see cref="CaseInclusionPredicate.All"/>
 ///     case inclusion, and grouping application-based records into applications by a single field.
@@ -21,10 +26,56 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 internal static class StateBackendResponseMapper
 {
     /// <summary>
+    /// The closed set of canonical field targets. Each entry names its coercion kind and, for
+    /// enum targets, the C# enum type its named table must resolve into. A new canonical target
+    /// requires adding an entry here — never reflection over property names.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, FieldTarget> FieldTargets =
+        new Dictionary<string, FieldTarget>(StringComparer.Ordinal)
+        {
+            ["summerEBTCaseID"] = FieldTarget.String((c, v) => c.SummerEBTCaseID = v),
+            ["childFirstName"] = FieldTarget.String((c, v) => c.ChildFirstName = v),
+            ["childLastName"] = FieldTarget.String((c, v) => c.ChildLastName = v),
+            ["applicationId"] = FieldTarget.String((c, v) => c.ApplicationId = v),
+            ["ebtCardIssueDate"] = FieldTarget.DateTime((c, v) => c.EbtCardIssueDate = v),
+            ["ebtCardStatus"] = FieldTarget.Enum<CardStatus>((c, v) => c.EbtCardStatus = v),
+        };
+
+    /// <summary>
+    /// Validates every enum table referenced by any response field mapping (fail-loud, at
+    /// configuration time): each OUR value must be a real member of the target C# enum, and no
+    /// source token may appear under two of OUR values. Throws <see cref="InvalidOperationException"/>
+    /// on the first violation.
+    /// </summary>
+    public static void ValidateEnumTables(StateBackendConfiguration configuration)
+    {
+        foreach (StateBackendResponseMapping mapping in ResponseMappings(configuration))
+        {
+            foreach ((string canonicalField, FieldMapping fieldMapping) in mapping.Fields)
+            {
+                if (fieldMapping.Enum is not { } tableName)
+                {
+                    continue;
+                }
+
+                FieldTarget target = ResolveTarget(canonicalField);
+                if (target.EnumType is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Field '{canonicalField}' references enum table '{tableName}' but is not an enum-typed target.");
+                }
+
+                StateBackendEnumTable table = ResolveTable(configuration, tableName);
+                BuildTokenLookup(tableName, table, target.EnumType);
+            }
+        }
+    }
+
+    /// <summary>
     /// Maps the selected records into cases and, when disaggregation is configured, splits out
     /// grouped applications and links each application-based case to its application.
     /// </summary>
-    public static HouseholdData MapHousehold(JsonElement root, StateBackendResponseMapping mapping)
+    public static HouseholdData MapHousehold(JsonElement root, StateBackendConfiguration configuration, StateBackendResponseMapping mapping)
     {
         JsonElement records = SelectPath(root, mapping.Root);
         var household = new HouseholdData();
@@ -34,6 +85,9 @@ internal static class StateBackendResponseMapper
             return household;
         }
 
+        // Fail loud on bad enum tables before mapping any records.
+        Dictionary<string, EnumResolver> enumResolvers = BuildEnumResolvers(configuration, mapping);
+
         StateBackendDisaggregation? disaggregation = mapping.Disaggregation;
 
         // Group keys, in first-seen order, for the application-based records.
@@ -42,7 +96,7 @@ internal static class StateBackendResponseMapper
 
         foreach (JsonElement record in records.EnumerateArray())
         {
-            SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields);
+            SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers);
 
             // Without disaggregation, records map 1:1 into a flat case list.
             if (disaggregation is null)
@@ -128,45 +182,171 @@ internal static class StateBackendResponseMapper
         return value.GetString();
     }
 
-    private static SummerEbtCase MapCase(JsonElement record, Dictionary<string, string> fields)
+    private static SummerEbtCase MapCase(
+        JsonElement record,
+        Dictionary<string, FieldMapping> fields,
+        Dictionary<string, EnumResolver> enumResolvers)
     {
         var summerEbtCase = new SummerEbtCase();
 
-        foreach ((string canonicalField, string sourceProperty) in fields)
+        foreach ((string canonicalField, FieldMapping fieldMapping) in fields)
         {
-            if (!record.TryGetProperty(sourceProperty, out JsonElement value)
+            if (!record.TryGetProperty(fieldMapping.From, out JsonElement value)
                 || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             {
                 continue;
             }
 
-            ApplyField(summerEbtCase, canonicalField, value.GetString() ?? string.Empty);
+            FieldTarget target = ResolveTarget(canonicalField);
+            ApplyField(summerEbtCase, canonicalField, target, fieldMapping, value, enumResolvers);
         }
 
         return summerEbtCase;
     }
 
-    // Closed field-target map for the spike. A new canonical target requires adding a case here
-    // rather than reflecting over property names — keeps the supported surface explicit.
-    private static void ApplyField(SummerEbtCase target, string canonicalField, string value)
+    private static void ApplyField(
+        SummerEbtCase target,
+        string canonicalField,
+        FieldTarget fieldTarget,
+        FieldMapping fieldMapping,
+        JsonElement value,
+        Dictionary<string, EnumResolver> enumResolvers)
     {
-        switch (canonicalField)
+        switch (fieldTarget.Kind)
         {
-            case "summerEBTCaseID":
-                target.SummerEBTCaseID = value;
+            case FieldKind.String:
+                fieldTarget.SetString!(target, value.GetString() ?? string.Empty);
                 break;
-            case "childFirstName":
-                target.ChildFirstName = value;
+
+            case FieldKind.DateTime:
+                fieldTarget.SetDateTime!(target, ParseDate(canonicalField, fieldMapping, value));
                 break;
-            case "childLastName":
-                target.ChildLastName = value;
+
+            case FieldKind.Enum:
+                fieldTarget.SetEnum!(target, enumResolvers[canonicalField].Resolve(value.GetString()));
                 break;
-            case "applicationId":
-                target.ApplicationId = value;
-                break;
+
             default:
                 throw new NotSupportedException(
-                    $"Canonical field '{canonicalField}' is not supported by the response mapper.");
+                    $"Field kind '{fieldTarget.Kind}' is not supported by the response mapper.");
+        }
+    }
+
+    private static DateTime ParseDate(string canonicalField, FieldMapping fieldMapping, JsonElement value)
+    {
+        string? raw = value.GetString();
+        if (fieldMapping.Format is not { } format)
+        {
+            throw new InvalidOperationException(
+                $"Date field '{canonicalField}' requires an exact 'format'.");
+        }
+
+        // Exact parse with the single configured format — no fallback, no transposition.
+        return DateTime.ParseExact(raw!, format, CultureInfo.InvariantCulture, DateTimeStyles.None);
+    }
+
+    // Builds a validated token → canonical-value resolver for every enum-referencing field in this
+    // mapping. Fails loud (invalid canonical value / ambiguous token) before any record is mapped.
+    private static Dictionary<string, EnumResolver> BuildEnumResolvers(
+        StateBackendConfiguration configuration,
+        StateBackendResponseMapping mapping)
+    {
+        var resolvers = new Dictionary<string, EnumResolver>(StringComparer.Ordinal);
+
+        foreach ((string canonicalField, FieldMapping fieldMapping) in mapping.Fields)
+        {
+            if (fieldMapping.Enum is not { } tableName)
+            {
+                continue;
+            }
+
+            FieldTarget target = ResolveTarget(canonicalField);
+            if (target.EnumType is null)
+            {
+                throw new InvalidOperationException(
+                    $"Field '{canonicalField}' references enum table '{tableName}' but is not an enum-typed target.");
+            }
+
+            StateBackendEnumTable table = ResolveTable(configuration, tableName);
+            (Dictionary<string, object> tokenLookup, object? defaultValue) =
+                BuildTokenLookup(tableName, table, target.EnumType);
+
+            resolvers[canonicalField] = new EnumResolver(tableName, tokenLookup, defaultValue);
+        }
+
+        return resolvers;
+    }
+
+    // Inverts a domain-centered table (our value → tokens) into a token → our-value lookup,
+    // validating that each our-value is a real enum member and no token is ambiguous.
+    private static (Dictionary<string, object> TokenLookup, object? Default) BuildTokenLookup(
+        string tableName,
+        StateBackendEnumTable table,
+        Type enumType)
+    {
+        var tokenLookup = new Dictionary<string, object>(StringComparer.Ordinal);
+
+        foreach ((string ourValue, List<string> tokens) in table.Map)
+        {
+            object parsed = ParseEnumMember(tableName, enumType, ourValue);
+
+            foreach (string token in tokens)
+            {
+                if (tokenLookup.TryGetValue(token, out object? existing) && !existing.Equals(parsed))
+                {
+                    throw new InvalidOperationException(
+                        $"Enum table '{tableName}' maps token '{token}' to more than one canonical value.");
+                }
+
+                tokenLookup[token] = parsed;
+            }
+        }
+
+        object? defaultValue = table.Default is { } def
+            ? ParseEnumMember(tableName, enumType, def)
+            : null;
+
+        return (tokenLookup, defaultValue);
+    }
+
+    private static object ParseEnumMember(string tableName, Type enumType, string memberName)
+    {
+        if (!Enum.TryParse(enumType, memberName, ignoreCase: false, out object? parsed) || parsed is null)
+        {
+            throw new InvalidOperationException(
+                $"Enum table '{tableName}' references '{memberName}', which is not a member of {enumType.Name}.");
+        }
+
+        return parsed;
+    }
+
+    private static FieldTarget ResolveTarget(string canonicalField)
+    {
+        if (!FieldTargets.TryGetValue(canonicalField, out FieldTarget? target))
+        {
+            throw new NotSupportedException(
+                $"Canonical field '{canonicalField}' is not supported by the response mapper.");
+        }
+
+        return target;
+    }
+
+    private static StateBackendEnumTable ResolveTable(StateBackendConfiguration configuration, string tableName)
+    {
+        if (configuration.Enums is null || !configuration.Enums.TryGetValue(tableName, out StateBackendEnumTable? table))
+        {
+            throw new InvalidOperationException(
+                $"Response mapping references enum table '{tableName}', which is not defined under 'enums'.");
+        }
+
+        return table;
+    }
+
+    private static IEnumerable<StateBackendResponseMapping> ResponseMappings(StateBackendConfiguration configuration)
+    {
+        if (configuration.Operations.HouseholdLookup?.Response is { } lookup)
+        {
+            yield return lookup;
         }
     }
 
@@ -223,5 +403,75 @@ internal static class StateBackendResponseMapper
 
         return trimmed
             .Split('.', StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    private enum FieldKind
+    {
+        String,
+        DateTime,
+        Enum,
+    }
+
+    /// <summary>
+    /// A single canonical field target in the closed setter map: its coercion kind, the typed
+    /// setter, and (for enums) the C# enum type its named table must resolve into.
+    /// </summary>
+    private sealed class FieldTarget
+    {
+        private FieldTarget(FieldKind kind)
+        {
+            Kind = kind;
+        }
+
+        public FieldKind Kind { get; }
+
+        public Type? EnumType { get; private init; }
+
+        public Action<SummerEbtCase, string>? SetString { get; private init; }
+
+        public Action<SummerEbtCase, DateTime>? SetDateTime { get; private init; }
+
+        public Action<SummerEbtCase, object>? SetEnum { get; private init; }
+
+        public static FieldTarget String(Action<SummerEbtCase, string> setter) =>
+            new(FieldKind.String) { SetString = setter };
+
+        public static FieldTarget DateTime(Action<SummerEbtCase, DateTime> setter) =>
+            new(FieldKind.DateTime) { SetDateTime = setter };
+
+        public static FieldTarget Enum<TEnum>(Action<SummerEbtCase, TEnum> setter) where TEnum : struct, Enum =>
+            new(FieldKind.Enum)
+            {
+                EnumType = typeof(TEnum),
+                SetEnum = (target, value) => setter(target, (TEnum)value),
+            };
+    }
+
+    /// <summary>A validated token → canonical-enum-value lookup with a fallback default.</summary>
+    private sealed class EnumResolver
+    {
+        private readonly string _tableName;
+        private readonly Dictionary<string, object> _tokenLookup;
+        private readonly object? _default;
+
+        public EnumResolver(string tableName, Dictionary<string, object> tokenLookup, object? defaultValue)
+        {
+            _tableName = tableName;
+            _tokenLookup = tokenLookup;
+            _default = defaultValue;
+        }
+
+        public object Resolve(string? token)
+        {
+            if (token is not null && _tokenLookup.TryGetValue(token, out object? value))
+            {
+                return value;
+            }
+
+            // Default applies ONLY to genuinely-unlisted tokens.
+            return _default
+                ?? throw new InvalidOperationException(
+                    $"Enum table '{_tableName}' has no mapping for token '{token}' and no default.");
+        }
     }
 }

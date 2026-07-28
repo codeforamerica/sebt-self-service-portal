@@ -113,7 +113,8 @@ public class ConfigurableStateBackend : IStateBackend
             .ParseAsync(stream, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        HouseholdData household = StateBackendResponseMapper.MapHousehold(document.RootElement, mapping);
+        HouseholdData household = StateBackendResponseMapper.MapHousehold(
+            document.RootElement, _configuration, mapping);
 
         if (household.SummerEbtCases.Count == 0)
         {

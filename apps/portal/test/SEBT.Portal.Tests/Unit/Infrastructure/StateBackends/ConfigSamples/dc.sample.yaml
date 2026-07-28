@@ -25,9 +25,18 @@ operations:
     response:
       root: $.resultSets[0]
       fields:
-        summerEBTCaseID: SummerEBTCaseID
-        childFirstName: ChildFirstName
-        childLastName: ChildLastName
+        summerEBTCaseID:
+          from: SummerEBTCaseID
+        childFirstName:
+          from: ChildFirstName
+        childLastName:
+          from: ChildLastName
+        ebtCardIssueDate:
+          from: IssueDate
+          format: MM/dd/yyyy
+        ebtCardStatus:
+          from: CardStatus
+          enum: cardStatus
       disaggregation:
         rule: presence
         discriminatorField: ApplicationId
@@ -39,3 +48,9 @@ operations:
   health:
     method: get
     path: /health
+enums:
+  cardStatus:
+    map:
+      Active: [ACTIVE]
+      Lost: [LOST, "LOST, AUTO REISSUE"]
+    default: Unknown

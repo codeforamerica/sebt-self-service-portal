@@ -30,11 +30,11 @@ public class ConfigurableStateBackendLookupHouseholdTests
                     Response = new StateBackendResponseMapping
                     {
                         Root = "$.resultSets[0]",
-                        Fields = new Dictionary<string, string>
+                        Fields = new Dictionary<string, FieldMapping>
                         {
-                            ["summerEBTCaseID"] = "SummerEBTCaseID",
-                            ["childFirstName"] = "ChildFirstName",
-                            ["childLastName"] = "ChildLastName",
+                            ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
+                            ["childFirstName"] = new() { From = "ChildFirstName" },
+                            ["childLastName"] = new() { From = "ChildLastName" },
                         },
                     },
                 },
@@ -85,6 +85,91 @@ public class ConfigurableStateBackendLookupHouseholdTests
         Assert.Equal("SEBT-002", cases[1].SummerEBTCaseID);
         Assert.Equal("Alan", cases[1].ChildFirstName);
         Assert.Equal("Turing", cases[1].ChildLastName);
+
+        mockHttp.VerifyNoOutstandingExpectation();
+    }
+
+    // DC-shaped record carrying a formatted date and a state card-status token.
+    private const string DcTypedResponse =
+        """
+        {
+          "resultSets": [
+            [
+              {
+                "SummerEBTCaseID": "SEBT-001",
+                "ChildFirstName": "Ada",
+                "ChildLastName": "Lovelace",
+                "IssueDate": "06/15/2025",
+                "CardStatus": "LOST, AUTO REISSUE"
+              }
+            ]
+          ]
+        }
+        """;
+
+    [Fact]
+    public async Task LookupHouseholdAsync_MapsTypedFields_StringsDateAndEnum()
+    {
+        // Arrange
+        StateBackendConfiguration configuration = BuildConfiguration();
+        configuration = configuration with
+        {
+            Enums = new Dictionary<string, StateBackendEnumTable>
+            {
+                ["cardStatus"] = new()
+                {
+                    Map = new Dictionary<string, List<string>>
+                    {
+                        ["Active"] = new() { "ACTIVE" },
+                        ["Lost"] = new() { "LOST", "LOST, AUTO REISSUE" },
+                    },
+                    Default = "Unknown",
+                },
+            },
+            Operations = configuration.Operations with
+            {
+                HouseholdLookup = configuration.Operations.HouseholdLookup! with
+                {
+                    Response = new StateBackendResponseMapping
+                    {
+                        Root = "$.resultSets[0]",
+                        Fields = new Dictionary<string, FieldMapping>
+                        {
+                            ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
+                            ["childFirstName"] = new() { From = "ChildFirstName" },
+                            ["ebtCardIssueDate"] = new() { From = "IssueDate", Format = "MM/dd/yyyy" },
+                            ["ebtCardStatus"] = new() { From = "CardStatus", Enum = "cardStatus" },
+                        },
+                    },
+                },
+            },
+        };
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .Expect(HttpMethod.Post, "http://backend.test/households/lookup")
+            .Respond("application/json", DcTypedResponse);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var backend = new ConfigurableStateBackend(configuration, httpClient);
+        var request = new HouseholdLookupRequest(
+            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+
+        // Act
+        HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
+
+        // Assert
+        Assert.Equal(HouseholdLookupStatus.Found, result.Status);
+        SummerEbtCase mapped = Assert.Single(result.Household!.SummerEbtCases);
+
+        Assert.Equal("SEBT-001", mapped.SummerEBTCaseID);
+        Assert.Equal("Ada", mapped.ChildFirstName);
+
+        // Date parsed exactly with the configured format.
+        Assert.Equal(new DateTime(2025, 6, 15), mapped.EbtCardIssueDate);
+
+        // "LOST, AUTO REISSUE" resolves through the domain-centered table to CardStatus.Lost.
+        Assert.Equal(CardStatus.Lost, mapped.EbtCardStatus);
 
         mockHttp.VerifyNoOutstandingExpectation();
     }
@@ -304,10 +389,10 @@ public class ConfigurableStateBackendLookupHouseholdTests
                     Response = new StateBackendResponseMapping
                     {
                         Root = "$.stdntEnrollDtls",
-                        Fields = new Dictionary<string, string>
+                        Fields = new Dictionary<string, FieldMapping>
                         {
-                            ["summerEBTCaseID"] = "sebtChldCwin",
-                            ["childFirstName"] = "chldNm",
+                            ["summerEBTCaseID"] = new() { From = "sebtChldCwin" },
+                            ["childFirstName"] = new() { From = "chldNm" },
                         },
                         Disaggregation = new StateBackendDisaggregation
                         {

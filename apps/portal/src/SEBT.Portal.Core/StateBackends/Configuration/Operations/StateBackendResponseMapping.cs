@@ -14,10 +14,9 @@ public sealed record StateBackendResponseMapping
     public required string Root { get; init; }
 
     /// <summary>
-    /// Canonical field name → source property name on each record.
-    /// Source is a single property name on the record selected by <see cref="Root"/>.
+    /// Canonical field name → how to pull and coerce it from the record selected by <see cref="Root"/>.
     /// </summary>
-    public required Dictionary<string, string> Fields { get; init; }
+    public required Dictionary<string, FieldMapping> Fields { get; init; }
 
     /// <summary>
     /// Optional strategy for grouping records into applications and deciding case inclusion.
