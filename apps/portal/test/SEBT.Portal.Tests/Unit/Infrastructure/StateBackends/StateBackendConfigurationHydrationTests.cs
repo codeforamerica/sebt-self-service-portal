@@ -30,6 +30,31 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(StateBackendHttpMethod.Post, householdLookup.Method);
         Assert.Equal("/households/lookup", householdLookup.Path);
 
+        Dictionary<string, RequestBinding>? request = householdLookup.Request;
+        Assert.NotNull(request);
+        Assert.Equal(true, request["isIdentityProofed"].Const);
+        Assert.Equal(true, request["includePendingApplicantDetails"].Const);
+        Assert.Equal("email", request["guardianEmail"].From);
+
+        Dictionary<string, RequestBinding>? guardianIdentifiers = request["guardianIdentifiers"].Compose;
+        Assert.NotNull(guardianIdentifiers);
+        Assert.Equal("ic", guardianIdentifiers["IC"].From);
+        Assert.Equal("dob", guardianIdentifiers["DOB"].From);
+        Assert.Equal("portalUuid", guardianIdentifiers["PortalUUID"].From);
+
+        StateBackendResponseMapping? response = householdLookup.Response;
+        Assert.NotNull(response);
+        Assert.Equal("$.resultSets[0]", response.Root);
+        Assert.Equal("SummerEBTCaseID", response.Fields["summerEBTCaseID"]);
+        Assert.Equal("ChildFirstName", response.Fields["childFirstName"]);
+
+        StateBackendDisaggregation? disaggregation = response.Disaggregation;
+        Assert.NotNull(disaggregation);
+        Assert.Equal(DisaggregationRule.Presence, disaggregation.Rule);
+        Assert.Equal("ApplicationId", disaggregation.DiscriminatorField);
+        Assert.Equal("ApplicationId", disaggregation.GroupApplicationsBy);
+        Assert.Equal(CaseInclusionPredicate.All, disaggregation.CaseInclusion);
+
         Assert.NotNull(config.Operations.Health);
 
         // Capability-derivation smoke assert: nothing modeled AddressUpdate/EnrollmentCheck here.
@@ -57,6 +82,20 @@ public class StateBackendConfigurationHydrationTests
         Assert.NotNull(householdLookup);
         Assert.Equal(StateBackendHttpMethod.Post, householdLookup.Method);
         Assert.Equal("/sebt/get-account-details", householdLookup.Path);
+
+        Dictionary<string, RequestBinding>? request = householdLookup.Request;
+        Assert.NotNull(request);
+        Assert.Equal("phone", request["PhnNm"].From);
+
+        // Exercises the OTHER disaggregation branch (valueInSet) + a named caseInclusion predicate.
+        StateBackendDisaggregation? disaggregation = householdLookup.Response?.Disaggregation;
+        Assert.NotNull(disaggregation);
+        Assert.Equal(DisaggregationRule.ValueInSet, disaggregation.Rule);
+        Assert.Equal("eligSrc", disaggregation.DiscriminatorField);
+        Assert.Equal(new[] { "CBMS", "PK" }, disaggregation.ApplicationValues);
+        Assert.Equal(
+            CaseInclusionPredicate.WhenApprovedOrNotApplicationBased,
+            disaggregation.CaseInclusion);
 
         AddressUpdateOperationConfig? addressUpdate = config.Operations.AddressUpdate;
         Assert.NotNull(addressUpdate);

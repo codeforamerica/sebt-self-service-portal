@@ -8,7 +8,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     public void ConfigurableStateBackend_TODO()
     {
         // Arrange
-        var backend = new ConfigurableStateBackend();
+        // TODO: construct ConfigurableStateBackend for this operation
 
         // Act
         // TODO

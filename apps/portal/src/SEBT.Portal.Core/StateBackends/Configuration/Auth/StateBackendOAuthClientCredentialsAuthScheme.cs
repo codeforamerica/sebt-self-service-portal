@@ -5,5 +5,6 @@ public sealed record StateBackendOAuthClientCredentialsAuthScheme : StateBackend
     public required Uri TokenUrl { get; init; }
     public required string ClientId { get; init; }
     public required string ClientSecretRef { get; init; }
+    public string? Scope { get; init; }
     public override AuthSchemes Scheme => AuthSchemes.OAuthClientCredentials;
 }

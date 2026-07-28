@@ -7,6 +7,32 @@ operations:
   householdLookup:
     method: post
     path: /households/lookup
+    request:
+      isIdentityProofed:
+        const: true
+      includePendingApplicantDetails:
+        const: true
+      guardianEmail:
+        from: email
+      guardianIdentifiers:
+        compose:
+          IC:
+            from: ic
+          DOB:
+            from: dob
+          PortalUUID:
+            from: portalUuid
+    response:
+      root: $.resultSets[0]
+      fields:
+        summerEBTCaseID: SummerEBTCaseID
+        childFirstName: ChildFirstName
+        childLastName: ChildLastName
+      disaggregation:
+        rule: presence
+        discriminatorField: ApplicationId
+        groupApplicationsBy: ApplicationId
+        caseInclusion: all
   cardReplacement:
     method: post
     path: /cards/replace

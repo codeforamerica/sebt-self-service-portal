@@ -43,4 +43,4 @@ public sealed record CardReplacementResult();
 public sealed record EnrollmentCheckRequest();
 public sealed record EnrollmentCheckResult();
 
-public sealed record StateBackendHealth();
+public sealed record StateBackendHealth(bool IsHealthy);

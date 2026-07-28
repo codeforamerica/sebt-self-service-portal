@@ -8,6 +8,20 @@ operations:
   householdLookup:
     method: post
     path: /sebt/get-account-details
+    request:
+      PhnNm:
+        from: phone
+    response:
+      root: $.stdntEnrollDtls
+      fields:
+        summerEBTCaseID: sebtChldCwin
+        childFirstName: chldNm
+      disaggregation:
+        rule: valueInSet
+        discriminatorField: eligSrc
+        applicationValues: [CBMS, PK]
+        groupApplicationsBy: sebtAppId
+        caseInclusion: whenApprovedOrNotApplicationBased
   cardReplacement:
     method: patch
     path: /sebt/update-std-dtls
