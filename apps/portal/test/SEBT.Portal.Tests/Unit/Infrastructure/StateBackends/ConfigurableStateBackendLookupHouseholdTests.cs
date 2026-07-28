@@ -174,116 +174,171 @@ public class ConfigurableStateBackendLookupHouseholdTests
         mockHttp.VerifyNoOutstandingExpectation();
     }
 
-    [Fact]
-    public async Task LookupHouseholdAsync_BindsDcRequestBody_FromSignals()
+    // Domain-centered DC request binding: constants + map (named input → dotted target path).
+    private static RequestBinding DcRequestBinding() =>
+        new()
+        {
+            Constants = new Dictionary<string, object>
+            {
+                ["includePendingApplicantDetails"] = false,
+            },
+            Map = new Dictionary<string, string>
+            {
+                ["email"] = "guardianEmail",
+                ["ic"] = "guardianIdentifiers.IC",
+                ["dob"] = "guardianIdentifiers.DOB",
+                ["portalUuid"] = "guardianIdentifiers.PortalUUID",
+                ["isProofed"] = "isIdentityProofed",
+            },
+        };
+
+    private static StateBackendConfiguration WithRequestBinding(RequestBinding binding)
     {
-        // Arrange
         StateBackendConfiguration configuration = BuildConfiguration();
-        configuration = configuration with
+        return configuration with
         {
             Operations = configuration.Operations with
             {
                 HouseholdLookup = configuration.Operations.HouseholdLookup! with
                 {
-                    Request = new Dictionary<string, RequestBinding>
-                    {
-                        ["isIdentityProofed"] = new RequestBinding { Const = true },
-                        ["includePendingApplicantDetails"] = new RequestBinding { Const = true },
-                        ["guardianEmail"] = new RequestBinding { From = "email" },
-                        ["guardianIdentifiers"] = new RequestBinding
-                        {
-                            Compose = new Dictionary<string, RequestBinding>
-                            {
-                                ["IC"] = new RequestBinding { From = "ic" },
-                                ["DOB"] = new RequestBinding { From = "dob" },
-                                ["PortalUUID"] = new RequestBinding { From = "portalUuid" },
-                            },
-                        },
-                    },
+                    Request = binding,
                 },
             },
         };
+    }
 
+    private static HouseholdLookupRequest DcRequest(bool isProofed) =>
+        new(
+            new[]
+            {
+                new IdentitySignal("email", "ada@example.test", Verified: true),
+                new IdentitySignal("ic", "IC-123", Verified: true),
+                new IdentitySignal("dob", "1815-12-10", Verified: true),
+            })
+        {
+            IsProofed = isProofed,
+            PortalUuid = "uuid-abc",
+        };
+
+    private static async Task<string> CaptureLookupBodyAsync(
+        StateBackendConfiguration configuration, HouseholdLookupRequest request)
+    {
         string? capturedBody = null;
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
             .When(HttpMethod.Post, "http://backend.test/households/lookup")
-            .With(request =>
+            .With(message =>
             {
-                capturedBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                capturedBody = message.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
                 return true;
             })
             .Respond("application/json", DcRawResponse);
 
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
-        var request = new HouseholdLookupRequest(
-            new[]
-            {
-                new IdentitySignal("email", "ada@example.test", Verified: true),
-                new IdentitySignal("ic", "IC-123", Verified: true),
-                new IdentitySignal("dob", "1815-12-10", Verified: true),
-                new IdentitySignal("portalUuid", "uuid-abc", Verified: false),
-            });
-
-        // Act
         await backend.LookupHouseholdAsync(request);
 
-        // Assert
         Assert.NotNull(capturedBody);
+        return capturedBody;
+    }
+
+    [Fact]
+    public async Task LookupHouseholdAsync_BindsDcRequestBody_FromSignalsContextAndConstants()
+    {
+        // Arrange
+        StateBackendConfiguration configuration = WithRequestBinding(DcRequestBinding());
+
+        // Act
+        string capturedBody = await CaptureLookupBodyAsync(configuration, DcRequest(isProofed: true));
+
+        // Assert
         using JsonDocument document = JsonDocument.Parse(capturedBody);
         JsonElement root = document.RootElement;
 
-        Assert.True(root.GetProperty("isIdentityProofed").GetBoolean());
-        Assert.True(root.GetProperty("includePendingApplicantDetails").GetBoolean());
+        // Constant, value false (genuinely fixed policy — production always sends false).
+        Assert.False(root.GetProperty("includePendingApplicantDetails").GetBoolean());
+
+        // Signal → top-level target path.
         Assert.Equal("ada@example.test", root.GetProperty("guardianEmail").GetString());
 
+        // Signals + context nested via dotted target paths.
         JsonElement guardianIdentifiers = root.GetProperty("guardianIdentifiers");
         Assert.Equal("IC-123", guardianIdentifiers.GetProperty("IC").GetString());
         Assert.Equal("1815-12-10", guardianIdentifiers.GetProperty("DOB").GetString());
         Assert.Equal("uuid-abc", guardianIdentifiers.GetProperty("PortalUUID").GetString());
     }
 
-    [Fact]
-    public async Task LookupHouseholdAsync_BindsCoRequestBody_FromPhoneSignal()
+    // SECURITY REGRESSION: isIdentityProofed must reflect the caller's real proofing status, not a
+    // hardcoded value. The DC sproc gates its email-lookup branch on @isIdentityProofed = 1;
+    // hardcoding true would be a proofing-gate bypass.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task LookupHouseholdAsync_BindsIsIdentityProofed_FromCallerProofingStatus(
+        bool isProofed)
     {
         // Arrange
-        StateBackendConfiguration configuration = BuildConfiguration();
-        configuration = configuration with
-        {
-            Operations = configuration.Operations with
-            {
-                HouseholdLookup = configuration.Operations.HouseholdLookup! with
-                {
-                    Request = new Dictionary<string, RequestBinding>
-                    {
-                        ["PhnNm"] = new RequestBinding { From = "phone" },
-                    },
-                },
-            },
-        };
+        StateBackendConfiguration configuration = WithRequestBinding(DcRequestBinding());
 
-        string? capturedBody = null;
+        // Act
+        string capturedBody = await CaptureLookupBodyAsync(
+            configuration, DcRequest(isProofed: isProofed));
+
+        // Assert — body mirrors the caller's proofing, in both directions.
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        Assert.Equal(
+            isProofed, document.RootElement.GetProperty("isIdentityProofed").GetBoolean());
+    }
+
+    // Fail-loud: a map entry whose input isn't present must throw, not silently drop.
+    [Fact]
+    public async Task LookupHouseholdAsync_ThrowsWhenMapInputIsNotPresent()
+    {
+        // Arrange — map requires an "ic" signal that the request does not carry.
+        StateBackendConfiguration configuration = WithRequestBinding(
+            new RequestBinding
+            {
+                Map = new Dictionary<string, string>
+                {
+                    ["ic"] = "guardianIdentifiers.IC",
+                },
+            });
+
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
             .When(HttpMethod.Post, "http://backend.test/households/lookup")
-            .With(request =>
-            {
-                capturedBody = request.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
-                return true;
-            })
             .Respond("application/json", DcRawResponse);
 
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
         var request = new HouseholdLookupRequest(
+            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+
+        // Act + Assert
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => backend.LookupHouseholdAsync(request));
+        Assert.Contains("ic", ex.Message);
+    }
+
+    [Fact]
+    public async Task LookupHouseholdAsync_BindsCoRequestBody_FromPhoneSignal()
+    {
+        // Arrange
+        StateBackendConfiguration configuration = WithRequestBinding(
+            new RequestBinding
+            {
+                Map = new Dictionary<string, string>
+                {
+                    ["phone"] = "PhnNm",
+                },
+            });
+        var request = new HouseholdLookupRequest(
             new[] { new IdentitySignal("phone", "5551234567", Verified: true) });
 
         // Act
-        await backend.LookupHouseholdAsync(request);
+        string capturedBody = await CaptureLookupBodyAsync(configuration, request);
 
         // Assert
-        Assert.NotNull(capturedBody);
         using JsonDocument document = JsonDocument.Parse(capturedBody);
         Assert.Equal("5551234567", document.RootElement.GetProperty("PhnNm").GetString());
     }

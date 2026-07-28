@@ -29,7 +29,23 @@ public interface IStateBackend
 
 public sealed record IdentitySignal(string Type, string Value, bool Verified);
 public enum HouseholdLookupStatus { Found, NotFound, Ambiguous }
-public sealed record HouseholdLookupRequest(IReadOnlyList<IdentitySignal> Signals);
+
+/// <summary>
+/// A household lookup request. <see cref="Signals"/> are household-search keys (email, phone,
+/// etc.). <see cref="IsProofed"/> and <see cref="PortalUuid"/> are caller context — facts about
+/// the authenticated user, not household search keys.
+/// </summary>
+/// <remarks>
+/// <see cref="IsProofed"/> is supplied by the portal; the portal owns the IAL→proofed threshold.
+/// The request binder only passes this bool through to the state backend — it never computes an
+/// authorization decision. The DC backend gates its email-lookup branch on this flag, so it must
+/// reflect the caller's real proofing status, never a hardcoded value.
+/// </remarks>
+public sealed record HouseholdLookupRequest(IReadOnlyList<IdentitySignal> Signals)
+{
+    public bool IsProofed { get; init; }
+    public string? PortalUuid { get; init; }
+}
 public sealed record HouseholdLookupResult(HouseholdLookupStatus Status, HouseholdData? Household);
 
 public sealed record CardDetails();

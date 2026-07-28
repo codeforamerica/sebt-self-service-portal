@@ -94,9 +94,9 @@ public class ConfigurableStateBackend : IStateBackend
         // the driver transport-agnostic and the auth scheme a reusable primitive.
         using HttpRequestMessage httpRequest = BuildRequest(lookup);
 
-        if (lookup.Request is { } bindings)
+        if (lookup.Request is { } binding)
         {
-            JsonObject body = StateBackendRequestBinder.BuildBody(bindings, request.Signals);
+            JsonObject body = StateBackendRequestBinder.BuildBody(binding, request);
             httpRequest.Content = new StringContent(
                 body.ToJsonString(), Encoding.UTF8, "application/json");
         }

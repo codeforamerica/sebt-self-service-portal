@@ -5,77 +5,97 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Builds an outgoing request body from a capped request-binding map (DC-568 spike), pulling
-/// values from the lookup request's <see cref="IdentitySignal"/> list. The binding vocabulary
-/// is closed to three kinds — see <see cref="RequestBinding"/>. This is the signal→JSON layer;
-/// the config records themselves stay transport-free in Core.
+/// Builds an outgoing lookup request body from a domain-centered <see cref="RequestBinding"/>
+/// (DC-568 spike). Two sources feed the body:
+///   * <c>constants</c> — fixed literals written at dotted target paths.
+///   * <c>map</c> — OUR named input (a household-identity signal or a caller-context value)
+///     written at a dotted target path.
+///
+/// Input resolution is a CLOSED set — known signal types plus a fixed set of context names. No
+/// arbitrary lookups, expressions, or transforms. A map input that resolves to nothing fails loud.
+/// The binder passes <see cref="HouseholdLookupRequest.IsProofed"/> straight through; it never
+/// computes an authorization decision. This is the input→JSON layer; the config records stay
+/// transport-free in Core.
 /// </summary>
 internal static class StateBackendRequestBinder
 {
-    public static JsonObject BuildBody(
-        IReadOnlyDictionary<string, RequestBinding> bindings,
-        IReadOnlyList<IdentitySignal> signals)
+    public static JsonObject BuildBody(RequestBinding binding, HouseholdLookupRequest request)
     {
         var body = new JsonObject();
 
-        foreach ((string field, RequestBinding binding) in bindings)
+        if (binding.Constants is { } constants)
         {
-            body[field] = ResolveBinding(binding, signals);
+            foreach ((string targetPath, object value) in constants)
+            {
+                WriteAtPath(body, targetPath, JsonValue.Create(value));
+            }
+        }
+
+        if (binding.Map is { } map)
+        {
+            foreach ((string inputName, string targetPath) in map)
+            {
+                JsonNode value = ResolveInput(inputName, request);
+                WriteAtPath(body, targetPath, value);
+            }
         }
 
         return body;
     }
 
-    private static JsonNode? ResolveBinding(
-        RequestBinding binding, IReadOnlyList<IdentitySignal> signals)
+    // Closed resolution set: household-identity signals addressable by IdentitySignal.Type, plus
+    // a small fixed set of caller-context names. Fail loud when an input resolves to nothing.
+    private static JsonNode ResolveInput(string inputName, HouseholdLookupRequest request)
     {
-        ValidateExactlyOne(binding);
-
-        if (binding.From is not null)
+        // Caller context — facts about the authenticated user, not household search keys.
+        if (string.Equals(inputName, "isProofed", StringComparison.Ordinal))
         {
-            string? value = FindSignalValue(binding.From, signals);
-            return value is null ? null : JsonValue.Create(value);
+            // Straight pass-through of the caller's proofing status. No threshold logic here.
+            return JsonValue.Create(request.IsProofed);
         }
 
-        if (binding.Compose is not null)
+        if (string.Equals(inputName, "portalUuid", StringComparison.Ordinal))
         {
-            var composed = new JsonObject();
-            foreach ((string key, RequestBinding sub) in binding.Compose)
+            if (request.PortalUuid is { } portalUuid)
             {
-                composed[key] = ResolveBinding(sub, signals);
+                return JsonValue.Create(portalUuid);
             }
 
-            return composed;
-        }
-
-        // Const — the remaining branch guaranteed by ValidateExactlyOne.
-        return JsonValue.Create(binding.Const);
-    }
-
-    private static string? FindSignalValue(string signalType, IReadOnlyList<IdentitySignal> signals)
-    {
-        foreach (IdentitySignal signal in signals)
-        {
-            if (string.Equals(signal.Type, signalType, StringComparison.Ordinal))
-            {
-                return signal.Value;
-            }
-        }
-
-        return null;
-    }
-
-    // Fail-loud: a binding maps to exactly one of the three closed kinds.
-    private static void ValidateExactlyOne(RequestBinding binding)
-    {
-        int set = (binding.From is not null ? 1 : 0)
-            + (binding.Const is not null ? 1 : 0)
-            + (binding.Compose is not null ? 1 : 0);
-
-        if (set != 1)
-        {
             throw new InvalidOperationException(
-                "A request binding must set exactly one of 'from', 'const', or 'compose'.");
+                "Request map input 'portalUuid' resolved to no value.");
         }
+
+        // Household-identity signal, addressed by its IdentitySignal.Type.
+        foreach (IdentitySignal signal in request.Signals)
+        {
+            if (string.Equals(signal.Type, inputName, StringComparison.Ordinal))
+            {
+                return JsonValue.Create(signal.Value);
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Request map input '{inputName}' resolved to no value.");
+    }
+
+    // Writes a value at a dotted target path, building intermediate nested objects as needed.
+    private static void WriteAtPath(JsonObject root, string dottedPath, JsonNode? value)
+    {
+        string[] segments = dottedPath.Split('.');
+        JsonObject current = root;
+
+        for (int i = 0; i < segments.Length - 1; i++)
+        {
+            string segment = segments[i];
+            if (current[segment] is not JsonObject child)
+            {
+                child = new JsonObject();
+                current[segment] = child;
+            }
+
+            current = child;
+        }
+
+        current[segments[^1]] = value;
     }
 }

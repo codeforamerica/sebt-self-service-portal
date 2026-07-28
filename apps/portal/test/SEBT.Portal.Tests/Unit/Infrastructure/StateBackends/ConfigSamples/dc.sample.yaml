@@ -8,20 +8,14 @@ operations:
     method: post
     path: /households/lookup
     request:
-      isIdentityProofed:
-        const: true
-      includePendingApplicantDetails:
-        const: true
-      guardianEmail:
-        from: email
-      guardianIdentifiers:
-        compose:
-          IC:
-            from: ic
-          DOB:
-            from: dob
-          PortalUUID:
-            from: portalUuid
+      constants:
+        includePendingApplicantDetails: false
+      map:
+        email: guardianEmail
+        ic: guardianIdentifiers.IC
+        dob: guardianIdentifiers.DOB
+        portalUuid: guardianIdentifiers.PortalUUID
+        isProofed: isIdentityProofed
     response:
       root: $.resultSets[0]
       fields:

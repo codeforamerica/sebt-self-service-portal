@@ -9,8 +9,8 @@ operations:
     method: post
     path: /sebt/get-account-details
     request:
-      PhnNm:
-        from: phone
+      map:
+        phone: PhnNm
     response:
       root: $.stdntEnrollDtls
       fields:

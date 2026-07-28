@@ -31,17 +31,22 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(StateBackendHttpMethod.Post, householdLookup.Method);
         Assert.Equal("/households/lookup", householdLookup.Path);
 
-        Dictionary<string, RequestBinding>? request = householdLookup.Request;
+        RequestBinding? request = householdLookup.Request;
         Assert.NotNull(request);
-        Assert.Equal(true, request["isIdentityProofed"].Const);
-        Assert.Equal(true, request["includePendingApplicantDetails"].Const);
-        Assert.Equal("email", request["guardianEmail"].From);
 
-        Dictionary<string, RequestBinding>? guardianIdentifiers = request["guardianIdentifiers"].Compose;
-        Assert.NotNull(guardianIdentifiers);
-        Assert.Equal("ic", guardianIdentifiers["IC"].From);
-        Assert.Equal("dob", guardianIdentifiers["DOB"].From);
-        Assert.Equal("portalUuid", guardianIdentifiers["PortalUUID"].From);
+        // includePendingApplicantDetails is genuinely fixed policy — a constant, value false.
+        Assert.NotNull(request.Constants);
+        Assert.Equal(false, request.Constants["includePendingApplicantDetails"]);
+
+        // isIdentityProofed is per-request (caller proofing) — a map pass-through, NOT a constant.
+        Assert.DoesNotContain("isIdentityProofed", request.Constants.Keys);
+
+        Assert.NotNull(request.Map);
+        Assert.Equal("guardianEmail", request.Map["email"]);
+        Assert.Equal("guardianIdentifiers.IC", request.Map["ic"]);
+        Assert.Equal("guardianIdentifiers.DOB", request.Map["dob"]);
+        Assert.Equal("guardianIdentifiers.PortalUUID", request.Map["portalUuid"]);
+        Assert.Equal("isIdentityProofed", request.Map["isProofed"]);
 
         StateBackendResponseMapping? response = householdLookup.Response;
         Assert.NotNull(response);
@@ -101,9 +106,10 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(StateBackendHttpMethod.Post, householdLookup.Method);
         Assert.Equal("/sebt/get-account-details", householdLookup.Path);
 
-        Dictionary<string, RequestBinding>? request = householdLookup.Request;
+        RequestBinding? request = householdLookup.Request;
         Assert.NotNull(request);
-        Assert.Equal("phone", request["PhnNm"].From);
+        Assert.NotNull(request.Map);
+        Assert.Equal("PhnNm", request.Map["phone"]);
 
         Assert.Equal("sebtChldCwin", householdLookup.Response?.Fields["summerEBTCaseID"].From);
 
