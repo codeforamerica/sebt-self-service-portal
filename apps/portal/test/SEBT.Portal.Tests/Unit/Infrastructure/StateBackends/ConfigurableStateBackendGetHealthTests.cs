@@ -29,14 +29,19 @@ public class ConfigurableStateBackendGetHealthTests
             },
         };
 
-    [Fact]
-    public async Task GetHealthAsync_DispatchesToConfiguredHealthEndpoint_AndReportsHealthy()
+    // Dispatches to the configured health endpoint and reports healthy iff the backend says OK.
+    [Theory]
+    [InlineData(HttpStatusCode.OK, true)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, false)]
+    [InlineData(HttpStatusCode.InternalServerError, false)]
+    public async Task GetHealthAsync_ReportsHealth_FromConfiguredEndpointStatus(
+        HttpStatusCode status, bool expectedHealthy)
     {
         // Arrange
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
             .When(HttpMethod.Get, "http://backend.test/health")
-            .Respond(HttpStatusCode.OK, "application/json", "{\"status\":\"ok\"}");
+            .Respond(status, "application/json", "{\"status\":\"ok\"}");
 
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(BuildConfiguration(), httpClient);
@@ -45,26 +50,6 @@ public class ConfigurableStateBackendGetHealthTests
         StateBackendHealth health = await backend.GetHealthAsync();
 
         // Assert
-        Assert.True(health.IsHealthy);
-        mockHttp.VerifyNoOutstandingExpectation();
-    }
-
-    [Fact]
-    public async Task GetHealthAsync_ReportsUnhealthy_WhenBackendReturnsError()
-    {
-        // Arrange
-        var mockHttp = new MockHttpMessageHandler();
-        mockHttp
-            .When(HttpMethod.Get, "http://backend.test/health")
-            .Respond(HttpStatusCode.ServiceUnavailable);
-
-        var httpClient = mockHttp.ToHttpClient();
-        var backend = new ConfigurableStateBackend(BuildConfiguration(), httpClient);
-
-        // Act
-        StateBackendHealth health = await backend.GetHealthAsync();
-
-        // Assert
-        Assert.False(health.IsHealthy);
+        Assert.Equal(expectedHealthy, health.IsHealthy);
     }
 }

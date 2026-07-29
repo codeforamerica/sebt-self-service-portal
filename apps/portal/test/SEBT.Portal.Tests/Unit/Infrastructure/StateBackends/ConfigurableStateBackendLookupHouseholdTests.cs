@@ -103,8 +103,8 @@ public class ConfigurableStateBackendLookupHouseholdTests
     }
 
     // DC-shaped record carrying a formatted date and a state card-status token.
-    private const string DcTypedResponse =
-        """
+    private static string DcTypedResponse(string cardStatusToken) =>
+        $$"""
         {
           "resultSets": [
             [
@@ -113,15 +113,21 @@ public class ConfigurableStateBackendLookupHouseholdTests
                 "ChildFirstName": "Ada",
                 "ChildLastName": "Lovelace",
                 "IssueDate": "06/15/2025",
-                "CardStatus": "LOST, AUTO REISSUE"
+                "CardStatus": "{{cardStatusToken}}"
               }
             ]
           ]
         }
         """;
 
-    [Fact]
-    public async Task LookupHouseholdAsync_MapsTypedFields_StringsDateAndEnum()
+    [Theory]
+    [InlineData("ACTIVE", CardStatus.Active)]
+    // "LOST, AUTO REISSUE" is one of several tokens the table maps to CardStatus.Lost.
+    [InlineData("LOST, AUTO REISSUE", CardStatus.Lost)]
+    // An unmapped token falls through to the enum table's default.
+    [InlineData("NEVER SEEN", CardStatus.Unknown)]
+    public async Task LookupHouseholdAsync_MapsTypedFields_StringsDateAndEnum(
+        string cardStatusToken, CardStatus expectedCardStatus)
     {
         // Arrange
         StateBackendConfiguration configuration = WithLookupResponse(
@@ -156,7 +162,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
             .Expect(HttpMethod.Post, "http://backend.test/households/lookup")
-            .Respond("application/json", DcTypedResponse);
+            .Respond("application/json", DcTypedResponse(cardStatusToken));
 
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
@@ -175,8 +181,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
 
         Assert.Equal(new DateTime(2025, 6, 15), mapped.EbtCardIssueDate);
 
-        // "LOST, AUTO REISSUE" is one of several tokens the table maps to CardStatus.Lost.
-        Assert.Equal(CardStatus.Lost, mapped.EbtCardStatus);
+        Assert.Equal(expectedCardStatus, mapped.EbtCardStatus);
 
         mockHttp.VerifyNoOutstandingExpectation();
     }
@@ -646,14 +651,16 @@ public class ConfigurableStateBackendLookupHouseholdTests
         mockHttp.VerifyNoOutstandingExpectation();
     }
 
-    [Fact]
-    public async Task LookupHouseholdAsync_ReturnsNotFound_WhenRootSelectsNoRecords()
+    [Theory]
+    [InlineData("""{ "resultSets": [ [] ] }""")] // root resolves to an empty array
+    [InlineData("{}")] // root path missing entirely — the selector finds nothing to map
+    public async Task LookupHouseholdAsync_ReturnsNotFound_WhenRootSelectsNoRecords(string responseJson)
     {
         // Arrange
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
             .When(HttpMethod.Post, "http://backend.test/households/lookup")
-            .Respond("application/json", "{ \"resultSets\": [ [] ] }");
+            .Respond("application/json", responseJson);
 
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(BuildConfiguration(), httpClient);

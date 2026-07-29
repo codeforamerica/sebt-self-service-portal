@@ -83,6 +83,14 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         MockHttpMessageHandler mockHttp, CardReplacementOperationConfig cardReplacement) =>
         new(BuildConfiguration(cardReplacement), mockHttp.ToHttpClient(), () => FixedIdempotencyKey);
 
+    // An opaque caseId carrying the two DC routing fields most tests decode on write.
+    private static string DefaultCaseId() =>
+        OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["caseId"] = "SEBT-001",
+            ["applicationId"] = "APP-100",
+        });
+
     // ---- 1. Opaque caseId round-trip ----------------------------------------------------------
 
     [Fact]
@@ -165,11 +173,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     public async Task RequestCardReplacementAsync_BuildsBody_FromDecodedCaseIdFieldsAndConstants()
     {
         // Arrange
-        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
-        {
-            ["caseId"] = "SEBT-001",
-            ["applicationId"] = "APP-100",
-        });
+        string caseId = DefaultCaseId();
 
         string? capturedBody = null;
         var mockHttp = new MockHttpMessageHandler();
@@ -203,11 +207,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     public async Task RequestCardReplacementAsync_AttachesIdempotencyKeyHeader()
     {
         // Arrange
-        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
-        {
-            ["caseId"] = "SEBT-001",
-            ["applicationId"] = "APP-100",
-        });
+        string caseId = DefaultCaseId();
 
         string? capturedKey = null;
         var mockHttp = new MockHttpMessageHandler();
@@ -235,20 +235,26 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
     // ---- 3. Result classification (3-kind, first-match-wins) -----------------------------------
 
-    [Fact]
-    public async Task RequestCardReplacementAsync_ClassifiesSuccess_FromResultCodeValueInSet()
+    [Theory]
+    // resultCode in {OK} → Success.
+    [InlineData("""{ "resultCode": "OK", "message": "issued" }""", HttpStatusCode.OK, true, false)]
+    // resultCode is OK but the policy-message condition is evaluated FIRST (order is load-bearing),
+    // so the policy message beats the later success condition.
+    [InlineData(
+        """{ "resultCode": "OK", "message": "Rejected by household eligibility policy" }""",
+        HttpStatusCode.OK, false, true)]
+    // Nothing matches → default BackendError.
+    [InlineData("""{ "resultCode": "ERR", "message": "boom" }""", HttpStatusCode.InternalServerError, false, false)]
+    public async Task RequestCardReplacementAsync_ClassifiesOutcome_FirstMatchWins(
+        string responseJson, HttpStatusCode status, bool isSuccess, bool isPolicyRejection)
     {
         // Arrange
-        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
-        {
-            ["caseId"] = "SEBT-001",
-            ["applicationId"] = "APP-100",
-        });
+        string caseId = DefaultCaseId();
 
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
             .When(HttpMethod.Post, "http://backend.test/cards/replace")
-            .Respond("application/json", """{ "resultCode": "OK", "message": "issued" }""");
+            .Respond(status, "application/json", responseJson);
 
         var backend = BuildBackend(mockHttp, DcCardReplacement());
 
@@ -257,67 +263,8 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             new CardReplacementRequest(caseId) { Reason = "lost" });
 
         // Assert
-        Assert.True(result.IsSuccess);
-        Assert.False(result.IsPolicyRejection);
-    }
-
-    [Fact]
-    public async Task RequestCardReplacementAsync_ClassifiesPolicyRejection_FromDcPolicyMessage()
-    {
-        // Arrange
-        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
-        {
-            ["caseId"] = "SEBT-001",
-            ["applicationId"] = "APP-100",
-        });
-
-        var mockHttp = new MockHttpMessageHandler();
-        mockHttp
-            .When(HttpMethod.Post, "http://backend.test/cards/replace")
-            // resultCode is OK, but the policy message is evaluated FIRST (order is load-bearing).
-            .Respond(
-                HttpStatusCode.OK,
-                "application/json",
-                """{ "resultCode": "OK", "message": "Rejected by household eligibility policy" }""");
-
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
-
-        // Act
-        WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(caseId) { Reason = "lost" });
-
-        // Assert — first-match-wins: policy message beats the later success condition.
-        Assert.False(result.IsSuccess);
-        Assert.True(result.IsPolicyRejection);
-    }
-
-    [Fact]
-    public async Task RequestCardReplacementAsync_ClassifiesBackendError_ByDefault_WhenNoConditionMatches()
-    {
-        // Arrange
-        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
-        {
-            ["caseId"] = "SEBT-001",
-            ["applicationId"] = "APP-100",
-        });
-
-        var mockHttp = new MockHttpMessageHandler();
-        mockHttp
-            .When(HttpMethod.Post, "http://backend.test/cards/replace")
-            .Respond(
-                HttpStatusCode.InternalServerError,
-                "application/json",
-                """{ "resultCode": "ERR", "message": "boom" }""");
-
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
-
-        // Act
-        WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(caseId) { Reason = "lost" });
-
-        // Assert — nothing matches → default BackendError.
-        Assert.False(result.IsSuccess);
-        Assert.False(result.IsPolicyRejection);
+        Assert.Equal(isSuccess, result.IsSuccess);
+        Assert.Equal(isPolicyRejection, result.IsPolicyRejection);
     }
 
     [Fact]

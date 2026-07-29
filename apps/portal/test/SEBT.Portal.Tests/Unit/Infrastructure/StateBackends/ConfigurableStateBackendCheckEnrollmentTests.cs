@@ -322,34 +322,14 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.True(child.IsMatch);
     }
 
-    [Fact]
-    public async Task CheckEnrollmentAsync_CoConfidenceThreshold_BestBelowThreshold_NoMatch()
-    {
-        // Arrange — day 25 > 12, so no transposition candidate; a single row scoring below threshold.
-        var request = new EnrollmentCheckRequest(
-            new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
-
-        const string responseJson =
-            """
-            { "stdntDtls": [ { "stdReqInd": "1", "mtchCnfd": 85.0 } ] }
-            """;
-
-        // Act
-        (_, EnrollmentCheckResult result) = await RunAsync(
-            CoConfidenceThresholdConfiguration(), request, responseJson);
-
-        // Assert — best score 85 ≤ 90 → no match.
-        EnrollmentChildResult child = Assert.Single(result.Results);
-        Assert.False(child.IsMatch);
-    }
-
-    // Strict `>`: exactly 90.0 does NOT match; 90.01 does.
+    // Strict `>`: clearly below and exactly 90.0 do NOT match; 90.01 does.
     [Theory]
+    [InlineData(85.0, false)]
     [InlineData(90.0, false)]
     [InlineData(90.01, true)]
     public async Task CheckEnrollmentAsync_CoConfidenceThreshold_StrictBoundaryAt90(double score, bool expectedMatch)
     {
-        // Arrange — day 25 > 12, so exactly one row; its score sits on/just past the boundary.
+        // Arrange — day 25 > 12, so exactly one row; its score sits below/on/just past the boundary.
         var request = new EnrollmentCheckRequest(
             new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
 

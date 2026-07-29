@@ -15,69 +15,29 @@ public class JsonReadTests
         return document.RootElement.Clone();
     }
 
-    [Fact]
-    public void AsString_ReadsStringValue()
+    [Theory]
+    [InlineData("""{ "field": "value" }""", "field", "value")]
+    [InlineData("""{ "count": 3 }""", "count", "3")]
+    // Raw read preserves the exact source text of a numeric token, unreformatted.
+    [InlineData("""{ "score": 0.50 }""", "score", "0.50")]
+    [InlineData("""{ "isEligible": true }""", "isEligible", "true")]
+    [InlineData("""{ "isEligible": false }""", "isEligible", "false")]
+    public void AsString_CoercesValueToRawText(string json, string field, string expected)
     {
-        JsonElement root = Parse("""{ "field": "value" }""");
+        JsonElement root = Parse(json);
 
-        Assert.Equal("value", JsonRead.AsString(root, "field"));
+        Assert.Equal(expected, JsonRead.AsString(root, field));
     }
 
-    [Fact]
-    public void AsString_ReadsNumberAsRawText()
+    [Theory]
+    [InlineData("""{ "present": "value" }""", "absent")] // property absent
+    [InlineData("""{ "field": null }""", "field")] // value is JSON null
+    [InlineData("""[ "a", "b" ]""", "field")] // parent is not an object
+    public void AsString_ReturnsNull_OnAnyMiss(string json, string field)
     {
-        JsonElement root = Parse("""{ "count": 3 }""");
+        JsonElement root = Parse(json);
 
-        Assert.Equal("3", JsonRead.AsString(root, "count"));
-    }
-
-    [Fact]
-    public void AsString_PreservesNumericLeadingZerosViaRawText()
-    {
-        // Raw read preserves the exact source text of a numeric token, unreformatted.
-        JsonElement root = Parse("""{ "score": 0.50 }""");
-
-        Assert.Equal("0.50", JsonRead.AsString(root, "score"));
-    }
-
-    [Fact]
-    public void AsString_ReadsTrueAsLiteralTrue()
-    {
-        JsonElement root = Parse("""{ "isEligible": true }""");
-
-        Assert.Equal("true", JsonRead.AsString(root, "isEligible"));
-    }
-
-    [Fact]
-    public void AsString_ReadsFalseAsLiteralFalse()
-    {
-        JsonElement root = Parse("""{ "isEligible": false }""");
-
-        Assert.Equal("false", JsonRead.AsString(root, "isEligible"));
-    }
-
-    [Fact]
-    public void AsString_ReturnsNull_WhenPropertyAbsent()
-    {
-        JsonElement root = Parse("""{ "present": "value" }""");
-
-        Assert.Null(JsonRead.AsString(root, "absent"));
-    }
-
-    [Fact]
-    public void AsString_ReturnsNull_WhenValueIsJsonNull()
-    {
-        JsonElement root = Parse("""{ "field": null }""");
-
-        Assert.Null(JsonRead.AsString(root, "field"));
-    }
-
-    [Fact]
-    public void AsString_ReturnsNull_WhenParentNotObject()
-    {
-        JsonElement root = Parse("""[ "a", "b" ]""");
-
-        Assert.Null(JsonRead.AsString(root, "field"));
+        Assert.Null(JsonRead.AsString(root, field));
     }
 
     [Fact]
