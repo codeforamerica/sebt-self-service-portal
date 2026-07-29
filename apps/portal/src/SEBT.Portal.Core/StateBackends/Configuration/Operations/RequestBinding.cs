@@ -14,6 +14,12 @@ public sealed record RequestBinding
     public Dictionary<string, string>? Map { get; init; }
 
     /// <summary>
+    /// Like <see cref="Map"/>, but an input that resolves to no value is omitted from the body
+    /// entirely (never written as null) instead of failing loud.
+    /// </summary>
+    public Dictionary<string, string>? MapOptional { get; init; }
+
+    /// <summary>
     /// Batch shape: a household-level routing field resolved once across every decoded caseId. The
     /// binder fails loud if the caseIds disagree on the value.
     /// </summary>

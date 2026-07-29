@@ -71,6 +71,17 @@ internal static class EnrollmentOperationValidator
                         "Enrollment match strategy 'ConfidenceThreshold' requires a 'scoreField' and a 'threshold'.");
                 }
 
+                // The optional eligibility check is field + valueIn TOGETHER or neither — one alone
+                // would silently degrade to score-only matching.
+                bool hasField = !string.IsNullOrEmpty(match.Field);
+                bool hasValueIn = match.ValueIn is { Count: > 0 };
+                if (hasField != hasValueIn)
+                {
+                    throw new InvalidOperationException(
+                        "Enrollment match strategy 'ConfidenceThreshold' takes 'field' and a non-empty "
+                        + "'valueIn' together or not at all.");
+                }
+
                 break;
 
             default:

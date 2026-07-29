@@ -6,8 +6,9 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
 /// Builds an outgoing lookup request body from a domain-centered <see cref="RequestBinding"/>.
-/// Input resolution is a closed set — a map input that resolves to nothing fails loud. The binder
-/// passes <see cref="HouseholdLookupRequest.IsProofed"/> straight through; it never computes an
+/// Input resolution is a closed set — a map input that resolves to nothing fails loud, while a
+/// mapOptional input is omitted from the body entirely. The binder passes
+/// <see cref="HouseholdLookupRequest.IsProofed"/> straight through; it never computes an
 /// authorization decision.
 /// </summary>
 internal static class StateBackendRequestBinder
@@ -30,6 +31,17 @@ internal static class StateBackendRequestBinder
             {
                 JsonNode value = ResolveInput(inputName, request);
                 JsonPathWriter.Write(body, targetPath, value);
+            }
+        }
+
+        if (binding.MapOptional is { } mapOptional)
+        {
+            foreach ((string inputName, string targetPath) in mapOptional)
+            {
+                if (TryResolveInput(inputName, request) is { } value)
+                {
+                    JsonPathWriter.Write(body, targetPath, value);
+                }
             }
         }
 
@@ -162,8 +174,14 @@ internal static class StateBackendRequestBinder
         return array;
     }
 
+    // Required entries fail loud on an unresolved input; optional entries are omitted instead.
+    private static JsonNode ResolveInput(string inputName, HouseholdLookupRequest request) =>
+        TryResolveInput(inputName, request)
+            ?? throw new InvalidOperationException(
+                $"Request map input '{inputName}' resolved to no value.");
+
     // Closed set: household-identity signals by IdentitySignal.Type plus fixed caller-context names.
-    private static JsonNode ResolveInput(string inputName, HouseholdLookupRequest request)
+    private static JsonNode? TryResolveInput(string inputName, HouseholdLookupRequest request)
     {
         if (string.Equals(inputName, "isProofed", StringComparison.Ordinal))
         {
@@ -173,13 +191,7 @@ internal static class StateBackendRequestBinder
 
         if (string.Equals(inputName, "portalUuid", StringComparison.Ordinal))
         {
-            if (request.PortalUuid is { } portalUuid)
-            {
-                return JsonValue.Create(portalUuid);
-            }
-
-            throw new InvalidOperationException(
-                "Request map input 'portalUuid' resolved to no value.");
+            return request.PortalUuid is { } portalUuid ? JsonValue.Create(portalUuid) : null;
         }
 
         foreach (IdentitySignal signal in request.Signals)
@@ -190,7 +202,6 @@ internal static class StateBackendRequestBinder
             }
         }
 
-        throw new InvalidOperationException(
-            $"Request map input '{inputName}' resolved to no value.");
+        return null;
     }
 }

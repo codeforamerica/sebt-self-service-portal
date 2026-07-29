@@ -16,6 +16,9 @@ operations:
         dob: guardianIdentifiers.DOB
         portalUuid: guardianIdentifiers.PortalUUID
         isProofed: isIdentityProofed
+      # Bound only when the signal is present; omitted from the body entirely when absent.
+      mapOptional:
+        socureUuid: guardianIdentifiers.SocureUUID
     response:
       root: $.resultSets[0]
       fields:
@@ -109,12 +112,13 @@ operations:
     # alongside the DC state-backend adapter. This config declares the shape the driver will drive.
     callMode: perChild
     request:
-      # firstName/lastName/dob only — the spike's EnrollmentChild carries no schoolName. The DC
-      # sproc also reads schoolName; adding it to the closed request vocabulary is a later slice.
       map:
         firstName: firstName
         lastName: lastName
         dob: dateOfBirth
+      # DC's sproc match also reads schoolName; optional because the portal may not have it.
+      mapOptional:
+        schoolName: schoolName
     response:
       # The single result object is the response root; the anyRowValueIn strategy reads the boolean
       # eligibility flag (one result, so no fan-in).

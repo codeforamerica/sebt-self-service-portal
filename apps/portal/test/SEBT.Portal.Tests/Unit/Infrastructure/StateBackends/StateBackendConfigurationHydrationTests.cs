@@ -46,6 +46,10 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("guardianIdentifiers.PortalUUID", request.Map["portalUuid"]);
         Assert.Equal("isIdentityProofed", request.Map["isProofed"]);
 
+        // Optional inputs bind if present and are omitted from the request body when absent.
+        Assert.NotNull(request.MapOptional);
+        Assert.Equal("guardianIdentifiers.SocureUUID", request.MapOptional["socureUuid"]);
+
         StateBackendResponseMapping? response = householdLookup.Response;
         Assert.NotNull(response);
         Assert.Equal("$.resultSets[0]", response.Root);
@@ -142,12 +146,20 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("firstName", dcEnrollment.Request.Map["firstName"]);
         Assert.Equal("dateOfBirth", dcEnrollment.Request.Map["dob"]);
 
+        // schoolName is optional: the portal may not carry it, but DC's match reads it when sent.
+        Assert.NotNull(dcEnrollment.Request.MapOptional);
+        Assert.Equal("schoolName", dcEnrollment.Request.MapOptional["schoolName"]);
+
         Assert.NotNull(dcEnrollment.Response);
         Assert.Equal("$", dcEnrollment.Response.Root);
         Assert.Null(dcEnrollment.Response.IndexField);
         Assert.Equal(EnrollmentMatchStrategy.AnyRowValueIn, dcEnrollment.Response.Match.Strategy);
         Assert.Equal("isEligible", dcEnrollment.Response.Match.Field);
         Assert.Equal(new[] { "true" }, dcEnrollment.Response.Match.ValueIn);
+
+        // DC's backend never reported per-row or result-level messages — carriers stay unconfigured.
+        Assert.Null(dcEnrollment.Response.StatusMessageField);
+        Assert.Null(dcEnrollment.Response.MessageField);
 
         Assert.NotNull(config.Operations.Health);
 
@@ -238,12 +250,25 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("stdLastName", coEnrollment.Request.Map["lastName"]);
         Assert.Equal("stdDob", coEnrollment.Request.Map["dob"]);
 
+        // schoolName is optional: the portal may not carry it, but CO's match reads it when sent.
+        Assert.NotNull(coEnrollment.Request.MapOptional);
+        Assert.Equal("StdSchlCd", coEnrollment.Request.MapOptional["schoolName"]);
+
         Assert.NotNull(coEnrollment.Response);
         Assert.Equal("$.stdntDtls", coEnrollment.Response.Root);
         Assert.Equal("stdReqInd", coEnrollment.Response.IndexField);
+
+        // CO surfaces the winning row's eligibility text per child and CBMS's root RespMsg
+        // result-level — the carriers the plugin exposed on the wire.
+        Assert.Equal("sebtEligSts", coEnrollment.Response.StatusMessageField);
+        Assert.Equal("RespMsg", coEnrollment.Response.MessageField);
         Assert.Equal(EnrollmentMatchStrategy.ConfidenceThreshold, coEnrollment.Response.Match.Strategy);
         Assert.Equal("mtchCnfd", coEnrollment.Response.Match.ScoreField);
         Assert.Equal(90.0, coEnrollment.Response.Match.Threshold);
+
+        // CO's real rule also requires the best row's eligibility flag — not score alone.
+        Assert.Equal("sebtEligSts", coEnrollment.Response.Match.Field);
+        Assert.Equal(new[] { "Y" }, coEnrollment.Response.Match.ValueIn);
 
         StateBackendCapabilities capabilities = config.Capabilities;
         Assert.True(capabilities.AddressUpdate);
@@ -334,6 +359,67 @@ public class StateBackendConfigurationHydrationTests
             () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("exactly one", ex.Message);
     }
+
+    // The write-path body builders ignore mapOptional, so a config setting it must fail at load
+    // rather than silently dropping the binding.
+    [Fact]
+    public void Validate_FailsLoud_WhenCardReplacementRequestSetsMapOptional()
+    {
+        StateBackendConfiguration config = BuildWriteMapOptionalConfig(
+            cardReplacementRequest: MapOptionalRequestBinding(), addressUpdateRequest: null);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("mapOptional", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenAddressUpdateRequestSetsMapOptional()
+    {
+        StateBackendConfiguration config = BuildWriteMapOptionalConfig(
+            cardReplacementRequest: null, addressUpdateRequest: MapOptionalRequestBinding());
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("mapOptional", ex.Message);
+    }
+
+    // A write-op request binding carrying a mapOptional entry — unsupported on the write path.
+    private static RequestBinding MapOptionalRequestBinding() =>
+        new()
+        {
+            Map = new Dictionary<string, string> { ["caseId"] = "summerEbtCaseId" },
+            MapOptional = new Dictionary<string, string> { ["reason"] = "reason" },
+        };
+
+    // Minimal config carrying an optional card-replacement and/or address-update write op, each with
+    // the supplied request binding.
+    private static StateBackendConfiguration BuildWriteMapOptionalConfig(
+        RequestBinding? cardReplacementRequest, RequestBinding? addressUpdateRequest) =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                CardReplacement = cardReplacementRequest is null
+                    ? null
+                    : new CardReplacementOperationConfig
+                    {
+                        Method = StateBackendHttpMethod.Post,
+                        Path = "/cards/replace",
+                        Request = cardReplacementRequest,
+                    },
+                AddressUpdate = addressUpdateRequest is null
+                    ? null
+                    : new AddressUpdateOperationConfig
+                    {
+                        Method = StateBackendHttpMethod.Post,
+                        Path = "/households/address",
+                        Request = addressUpdateRequest,
+                    },
+            },
+        };
 
     // A classifier whose single condition sets NONE of the three closed kinds — malformed shape.
     private static ResultClassifier MalformedClassifier() =>

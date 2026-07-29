@@ -61,16 +61,25 @@ operations:
         firstName: stdFirstName
         lastName: stdLastName
         dob: stdDob
+      # CO's match also reads the school code; optional because the portal may not have it.
+      mapOptional:
+        schoolName: StdSchlCd
     response:
       root: $.stdntDtls
       indexField: stdReqInd
+      # The winning (argmax) row's eligibility text rides along per child — even on a sub-threshold
+      # non-match — and CBMS's root-level RespMsg is surfaced result-level.
+      statusMessageField: sebtEligSts
+      messageField: RespMsg
       # CO's REAL match: pick the child's highest-confidence candidate row (argmax by mtchCnfd) and
-      # match iff that best is STRICTLY greater than the threshold. The argmax + `>` are fixed code;
-      # config only names the strategy and supplies the score field + threshold.
+      # match iff that best is STRICTLY greater than the threshold AND that SAME row is SEBT-eligible.
+      # The argmax, `>`, and the AND are fixed code; config only names the strategy and its params.
       match:
         strategy: confidenceThreshold
         scoreField: mtchCnfd
         threshold: 90
+        field: sebtEligSts
+        valueIn: ["Y"]
   health:
     method: get
     path: /ping

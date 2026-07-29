@@ -319,6 +319,96 @@ public class ConfigurableStateBackendLookupHouseholdTests
         Assert.Contains("ic", ex.Message);
     }
 
+    // Binding carrying both a required map and an optional one, mirroring DC's lookup shape.
+    private static RequestBinding EmailWithOptionalSocureBinding() =>
+        new()
+        {
+            Map = new Dictionary<string, string>
+            {
+                ["email"] = "guardianEmail",
+            },
+            MapOptional = new Dictionary<string, string>
+            {
+                ["socureUuid"] = "guardianIdentifiers.SocureUUID",
+            },
+        };
+
+    [Fact]
+    public async Task LookupHouseholdAsync_MapOptional_BindsWhenInputIsPresent()
+    {
+        // Arrange
+        StateBackendConfiguration configuration = WithRequestBinding(EmailWithOptionalSocureBinding());
+        var request = new HouseholdLookupRequest(
+            new[]
+            {
+                new IdentitySignal("email", "ada@example.test"),
+                new IdentitySignal("socureUuid", "socure-123"),
+            });
+
+        // Act
+        string capturedBody = await CaptureLookupBodyAsync(configuration, request);
+
+        // Assert — an optional input binds to its target path exactly like a required one.
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        JsonElement root = document.RootElement;
+        Assert.Equal("ada@example.test", root.GetProperty("guardianEmail").GetString());
+        Assert.Equal(
+            "socure-123",
+            root.GetProperty("guardianIdentifiers").GetProperty("SocureUUID").GetString());
+    }
+
+    [Fact]
+    public async Task LookupHouseholdAsync_MapOptional_OmitsFieldWhenInputIsAbsent()
+    {
+        // Arrange — no socureUuid signal.
+        StateBackendConfiguration configuration = WithRequestBinding(EmailWithOptionalSocureBinding());
+        var request = new HouseholdLookupRequest(
+            new[] { new IdentitySignal("email", "ada@example.test") });
+
+        // Act
+        string capturedBody = await CaptureLookupBodyAsync(configuration, request);
+
+        // Assert — the optional field is omitted ENTIRELY, never written as null.
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        JsonElement root = document.RootElement;
+        Assert.Equal("ada@example.test", root.GetProperty("guardianEmail").GetString());
+        Assert.False(root.TryGetProperty("guardianIdentifiers", out _));
+    }
+
+    // A mapOptional section must not relax the required map's fail-loud contract.
+    [Fact]
+    public async Task LookupHouseholdAsync_MapOptional_RequiredMapStillThrowsWhenInputIsAbsent()
+    {
+        // Arrange — map requires an "ic" signal the request does not carry; mapOptional is present.
+        StateBackendConfiguration configuration = WithRequestBinding(
+            new RequestBinding
+            {
+                Map = new Dictionary<string, string>
+                {
+                    ["ic"] = "guardianIdentifiers.IC",
+                },
+                MapOptional = new Dictionary<string, string>
+                {
+                    ["socureUuid"] = "guardianIdentifiers.SocureUUID",
+                },
+            });
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/households/lookup")
+            .Respond("application/json", DcRawResponse);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var backend = new ConfigurableStateBackend(configuration, httpClient);
+        var request = new HouseholdLookupRequest(
+            new[] { new IdentitySignal("email", "ada@example.test") });
+
+        // Act + Assert
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => backend.LookupHouseholdAsync(request));
+        Assert.Contains("ic", ex.Message);
+    }
+
     [Fact]
     public async Task LookupHouseholdAsync_BindsCoRequestBody_FromPhoneSignal()
     {

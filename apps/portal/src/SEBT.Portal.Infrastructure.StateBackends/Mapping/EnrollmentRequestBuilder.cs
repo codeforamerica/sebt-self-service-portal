@@ -16,6 +16,7 @@ internal static class EnrollmentRequestBuilder
     private const string FirstNameInput = "firstName";
     private const string LastNameInput = "lastName";
     private const string DobInput = "dob";
+    private const string SchoolNameInput = "schoolName";
 
     public static JsonArray BuildRows(EnrollmentRequestBinding binding, EnrollmentCheckRequest request)
     {
@@ -56,12 +57,7 @@ internal static class EnrollmentRequestBuilder
         ArgumentNullException.ThrowIfNull(child);
 
         var body = new JsonObject();
-
-        foreach ((string inputName, string targetPath) in binding.Map)
-        {
-            JsonPathWriter.Write(body, targetPath, JsonValue.Create(ResolveInput(inputName, child, child.DateOfBirth)));
-        }
-
+        BindChildFields(body, binding, child, child.DateOfBirth);
         return body;
     }
 
@@ -69,25 +65,46 @@ internal static class EnrollmentRequestBuilder
         EnrollmentRequestBinding binding, EnrollmentChild child, DateOnly dob, string indexField, string index)
     {
         var row = new JsonObject();
-
-        foreach ((string inputName, string targetPath) in binding.Map)
-        {
-            JsonPathWriter.Write(row, targetPath, JsonValue.Create(ResolveInput(inputName, child, dob)));
-        }
-
+        BindChildFields(row, binding, child, dob);
         JsonPathWriter.Write(row, indexField, JsonValue.Create(index));
-
         return row;
     }
 
-    // A map input outside the closed child-field set fails loud rather than silently dropping.
+    // Required entries fail loud on an unresolved input; optional entries are omitted instead.
+    private static void BindChildFields(
+        JsonObject target, EnrollmentRequestBinding binding, EnrollmentChild child, DateOnly dob)
+    {
+        foreach ((string inputName, string targetPath) in binding.Map)
+        {
+            JsonPathWriter.Write(target, targetPath, JsonValue.Create(ResolveInput(inputName, child, dob)));
+        }
+
+        if (binding.MapOptional is { } mapOptional)
+        {
+            foreach ((string inputName, string targetPath) in mapOptional)
+            {
+                if (TryResolveInput(inputName, child, dob) is { } value)
+                {
+                    JsonPathWriter.Write(target, targetPath, JsonValue.Create(value));
+                }
+            }
+        }
+    }
+
+    // A map input with no value — an unknown name, or a nullable child field the child doesn't
+    // carry — fails loud rather than silently dropping. mapOptional is the omit-instead channel.
     private static string ResolveInput(string inputName, EnrollmentChild child, DateOnly dob) =>
+        TryResolveInput(inputName, child, dob)
+            ?? throw new InvalidOperationException(
+                $"Enrollment request map input '{inputName}' resolved to no value.");
+
+    private static string? TryResolveInput(string inputName, EnrollmentChild child, DateOnly dob) =>
         inputName switch
         {
             FirstNameInput => child.FirstName,
             LastNameInput => child.LastName,
             DobInput => dob.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            _ => throw new InvalidOperationException(
-                $"Enrollment request map input '{inputName}' is not a known child field."),
+            SchoolNameInput => child.SchoolName,
+            _ => null,
         };
 }

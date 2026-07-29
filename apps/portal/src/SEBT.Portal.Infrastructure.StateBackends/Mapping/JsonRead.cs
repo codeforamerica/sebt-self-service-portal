@@ -34,7 +34,8 @@ internal static class JsonRead
     public static string? AsString(JsonElement? parent, string property) =>
         parent is { } root ? AsString(root, property) : null;
 
-    private static string? AsString(JsonElement value) =>
+    /// <summary>Coerces an already-selected element (e.g. from a path selector) as a string.</summary>
+    public static string? AsString(JsonElement value) =>
         value.ValueKind switch
         {
             JsonValueKind.String => value.GetString(),

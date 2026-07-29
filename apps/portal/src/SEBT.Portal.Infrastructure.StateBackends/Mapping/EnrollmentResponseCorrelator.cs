@@ -25,11 +25,11 @@ internal static class EnrollmentResponseCorrelator
 
         JsonElement rows = JsonPathSelector.Select(root, mapping.Root);
 
-        HashSet<string> matchedIndices = mapping.Match.Strategy switch
+        Dictionary<string, ChildVerdict> verdicts = mapping.Match.Strategy switch
         {
-            EnrollmentMatchStrategy.AnyRowValueIn => CorrelateAnyRowValueIn(mapping.Match, rows, indexField),
+            EnrollmentMatchStrategy.AnyRowValueIn => CorrelateAnyRowValueIn(mapping, rows, indexField),
             EnrollmentMatchStrategy.ConfidenceThreshold =>
-                CorrelateConfidenceThreshold(mapping.Match, rows, indexField),
+                CorrelateConfidenceThreshold(mapping, rows, indexField),
             _ => throw new NotSupportedException(
                 $"Unsupported enrollment match strategy '{mapping.Match.Strategy}'."),
         };
@@ -38,59 +38,96 @@ internal static class EnrollmentResponseCorrelator
         for (int i = 0; i < request.Children.Count; i++)
         {
             string index = (i + 1).ToString(CultureInfo.InvariantCulture);
-            results.Add(new EnrollmentChildResult(request.Children[i].CheckId, matchedIndices.Contains(index)));
+            ChildVerdict verdict = verdicts.GetValueOrDefault(index, ChildVerdict.None);
+            results.Add(new EnrollmentChildResult(
+                request.Children[i].CheckId, verdict.IsMatch, verdict.MatchConfidence, verdict.StatusMessage));
         }
 
-        return new EnrollmentCheckResult(results);
+        return new EnrollmentCheckResult(results, ReadResultMessage(mapping, root));
     }
 
     /// <summary>
     /// PerChild evaluation: selects the single result object at <see cref="EnrollmentResponseMapping.Root"/>
     /// and applies the named <see cref="EnrollmentResponseMapping.Match"/> strategy to it. No
-    /// correlation index and no argmax — one call reads one child's verdict.
+    /// correlation index and no argmax — one call reads one child's verdict, and the single result
+    /// object supplies the confidence and status-message carriers.
     /// </summary>
-    public static bool EvaluateSingleResult(EnrollmentResponseMapping mapping, JsonElement root)
+    public static EnrollmentChildResult EvaluateSingleResult(
+        EnrollmentResponseMapping mapping, JsonElement root, string checkId)
     {
         ArgumentNullException.ThrowIfNull(mapping);
 
         JsonElement result = JsonPathSelector.Select(root, mapping.Root);
 
-        return mapping.Match.Strategy switch
+        bool isMatch = mapping.Match.Strategy switch
         {
             EnrollmentMatchStrategy.AnyRowValueIn => RowValueInSet(mapping.Match, result),
-            EnrollmentMatchStrategy.ConfidenceThreshold => ScoreExceedsThreshold(mapping.Match, result),
+            EnrollmentMatchStrategy.ConfidenceThreshold => ConfidenceThresholdMatches(mapping.Match, result),
             _ => throw new NotSupportedException(
                 $"Unsupported enrollment match strategy '{mapping.Match.Strategy}'."),
         };
+
+        // Confidence only exists under confidenceThreshold; like the batch path, it is reported
+        // even on the sub-threshold non-match path.
+        double? confidence =
+            mapping.Match.Strategy == EnrollmentMatchStrategy.ConfidenceThreshold
+                && TryReadScore(mapping.Match, result, out double score)
+            ? score
+            : null;
+
+        return new EnrollmentChildResult(checkId, isMatch, confidence, ReadStatusMessage(mapping, result));
     }
 
-    // An index matches when any of its rows has the flag in the set.
-    private static HashSet<string> CorrelateAnyRowValueIn(
-        EnrollmentMatch match, JsonElement rows, string indexField)
+    /// <summary>
+    /// Reads the result-level message (when a <c>messageField</c> is configured) from the response
+    /// document root — the parent of <see cref="EnrollmentResponseMapping.Root"/>'s rows, not a row.
+    /// </summary>
+    public static string? ReadResultMessage(EnrollmentResponseMapping mapping, JsonElement root)
     {
-        var matchedIndices = new HashSet<string>(StringComparer.Ordinal);
+        ArgumentNullException.ThrowIfNull(mapping);
+
+        return mapping.MessageField is null
+            ? null
+            : JsonRead.AsString(JsonPathSelector.Select(root, mapping.MessageField));
+    }
+
+    // A child's fan-in verdict plus the optional carriers its winning row supplied. `None` is the
+    // verdict for a child the response carried no (matching/scored) rows for.
+    private sealed record ChildVerdict(bool IsMatch, double? MatchConfidence, string? StatusMessage)
+    {
+        public static readonly ChildVerdict None = new(false, null, null);
+    }
+
+    // An index matches when any of its rows has the flag in the set; the FIRST matching row is the
+    // winner and supplies the status message. No score field, so confidence is always null.
+    private static Dictionary<string, ChildVerdict> CorrelateAnyRowValueIn(
+        EnrollmentResponseMapping mapping, JsonElement rows, string indexField)
+    {
+        var verdicts = new Dictionary<string, ChildVerdict>(StringComparer.Ordinal);
 
         if (rows.ValueKind == JsonValueKind.Array)
         {
             foreach (JsonElement row in rows.EnumerateArray())
             {
                 string? index = JsonRead.AsString(row, indexField);
-                if (index is not null && RowValueInSet(match, row))
+                if (index is not null && !verdicts.ContainsKey(index) && RowValueInSet(mapping.Match, row))
                 {
-                    matchedIndices.Add(index);
+                    verdicts[index] = new ChildVerdict(
+                        IsMatch: true, MatchConfidence: null, ReadStatusMessage(mapping, row));
                 }
             }
         }
 
-        return matchedIndices;
+        return verdicts;
     }
 
-    // Per index, take the max score and match iff max > threshold (strict). A missing/non-numeric
-    // score contributes nothing.
-    private static HashSet<string> CorrelateConfidenceThreshold(
-        EnrollmentMatch match, JsonElement rows, string indexField)
+    // Per index, take the argmax row and match iff its score > threshold (strict) AND it passes the
+    // optional eligibility check. A missing/non-numeric score contributes nothing.
+    private static Dictionary<string, ChildVerdict> CorrelateConfidenceThreshold(
+        EnrollmentResponseMapping mapping, JsonElement rows, string indexField)
     {
-        var maxByIndex = new Dictionary<string, double>(StringComparer.Ordinal);
+        EnrollmentMatch match = mapping.Match;
+        var bestByIndex = new Dictionary<string, (double Score, JsonElement Row)>(StringComparer.Ordinal);
 
         if (rows.ValueKind == JsonValueKind.Array)
         {
@@ -102,25 +139,31 @@ internal static class EnrollmentResponseCorrelator
                     continue;
                 }
 
-                if (!maxByIndex.TryGetValue(index, out double current) || score > current)
+                if (!bestByIndex.TryGetValue(index, out (double Score, JsonElement Row) current)
+                    || score > current.Score)
                 {
-                    maxByIndex[index] = score;
+                    bestByIndex[index] = (score, row);
                 }
             }
         }
 
         double threshold = match.Threshold!.Value;
-        var matchedIndices = new HashSet<string>(StringComparer.Ordinal);
-        foreach ((string index, double max) in maxByIndex)
+        var verdicts = new Dictionary<string, ChildVerdict>(StringComparer.Ordinal);
+        foreach ((string index, (double score, JsonElement row)) in bestByIndex)
         {
-            if (max > threshold)
-            {
-                matchedIndices.Add(index);
-            }
+            // Eligibility is read from the argmax row only — a lower-scoring eligible candidate
+            // cannot rescue an ineligible best row. The argmax row's carriers are reported even on
+            // the non-match path (mirrors the CO plugin, so callers can surface the computed score).
+            bool isMatch = score > threshold && PassesEligibility(match, row);
+            verdicts[index] = new ChildVerdict(isMatch, score, ReadStatusMessage(mapping, row));
         }
 
-        return matchedIndices;
+        return verdicts;
     }
+
+    // The winning row's status text, when a statusMessageField is configured.
+    private static string? ReadStatusMessage(EnrollmentResponseMapping mapping, JsonElement row) =>
+        mapping.StatusMessageField is null ? null : JsonRead.AsString(row, mapping.StatusMessageField);
 
     private static bool RowValueInSet(EnrollmentMatch match, JsonElement row)
     {
@@ -128,8 +171,17 @@ internal static class EnrollmentResponseCorrelator
         return value is not null && match.ValueIn!.Contains(value, StringComparer.Ordinal);
     }
 
-    private static bool ScoreExceedsThreshold(EnrollmentMatch match, JsonElement result) =>
-        TryReadScore(match, result, out double score) && score > match.Threshold!.Value;
+    // The optional eligibility check on confidenceThreshold: when field/valueIn are configured,
+    // the row must ALSO carry an eligible flag value (fixed AND — config only names the params).
+    private static bool PassesEligibility(EnrollmentMatch match, JsonElement row) =>
+        match.Field is null || RowValueInSet(match, row);
+
+    // PerChild confidenceThreshold: the single result carries both the score and (when configured)
+    // the eligibility flag.
+    private static bool ConfidenceThresholdMatches(EnrollmentMatch match, JsonElement result) =>
+        TryReadScore(match, result, out double score)
+            && score > match.Threshold!.Value
+            && PassesEligibility(match, result);
 
     // Reads the score as a number; a missing property or non-numeric value is not a match.
     private static bool TryReadScore(EnrollmentMatch match, JsonElement record, out double score)

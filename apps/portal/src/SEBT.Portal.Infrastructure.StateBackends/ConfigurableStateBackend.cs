@@ -97,6 +97,7 @@ public class ConfigurableStateBackend : IStateBackend
         CancellationToken cancellationToken)
     {
         var results = new List<EnrollmentChildResult>(request.Children.Count);
+        string? message = null;
 
         foreach (EnrollmentChild child in request.Children)
         {
@@ -109,12 +110,15 @@ public class ConfigurableStateBackend : IStateBackend
             using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
                 .ConfigureAwait(false);
 
-            bool isMatch = EnrollmentResponseCorrelator.EvaluateSingleResult(
-                mapping, document.RootElement);
-            results.Add(new EnrollmentChildResult(child.CheckId, isMatch));
+            results.Add(EnrollmentResponseCorrelator.EvaluateSingleResult(
+                mapping, document.RootElement, child.CheckId));
+
+            // The result-level message is a single carrier over N per-child calls: the first
+            // non-null one wins (only batch backends configure a messageField today).
+            message ??= EnrollmentResponseCorrelator.ReadResultMessage(mapping, document.RootElement);
         }
 
-        return new EnrollmentCheckResult(results);
+        return new EnrollmentCheckResult(results, message);
     }
 
     public async Task<StateBackendHealth> GetHealthAsync(CancellationToken cancellationToken = default)

@@ -30,11 +30,25 @@ internal static class StateBackendConfigurationValidator
             WriteResultClassifier.Validate(addressUpdateClassifier);
         }
 
+        // The write-path body builders don't read mapOptional yet, so a config setting it would be
+        // a silent no-op. Fail loud instead; wire it through when a state actually needs it.
+        RejectMapOptional(operations.CardReplacement?.Request, "cardReplacement");
+        RejectMapOptional(operations.AddressUpdate?.Request, "addressUpdate");
+
         // A partially modeled enrollment op (missing request/response) has nothing coherent to
         // validate here; the dispatch path's not-supported guards catch it.
         if (operations.EnrollmentCheck is { Request: { } binding, Response: { } mapping } enrollment)
         {
             EnrollmentOperationValidator.Validate(enrollment.CallMode, binding, mapping);
+        }
+    }
+
+    private static void RejectMapOptional(RequestBinding? request, string operationName)
+    {
+        if (request?.MapOptional is { Count: > 0 })
+        {
+            throw new InvalidOperationException(
+                $"mapOptional is not supported on write operations ({operationName}).");
         }
     }
 }
