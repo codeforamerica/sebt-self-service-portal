@@ -7,29 +7,14 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Maps a state backend's raw JSON response into canonical domain types, driven by
-/// <see cref="StateBackendResponseMapping"/> and the backend's named enum tables.
-///
-/// DC-568 spike scope (deliberately capped — see the prototype plan's STOP rule):
-///   * Root selection supports ONLY simple dotted property access and <c>[index]</c> element
-///     access (e.g. <c>$.resultSets[0]</c>). No JSONPath filters, wildcards, or recursion.
-///   * Field mapping targets a CLOSED set of canonical fields (see <see cref="FieldTargets"/>).
-///     Coercion is driven by the canonical field's known type: strings copy; dates parse with the
-///     field's exact <see cref="FieldMapping.Format"/>; enums resolve through the named
-///     <see cref="FieldMapping.Enum"/> table. The only supported "bricks" are from/format/enum.
-///   * Disaggregation supports classification (<see cref="DisaggregationRule.Presence"/> /
-///     <see cref="DisaggregationRule.ValueInSet"/>), the <see cref="CaseInclusionPredicate.All"/> and
-///     <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/> case-inclusion
-///     predicates, and grouping application-based records into applications by a single field. The
-///     approval-aware predicate reads the mapped canonical <see cref="ApplicationStatus"/> — supply it
-///     via an <c>applicationStatus</c> field mapping + enum table (it takes no config parameters).
+/// Maps a backend's raw JSON response into canonical domain types, driven by the operation's
+/// <see cref="StateBackendResponseMapping"/> and named enum tables.
 /// </summary>
 internal static class StateBackendResponseMapper
 {
     /// <summary>
-    /// The closed set of canonical field targets. Each entry names its coercion kind and, for
-    /// enum targets, the C# enum type its named table must resolve into. A new canonical target
-    /// requires adding an entry here — never reflection over property names.
+    /// The closed set of canonical field targets, each with its coercion kind and (for enums) the
+    /// target C# enum type. A new canonical field means a new entry here — never reflection.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, FieldTarget> FieldTargets =
         new Dictionary<string, FieldTarget>(StringComparer.Ordinal)
@@ -52,11 +37,9 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Validates every enum table referenced by any response field mapping (fail-loud, at
-    /// configuration time): each OUR value must be a real member of the target C# enum, and no
-    /// source token may appear under two of OUR values. Throws <see cref="InvalidOperationException"/>
-    /// on the first violation. Invoked at LOAD time by
-    /// <see cref="Configuration.StateBackendConfigurationValidator"/>.
+    /// Validates every enum table referenced by a response field mapping: each canonical value must
+    /// be a real enum member, and no source token may appear under two canonical values. Invoked at
+    /// load time by <see cref="Configuration.StateBackendConfigurationValidator"/>.
     /// </summary>
     internal static void ValidateEnumTables(StateBackendConfiguration configuration)
     {
@@ -108,24 +91,21 @@ internal static class StateBackendResponseMapper
 
         StateBackendDisaggregation? disaggregation = mapping.Disaggregation;
 
-        // Group keys, in first-seen order, for the application-based records.
+        // Application group keys, in first-seen order.
         var applicationKeys = new List<string>();
         var seenApplicationKeys = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (JsonElement record in records.EnumerateArray())
         {
-            // Map to canonical first — the inclusion predicate reads the canonical model (e.g.
-            // ApplicationStatus), never raw state fields.
+            // Map to canonical first — the inclusion predicate reads the canonical model, never raw
+            // state fields.
             SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers, keywordResolvers);
 
-            // When configured, the case's id is an OPAQUE, self-describing token composed from the
-            // named routing fields — the fields a later write needs to route the backend call.
             if (mapping.CaseId is { } caseIdComposition)
             {
                 summerEbtCase.SummerEBTCaseID = ComposeCaseId(record, caseIdComposition);
             }
 
-            // Without disaggregation, records map 1:1 into a flat case list.
             if (disaggregation is null)
             {
                 household.SummerEbtCases.Add(summerEbtCase);
@@ -134,8 +114,8 @@ internal static class StateBackendResponseMapper
 
             bool isApplicationBased = IsApplicationBased(record, disaggregation);
 
-            // Every application-based record (regardless of case inclusion) belongs to its grouped
-            // application: an app-based-but-not-included record is still part of a pending application.
+            // Every application-based record belongs to its grouped application, even when it isn't
+            // included as a case (e.g. a pending application).
             if (isApplicationBased && GroupKey(record, disaggregation) is { } key)
             {
                 summerEbtCase.ApplicationId = key;
@@ -161,14 +141,10 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Named case-inclusion predicates are a closed vocabulary — each reads only the canonical model,
-    /// never raw state fields, so they need no config parameters.
-    ///   * <see cref="CaseInclusionPredicate.All"/> includes every record.
-    ///   * <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/> includes a record
-    ///     when it is not application-based, or when its mapped canonical
-    ///     <see cref="ApplicationStatus"/> is <see cref="ApplicationStatus.Approved"/>. An unknown or
-    ///     unmapped status is not Approved, so an application-based record with such a status is
-    ///     excluded (fail-closed for inclusion).
+    /// The named case-inclusion predicate. For
+    /// <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/>, an unknown or unmapped
+    /// <see cref="ApplicationStatus"/> is not Approved, so an application-based record with such a
+    /// status is excluded (fail-closed).
     /// </summary>
     private static bool IncludeAsCase(
         CaseInclusionPredicate caseInclusion, bool isApplicationBased, ApplicationStatus applicationStatus)
@@ -210,10 +186,8 @@ internal static class StateBackendResponseMapper
         return string.IsNullOrEmpty(value) ? null : value;
     }
 
-    // Packs the composition's named routing fields off the record into an opaque caseId token.
-    // Each OUR-keyed routing field carries the value of its source property (empty when absent —
-    // the token round-trips whatever the read produced; downstream write binding fails loud if a
-    // required routing input is missing).
+    // Packs the named routing fields off the record into an opaque caseId token. A routing field
+    // absent from the record packs as empty; a later write that needs it fails loud.
     private static string ComposeCaseId(JsonElement record, CaseIdComposition composition)
     {
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -237,8 +211,7 @@ internal static class StateBackendResponseMapper
         {
             FieldTarget target = ResolveTarget(canonicalField);
 
-            // The keyword-rules brick scans one-or-more free-text sources and always yields a value
-            // (a keyword match or the default) — it has no single-source presence guard.
+            // keywordRules always yields a value (match or default), so it skips the presence guard.
             if (fieldMapping.KeywordRules is not null)
             {
                 target.SetEnum!(summerEbtCase, keywordResolvers[canonicalField].Resolve(record));
@@ -294,12 +267,11 @@ internal static class StateBackendResponseMapper
                 $"Date field '{canonicalField}' requires an exact 'format'.");
         }
 
-        // Exact parse with the single configured format — no fallback, no transposition.
+        // Exact parse with the one configured format under InvariantCulture — no fallback.
         return DateTime.ParseExact(raw!, format, CultureInfo.InvariantCulture, DateTimeStyles.None);
     }
 
-    // Builds a validated token → canonical-value resolver for every enum-referencing field in this
-    // mapping. Fails loud (invalid canonical value / ambiguous token) before any record is mapped.
+    // A validated token → canonical-value resolver per enum field, fail-loud before any record maps.
     private static Dictionary<string, EnumResolver> BuildEnumResolvers(
         StateBackendConfiguration configuration,
         StateBackendResponseMapping mapping)
@@ -330,8 +302,7 @@ internal static class StateBackendResponseMapper
         return resolvers;
     }
 
-    // Builds a validated keyword-rule resolver for every keywordRules field in this mapping.
-    // Fails loud (invalid canonical value / order not covering map keys) before any record is mapped.
+    // A validated keyword-rule resolver per keywordRules field, fail-loud before any record maps.
     private static Dictionary<string, KeywordRuleResolver> BuildKeywordResolvers(
         StateBackendResponseMapping mapping)
     {
@@ -354,11 +325,8 @@ internal static class StateBackendResponseMapper
         return resolvers;
     }
 
-    // Validates a keywordRules brick against its enum-typed target, fail-loud:
-    //   * the target field must be enum-typed;
-    //   * every `order` entry, `map` key, and `default` must be a real member of that enum;
-    //   * `order` must cover every `map` key (each keyword set is reachable).
-    // Returns the target enum type, the ordered (value, keywords) pairs, and the parsed default.
+    // Validates a keywordRules brick against its enum-typed target (fail-loud), returning the enum
+    // type, ordered (value, keywords) pairs, and parsed default.
     private static (Type EnumType, List<(object Value, List<string> Keywords)> Ordered, object Default)
         ValidateKeywordRules(string canonicalField, KeywordRules keywordRules)
     {
@@ -394,8 +362,8 @@ internal static class StateBackendResponseMapper
         return (enumType, ordered, defaultValue);
     }
 
-    // Inverts a domain-centered table (our value → tokens) into a token → our-value lookup,
-    // validating that each our-value is a real enum member and no token is ambiguous.
+    // Inverts a table (our value → tokens) into a token → our-value lookup, validating each our-value
+    // is a real enum member and no token is ambiguous.
     private static (Dictionary<string, object> TokenLookup, object? Default) BuildTokenLookup(
         string tableName,
         StateBackendEnumTable table,
@@ -468,8 +436,8 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// A single canonical field target in the closed setter map: its coercion kind, the typed
-    /// setter, and (for enums) the C# enum type its named table must resolve into.
+    /// A canonical field target: its coercion kind, typed setter, and (for enums) the target enum
+    /// type.
     /// </summary>
     private sealed class FieldTarget
     {
@@ -503,9 +471,8 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// A validated keyword-rule resolver: scans a record's source values for the ordered keyword
-    /// sets, first-match-wins, returning the matched canonical enum value or the default. Matching
-    /// is case-insensitive substring-contains — mirroring DC's <c>InferIssuanceType</c>.
+    /// Scans a record's source values for the ordered keyword sets (first-match-wins,
+    /// case-insensitive substring-contains), returning the matched canonical enum value or default.
     /// </summary>
     private sealed class KeywordRuleResolver
     {
@@ -525,7 +492,7 @@ internal static class StateBackendResponseMapper
 
         public object Resolve(JsonElement record)
         {
-            // Collect the free-text source values once, uppercased for case-insensitive contains.
+            // Uppercased once for case-insensitive contains.
             var haystacks = new List<string>(_sources.Count);
             foreach (string source in _sources)
             {
@@ -536,7 +503,6 @@ internal static class StateBackendResponseMapper
                 }
             }
 
-            // First canonical value whose ANY keyword is contained in ANY source wins.
             foreach ((object value, List<string> keywords) in _ordered)
             {
                 foreach (string keyword in keywords)
@@ -577,7 +543,7 @@ internal static class StateBackendResponseMapper
                 return value;
             }
 
-            // Default applies ONLY to genuinely-unlisted tokens.
+            // Default applies only to genuinely-unlisted tokens.
             return _default
                 ?? throw new InvalidOperationException(
                     $"Enum table '{_tableName}' has no mapping for token '{token}' and no default.");

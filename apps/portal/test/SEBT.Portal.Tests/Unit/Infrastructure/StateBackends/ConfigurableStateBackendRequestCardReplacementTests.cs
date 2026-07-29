@@ -14,8 +14,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 {
     private const string FixedIdempotencyKey = "11111111-1111-1111-1111-111111111111";
 
-    // Domain-centered DC card-replacement binding. The map inputs are the routing fields the
-    // opaque caseId decodes to (summerEbtCaseId, applicationId) plus a caller-context value.
     private static CardReplacementOperationConfig DcCardReplacement() =>
         new()
         {
@@ -27,8 +25,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
                 {
                     ["source"] = "portal",
                 },
-                // Map LHS are decoded caseId routing fields (caseId, applicationId) plus the
-                // caller-context "reason"; RHS are the backend's write-body target paths.
                 Map = new Dictionary<string, string>
                 {
                     ["caseId"] = "summerEbtCaseId",
@@ -38,7 +34,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             },
             Result = new ResultClassifier
             {
-                // DC: policy rejection when the message mentions "policy"; success on result code.
                 Conditions = new List<ResultCondition>
                 {
                     new()
@@ -58,7 +53,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             },
         };
 
-    // CO card-replacement classifier: success on respCd in {200, 00}.
     private static ResultClassifier CoResultClassifier() =>
         new()
         {
@@ -94,18 +88,18 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     [Fact]
     public void OpaqueCaseId_ComposedOnRead_DecodesToSameRoutingFields_OnWrite()
     {
-        // Arrange — the routing fields a write needs, keyed by OUR names.
+        // Arrange
         var routingFields = new Dictionary<string, string>
         {
             ["caseId"] = "SEBT-001",
             ["applicationId"] = "APP-100",
         };
 
-        // Act — compose on the read side, decode on the write side.
+        // Act
         string token = OpaqueCaseId.Compose(routingFields);
         IReadOnlyDictionary<string, string> decoded = OpaqueCaseId.Decode(token);
 
-        // Assert — token is opaque (not the raw values) and round-trips exactly.
+        // Assert — the token is opaque (doesn't expose raw values) and round-trips exactly.
         Assert.DoesNotContain("SEBT-001", token);
         Assert.Equal("SEBT-001", decoded["caseId"]);
         Assert.Equal("APP-100", decoded["applicationId"]);
@@ -114,7 +108,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     [Fact]
     public void ResponseMapper_ComposesOpaqueCaseId_IntoSummerEbtCaseId()
     {
-        // Arrange — a read whose caseId is composed from two backend fields.
+        // Arrange
         StateBackendConfiguration configuration = LookupWithCaseIdComposition();
 
         const string raw =
@@ -127,7 +121,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var mapping = configuration.Operations.HouseholdLookup!.Response!;
         var household = StateBackendResponseMapper.MapHousehold(document.RootElement, configuration, mapping);
 
-        // Assert — the case's id is an opaque token that decodes to the two routing fields.
+        // Assert — the case's id is an opaque token decoding to the two routing fields.
         string token = Assert.Single(household.SummerEbtCases).SummerEBTCaseID!;
         IReadOnlyDictionary<string, string> decoded = OpaqueCaseId.Decode(token);
         Assert.Equal("SEBT-001", decoded["caseId"]);
@@ -170,7 +164,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     [Fact]
     public async Task RequestCardReplacementAsync_BuildsBody_FromDecodedCaseIdFieldsAndConstants()
     {
-        // Arrange — an opaque caseId carrying the routing fields.
+        // Arrange
         string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
         {
             ["caseId"] = "SEBT-001",
@@ -235,7 +229,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         // Act
         await backend.RequestCardReplacementAsync(new CardReplacementRequest(caseId) { Reason = "lost" });
 
-        // Assert — the injected key is attached (per-call UUID in production).
+        // Assert — the injected key is attached (a per-call UUID in production).
         Assert.Equal(FixedIdempotencyKey, capturedKey);
     }
 
@@ -329,7 +323,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     [Fact]
     public async Task RequestCardReplacementAsync_ClassifiesSuccess_FromCoRespCd_StatusAndValueKinds()
     {
-        // Arrange — CO grounding: respCd in {200, 00}. Exercises the value-in-set kind.
+        // Arrange — the value-in-set kind: respCd in {200, 00}.
         string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
         {
             ["caseId"] = "CO-001",

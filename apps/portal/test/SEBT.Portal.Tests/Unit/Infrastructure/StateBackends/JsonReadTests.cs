@@ -4,10 +4,8 @@ using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 /// <summary>
-/// Locks in the unified coercion contract for <see cref="JsonRead.AsString(JsonElement, string)"/>
-/// after consolidating three DIVERGED copies onto the superset: string copies through, a number
-/// reads as its raw JSON text (leading zeros preserved), a bool reads as "true"/"false", and every
-/// miss (absent property, null, non-object parent, null parent) is <c>null</c> — never a throw.
+/// Coercion contract for <see cref="JsonRead.AsString(JsonElement, string)"/>: numbers read as
+/// raw JSON text, bools as "true"/"false", and every miss is <c>null</c> — never a throw.
 /// </summary>
 public class JsonReadTests
 {
@@ -36,8 +34,7 @@ public class JsonReadTests
     [Fact]
     public void AsString_PreservesNumericLeadingZerosViaRawText()
     {
-        // A JSON number literal can't carry a leading zero, but a raw read of any numeric token
-        // preserves its exact source text (e.g. a decimal that must not be reformatted).
+        // Raw read preserves the exact source text of a numeric token, unreformatted.
         JsonElement root = Parse("""{ "score": 0.50 }""");
 
         Assert.Equal("0.50", JsonRead.AsString(root, "score"));

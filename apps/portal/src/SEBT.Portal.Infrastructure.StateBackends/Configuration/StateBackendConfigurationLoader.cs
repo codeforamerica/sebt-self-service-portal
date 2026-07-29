@@ -16,8 +16,7 @@ internal static class StateBackendConfigurationLoader
         StateBackendConfiguration configuration =
             LazyDeserializer.Value.Deserialize<StateBackendConfiguration>(yaml);
 
-        // Fail loud at LOAD time on any malformed config shape, folding in every check that used to
-        // fire lazily at first-request dispatch — an invalid config never loads clean.
+        // Fail loud at load on any malformed config shape.
         StateBackendConfigurationValidator.Validate(configuration);
 
         return configuration;

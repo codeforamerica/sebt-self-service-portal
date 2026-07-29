@@ -12,8 +12,7 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 public class ConfigurableStateBackendCheckEnrollmentTests
 {
-    // ---- CO-shaped config: DOB candidate expansion + eligibility-flag row match + fan-in ----
-
+    // CO-shaped: batch, DOB expansion, eligibility-flag row match.
     private static StateBackendConfiguration CoConfiguration() =>
         new()
         {
@@ -52,8 +51,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-    // ---- Batch config, no expansion: single row per child, correlated by index ----
-
+    // Batch, no expansion: single row per child, correlated by index.
     private static StateBackendConfiguration BatchNoExpandConfiguration() =>
         new()
         {
@@ -69,7 +67,6 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                     Request = new EnrollmentRequestBinding
                     {
                         IndexField = "reqInd",
-                        // No expansion: single row per child.
                         Map = new Dictionary<string, string>
                         {
                             ["firstName"] = "firstName",
@@ -92,9 +89,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-    // ---- CO REAL match: batch confidenceThreshold. Group a child's candidate rows by index, take
-    // the max score, match iff max > threshold (strict). Threshold 90. ----
-
+    // Batch confidenceThreshold: argmax a child's candidate scores, match iff best > threshold (strict).
     private static StateBackendConfiguration CoConfidenceThresholdConfiguration() =>
         new()
         {
@@ -133,8 +128,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-    // ---- PerChild + confidenceThreshold: single result's score > threshold, no argmax. ----
-
+    // PerChild + confidenceThreshold: single result's score > threshold, no argmax.
     private static StateBackendConfiguration PerChildConfidenceThresholdConfiguration() =>
         new()
         {
@@ -170,9 +164,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-    // ---- DC-shaped config: PerChild fan-out. The driver loops the batch and makes ONE call per
-    // child; each call returns a single result object { isEligible: bool }. No correlation index. ----
-
+    // DC-shaped: PerChild fan-out, one call per child, single { isEligible } result, no index.
     private static StateBackendConfiguration DcPerChildConfiguration() =>
         new()
         {
@@ -187,7 +179,6 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                     CallMode = EnrollmentCallMode.PerChild,
                     Request = new EnrollmentRequestBinding
                     {
-                        // PerChild: no index — each call is one child.
                         Map = new Dictionary<string, string>
                         {
                             ["firstName"] = "firstName",
@@ -197,7 +188,6 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                     },
                     Response = new EnrollmentResponseMapping
                     {
-                        // The single result object is the response root.
                         Root = "$",
                         Match = new EnrollmentMatch
                         {
@@ -265,7 +255,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.Equal("1", rows[1].GetProperty("stdReqInd").GetString());
         Assert.Equal("2015-08-04", rows[1].GetProperty("stdDob").GetString());
 
-        // Fan-in: the transposed row matched → the child is reported matched.
+        // Fan-in: any matching candidate row matches the child.
         EnrollmentChildResult child = Assert.Single(result.Results);
         Assert.Equal("chk-1", child.CheckId);
         Assert.True(child.IsMatch);
@@ -296,18 +286,14 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.True(child.IsMatch);
     }
 
-    // ---- CO REAL match: batch confidenceThreshold (argmax by score + STRICT `>` threshold) ----
-
     [Fact]
     public async Task CheckEnrollmentAsync_CoConfidenceThreshold_ArgmaxPicksHigherRow_MatchesWhenBestExceedsThreshold()
     {
-        // Arrange — 04/08 is transposable, so the request emits two candidate rows under index "1".
-        // The backend returns two candidate rows for the child: the transposed row scores higher.
+        // Arrange — 04/08 is transposable, so the child has two candidate rows under index "1".
         var request = new EnrollmentCheckRequest(
             new[] { new EnrollmentChild("chk-1", "Dimple", "Wibert", new DateOnly(2015, 4, 8)) });
 
-        // Entered row scores 40 (below threshold); the transposed candidate scores 95 (above).
-        // Argmax must pick 95, and 95 > 90 → match.
+        // Entered row scores 40, transposed candidate 95: argmax picks 95, and 95 > 90 → match.
         const string responseJson =
             """
             {
@@ -322,7 +308,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         (_, EnrollmentCheckResult result) = await RunAsync(
             CoConfidenceThresholdConfiguration(), request, responseJson);
 
-        // Assert — the higher-confidence candidate row wins the argmax and clears the threshold.
+        // Assert
         EnrollmentChildResult child = Assert.Single(result.Results);
         Assert.Equal("chk-1", child.CheckId);
         Assert.True(child.IsMatch);
@@ -349,8 +335,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.False(child.IsMatch);
     }
 
+    // Strict `>`: exactly 90.0 does NOT match; 90.01 does.
     [Theory]
-    // STRICT `>`: exactly 90.0 is NOT a match; 90.01 is.
     [InlineData(90.0, false)]
     [InlineData(90.01, true)]
     public async Task CheckEnrollmentAsync_CoConfidenceThreshold_StrictBoundaryAt90(double score, bool expectedMatch)
@@ -368,7 +354,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         (_, EnrollmentCheckResult result) = await RunAsync(
             CoConfidenceThresholdConfiguration(), request, responseJson);
 
-        // Assert — strict `>`: 90.0 → not a match; 90.01 → match.
+        // Assert
         EnrollmentChildResult child = Assert.Single(result.Results);
         Assert.Equal(expectedMatch, child.IsMatch);
     }
@@ -376,7 +362,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     [Fact]
     public async Task CheckEnrollmentAsync_CoConfidenceThreshold_MissingScore_NotAMatch()
     {
-        // Arrange — the score field is absent on the row; a missing score is not a match.
+        // Arrange — a missing score is not a match.
         var request = new EnrollmentCheckRequest(
             new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
 
@@ -393,8 +379,6 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         EnrollmentChildResult child = Assert.Single(result.Results);
         Assert.False(child.IsMatch);
     }
-
-    // ---- PerChild + confidenceThreshold: single result's score > threshold, no argmax ----
 
     [Theory]
     [InlineData(95.0, true)]
@@ -415,7 +399,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         (_, EnrollmentCheckResult result) = await RunAsync(
             PerChildConfidenceThresholdConfiguration(), request, responseJson);
 
-        // Assert — the single result composes the confidenceThreshold strategy with perChild mode.
+        // Assert
         EnrollmentChildResult child = Assert.Single(result.Results);
         Assert.Equal(expectedMatch, child.IsMatch);
     }
@@ -444,7 +428,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         // Act
         (string body, EnrollmentCheckResult result) = await RunAsync(BatchNoExpandConfiguration(), request, responseJson);
 
-        // Assert — one row per child (no expansion), both under their own index.
+        // Assert — one row per child (no expansion), each under its own index.
         using JsonDocument document = JsonDocument.Parse(body);
         JsonElement rows = document.RootElement;
         Assert.Equal(2, rows.GetArrayLength());
@@ -459,13 +443,10 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.False(result.Results[1].IsMatch);
     }
 
-    // ---- PerChild fan-out: the driver loops children, ONE call each, no correlation index ----
-
     [Fact]
     public async Task CheckEnrollmentAsync_PerChild_MakesOneCallPerChild_AndAggregatesPerChildMatch()
     {
-        // Arrange — two children. The driver must issue TWO separate HTTP calls, each bound from a
-        // single child, each returning a single { isEligible } result object.
+        // Arrange — two children; PerChild must issue two separate single-child HTTP calls.
         var request = new EnrollmentCheckRequest(
             new[]
             {
@@ -475,7 +456,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
 
         var capturedBodies = new List<string>();
         var mockHttp = new MockHttpMessageHandler();
-        // Respond by inspecting the single-child request body: Ada eligible, Alan not.
+        // Ada eligible, Alan not.
         mockHttp
             .When(HttpMethod.Post, "http://backend.test/enrollment/check")
             .Respond(message =>
@@ -498,10 +479,9 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         // Act
         EnrollmentCheckResult result = await backend.CheckEnrollmentAsync(request);
 
-        // Assert — TWO separate HTTP calls, one per child.
+        // Assert — two calls, each a single child object (not an array) with no correlation index.
         Assert.Equal(2, capturedBodies.Count);
 
-        // Each call's body is a SINGLE child object (not an array) with no correlation index.
         using JsonDocument first = JsonDocument.Parse(capturedBodies[0]);
         Assert.Equal(JsonValueKind.Object, first.RootElement.ValueKind);
         Assert.Equal("Ada", first.RootElement.GetProperty("firstName").GetString());
@@ -510,7 +490,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         using JsonDocument second = JsonDocument.Parse(capturedBodies[1]);
         Assert.Equal("Alan", second.RootElement.GetProperty("firstName").GetString());
 
-        // Aggregated per-child verdicts, in request order.
+        // Verdicts aggregated in request order.
         Assert.Equal(2, result.Results.Count);
         Assert.Equal("chk-1", result.Results[0].CheckId);
         Assert.True(result.Results[0].IsMatch);
@@ -518,9 +498,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.False(result.Results[1].IsMatch);
     }
 
-    // ---- fail-loud LOAD-time validation of the call-mode / index-field / expand combinations ----
-    // These invalid enrollment configs now fail at config load (StateBackendConfigurationValidator),
-    // not on first dispatch — so they assert the validator throws directly.
+    // Incoherent call-mode / index-field / expand combinations fail loud at config load.
 
     [Fact]
     public void Validate_Batch_WithoutIndexField_Throws()
@@ -641,10 +619,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.Contains("valueIn", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    // ---- transposeMonthDay strategy unit behavior ----
-
+    // A swap is emitted only when it yields a different valid date.
     [Theory]
-    // Transposable: swap yields a different valid date.
     [InlineData(2015, 4, 8, 2015, 8, 4)]
     [InlineData(2015, 1, 12, 2015, 12, 1)]
     public void TryTransposeMonthDay_ReturnsSwappedDate_WhenValidAndDifferent(

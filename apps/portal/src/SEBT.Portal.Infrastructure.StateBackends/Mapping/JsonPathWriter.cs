@@ -3,10 +3,9 @@ using System.Text.Json.Nodes;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Shared write-side path writer: sets a value at a dotted target path, building intermediate
-/// nested objects as needed. Dotted property paths ONLY — deliberately NO <c>$</c>/<c>[index]</c>
-/// grammar. This is a separate primitive from the read-side <c>JsonPathSelector</c> by design;
-/// keep each brick narrow.
+/// Write-side path writer: sets a value at a dotted target path, building intermediate objects as
+/// needed. Dotted property paths only — no <c>$</c>/<c>[index]</c> grammar, a narrower brick than
+/// the read-side <see cref="JsonPathSelector"/> by design.
 /// </summary>
 internal static class JsonPathWriter
 {

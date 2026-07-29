@@ -3,17 +3,14 @@ using System.Text.Json;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// The FIXED platform primitive for the opaque, self-describing caseId token (DC-568 spike).
-/// A caseId packs a small set of named routing fields — the fields a write needs to route the
-/// backend call — into a JSON object, then URL-safe base64-encodes it. Reads compose it; writes
-/// decode it. This is NOT config-driven: config only declares WHICH fields go in (see
+/// Packs a write's named routing fields into a URL-safe base64 JSON token; reads compose it, writes
+/// decode it. Config declares which fields go in (see
 /// <see cref="Core.StateBackends.Configuration.Operations.CaseIdComposition"/>); the pack/unpack
-/// mechanism lives entirely here.
+/// mechanism is fixed here.
 /// </summary>
 /// <remarks>
-/// The token is opaque, not encrypted — it carries no secrets, only the routing identifiers the
-/// backend already returned on the read. It is tamper-evident only insofar as a mangled token
-/// fails to decode (fail-loud), not cryptographically signed.
+/// The token is opaque, not encrypted — it carries no secrets, only routing identifiers the backend
+/// already returned. A mangled token fails to decode; it is not cryptographically signed.
 /// </remarks>
 internal static class OpaqueCaseId
 {

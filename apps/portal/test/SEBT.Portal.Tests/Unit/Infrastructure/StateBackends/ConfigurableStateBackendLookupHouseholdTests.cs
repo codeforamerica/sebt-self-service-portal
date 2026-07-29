@@ -165,16 +165,14 @@ public class ConfigurableStateBackendLookupHouseholdTests
         Assert.Equal("SEBT-001", mapped.SummerEBTCaseID);
         Assert.Equal("Ada", mapped.ChildFirstName);
 
-        // Date parsed exactly with the configured format.
         Assert.Equal(new DateTime(2025, 6, 15), mapped.EbtCardIssueDate);
 
-        // "LOST, AUTO REISSUE" resolves through the domain-centered table to CardStatus.Lost.
+        // "LOST, AUTO REISSUE" is one of several tokens the table maps to CardStatus.Lost.
         Assert.Equal(CardStatus.Lost, mapped.EbtCardStatus);
 
         mockHttp.VerifyNoOutstandingExpectation();
     }
 
-    // Domain-centered DC request binding: constants + map (named input → dotted target path).
     private static RequestBinding DcRequestBinding() =>
         new()
         {
@@ -255,22 +253,18 @@ public class ConfigurableStateBackendLookupHouseholdTests
         using JsonDocument document = JsonDocument.Parse(capturedBody);
         JsonElement root = document.RootElement;
 
-        // Constant, value false (genuinely fixed policy — production always sends false).
         Assert.False(root.GetProperty("includePendingApplicantDetails").GetBoolean());
-
-        // Signal → top-level target path.
         Assert.Equal("ada@example.test", root.GetProperty("guardianEmail").GetString());
 
-        // Signals + context nested via dotted target paths.
+        // Dotted target paths produce nested objects.
         JsonElement guardianIdentifiers = root.GetProperty("guardianIdentifiers");
         Assert.Equal("IC-123", guardianIdentifiers.GetProperty("IC").GetString());
         Assert.Equal("1815-12-10", guardianIdentifiers.GetProperty("DOB").GetString());
         Assert.Equal("uuid-abc", guardianIdentifiers.GetProperty("PortalUUID").GetString());
     }
 
-    // SECURITY REGRESSION: isIdentityProofed must reflect the caller's real proofing status, not a
-    // hardcoded value. The DC sproc gates its email-lookup branch on @isIdentityProofed = 1;
-    // hardcoding true would be a proofing-gate bypass.
+    // SECURITY: isIdentityProofed must mirror the caller's real proofing status. The DC lookup gates
+    // its email branch on it; hardcoding true would bypass the proofing gate.
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
@@ -284,7 +278,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         string capturedBody = await CaptureLookupBodyAsync(
             configuration, DcRequest(isProofed: isProofed));
 
-        // Assert — body mirrors the caller's proofing, in both directions.
+        // Assert
         using JsonDocument document = JsonDocument.Parse(capturedBody);
         Assert.Equal(
             isProofed, document.RootElement.GetProperty("isIdentityProofed").GetBoolean());
@@ -400,16 +394,14 @@ public class ConfigurableStateBackendLookupHouseholdTests
         Assert.Equal(HouseholdLookupStatus.Found, result.Status);
         Assert.NotNull(result.Household);
 
-        // CaseInclusion.All: every record yields a case.
         List<SummerEbtCase> cases = result.Household.SummerEbtCases;
         Assert.Equal(3, cases.Count);
 
-        // Application-based cases link to their application; the auto-issued case does not.
+        // App-based cases link to their application; the auto-issued case does not.
         Assert.Equal("APP-100", cases[0].ApplicationId);
         Assert.Equal("APP-100", cases[1].ApplicationId);
         Assert.Null(cases[2].ApplicationId);
 
-        // Two application-based records grouped by ApplicationId → one application.
         List<Application> applications = result.Household.Applications;
         Assert.Single(applications);
         Assert.Equal("APP-100", applications[0].ApplicationNumber);
@@ -479,16 +471,14 @@ public class ConfigurableStateBackendLookupHouseholdTests
         Assert.Equal(HouseholdLookupStatus.Found, result.Status);
         Assert.NotNull(result.Household);
 
-        // CaseInclusion.All: every record yields a case.
         List<SummerEbtCase> cases = result.Household.SummerEbtCases;
         Assert.Equal(3, cases.Count);
 
-        // eligSrc in {CBMS,PK} → application-based, linked to sebtAppId. SCHOOL → streamlined, unlinked.
+        // eligSrc in {CBMS,PK} → app-based, linked to sebtAppId; SCHOOL → streamlined, unlinked.
         Assert.Equal("APP-CO-1", cases[0].ApplicationId);
         Assert.Equal("APP-CO-1", cases[1].ApplicationId);
         Assert.Null(cases[2].ApplicationId);
 
-        // Two application-based records grouped by sebtAppId → one application.
         List<Application> applications = result.Household.Applications;
         Assert.Single(applications);
         Assert.Equal("APP-CO-1", applications[0].ApplicationNumber);
@@ -588,7 +578,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         Assert.Equal("CO-003", cases[1].SummerEBTCaseID);
         Assert.Null(cases[1].ApplicationId);
 
-        // The denied record is still part of the (pending) application it belongs to.
+        // The denied record is excluded as a case but still belongs to its (pending) application.
         List<Application> applications = result.Household.Applications;
         Assert.Single(applications);
         Assert.Equal("APP-CO-1", applications[0].ApplicationNumber);
@@ -596,12 +586,8 @@ public class ConfigurableStateBackendLookupHouseholdTests
         mockHttp.VerifyNoOutstandingExpectation();
     }
 
-    // DC-shaped issuance inference: free-text HouseholdType/EligibilityType that a keywordRules
-    // brick classifies into canonical IssuanceType via contains-match, first-match-wins.
-    //   * OSSE (in HouseholdType) -> SummerEbt
-    //   * SNAP (in EligibilityType) -> SnapEbtCard
-    //   * a record carrying BOTH an OSSE and a SNAP keyword -> SummerEbt (earlier in order wins)
-    //   * a record with no keyword -> the default (Unknown)
+    // DC-shaped free-text records exercising issuance-type inference, including one carrying both an
+    // OSSE and a SNAP keyword (first-match-wins tiebreak) and one with no keyword (default).
     private const string DcIssuanceResponse =
         """
         {
@@ -678,16 +664,13 @@ public class ConfigurableStateBackendLookupHouseholdTests
         List<SummerEbtCase> cases = result.Household!.SummerEbtCases;
         Assert.Equal(4, cases.Count);
 
-        // OSSE keyword (in HouseholdType) -> SummerEbt.
         Assert.Equal(IssuanceType.SummerEbt, cases[0].IssuanceType);
-
-        // SNAP keyword (in EligibilityType) -> SnapEbtCard.
         Assert.Equal(IssuanceType.SnapEbtCard, cases[1].IssuanceType);
 
-        // BOTH OSSE and SNAP present -> SummerEbt wins (earlier in `order`). First-match-wins.
+        // Both OSSE and SNAP present → SummerEbt wins (earlier in `order`).
         Assert.Equal(IssuanceType.SummerEbt, cases[2].IssuanceType);
 
-        // No keyword -> default.
+        // No keyword → default.
         Assert.Equal(IssuanceType.Unknown, cases[3].IssuanceType);
 
         mockHttp.VerifyNoOutstandingExpectation();

@@ -4,9 +4,7 @@ using YamlDotNet.Core;
 using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 
-/// <summary>
-/// YamlDotNet v18 IYamlTypeConverter: ReadYaml now takes (IParser, Type, ObjectDeserializer).
-/// </summary>
+/// <summary>Hydrates a <see cref="Uri"/> from a YAML scalar.</summary>
 internal sealed class UriYamlTypeConverter : IYamlTypeConverter
 {
     public bool Accepts(Type type)

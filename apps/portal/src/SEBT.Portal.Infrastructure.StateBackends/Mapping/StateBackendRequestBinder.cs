@@ -5,17 +5,10 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Builds an outgoing lookup request body from a domain-centered <see cref="RequestBinding"/>
-/// (DC-568 spike). Two sources feed the body:
-///   * <c>constants</c> — fixed literals written at dotted target paths.
-///   * <c>map</c> — OUR named input (a household-identity signal or a caller-context value)
-///     written at a dotted target path.
-///
-/// Input resolution is a CLOSED set — known signal types plus a fixed set of context names. No
-/// arbitrary lookups, expressions, or transforms. A map input that resolves to nothing fails loud.
-/// The binder passes <see cref="HouseholdLookupRequest.IsProofed"/> straight through; it never
-/// computes an authorization decision. This is the input→JSON layer; the config records stay
-/// transport-free in Core.
+/// Builds an outgoing lookup request body from a domain-centered <see cref="RequestBinding"/>.
+/// Input resolution is a closed set — a map input that resolves to nothing fails loud. The binder
+/// passes <see cref="HouseholdLookupRequest.IsProofed"/> straight through; it never computes an
+/// authorization decision.
 /// </summary>
 internal static class StateBackendRequestBinder
 {
@@ -44,10 +37,8 @@ internal static class StateBackendRequestBinder
     }
 
     /// <summary>
-    /// Write-path binding: builds the outgoing body from constants plus a CLOSED set of named
-    /// inputs — the routing fields decoded from the incoming opaque caseId. Same domain-centered
-    /// constants + map vocabulary as the read path; the map's LHS names refer to decoded routing
-    /// fields. A map input with no matching routing field fails loud (never silently drops).
+    /// Write-path binding: builds the body from constants plus the routing fields decoded from the
+    /// opaque caseId. A map input with no matching routing field fails loud (never silently drops).
     /// </summary>
     public static JsonObject BuildBody(RequestBinding binding, IReadOnlyDictionary<string, string> inputs)
     {
@@ -82,15 +73,10 @@ internal static class StateBackendRequestBinder
     }
 
     /// <summary>
-    /// Batch write-path binding (address update). Builds the body from constants + scalar map
-    /// (address scalars, resolved from <paramref name="scalarInputs"/>) PLUS the two batch shapes
-    /// that fan out over the decoded caseIds:
-    ///   * <c>shared</c> — a household-level routing field resolved ONCE across every case; FAILS
-    ///     LOUD if the cases disagree on the value.
-    ///   * <c>collect</c> — a per-case routing field gathered into an ARRAY, one element per case.
-    ///
-    /// HARD CAP: shared + collect are the ONLY batch shapes — no per-case conditionals, filtering,
-    /// or transforms. A shared/collect field missing from any decoded caseId fails loud.
+    /// Batch write-path binding (address update): constants + scalar address map, plus the
+    /// <c>shared</c> and <c>collect</c> batch shapes fanning out over the decoded caseIds. A
+    /// <c>shared</c> field failing loud on disagreement across cases is load-bearing — the household
+    /// must resolve to one value. A shared/collect field missing from any caseId fails loud.
     /// </summary>
     public static JsonObject BuildAddressBody(
         RequestBinding binding,
@@ -128,7 +114,7 @@ internal static class StateBackendRequestBinder
         return body;
     }
 
-    // Resolve one household-level field across all decoded caseIds; fail loud on disagreement.
+    // One household-level field across all decoded caseIds; fails loud on disagreement.
     private static string ResolveShared(
         string fieldName, IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds)
     {
@@ -156,7 +142,7 @@ internal static class StateBackendRequestBinder
         return resolved!;
     }
 
-    // Gather a per-case field into an ordered array, one element per decoded caseId.
+    // A per-case field gathered into an ordered array, one element per decoded caseId.
     private static JsonArray CollectArray(
         string fieldName, IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds)
     {
@@ -176,14 +162,12 @@ internal static class StateBackendRequestBinder
         return array;
     }
 
-    // Closed resolution set: household-identity signals addressable by IdentitySignal.Type, plus
-    // a small fixed set of caller-context names. Fail loud when an input resolves to nothing.
+    // Closed set: household-identity signals by IdentitySignal.Type plus fixed caller-context names.
     private static JsonNode ResolveInput(string inputName, HouseholdLookupRequest request)
     {
-        // Caller context — facts about the authenticated user, not household search keys.
         if (string.Equals(inputName, "isProofed", StringComparison.Ordinal))
         {
-            // Straight pass-through of the caller's proofing status. No threshold logic here.
+            // Straight pass-through of the caller's proofing status — no authorization decision here.
             return JsonValue.Create(request.IsProofed);
         }
 
@@ -198,7 +182,6 @@ internal static class StateBackendRequestBinder
                 "Request map input 'portalUuid' resolved to no value.");
         }
 
-        // Household-identity signal, addressed by its IdentitySignal.Type.
         foreach (IdentitySignal signal in request.Signals)
         {
             if (string.Equals(signal.Type, inputName, StringComparison.Ordinal))

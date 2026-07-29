@@ -20,8 +20,7 @@ public class ConfigurableStateBackend : IStateBackend
     {
     }
 
-    // The idempotency-key factory is injectable so tests can assert a deterministic key. In
-    // production it generates a fresh UUID per call.
+    // Idempotency-key factory is injectable for deterministic tests; production yields a fresh UUID.
     public ConfigurableStateBackend(
         StateBackendConfiguration configuration, HttpClient httpClient, Func<string> idempotencyKeyFactory)
     {
@@ -56,8 +55,6 @@ public class ConfigurableStateBackend : IStateBackend
         EnrollmentResponseMapping mapping = operation.Response
             ?? throw new NotSupportedException("Enrollment check has no response mapping configured.");
 
-        // The callMode / indexField / expand / match combination is validated at config LOAD time
-        // (StateBackendConfigurationValidator); the dispatch path trusts those invariants.
         return operation.CallMode switch
         {
             EnrollmentCallMode.Batch =>
@@ -71,7 +68,7 @@ public class ConfigurableStateBackend : IStateBackend
         };
     }
 
-    // Batch fan-out (CO): ONE call carries every child as a correlated row; verdicts fan in by index.
+    // Batch fan-out: one call carries every child as a correlated row; verdicts fan in by index.
     private async Task<EnrollmentCheckResult> CheckEnrollmentBatchAsync(
         EnrollmentCheckOperationConfig operation,
         EnrollmentRequestBinding binding,
@@ -81,8 +78,6 @@ public class ConfigurableStateBackend : IStateBackend
     {
         using HttpRequestMessage httpRequest = BuildRequest(operation);
 
-        // Request-side candidate expansion: one row per child, plus a DOB-transposed candidate under
-        // the same correlation index when the binding's expand strategy applies.
         JsonArray rows = EnrollmentRequestBuilder.BuildRows(binding, request);
         httpRequest.Content = new StringContent(
             rows.ToJsonString(), Encoding.UTF8, "application/json");
@@ -99,12 +94,10 @@ public class ConfigurableStateBackend : IStateBackend
             .ParseAsync(stream, cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-        // Response-side fan-in: a child matches when ANY of its candidate rows matched.
         return EnrollmentResponseCorrelator.Correlate(mapping, document.RootElement, request);
     }
 
-    // PerChild fan-out (DC): the driver loops the batch and makes ONE call per child, reading a single
-    // result object each, then aggregates the per-child verdicts in request order.
+    // PerChild fan-out: one call per child reading a single result object, aggregated in request order.
     private async Task<EnrollmentCheckResult> CheckEnrollmentPerChildAsync(
         EnrollmentCheckOperationConfig operation,
         EnrollmentRequestBinding binding,
@@ -147,7 +140,7 @@ public class ConfigurableStateBackend : IStateBackend
         HealthOperationConfig? health = _configuration.Operations.Health
             ?? throw new NotSupportedException("Health check is not configured for the state backend.");
 
-        // /health is unauthenticated by design — no auth scheme applied here.
+        // Unauthenticated liveness probe — no auth scheme applied.
         using HttpRequestMessage request = BuildRequest(health);
 
         try
@@ -185,8 +178,7 @@ public class ConfigurableStateBackend : IStateBackend
         StateBackendResponseMapping mapping = lookup.Response
             ?? throw new NotSupportedException("Household lookup has no response mapping configured.");
 
-        // Auth (when configured) is applied by the HttpClient's handler chain, not here — keeps
-        // the driver transport-agnostic and the auth scheme a reusable primitive.
+        // Auth (when configured) is applied by the HttpClient's handler chain, not here.
         using HttpRequestMessage httpRequest = BuildRequest(lookup);
 
         if (lookup.Request is { } binding)
@@ -234,10 +226,7 @@ public class ConfigurableStateBackend : IStateBackend
         ResultClassifier classifier = operation.Result
             ?? throw new NotSupportedException("Card replacement has no result classifier configured.");
 
-        // Classifier shape is validated at config LOAD time (StateBackendConfigurationValidator).
-
-        // Decode the opaque caseId into its routing fields, then expose them (plus the request's
-        // reason) as inputs to the domain-centered request binding.
+        // Decode the opaque caseId into its routing fields, exposed (with the reason) to the binding.
         Dictionary<string, string> inputs = BuildCardReplacementInputs(request);
 
         using HttpRequestMessage httpRequest = BuildRequest(operation);
@@ -249,8 +238,7 @@ public class ConfigurableStateBackend : IStateBackend
                 body.ToJsonString(), Encoding.UTF8, "application/json");
         }
 
-        // Idempotency-Key guards against duplicate replacement issuance on retry. Fresh per call
-        // in production; injectable for deterministic tests.
+        // Idempotency-Key guards against duplicate replacement issuance on retry.
         httpRequest.Headers.Add("Idempotency-Key", _idempotencyKeyFactory());
 
         using HttpResponseMessage response = await _httpClient
@@ -271,7 +259,7 @@ public class ConfigurableStateBackend : IStateBackend
 
         var inputs = new Dictionary<string, string>(routingFields, StringComparer.Ordinal);
 
-        // "reason" is caller context, not a routing field — a fixed pass-through input name.
+        // "reason" is caller context, not a routing field.
         if (request.Reason is { } reason)
         {
             inputs["reason"] = reason;
@@ -335,15 +323,11 @@ public class ConfigurableStateBackend : IStateBackend
         ResultClassifier classifier = operation.Result
             ?? throw new NotSupportedException("Address update has no result classifier configured.");
 
-        // Classifier shape is validated at config LOAD time (StateBackendConfigurationValidator).
-        // Same capped 3-kind classifier as card replacement — no second classifier.
-
         using HttpRequestMessage httpRequest = BuildRequest(operation);
 
         if (operation.Request is { } binding)
         {
-            // Decode the BATCH of opaque caseIds into their routing fields, then bind the body from
-            // the shared/collect batch shapes plus the scalar address fields.
+            // Decode the batch of opaque caseIds into their routing fields for the request binding.
             IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
                 .Select(OpaqueCaseId.Decode)
                 .ToList();
@@ -356,8 +340,7 @@ public class ConfigurableStateBackend : IStateBackend
                 body.ToJsonString(), Encoding.UTF8, "application/json");
         }
 
-        // Idempotency-Key guards against a duplicate write on retry. Fresh per call in production;
-        // injectable for deterministic tests.
+        // Idempotency-Key guards against a duplicate write on retry.
         httpRequest.Headers.Add("Idempotency-Key", _idempotencyKeyFactory());
 
         using HttpResponseMessage response = await _httpClient
@@ -372,8 +355,8 @@ public class ConfigurableStateBackend : IStateBackend
         return ToAddressResult(outcome);
     }
 
-    // Address scalars exposed to the scalar request binding under fixed input names. Only non-null
-    // fields are included; a config that maps a field the address lacks fails loud in the binder.
+    // Only non-null address scalars are included; a config mapping a field the address lacks fails
+    // loud in the binder.
     private static Dictionary<string, string> BuildAddressInputs(AddressUpdateAddress address)
     {
         var inputs = new Dictionary<string, string>(StringComparer.Ordinal);

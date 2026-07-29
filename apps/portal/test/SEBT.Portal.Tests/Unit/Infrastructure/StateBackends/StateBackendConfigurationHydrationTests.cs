@@ -7,9 +7,8 @@ using SEBT.Portal.Tests.Unit.Infrastructure.StateBackends.ConfigSamples;
 namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 /// <summary>
-/// Spike (DC-568): can the canonical state-backend config records hydrate from YAML via
-/// YamlDotNet 18.1.0 WITHOUT modifying the Core types? Deserializer config is inline on
-/// purpose — this is an experiment, not a committed Infrastructure loader.
+/// Hydrates the canonical state-backend config records from YAML and asserts the shape of both
+/// sample bundles, plus the validator's fail-loud checks.
 /// </summary>
 public class StateBackendConfigurationHydrationTests
 {
@@ -33,11 +32,11 @@ public class StateBackendConfigurationHydrationTests
         RequestBinding? request = householdLookup.Request;
         Assert.NotNull(request);
 
-        // includePendingApplicantDetails is genuinely fixed policy — a constant, value false.
         Assert.NotNull(request.Constants);
         Assert.Equal(false, request.Constants["includePendingApplicantDetails"]);
 
-        // isIdentityProofed is per-request (caller proofing) — a map pass-through, NOT a constant.
+        // isIdentityProofed must be a per-request map pass-through, never a constant — hardcoding it
+        // would bypass the DC lookup's proofing gate.
         Assert.DoesNotContain("isIdentityProofed", request.Constants.Keys);
 
         Assert.NotNull(request.Map);
@@ -53,18 +52,14 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("SummerEBTCaseID", response.Fields["summerEBTCaseID"].From);
         Assert.Equal("ChildFirstName", response.Fields["childFirstName"].From);
 
-        // A date-target field carries an exact parse format.
         FieldMapping issueDate = response.Fields["ebtCardIssueDate"];
         Assert.Equal("IssueDate", issueDate.From);
         Assert.Equal("MM/dd/yyyy", issueDate.Format);
 
-        // An enum-target field references a named domain-centered table.
         FieldMapping cardStatus = response.Fields["ebtCardStatus"];
         Assert.Equal("CardStatus", cardStatus.From);
         Assert.Equal("cardStatus", cardStatus.Enum);
 
-        // The keywordRules brick hydrates: multi-source `from`, ordered `order`, domain-centered
-        // `map` (OUR value -> substrings that indicate it), and a `default`.
         FieldMapping issuanceType = response.Fields["issuanceType"];
         Assert.Equal(new[] { "HouseholdType", "EligibilityType" }, issuanceType.From.All);
         KeywordRules keywordRules = Assert.IsType<KeywordRules>(issuanceType.KeywordRules);
@@ -74,7 +69,6 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "CASH", "TANF" }, keywordRules.Map["TanfEbtCard"]);
         Assert.Equal("Unknown", keywordRules.Default);
 
-        // The referenced enum table hydrates domain-centered: OUR value → state token(s), plus default.
         Assert.NotNull(config.Enums);
         StateBackendEnumTable cardStatusTable = config.Enums["cardStatus"];
         Assert.Equal(new[] { "ACTIVE" }, cardStatusTable.Map["Active"]);
@@ -88,12 +82,10 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("ApplicationId", disaggregation.GroupApplicationsBy);
         Assert.Equal(CaseInclusionPredicate.All, disaggregation.CaseInclusion);
 
-        // The opaque caseId composition hydrates: OUR routing-field name → source property.
         CaseIdComposition caseId = Assert.IsType<CaseIdComposition>(response.CaseId);
         Assert.Equal("SummerEBTCaseID", caseId.Fields["caseId"]);
         Assert.Equal("ApplicationId", caseId.Fields["applicationId"]);
 
-        // The card-replacement write op hydrates: request binding + ordered result classifier.
         CardReplacementOperationConfig? cardReplacement = config.Operations.CardReplacement;
         Assert.NotNull(cardReplacement);
         Assert.Equal(StateBackendHttpMethod.Post, cardReplacement.Method);
@@ -115,8 +107,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "OK" }, classifier.Conditions[1].ValueIn);
         Assert.Equal(WriteOutcome.BackendError, classifier.Default);
 
-        // The DC address-update write op hydrates: constants + the SHARED batch shape + scalar map
-        // (address fields) + the reused result classifier.
+        // DC address update uses the SHARED batch shape (one household field across all cases).
         AddressUpdateOperationConfig? dcAddressUpdate = config.Operations.AddressUpdate;
         Assert.NotNull(dcAddressUpdate);
         Assert.Equal(StateBackendHttpMethod.Post, dcAddressUpdate.Method);
@@ -138,8 +129,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "OK" }, dcAddressSuccess.ValueIn);
         Assert.Equal(WriteOutcome.BackendError, dcAddressClassifier.Default);
 
-        // The DC enrollment op hydrates: PerChild fan-out (no index, no expansion) + single-object
-        // match on the boolean eligibility flag.
+        // DC enrollment uses PerChild fan-out (no index, no expansion).
         EnrollmentCheckOperationConfig? dcEnrollment = config.Operations.EnrollmentCheck;
         Assert.NotNull(dcEnrollment);
         Assert.Equal(StateBackendHttpMethod.Post, dcEnrollment.Method);
@@ -161,9 +151,7 @@ public class StateBackendConfigurationHydrationTests
 
         Assert.NotNull(config.Operations.Health);
 
-        // Capability-derivation smoke assert: the modeled cardReplacement op derives a per-case
-        // capability, addressUpdate derives its capability, and the modeled enrollment op derives
-        // EnrollmentCheck.
+        // Capabilities derive from which operations the config declares.
         StateBackendCapabilities capabilities = config.Capabilities;
         Assert.Equal(CardReplacementCapability.PerCase, capabilities.CardReplacement);
         Assert.True(capabilities.AddressUpdate);
@@ -178,7 +166,7 @@ public class StateBackendConfigurationHydrationTests
 
         Assert.Equal(new Uri("http://localhost:8086"), config.BaseUrl);
 
-        // Exercises the OTHER auth discriminator branch (client_credentials) + the OAuth subtype.
+        // Covers the client_credentials auth branch (DC covers api_key).
         StateBackendOAuthClientCredentialsAuthScheme oauthAuth =
             Assert.IsType<StateBackendOAuthClientCredentialsAuthScheme>(config.Auth);
         Assert.Equal(new Uri("http://localhost:8086/oauth/token"), oauthAuth.TokenUrl);
@@ -197,7 +185,7 @@ public class StateBackendConfigurationHydrationTests
 
         Assert.Equal("sebtChldCwin", householdLookup.Response?.Fields["summerEBTCaseID"].From);
 
-        // Exercises the OTHER disaggregation branch (valueInSet) + a named caseInclusion predicate.
+        // Covers the valueInSet disaggregation branch (DC covers presence).
         StateBackendDisaggregation? disaggregation = householdLookup.Response?.Disaggregation;
         Assert.NotNull(disaggregation);
         Assert.Equal(DisaggregationRule.ValueInSet, disaggregation.Rule);
@@ -207,8 +195,7 @@ public class StateBackendConfigurationHydrationTests
             CaseInclusionPredicate.WhenApprovedOrNotApplicationBased,
             disaggregation.CaseInclusion);
 
-        // The status field the WhenApprovedOrNotApplicationBased predicate reads: CO's sebtAppSts,
-        // resolved to canonical ApplicationStatus through a named domain-centered enum table.
+        // The status the WhenApprovedOrNotApplicationBased predicate reads.
         FieldMapping applicationStatus = householdLookup.Response!.Fields["applicationStatus"];
         Assert.Equal("sebtAppSts", applicationStatus.From);
         Assert.Equal("applicationStatus", applicationStatus.Enum);
@@ -224,7 +211,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(StateBackendHttpMethod.Patch, addressUpdate.Method);
         Assert.Equal("/sebt/update-std-dtls", addressUpdate.Path);
 
-        // CO uses the OTHER batch shape: COLLECT per-case write-ids into an array (no shared field).
+        // CO uses the COLLECT batch shape: per-case write-ids into an array (DC uses shared).
         Assert.NotNull(addressUpdate.Request);
         Assert.Equal("cases", addressUpdate.Request.Collect!["writeId"]);
         Assert.Null(addressUpdate.Request.Shared);
@@ -237,8 +224,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("respCd", coAddressSuccess.Field);
         Assert.Equal(new[] { "200", "00" }, coAddressSuccess.ValueIn);
 
-        // The CO enrollment op hydrates: the transposeMonthDay candidate-expansion brick + CO's REAL
-        // confidenceThreshold match (argmax by score + strict `>`).
+        // CO enrollment uses batch + transposeMonthDay expansion + confidenceThreshold match.
         EnrollmentCheckOperationConfig? coEnrollment = config.Operations.EnrollmentCheck;
         Assert.NotNull(coEnrollment);
         Assert.Equal(StateBackendHttpMethod.Post, coEnrollment.Method);
@@ -259,7 +245,6 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("mtchCnfd", coEnrollment.Response.Match.ScoreField);
         Assert.Equal(90.0, coEnrollment.Response.Match.Threshold);
 
-        // Capability derivation: CO models AddressUpdate and EnrollmentCheck.
         StateBackendCapabilities capabilities = config.Capabilities;
         Assert.True(capabilities.AddressUpdate);
         Assert.True(capabilities.EnrollmentCheck);
@@ -305,8 +290,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("ISSUED", ex.Message);
     }
 
-    // A keywordRules order/map value that is NOT a real IssuanceType member must fail loud at LOAD
-    // time — the same fail-loud discipline as the enum tables.
+    // A keywordRules value that is NOT a real IssuanceType member must fail loud at load.
     [Fact]
     public void Validate_FailsLoud_WhenKeywordRuleValueIsNotARealIssuanceType()
     {
@@ -327,8 +311,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("Snap", ex.Message);
     }
 
-    // A malformed CARD-REPLACEMENT result classifier (a condition setting no closed kind) must fail
-    // loud at LOAD time — the write-op classifier check folded into the load-time validator.
+    // A malformed card-replacement classifier (a condition setting no closed kind) fails loud at load.
     [Fact]
     public void Validate_FailsLoud_WhenCardReplacementClassifierConditionSetsNoKind()
     {
@@ -340,8 +323,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("exactly one", ex.Message);
     }
 
-    // The SAME malformed classifier on the ADDRESS-UPDATE op must also fail loud at LOAD — the
-    // load-time validator validates BOTH write ops, not just card replacement.
+    // The validator checks BOTH write ops: the same malformed classifier on address-update fails too.
     [Fact]
     public void Validate_FailsLoud_WhenAddressUpdateClassifierConditionSetsNoKind()
     {

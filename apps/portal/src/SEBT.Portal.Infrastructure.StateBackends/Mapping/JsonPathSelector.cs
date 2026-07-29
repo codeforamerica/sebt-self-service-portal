@@ -4,11 +4,9 @@ using System.Text.Json;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Read-side path selector shared by the response mapper and enrollment correlator.
-/// Navigates a capped path: a leading <c>$</c>, dotted property segments, and <c>[index]</c>
-/// element access. Anything else is rejected — this is not a general JSONPath engine.
-/// Returns <c>default</c> (a <see cref="JsonValueKind.Undefined"/> element) when the path
-/// does not resolve; callers distinguish a miss via <see cref="JsonElement.ValueKind"/>.
+/// Read-side path selector: a leading <c>$</c>, dotted property segments, and <c>[index]</c>
+/// element access only — not a general JSONPath engine. Returns a
+/// <see cref="JsonValueKind.Undefined"/> element when the path does not resolve.
 /// </summary>
 internal static class JsonPathSelector
 {
@@ -30,7 +28,6 @@ internal static class JsonPathSelector
                 }
             }
 
-            // Handle a trailing [index] on this segment, e.g. resultSets[0].
             while (bracket >= 0)
             {
                 int close = segment.IndexOf(']', bracket);

@@ -4,9 +4,8 @@ using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 namespace SEBT.Portal.Infrastructure.StateBackends.Auth;
 
 /// <summary>
-/// Applies an API-key auth scheme to outgoing requests by setting the configured header
-/// to the resolved key. The key is resolved from an <see cref="IStateBackendSecretResolver"/>
-/// via the scheme's <see cref="StateBackendApiKeyAuthScheme.KeyRef"/> — never inlined.
+/// Applies an API-key scheme by setting the configured header to the resolved key. The key is
+/// resolved via <see cref="IStateBackendSecretResolver"/> — never inlined.
 /// </summary>
 public sealed class StateBackendApiKeyAuthHandler : DelegatingHandler
 {

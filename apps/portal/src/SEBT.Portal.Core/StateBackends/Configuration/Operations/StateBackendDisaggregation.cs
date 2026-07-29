@@ -1,29 +1,16 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
-/// <summary>
-/// Closed vocabulary for deciding whether a record represents an application-based case.
-/// Deliberately NOT an expression DSL (DC-568 spike constraint).
-/// </summary>
+/// <summary>Rule deciding whether a record represents an application-based case.</summary>
 public enum DisaggregationRule
 {
-    /// <summary>
-    /// A record is application-based when its <see cref="StateBackendDisaggregation.DiscriminatorField"/>
-    /// is present (non-null / non-empty).
-    /// </summary>
+    /// <summary>Application-based when the <see cref="StateBackendDisaggregation.DiscriminatorField"/> is present.</summary>
     Presence,
 
-    /// <summary>
-    /// A record is application-based when its <see cref="StateBackendDisaggregation.DiscriminatorField"/>
-    /// value is in <see cref="StateBackendDisaggregation.ApplicationValues"/>.
-    /// </summary>
+    /// <summary>Application-based when the discriminator's value is in <see cref="StateBackendDisaggregation.ApplicationValues"/>.</summary>
     ValueInSet,
 }
 
-/// <summary>
-/// Named case-inclusion predicates. A closed enum, not an expression language: each name
-/// maps to a specific, code-owned predicate. New states requiring a new predicate must add
-/// a named member here rather than expressing arbitrary logic in config.
-/// </summary>
+/// <summary>Named case-inclusion predicate deciding which records become cases.</summary>
 public enum CaseInclusionPredicate
 {
     /// <summary>Include every record.</summary>
@@ -33,10 +20,7 @@ public enum CaseInclusionPredicate
     WhenApprovedOrNotApplicationBased,
 }
 
-/// <summary>
-/// Disaggregation primitive: how to group records into applications and which records to
-/// include as cases. Capped vocabulary per the DC-568 prototype plan.
-/// </summary>
+/// <summary>How to group records into applications and which records to include as cases.</summary>
 public sealed record StateBackendDisaggregation
 {
     /// <summary>The rule used to classify a record as application-based.</summary>

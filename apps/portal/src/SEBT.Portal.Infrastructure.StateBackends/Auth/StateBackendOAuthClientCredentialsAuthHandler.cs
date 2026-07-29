@@ -7,15 +7,13 @@ using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 namespace SEBT.Portal.Infrastructure.StateBackends.Auth;
 
 /// <summary>
-/// Applies an OAuth2 client-credentials auth scheme to outgoing requests: fetches a token from
-/// the configured token endpoint, caches it until near expiry, and attaches it as a bearer token.
-/// The client secret is resolved from an <see cref="IStateBackendSecretResolver"/> at token-fetch
-/// time via <see cref="StateBackendOAuthClientCredentialsAuthScheme.ClientSecretRef"/> — never inlined.
+/// Applies an OAuth2 client-credentials scheme: fetches a token, caches it until near expiry, and
+/// attaches it as a bearer token. The client secret is resolved via
+/// <see cref="IStateBackendSecretResolver"/> at token-fetch time — never inlined.
 /// </summary>
 public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHandler
 {
-    // Refresh slightly before the token actually expires to avoid using a token
-    // that lapses in flight.
+    // Refresh before actual expiry to avoid a token lapsing in flight.
     private static readonly TimeSpan ExpiryLeeway = TimeSpan.FromSeconds(30);
 
     private readonly StateBackendOAuthClientCredentialsAuthScheme _scheme;

@@ -1,9 +1,6 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
-/// <summary>
-/// Canonical write-outcome vocabulary for a state-backend write response (shared by the
-/// card-replacement and address-update paths). A closed enum, not an expression language.
-/// </summary>
+/// <summary>Canonical write-outcome vocabulary, shared by the card-replacement and address-update paths.</summary>
 public enum WriteOutcome
 {
     /// <summary>The replacement was initiated successfully.</summary>
@@ -17,14 +14,8 @@ public enum WriteOutcome
 }
 
 /// <summary>
-/// Classifies a state-backend write response into a canonical <see cref="WriteOutcome"/>
-/// (DC-568 spike). An ORDERED, first-match-wins list of <see cref="Conditions"/>; the first whose
-/// predicate holds selects the outcome. Nothing matches → <see cref="Default"/>
-/// (<see cref="WriteOutcome.BackendError"/> when unset).
-///
-/// HARD CAP: each condition is exactly ONE of three closed kinds (see <see cref="ResultCondition"/>).
-/// No AND/OR combinators, no nesting. If a real case needs to combine conditions, STOP — do not
-/// grow this into a rules engine.
+/// Classifies a state-backend write response into a canonical <see cref="WriteOutcome"/> via an
+/// ordered, first-match-wins list of <see cref="Conditions"/>.
 /// </summary>
 public sealed record ResultClassifier
 {
@@ -36,9 +27,8 @@ public sealed record ResultClassifier
 }
 
 /// <summary>
-/// One classifier condition. EXACTLY ONE of the three closed kinds must be set
-/// (<see cref="StatusIn"/>, <see cref="ValueIn"/>, or <see cref="MessageContains"/>) — validated
-/// fail-loud at load. The condition maps to an <see cref="Outcome"/> when it matches.
+/// One classifier condition; exactly one of <see cref="StatusIn"/> / <see cref="ValueIn"/> /
+/// <see cref="MessageContains"/> must be set (validated fail-loud at load).
 /// </summary>
 public sealed record ResultCondition
 {

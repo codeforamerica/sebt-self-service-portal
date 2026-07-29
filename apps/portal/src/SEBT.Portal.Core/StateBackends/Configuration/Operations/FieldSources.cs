@@ -3,10 +3,9 @@ using System.Collections;
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
 /// <summary>
-/// One-or-more source property names for a <see cref="FieldMapping.From"/>. Most fields bind a
-/// single source; the keyword-rules brick may scan several. Modeled as a small value type so a
-/// scalar YAML <c>from: X</c> and a sequence <c>from: [X, Y]</c> both hydrate, and so a scalar
-/// still behaves like a bare string at single-source call sites (implicit conversions below).
+/// One-or-more source property names for a <see cref="FieldMapping.From"/>. A value type so both a
+/// scalar YAML <c>from: X</c> and a sequence <c>from: [X, Y]</c> hydrate, and a scalar still behaves
+/// like a bare string at single-source call sites via the implicit conversions below.
 /// </summary>
 public sealed class FieldSources : IEnumerable<string>
 {
@@ -26,10 +25,7 @@ public sealed class FieldSources : IEnumerable<string>
     /// <summary>All source property names, in declared order.</summary>
     public IReadOnlyList<string> All => _sources;
 
-    /// <summary>
-    /// The single source. Throws when the mapping names more than one — a scalar-only call site
-    /// (e.g. a string/date/enum field) must not be handed a multi-source keyword-rules field.
-    /// </summary>
+    /// <summary>The single source; throws when the mapping names more than one.</summary>
     public string Single => _sources.Count == 1
         ? _sources[0]
         : throw new InvalidOperationException(
@@ -39,8 +35,7 @@ public sealed class FieldSources : IEnumerable<string>
 
     public static implicit operator FieldSources(string[] sources) => new(sources);
 
-    // Lets a single-source FieldSources stand in for a plain source name. Null-tolerant so a
-    // null-conditional access (e.g. `mapping?.From`) still converts without a nullable warning.
+    // Null-tolerant so a null-conditional access (e.g. `mapping?.From`) converts without a warning.
     public static implicit operator string?(FieldSources? sources) => sources?.Single;
 
     public IEnumerator<string> GetEnumerator() => _sources.GetEnumerator();

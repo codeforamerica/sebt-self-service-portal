@@ -3,10 +3,6 @@ using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
-/// <summary>
-/// Covers the shared read-side path selector: dotted properties, <c>[index]</c> element
-/// access, a <c>$</c>-rooted path, and the missing-path miss (a <c>default</c> element).
-/// </summary>
 public class JsonPathSelectorTests
 {
     private static JsonElement Parse(string json)

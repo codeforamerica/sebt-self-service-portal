@@ -3,10 +3,6 @@ using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
-/// <summary>
-/// Covers the shared write-side path writer: a flat property write, a nested dotted-path write
-/// (creating intermediate objects), and overwriting an existing value.
-/// </summary>
 public class JsonPathWriterTests
 {
     [Fact]

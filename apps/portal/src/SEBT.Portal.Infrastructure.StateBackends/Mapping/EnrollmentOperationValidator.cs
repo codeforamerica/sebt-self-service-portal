@@ -3,23 +3,8 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Fail-loud validation of the enrollment op's call-mode / index-field / expand combination
-/// (DC-568 spike). Invoked before dispatch so a misconfigured op fails on first use rather than
-/// silently taking the wrong path.
-///
-/// <list type="bullet">
-///   <item><see cref="EnrollmentCallMode.Batch"/> REQUIRES an <c>indexField</c> on both the request
-///     binding and the response mapping — rows are correlated by that echoed index.</item>
-///   <item><see cref="EnrollmentCallMode.PerChild"/> must NOT set an <c>indexField</c> on either side —
-///     each call is a single child, so there is nothing to correlate.</item>
-///   <item><see cref="EnrollmentCallMode.PerChild"/> combined with a candidate
-///     <see cref="EnrollmentRequestBinding.Expand"/> is NOT supported yet — no real state needs it,
-///     so the combo is refused rather than built.</item>
-///   <item>The <see cref="EnrollmentMatch"/> strategy's required params must be present:
-///     <see cref="EnrollmentMatchStrategy.AnyRowValueIn"/> needs <c>field</c> + <c>valueIn</c>;
-///     <see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/> needs <c>scoreField</c> +
-///     <c>threshold</c>. Missing (or wrong-strategy) params fail loud.</item>
-/// </list>
+/// Fail-loud validation of the enrollment op's call-mode / index-field / expand / match combination,
+/// so a misconfigured op fails at load rather than silently taking the wrong dispatch path.
 /// </summary>
 internal static class EnrollmentOperationValidator
 {
@@ -64,8 +49,8 @@ internal static class EnrollmentOperationValidator
         }
     }
 
-    // Fail loud when the chosen match strategy is missing its required params (or is handed the
-    // other strategy's params). The comparison lives in code — config only names the strategy.
+    // Fail loud when the strategy is missing its required params. The comparison lives in code;
+    // config only names the strategy.
     private static void ValidateMatch(EnrollmentMatch match)
     {
         switch (match.Strategy)

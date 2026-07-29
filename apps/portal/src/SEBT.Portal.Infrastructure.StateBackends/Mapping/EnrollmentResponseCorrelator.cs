@@ -6,21 +6,10 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Response-side fan-in for the enrollment op (DC-568 spike). Selects the response rows at
-/// <see cref="EnrollmentResponseMapping.Root"/> and decides each child's match via the named
-/// <see cref="EnrollmentResponseMapping.Match"/> strategy, fanning verdicts back in by the echoed
-/// correlation index (a 1-based request index):
-///
-/// <list type="bullet">
-///   <item><see cref="EnrollmentMatchStrategy.AnyRowValueIn"/>: a child matches when ANY of its
-///     candidate rows has the eligibility flag in the set (the original brick).</item>
-///   <item><see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/>: group a child's candidate rows
-///     by index, take the MAX score, and match iff <c>max &gt; threshold</c> (STRICT — mirrors CO's
-///     argmax + <c>&gt; threshold</c>). A missing/non-numeric score contributes nothing.</item>
-/// </list>
-///
-/// HARD CAP: exactly these two NAMED strategies. The argmax + strict <c>&gt;</c> are code, never
-/// config. A row whose index doesn't map to a requested child is ignored.
+/// Response-side fan-in: selects the rows at <see cref="EnrollmentResponseMapping.Root"/> and
+/// decides each child's match via the named <see cref="EnrollmentResponseMapping.Match"/> strategy,
+/// fanning verdicts back in by the echoed 1-based correlation index. The argmax and the strict
+/// <c>&gt;</c> in confidence matching live here, not in config.
 /// </summary>
 internal static class EnrollmentResponseCorrelator
 {
@@ -75,7 +64,7 @@ internal static class EnrollmentResponseCorrelator
         };
     }
 
-    // Any-candidate fan-in: an index matches when ANY of its rows has the flag in the set.
+    // An index matches when any of its rows has the flag in the set.
     private static HashSet<string> CorrelateAnyRowValueIn(
         EnrollmentMatch match, JsonElement rows, string indexField)
     {
@@ -96,8 +85,8 @@ internal static class EnrollmentResponseCorrelator
         return matchedIndices;
     }
 
-    // Argmax fan-in: group a child's rows by index, take the MAX score, match iff max > threshold
-    // (STRICT). A missing/non-numeric score contributes nothing to its index's max.
+    // Per index, take the max score and match iff max > threshold (strict). A missing/non-numeric
+    // score contributes nothing.
     private static HashSet<string> CorrelateConfidenceThreshold(
         EnrollmentMatch match, JsonElement rows, string indexField)
     {
@@ -139,11 +128,10 @@ internal static class EnrollmentResponseCorrelator
         return value is not null && match.ValueIn!.Contains(value, StringComparer.Ordinal);
     }
 
-    // A single result's score strictly exceeds the threshold. Missing/non-numeric → not a match.
     private static bool ScoreExceedsThreshold(EnrollmentMatch match, JsonElement result) =>
         TryReadScore(match, result, out double score) && score > match.Threshold!.Value;
 
-    // Reads the score field as a number. A missing property or a non-numeric value is NOT a match.
+    // Reads the score as a number; a missing property or non-numeric value is not a match.
     private static bool TryReadScore(EnrollmentMatch match, JsonElement record, out double score)
     {
         score = 0;

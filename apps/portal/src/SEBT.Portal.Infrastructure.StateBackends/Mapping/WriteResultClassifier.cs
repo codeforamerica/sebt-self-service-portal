@@ -4,21 +4,15 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Classifies a state-backend write response into a canonical <see cref="WriteOutcome"/>
-/// (DC-568 spike; shared by the card-replacement and address-update paths). Evaluates the
-/// classifier's ORDERED conditions first-match-wins; the first whose predicate holds selects the
-/// outcome; none match → the classifier's default.
-///
-/// HARD CAP (write-side DSL-creep guard): each condition is EXACTLY ONE of three closed kinds —
-/// HTTP status in a set, a body field's value in a set, or a body message containing any of a set
-/// of substrings. No AND/OR combinators, no nesting. <see cref="Validate"/> enforces this
-/// fail-loud at configuration time.
+/// Classifies a write response into a canonical <see cref="WriteOutcome"/> by evaluating the
+/// classifier's ordered conditions first-match-wins, falling back to its default. <see cref="Validate"/>
+/// enforces the closed condition shape fail-loud at load time.
 /// </summary>
 internal static class WriteResultClassifier
 {
     /// <summary>
-    /// Validates the classifier's shape, fail-loud: every condition must set EXACTLY ONE of the
-    /// three closed kinds, and the value/message kinds must name the body property they read.
+    /// Validates each condition sets exactly one closed kind, and that value/message kinds name the
+    /// body property they read. Fail-loud.
     /// </summary>
     public static void Validate(ResultClassifier classifier)
     {
@@ -63,8 +57,8 @@ internal static class WriteResultClassifier
     }
 
     /// <summary>
-    /// Classifies a response. <paramref name="body"/> is the parsed JSON root (or null when the
-    /// backend returned no/invalid JSON — status-only conditions still apply).
+    /// Classifies a response. <paramref name="body"/> is null when the backend returned no/invalid
+    /// JSON — status-only conditions still apply.
     /// </summary>
     public static WriteOutcome Classify(ResultClassifier classifier, int statusCode, JsonElement? body)
     {

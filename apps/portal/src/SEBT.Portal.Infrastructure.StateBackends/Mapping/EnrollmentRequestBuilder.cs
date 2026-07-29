@@ -6,17 +6,13 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Builds the enrollment op's outgoing request-row array from the child batch (DC-568 spike).
-/// Each child yields one row built from the binding's <c>map</c> (OUR child field → dotted target
-/// path) tagged with a 1-based correlation index at <see cref="EnrollmentRequestBinding.IndexField"/>.
-/// When the binding's <see cref="EnrollmentRequestBinding.Expand"/> strategy is
-/// <see cref="CandidateExpansion.TransposeMonthDay"/> and the DOB is transposable, a SECOND row is
-/// emitted under the SAME index — the request-side candidate-expansion brick. The correlation index
-/// lets the response correlator fan candidate verdicts back into one per-child outcome.
+/// Builds the enrollment op's outgoing request-row array from the child batch: one row per child
+/// tagged with a 1-based correlation index, plus a second DOB-expanded row under the same index
+/// when the binding's <see cref="EnrollmentRequestBinding.Expand"/> strategy applies.
 /// </summary>
 internal static class EnrollmentRequestBuilder
 {
-    // Closed LHS of the enrollment request map: the child fields a backend match reads.
+    // Closed set of child fields a backend match reads.
     private const string FirstNameInput = "firstName";
     private const string LastNameInput = "lastName";
     private const string DobInput = "dob";
@@ -39,8 +35,7 @@ internal static class EnrollmentRequestBuilder
 
             rows.Add(BuildRow(binding, child, child.DateOfBirth, indexField, index));
 
-            // Candidate expansion: emit the month/day-swapped DOB under the SAME index, but only
-            // when the swap yields a valid AND different date.
+            // The swapped-DOB candidate goes under the same index.
             if (binding.Expand == CandidateExpansion.TransposeMonthDay
                 && EnrollmentCandidateExpander.TryTransposeMonthDay(child.DateOfBirth) is { } transposed)
             {
@@ -85,8 +80,7 @@ internal static class EnrollmentRequestBuilder
         return row;
     }
 
-    // Closed resolution set — the three child fields a backend match reads. A map input outside
-    // this set fails loud rather than silently dropping.
+    // A map input outside the closed child-field set fails loud rather than silently dropping.
     private static string ResolveInput(string inputName, EnrollmentChild child, DateOnly dob) =>
         inputName switch
         {
