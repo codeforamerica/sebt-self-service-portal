@@ -1,17 +1,23 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getApplyHref } from './applyHref'
 
 // The PEAK starting page the helper falls back to when NEXT_PUBLIC_APPLICATION_URL
-// is unset (local/test runs).
+// is unset.
 const DEFAULT_URL = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
+
+beforeEach(() => {
+  // Neutralize any ambient NEXT_PUBLIC_APPLICATION_URL (CI sets one) so the
+  // default-URL cases below are deterministic. Config tests override per-test.
+  vi.stubEnv('NEXT_PUBLIC_APPLICATION_URL', '')
+})
 
 afterEach(() => {
   vi.unstubAllEnvs()
 })
 
 describe('getApplyHref', () => {
-  describe('language param', () => {
+  describe('language param (default URL)', () => {
     it('uses en_US for the en locale', () => {
       expect(getApplyHref('en')).toBe(`${DEFAULT_URL}?language=en_US&redirectFromEC=Y`)
     })
@@ -54,11 +60,6 @@ describe('getApplyHref', () => {
       expect(href).toContain('src=partner')
       expect(href).toContain('language=en_US')
       expect(href).toContain('redirectFromEC=Y')
-    })
-
-    it('falls back to the PEAK default when the var is empty', () => {
-      vi.stubEnv('NEXT_PUBLIC_APPLICATION_URL', '')
-      expect(getApplyHref('en')).toBe(`${DEFAULT_URL}?language=en_US&redirectFromEC=Y`)
     })
   })
 })
