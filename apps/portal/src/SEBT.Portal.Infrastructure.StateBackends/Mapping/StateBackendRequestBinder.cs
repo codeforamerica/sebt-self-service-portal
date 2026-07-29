@@ -27,7 +27,7 @@ internal static class StateBackendRequestBinder
         {
             foreach ((string targetPath, object value) in constants)
             {
-                WriteAtPath(body, targetPath, JsonValue.Create(value));
+                JsonPathWriter.Write(body, targetPath, JsonValue.Create(value));
             }
         }
 
@@ -36,7 +36,7 @@ internal static class StateBackendRequestBinder
             foreach ((string inputName, string targetPath) in map)
             {
                 JsonNode value = ResolveInput(inputName, request);
-                WriteAtPath(body, targetPath, value);
+                JsonPathWriter.Write(body, targetPath, value);
             }
         }
 
@@ -60,7 +60,7 @@ internal static class StateBackendRequestBinder
         {
             foreach ((string targetPath, object value) in constants)
             {
-                WriteAtPath(body, targetPath, JsonValue.Create(value));
+                JsonPathWriter.Write(body, targetPath, JsonValue.Create(value));
             }
         }
 
@@ -74,7 +74,7 @@ internal static class StateBackendRequestBinder
                         $"Request map input '{inputName}' resolved to no value.");
                 }
 
-                WriteAtPath(body, targetPath, JsonValue.Create(value));
+                JsonPathWriter.Write(body, targetPath, JsonValue.Create(value));
             }
         }
 
@@ -113,7 +113,7 @@ internal static class StateBackendRequestBinder
         {
             foreach ((string fieldName, string targetPath) in shared)
             {
-                WriteAtPath(body, targetPath, JsonValue.Create(ResolveShared(fieldName, decodedCaseIds)));
+                JsonPathWriter.Write(body, targetPath, JsonValue.Create(ResolveShared(fieldName, decodedCaseIds)));
             }
         }
 
@@ -121,7 +121,7 @@ internal static class StateBackendRequestBinder
         {
             foreach ((string fieldName, string targetPath) in collect)
             {
-                WriteAtPath(body, targetPath, CollectArray(fieldName, decodedCaseIds));
+                JsonPathWriter.Write(body, targetPath, CollectArray(fieldName, decodedCaseIds));
             }
         }
 
@@ -209,26 +209,5 @@ internal static class StateBackendRequestBinder
 
         throw new InvalidOperationException(
             $"Request map input '{inputName}' resolved to no value.");
-    }
-
-    // Writes a value at a dotted target path, building intermediate nested objects as needed.
-    private static void WriteAtPath(JsonObject root, string dottedPath, JsonNode? value)
-    {
-        string[] segments = dottedPath.Split('.');
-        JsonObject current = root;
-
-        for (int i = 0; i < segments.Length - 1; i++)
-        {
-            string segment = segments[i];
-            if (current[segment] is not JsonObject child)
-            {
-                child = new JsonObject();
-                current[segment] = child;
-            }
-
-            current = child;
-        }
-
-        current[segments[^1]] = value;
     }
 }

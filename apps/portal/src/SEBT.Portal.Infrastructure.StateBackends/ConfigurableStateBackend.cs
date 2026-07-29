@@ -35,7 +35,7 @@ public class ConfigurableStateBackend : IStateBackend
         _httpClient.BaseAddress ??= _configuration.BaseUrl;
     }
 
-    public StateBackendCapabilities Capabilities => 
+    public StateBackendCapabilities Capabilities =>
         _configuration.Capabilities;
 
     public async Task<EnrollmentCheckResult> CheckEnrollmentAsync(EnrollmentCheckRequest request, CancellationToken cancellationToken = default)
@@ -56,9 +56,8 @@ public class ConfigurableStateBackend : IStateBackend
         EnrollmentResponseMapping mapping = operation.Response
             ?? throw new NotSupportedException("Enrollment check has no response mapping configured.");
 
-        // Fail loud on an incoherent callMode / indexField / expand combination before dispatching.
-        EnrollmentOperationValidator.Validate(operation.CallMode, binding, mapping);
-
+        // The callMode / indexField / expand / match combination is validated at config LOAD time
+        // (StateBackendConfigurationValidator); the dispatch path trusts those invariants.
         return operation.CallMode switch
         {
             EnrollmentCallMode.Batch =>
@@ -235,8 +234,7 @@ public class ConfigurableStateBackend : IStateBackend
         ResultClassifier classifier = operation.Result
             ?? throw new NotSupportedException("Card replacement has no result classifier configured.");
 
-        // Fail loud on a malformed classifier before performing the call.
-        CardReplacementClassifier.Validate(classifier);
+        // Classifier shape is validated at config LOAD time (StateBackendConfigurationValidator).
 
         // Decode the opaque caseId into its routing fields, then expose them (plus the request's
         // reason) as inputs to the domain-centered request binding.
@@ -261,7 +259,7 @@ public class ConfigurableStateBackend : IStateBackend
 
         JsonElement? body2 = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
 
-        CardReplacementOutcome outcome = CardReplacementClassifier.Classify(
+        WriteOutcome outcome = WriteResultClassifier.Classify(
             classifier, (int)response.StatusCode, body2);
 
         return ToResult(outcome);
@@ -310,13 +308,13 @@ public class ConfigurableStateBackend : IStateBackend
         }
     }
 
-    private static CardReplacementResult ToResult(CardReplacementOutcome outcome) =>
+    private static CardReplacementResult ToResult(WriteOutcome outcome) =>
         outcome switch
         {
-            CardReplacementOutcome.Success => CardReplacementResult.Success(),
-            CardReplacementOutcome.PolicyRejection => CardReplacementResult.PolicyRejected(
+            WriteOutcome.Success => CardReplacementResult.Success(),
+            WriteOutcome.PolicyRejection => CardReplacementResult.PolicyRejected(
                 "POLICY_REJECTION", "The household is not eligible to request a replacement via the portal."),
-            CardReplacementOutcome.BackendError => CardReplacementResult.BackendError(
+            WriteOutcome.BackendError => CardReplacementResult.BackendError(
                 "BACKEND_ERROR", "The state backend returned an error."),
             _ => throw new NotSupportedException(
                 $"Card-replacement outcome '{outcome}' is not supported."),
@@ -337,9 +335,8 @@ public class ConfigurableStateBackend : IStateBackend
         ResultClassifier classifier = operation.Result
             ?? throw new NotSupportedException("Address update has no result classifier configured.");
 
-        // Fail loud on a malformed classifier before performing the call. Same capped 3-kind
-        // classifier as card replacement — no second classifier.
-        CardReplacementClassifier.Validate(classifier);
+        // Classifier shape is validated at config LOAD time (StateBackendConfigurationValidator).
+        // Same capped 3-kind classifier as card replacement — no second classifier.
 
         using HttpRequestMessage httpRequest = BuildRequest(operation);
 
@@ -369,7 +366,7 @@ public class ConfigurableStateBackend : IStateBackend
 
         JsonElement? body2 = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
 
-        CardReplacementOutcome outcome = CardReplacementClassifier.Classify(
+        WriteOutcome outcome = WriteResultClassifier.Classify(
             classifier, (int)response.StatusCode, body2);
 
         return ToAddressResult(outcome);
@@ -409,13 +406,13 @@ public class ConfigurableStateBackend : IStateBackend
         return inputs;
     }
 
-    private static AddressUpdateResult ToAddressResult(CardReplacementOutcome outcome) =>
+    private static AddressUpdateResult ToAddressResult(WriteOutcome outcome) =>
         outcome switch
         {
-            CardReplacementOutcome.Success => AddressUpdateResult.Success(),
-            CardReplacementOutcome.PolicyRejection => AddressUpdateResult.PolicyRejected(
+            WriteOutcome.Success => AddressUpdateResult.Success(),
+            WriteOutcome.PolicyRejection => AddressUpdateResult.PolicyRejected(
                 "POLICY_REJECTION", "The household is not eligible to update their address via the portal."),
-            CardReplacementOutcome.BackendError => AddressUpdateResult.BackendError(
+            WriteOutcome.BackendError => AddressUpdateResult.BackendError(
                 "BACKEND_ERROR", "The state backend returned an error."),
             _ => throw new NotSupportedException(
                 $"Address-update outcome '{outcome}' is not supported."),

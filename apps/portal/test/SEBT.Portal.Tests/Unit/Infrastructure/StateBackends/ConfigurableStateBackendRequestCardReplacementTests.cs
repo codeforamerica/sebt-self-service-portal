@@ -43,18 +43,18 @@ public class ConfigurableStateBackendRequestCardReplacementTests
                 {
                     new()
                     {
-                        Outcome = CardReplacementOutcome.PolicyRejection,
+                        Outcome = WriteOutcome.PolicyRejection,
                         MessageField = "message",
                         MessageContains = new List<string> { "policy" },
                     },
                     new()
                     {
-                        Outcome = CardReplacementOutcome.Success,
+                        Outcome = WriteOutcome.Success,
                         Field = "resultCode",
                         ValueIn = new List<string> { "OK" },
                     },
                 },
-                Default = CardReplacementOutcome.BackendError,
+                Default = WriteOutcome.BackendError,
             },
         };
 
@@ -66,12 +66,12 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             {
                 new()
                 {
-                    Outcome = CardReplacementOutcome.Success,
+                    Outcome = WriteOutcome.Success,
                     Field = "respCd",
                     ValueIn = new List<string> { "200", "00" },
                 },
             },
-            Default = CardReplacementOutcome.BackendError,
+            Default = WriteOutcome.BackendError,
         };
 
     private static StateBackendConfiguration BuildConfiguration(CardReplacementOperationConfig cardReplacement) =>
@@ -376,9 +376,9 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             {
                 Conditions = new List<ResultCondition>
                 {
-                    new() { Outcome = CardReplacementOutcome.Success, StatusIn = new List<int> { 200, 201 } },
+                    new() { Outcome = WriteOutcome.Success, StatusIn = new List<int> { 200, 201 } },
                 },
-                Default = CardReplacementOutcome.BackendError,
+                Default = WriteOutcome.BackendError,
             },
         };
 
@@ -409,7 +409,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             {
                 new()
                 {
-                    Outcome = CardReplacementOutcome.Success,
+                    Outcome = WriteOutcome.Success,
                     StatusIn = new List<int> { 200 },
                     ValueIn = new List<string> { "OK" },
                     Field = "resultCode",
@@ -419,7 +419,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act + Assert
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => CardReplacementClassifier.Validate(classifier));
+            () => WriteResultClassifier.Validate(classifier));
         Assert.Contains("exactly one", ex.Message);
     }
 
@@ -431,12 +431,12 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         {
             Conditions = new List<ResultCondition>
             {
-                new() { Outcome = CardReplacementOutcome.Success },
+                new() { Outcome = WriteOutcome.Success },
             },
         };
 
         // Act + Assert
-        Assert.Throws<InvalidOperationException>(() => CardReplacementClassifier.Validate(classifier));
+        Assert.Throws<InvalidOperationException>(() => WriteResultClassifier.Validate(classifier));
     }
 
     [Fact]
@@ -447,13 +447,13 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         {
             Conditions = new List<ResultCondition>
             {
-                new() { Outcome = CardReplacementOutcome.Success, ValueIn = new List<string> { "OK" } },
+                new() { Outcome = WriteOutcome.Success, ValueIn = new List<string> { "OK" } },
             },
         };
 
         // Act + Assert
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => CardReplacementClassifier.Validate(classifier));
+            () => WriteResultClassifier.Validate(classifier));
         Assert.Contains("field", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }

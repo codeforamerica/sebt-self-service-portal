@@ -1,10 +1,10 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
 /// <summary>
-/// Canonical write-outcome vocabulary for a card-replacement response. A closed enum, not an
-/// expression language.
+/// Canonical write-outcome vocabulary for a state-backend write response (shared by the
+/// card-replacement and address-update paths). A closed enum, not an expression language.
 /// </summary>
-public enum CardReplacementOutcome
+public enum WriteOutcome
 {
     /// <summary>The replacement was initiated successfully.</summary>
     Success,
@@ -17,10 +17,10 @@ public enum CardReplacementOutcome
 }
 
 /// <summary>
-/// Classifies a card-replacement response into a canonical <see cref="CardReplacementOutcome"/>
+/// Classifies a state-backend write response into a canonical <see cref="WriteOutcome"/>
 /// (DC-568 spike). An ORDERED, first-match-wins list of <see cref="Conditions"/>; the first whose
 /// predicate holds selects the outcome. Nothing matches → <see cref="Default"/>
-/// (<see cref="CardReplacementOutcome.BackendError"/> when unset).
+/// (<see cref="WriteOutcome.BackendError"/> when unset).
 ///
 /// HARD CAP: each condition is exactly ONE of three closed kinds (see <see cref="ResultCondition"/>).
 /// No AND/OR combinators, no nesting. If a real case needs to combine conditions, STOP — do not
@@ -32,7 +32,7 @@ public sealed record ResultClassifier
     public required List<ResultCondition> Conditions { get; init; }
 
     /// <summary>Outcome when no condition matches. Defaults to BackendError.</summary>
-    public CardReplacementOutcome Default { get; init; } = CardReplacementOutcome.BackendError;
+    public WriteOutcome Default { get; init; } = WriteOutcome.BackendError;
 }
 
 /// <summary>
@@ -43,7 +43,7 @@ public sealed record ResultClassifier
 public sealed record ResultCondition
 {
     /// <summary>Outcome selected when this condition matches.</summary>
-    public required CardReplacementOutcome Outcome { get; init; }
+    public required WriteOutcome Outcome { get; init; }
 
     /// <summary>Kind 1 — HTTP status code is in this set.</summary>
     public List<int>? StatusIn { get; init; }

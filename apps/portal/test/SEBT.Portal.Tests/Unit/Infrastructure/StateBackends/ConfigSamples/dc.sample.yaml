@@ -70,13 +70,13 @@ operations:
       # statusIn / valueIn(field) / messageContains(messageField). NO combinators, NO nesting.
       conditions:
         # DC: a "policy" message is a policy rejection — evaluated BEFORE success (order matters).
-        - outcome: PolicyRejection
+        - outcome: policyRejection
           messageField: message
           messageContains: [policy]
-        - outcome: Success
+        - outcome: success
           field: resultCode
           valueIn: [OK]
-      default: BackendError
+      default: backendError
   addressUpdate:
     method: post
     path: /households/address
@@ -96,10 +96,10 @@ operations:
     result:
       # Same capped 3-kind classifier as card replacement — reused, not a second classifier.
       conditions:
-        - outcome: Success
+        - outcome: success
           field: resultCode
           valueIn: [OK]
-      default: BackendError
+      default: backendError
   enrollmentCheck:
     method: post
     path: /enrollment/check

@@ -4,16 +4,17 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Classifies a card-replacement response into a canonical <see cref="CardReplacementOutcome"/>
-/// (DC-568 spike). Evaluates the classifier's ORDERED conditions first-match-wins; the first whose
-/// predicate holds selects the outcome; none match → the classifier's default.
+/// Classifies a state-backend write response into a canonical <see cref="WriteOutcome"/>
+/// (DC-568 spike; shared by the card-replacement and address-update paths). Evaluates the
+/// classifier's ORDERED conditions first-match-wins; the first whose predicate holds selects the
+/// outcome; none match → the classifier's default.
 ///
 /// HARD CAP (write-side DSL-creep guard): each condition is EXACTLY ONE of three closed kinds —
 /// HTTP status in a set, a body field's value in a set, or a body message containing any of a set
 /// of substrings. No AND/OR combinators, no nesting. <see cref="Validate"/> enforces this
 /// fail-loud at configuration time.
 /// </summary>
-internal static class CardReplacementClassifier
+internal static class WriteResultClassifier
 {
     /// <summary>
     /// Validates the classifier's shape, fail-loud: every condition must set EXACTLY ONE of the
@@ -44,19 +45,19 @@ internal static class CardReplacementClassifier
             if (kinds != 1)
             {
                 throw new InvalidOperationException(
-                    "Each card-replacement result condition must set exactly one of: statusIn, valueIn, messageContains.");
+                    "Each write result condition must set exactly one of: statusIn, valueIn, messageContains.");
             }
 
             if (condition.ValueIn is not null && string.IsNullOrWhiteSpace(condition.Field))
             {
                 throw new InvalidOperationException(
-                    "A card-replacement 'valueIn' condition requires a body 'field' to read.");
+                    "A write 'valueIn' condition requires a body 'field' to read.");
             }
 
             if (condition.MessageContains is not null && string.IsNullOrWhiteSpace(condition.MessageField))
             {
                 throw new InvalidOperationException(
-                    "A card-replacement 'messageContains' condition requires a body 'messageField' to read.");
+                    "A write 'messageContains' condition requires a body 'messageField' to read.");
             }
         }
     }
@@ -65,7 +66,7 @@ internal static class CardReplacementClassifier
     /// Classifies a response. <paramref name="body"/> is the parsed JSON root (or null when the
     /// backend returned no/invalid JSON — status-only conditions still apply).
     /// </summary>
-    public static CardReplacementOutcome Classify(ResultClassifier classifier, int statusCode, JsonElement? body)
+    public static WriteOutcome Classify(ResultClassifier classifier, int statusCode, JsonElement? body)
     {
         foreach (ResultCondition condition in classifier.Conditions)
         {
@@ -87,13 +88,13 @@ internal static class CardReplacementClassifier
 
         if (condition.ValueIn is { } values)
         {
-            string? value = ReadString(body, condition.Field!);
+            string? value = JsonRead.AsString(body, condition.Field!);
             return value is not null && values.Contains(value, StringComparer.Ordinal);
         }
 
         if (condition.MessageContains is { } needles)
         {
-            string? message = ReadString(body, condition.MessageField!);
+            string? message = JsonRead.AsString(body, condition.MessageField!);
             if (message is null)
             {
                 return false;
@@ -112,22 +113,5 @@ internal static class CardReplacementClassifier
         }
 
         return false;
-    }
-
-    private static string? ReadString(JsonElement? body, string property)
-    {
-        if (body is not { } root
-            || root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty(property, out JsonElement value))
-        {
-            return null;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.String => value.GetString(),
-            JsonValueKind.Number => value.GetRawText(),
-            _ => null,
-        };
     }
 }

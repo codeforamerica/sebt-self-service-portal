@@ -43,10 +43,10 @@ operations:
         zip: stdZip
     result:
       conditions:
-        - outcome: Success
+        - outcome: success
           field: respCd
           valueIn: ["200", "00"]
-      default: BackendError
+      default: backendError
   enrollmentCheck:
     method: post
     path: /sebt/check-enrollment

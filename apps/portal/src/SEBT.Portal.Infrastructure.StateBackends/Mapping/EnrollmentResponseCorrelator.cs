@@ -34,7 +34,7 @@ internal static class EnrollmentResponseCorrelator
         string indexField = mapping.IndexField
             ?? throw new InvalidOperationException("Batch enrollment response mapping requires an indexField.");
 
-        JsonElement rows = SelectPath(root, mapping.Root);
+        JsonElement rows = JsonPathSelector.Select(root, mapping.Root);
 
         HashSet<string> matchedIndices = mapping.Match.Strategy switch
         {
@@ -64,7 +64,7 @@ internal static class EnrollmentResponseCorrelator
     {
         ArgumentNullException.ThrowIfNull(mapping);
 
-        JsonElement result = SelectPath(root, mapping.Root);
+        JsonElement result = JsonPathSelector.Select(root, mapping.Root);
 
         return mapping.Match.Strategy switch
         {
@@ -85,7 +85,7 @@ internal static class EnrollmentResponseCorrelator
         {
             foreach (JsonElement row in rows.EnumerateArray())
             {
-                string? index = ReadString(row, indexField);
+                string? index = JsonRead.AsString(row, indexField);
                 if (index is not null && RowValueInSet(match, row))
                 {
                     matchedIndices.Add(index);
@@ -107,7 +107,7 @@ internal static class EnrollmentResponseCorrelator
         {
             foreach (JsonElement row in rows.EnumerateArray())
             {
-                string? index = ReadString(row, indexField);
+                string? index = JsonRead.AsString(row, indexField);
                 if (index is null || !TryReadScore(match, row, out double score))
                 {
                     continue;
@@ -135,7 +135,7 @@ internal static class EnrollmentResponseCorrelator
 
     private static bool RowValueInSet(EnrollmentMatch match, JsonElement row)
     {
-        string? value = ReadString(row, match.Field!);
+        string? value = JsonRead.AsString(row, match.Field!);
         return value is not null && match.ValueIn!.Contains(value, StringComparer.Ordinal);
     }
 
@@ -163,72 +163,4 @@ internal static class EnrollmentResponseCorrelator
         };
     }
 
-    private static string? ReadString(JsonElement record, string property)
-    {
-        if (record.ValueKind != JsonValueKind.Object
-            || !record.TryGetProperty(property, out JsonElement value))
-        {
-            return null;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.String => value.GetString(),
-            JsonValueKind.Number => value.GetRawText(),
-            JsonValueKind.True => "true",
-            JsonValueKind.False => "false",
-            _ => null,
-        };
-    }
-
-    // Capped path grammar: leading `$`, dotted property segments, `[index]` element access.
-    // Mirrors the response mapper's selector — not a general JSONPath engine.
-    private static JsonElement SelectPath(JsonElement root, string path)
-    {
-        JsonElement current = root;
-
-        foreach (string segment in SplitPath(path))
-        {
-            int bracket = segment.IndexOf('[');
-            string property = bracket >= 0 ? segment[..bracket] : segment;
-
-            if (property.Length > 0)
-            {
-                if (current.ValueKind != JsonValueKind.Object
-                    || !current.TryGetProperty(property, out current))
-                {
-                    return default;
-                }
-            }
-
-            while (bracket >= 0)
-            {
-                int close = segment.IndexOf(']', bracket);
-                if (close < 0)
-                {
-                    throw new FormatException($"Malformed path segment '{segment}' in '{path}'.");
-                }
-
-                int index = int.Parse(segment[(bracket + 1)..close], CultureInfo.InvariantCulture);
-                if (current.ValueKind != JsonValueKind.Array || index >= current.GetArrayLength())
-                {
-                    return default;
-                }
-
-                current = current[index];
-                bracket = segment.IndexOf('[', close);
-            }
-        }
-
-        return current;
-    }
-
-    private static IEnumerable<string> SplitPath(string path)
-    {
-        string trimmed = path.StartsWith("$.", StringComparison.Ordinal)
-            ? path[2..]
-            : path.StartsWith('$') ? path[1..] : path;
-
-        return trimmed.Split('.', StringSplitOptions.RemoveEmptyEntries);
-    }
 }

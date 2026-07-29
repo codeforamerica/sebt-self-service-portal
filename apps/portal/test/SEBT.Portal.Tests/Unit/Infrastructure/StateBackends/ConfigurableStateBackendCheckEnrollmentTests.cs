@@ -5,6 +5,7 @@ using SEBT.Portal.Core.StateBackends.Configuration;
 using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends;
+using SEBT.Portal.Infrastructure.StateBackends.Configuration;
 using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
@@ -517,10 +518,12 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.False(result.Results[1].IsMatch);
     }
 
-    // ---- fail-loud validation of the call-mode / index-field / expand combinations ----
+    // ---- fail-loud LOAD-time validation of the call-mode / index-field / expand combinations ----
+    // These invalid enrollment configs now fail at config load (StateBackendConfigurationValidator),
+    // not on first dispatch — so they assert the validator throws directly.
 
     [Fact]
-    public async Task CheckEnrollmentAsync_Batch_WithoutIndexField_Throws()
+    public void Validate_Batch_WithoutIndexField_Throws()
     {
         StateBackendConfiguration config = BatchNoExpandConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
@@ -535,16 +538,13 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => RunAsync(
-                config,
-                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
-                "{}"));
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("indexField", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task CheckEnrollmentAsync_PerChild_WithIndexField_Throws()
+    public void Validate_PerChild_WithIndexField_Throws()
     {
         StateBackendConfiguration config = DcPerChildConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
@@ -559,16 +559,13 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => RunAsync(
-                config,
-                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
-                "{}"));
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("indexField", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task CheckEnrollmentAsync_PerChild_WithExpand_ThrowsNotSupported()
+    public void Validate_PerChild_WithExpand_ThrowsNotSupported()
     {
         StateBackendConfiguration config = DcPerChildConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
@@ -583,16 +580,13 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => RunAsync(
-                config,
-                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
-                "{}"));
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("not supported", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task CheckEnrollmentAsync_ConfidenceThreshold_MissingScoreFieldOrThreshold_Throws()
+    public void Validate_ConfidenceThreshold_MissingScoreFieldOrThreshold_Throws()
     {
         StateBackendConfiguration config = CoConfidenceThresholdConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
@@ -614,16 +608,13 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => RunAsync(
-                config,
-                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
-                "{}"));
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("scoreField", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public async Task CheckEnrollmentAsync_AnyRowValueIn_MissingFieldOrValueIn_Throws()
+    public void Validate_AnyRowValueIn_MissingFieldOrValueIn_Throws()
     {
         StateBackendConfiguration config = BatchNoExpandConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
@@ -645,11 +636,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
             },
         };
 
-        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => RunAsync(
-                config,
-                new EnrollmentCheckRequest(new[] { new EnrollmentChild("c", "A", "B", new DateOnly(2015, 1, 1)) }),
-                "{}"));
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("valueIn", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 

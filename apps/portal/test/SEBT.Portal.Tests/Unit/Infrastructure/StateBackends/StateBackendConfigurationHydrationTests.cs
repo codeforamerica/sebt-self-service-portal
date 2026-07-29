@@ -2,7 +2,6 @@ using SEBT.Portal.Core.StateBackends.Configuration;
 using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends.Configuration;
-using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 using SEBT.Portal.Tests.Unit.Infrastructure.StateBackends.ConfigSamples;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
@@ -108,13 +107,13 @@ public class StateBackendConfigurationHydrationTests
 
         ResultClassifier classifier = Assert.IsType<ResultClassifier>(cardReplacement.Result);
         Assert.Equal(2, classifier.Conditions.Count);
-        Assert.Equal(CardReplacementOutcome.PolicyRejection, classifier.Conditions[0].Outcome);
+        Assert.Equal(WriteOutcome.PolicyRejection, classifier.Conditions[0].Outcome);
         Assert.Equal("message", classifier.Conditions[0].MessageField);
         Assert.Equal(new[] { "policy" }, classifier.Conditions[0].MessageContains);
-        Assert.Equal(CardReplacementOutcome.Success, classifier.Conditions[1].Outcome);
+        Assert.Equal(WriteOutcome.Success, classifier.Conditions[1].Outcome);
         Assert.Equal("resultCode", classifier.Conditions[1].Field);
         Assert.Equal(new[] { "OK" }, classifier.Conditions[1].ValueIn);
-        Assert.Equal(CardReplacementOutcome.BackendError, classifier.Default);
+        Assert.Equal(WriteOutcome.BackendError, classifier.Default);
 
         // The DC address-update write op hydrates: constants + the SHARED batch shape + scalar map
         // (address fields) + the reused result classifier.
@@ -134,10 +133,10 @@ public class StateBackendConfigurationHydrationTests
 
         ResultClassifier dcAddressClassifier = Assert.IsType<ResultClassifier>(dcAddressUpdate.Result);
         ResultCondition dcAddressSuccess = Assert.Single(dcAddressClassifier.Conditions);
-        Assert.Equal(CardReplacementOutcome.Success, dcAddressSuccess.Outcome);
+        Assert.Equal(WriteOutcome.Success, dcAddressSuccess.Outcome);
         Assert.Equal("resultCode", dcAddressSuccess.Field);
         Assert.Equal(new[] { "OK" }, dcAddressSuccess.ValueIn);
-        Assert.Equal(CardReplacementOutcome.BackendError, dcAddressClassifier.Default);
+        Assert.Equal(WriteOutcome.BackendError, dcAddressClassifier.Default);
 
         // The DC enrollment op hydrates: PerChild fan-out (no index, no expansion) + single-object
         // match on the boolean eligibility flag.
@@ -234,7 +233,7 @@ public class StateBackendConfigurationHydrationTests
 
         ResultClassifier coAddressClassifier = Assert.IsType<ResultClassifier>(addressUpdate.Result);
         ResultCondition coAddressSuccess = Assert.Single(coAddressClassifier.Conditions);
-        Assert.Equal(CardReplacementOutcome.Success, coAddressSuccess.Outcome);
+        Assert.Equal(WriteOutcome.Success, coAddressSuccess.Outcome);
         Assert.Equal("respCd", coAddressSuccess.Field);
         Assert.Equal(new[] { "200", "00" }, coAddressSuccess.ValueIn);
 
@@ -266,9 +265,9 @@ public class StateBackendConfigurationHydrationTests
         Assert.True(capabilities.EnrollmentCheck);
     }
 
-    // A canonical value that is NOT a real member of the target C# enum must fail loud at validation.
+    // A canonical value that is NOT a real member of the target C# enum must fail loud at LOAD time.
     [Fact]
-    public void ValidateEnumTables_FailsLoud_WhenCanonicalValueIsNotARealEnumMember()
+    public void Validate_FailsLoud_WhenCanonicalValueIsNotARealEnumMember()
     {
         StateBackendConfiguration config = BuildEnumConfig(
             new StateBackendEnumTable
@@ -282,13 +281,13 @@ public class StateBackendConfigurationHydrationTests
             });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendResponseMapper.ValidateEnumTables(config));
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("Frozn", ex.Message);
     }
 
     // A single source token mapped under two of OUR values is ambiguous and must fail loud.
     [Fact]
-    public void ValidateEnumTables_FailsLoud_WhenTokenIsAmbiguous()
+    public void Validate_FailsLoud_WhenTokenIsAmbiguous()
     {
         StateBackendConfiguration config = BuildEnumConfig(
             new StateBackendEnumTable
@@ -302,14 +301,14 @@ public class StateBackendConfigurationHydrationTests
             });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendResponseMapper.ValidateEnumTables(config));
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("ISSUED", ex.Message);
     }
 
-    // A keywordRules order/map value that is NOT a real IssuanceType member must fail loud at
-    // validation — the same fail-loud discipline as the enum tables.
+    // A keywordRules order/map value that is NOT a real IssuanceType member must fail loud at LOAD
+    // time — the same fail-loud discipline as the enum tables.
     [Fact]
-    public void ValidateEnumTables_FailsLoud_WhenKeywordRuleValueIsNotARealIssuanceType()
+    public void Validate_FailsLoud_WhenKeywordRuleValueIsNotARealIssuanceType()
     {
         StateBackendConfiguration config = BuildIssuanceKeywordConfig(
             new KeywordRules
@@ -324,9 +323,74 @@ public class StateBackendConfigurationHydrationTests
             });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendResponseMapper.ValidateEnumTables(config));
+            () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("Snap", ex.Message);
     }
+
+    // A malformed CARD-REPLACEMENT result classifier (a condition setting no closed kind) must fail
+    // loud at LOAD time — the write-op classifier check folded into the load-time validator.
+    [Fact]
+    public void Validate_FailsLoud_WhenCardReplacementClassifierConditionSetsNoKind()
+    {
+        StateBackendConfiguration config = BuildWriteClassifierConfig(
+            cardReplacementClassifier: MalformedClassifier(), addressUpdateClassifier: null);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("exactly one", ex.Message);
+    }
+
+    // The SAME malformed classifier on the ADDRESS-UPDATE op must also fail loud at LOAD — the
+    // load-time validator validates BOTH write ops, not just card replacement.
+    [Fact]
+    public void Validate_FailsLoud_WhenAddressUpdateClassifierConditionSetsNoKind()
+    {
+        StateBackendConfiguration config = BuildWriteClassifierConfig(
+            cardReplacementClassifier: null, addressUpdateClassifier: MalformedClassifier());
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("exactly one", ex.Message);
+    }
+
+    // A classifier whose single condition sets NONE of the three closed kinds — malformed shape.
+    private static ResultClassifier MalformedClassifier() =>
+        new()
+        {
+            Conditions = new List<ResultCondition>
+            {
+                new() { Outcome = WriteOutcome.Success },
+            },
+        };
+
+    // Minimal config carrying an optional card-replacement and/or address-update write op, each with
+    // the supplied result classifier.
+    private static StateBackendConfiguration BuildWriteClassifierConfig(
+        ResultClassifier? cardReplacementClassifier, ResultClassifier? addressUpdateClassifier) =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                CardReplacement = cardReplacementClassifier is null
+                    ? null
+                    : new CardReplacementOperationConfig
+                    {
+                        Method = StateBackendHttpMethod.Post,
+                        Path = "/cards/replace",
+                        Result = cardReplacementClassifier,
+                    },
+                AddressUpdate = addressUpdateClassifier is null
+                    ? null
+                    : new AddressUpdateOperationConfig
+                    {
+                        Method = StateBackendHttpMethod.Post,
+                        Path = "/households/address",
+                        Result = addressUpdateClassifier,
+                    },
+            },
+        };
 
     // Minimal config whose household lookup infers issuanceType via a keywordRules brick.
     private static StateBackendConfiguration BuildIssuanceKeywordConfig(KeywordRules keywordRules) =>

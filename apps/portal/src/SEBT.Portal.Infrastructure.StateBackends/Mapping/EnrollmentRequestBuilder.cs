@@ -64,7 +64,7 @@ internal static class EnrollmentRequestBuilder
 
         foreach ((string inputName, string targetPath) in binding.Map)
         {
-            WriteAtPath(body, targetPath, JsonValue.Create(ResolveInput(inputName, child, child.DateOfBirth)));
+            JsonPathWriter.Write(body, targetPath, JsonValue.Create(ResolveInput(inputName, child, child.DateOfBirth)));
         }
 
         return body;
@@ -77,10 +77,10 @@ internal static class EnrollmentRequestBuilder
 
         foreach ((string inputName, string targetPath) in binding.Map)
         {
-            WriteAtPath(row, targetPath, JsonValue.Create(ResolveInput(inputName, child, dob)));
+            JsonPathWriter.Write(row, targetPath, JsonValue.Create(ResolveInput(inputName, child, dob)));
         }
 
-        WriteAtPath(row, indexField, JsonValue.Create(index));
+        JsonPathWriter.Write(row, indexField, JsonValue.Create(index));
 
         return row;
     }
@@ -96,25 +96,4 @@ internal static class EnrollmentRequestBuilder
             _ => throw new InvalidOperationException(
                 $"Enrollment request map input '{inputName}' is not a known child field."),
         };
-
-    // Writes a value at a dotted target path, building intermediate nested objects as needed.
-    private static void WriteAtPath(JsonObject root, string dottedPath, JsonNode? value)
-    {
-        string[] segments = dottedPath.Split('.');
-        JsonObject current = root;
-
-        for (int i = 0; i < segments.Length - 1; i++)
-        {
-            string segment = segments[i];
-            if (current[segment] is not JsonObject child)
-            {
-                child = new JsonObject();
-                current[segment] = child;
-            }
-
-            current = child;
-        }
-
-        current[segments[^1]] = value;
-    }
 }

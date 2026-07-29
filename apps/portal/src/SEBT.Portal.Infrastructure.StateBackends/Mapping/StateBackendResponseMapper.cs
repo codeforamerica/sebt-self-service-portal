@@ -48,9 +48,10 @@ internal static class StateBackendResponseMapper
     /// Validates every enum table referenced by any response field mapping (fail-loud, at
     /// configuration time): each OUR value must be a real member of the target C# enum, and no
     /// source token may appear under two of OUR values. Throws <see cref="InvalidOperationException"/>
-    /// on the first violation.
+    /// on the first violation. Invoked at LOAD time by
+    /// <see cref="Configuration.StateBackendConfigurationValidator"/>.
     /// </summary>
-    public static void ValidateEnumTables(StateBackendConfiguration configuration)
+    internal static void ValidateEnumTables(StateBackendConfiguration configuration)
     {
         foreach (StateBackendResponseMapping mapping in ResponseMappings(configuration))
         {
@@ -86,7 +87,7 @@ internal static class StateBackendResponseMapper
     /// </summary>
     public static HouseholdData MapHousehold(JsonElement root, StateBackendConfiguration configuration, StateBackendResponseMapping mapping)
     {
-        JsonElement records = SelectPath(root, mapping.Root);
+        JsonElement records = JsonPathSelector.Select(root, mapping.Root);
         var household = new HouseholdData();
 
         if (records.ValueKind != JsonValueKind.Array)
@@ -177,7 +178,7 @@ internal static class StateBackendResponseMapper
 
     private static bool IsApplicationBased(JsonElement record, StateBackendDisaggregation disaggregation)
     {
-        string? discriminator = ReadString(record, disaggregation.DiscriminatorField);
+        string? discriminator = JsonRead.AsString(record, disaggregation.DiscriminatorField);
 
         return disaggregation.Rule switch
         {
@@ -198,7 +199,7 @@ internal static class StateBackendResponseMapper
             return null;
         }
 
-        string? value = ReadString(record, groupField);
+        string? value = JsonRead.AsString(record, groupField);
         return string.IsNullOrEmpty(value) ? null : value;
     }
 
@@ -211,22 +212,10 @@ internal static class StateBackendResponseMapper
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach ((string routingName, string sourceProperty) in composition.Fields)
         {
-            fields[routingName] = ReadString(record, sourceProperty) ?? string.Empty;
+            fields[routingName] = JsonRead.AsString(record, sourceProperty) ?? string.Empty;
         }
 
         return OpaqueCaseId.Compose(fields);
-    }
-
-    private static string? ReadString(JsonElement record, string property)
-    {
-        if (record.ValueKind != JsonValueKind.Object
-            || !record.TryGetProperty(property, out JsonElement value)
-            || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
-        {
-            return null;
-        }
-
-        return value.GetString();
     }
 
     private static SummerEbtCase MapCase(
@@ -471,61 +460,6 @@ internal static class StateBackendResponseMapper
         }
     }
 
-    /// <summary>
-    /// Navigates a capped path: a leading <c>$</c>, dotted property segments, and <c>[index]</c>
-    /// element access. Anything else is rejected — this is not a general JSONPath engine.
-    /// </summary>
-    private static JsonElement SelectPath(JsonElement root, string path)
-    {
-        JsonElement current = root;
-
-        foreach (string segment in SplitPath(path))
-        {
-            int bracket = segment.IndexOf('[');
-            string property = bracket >= 0 ? segment[..bracket] : segment;
-
-            if (property.Length > 0)
-            {
-                if (current.ValueKind != JsonValueKind.Object
-                    || !current.TryGetProperty(property, out current))
-                {
-                    return default;
-                }
-            }
-
-            // Handle a trailing [index] on this segment, e.g. resultSets[0].
-            while (bracket >= 0)
-            {
-                int close = segment.IndexOf(']', bracket);
-                if (close < 0)
-                {
-                    throw new FormatException($"Malformed path segment '{segment}' in '{path}'.");
-                }
-
-                int index = int.Parse(segment[(bracket + 1)..close]);
-                if (current.ValueKind != JsonValueKind.Array || index >= current.GetArrayLength())
-                {
-                    return default;
-                }
-
-                current = current[index];
-                bracket = segment.IndexOf('[', close);
-            }
-        }
-
-        return current;
-    }
-
-    private static IEnumerable<string> SplitPath(string path)
-    {
-        string trimmed = path.StartsWith("$.", StringComparison.Ordinal)
-            ? path[2..]
-            : path.StartsWith('$') ? path[1..] : path;
-
-        return trimmed
-            .Split('.', StringSplitOptions.RemoveEmptyEntries);
-    }
-
     private enum FieldKind
     {
         String,
@@ -595,7 +529,7 @@ internal static class StateBackendResponseMapper
             var haystacks = new List<string>(_sources.Count);
             foreach (string source in _sources)
             {
-                string? value = ReadString(record, source);
+                string? value = JsonRead.AsString(record, source);
                 if (!string.IsNullOrEmpty(value))
                 {
                     haystacks.Add(value.ToUpperInvariant());

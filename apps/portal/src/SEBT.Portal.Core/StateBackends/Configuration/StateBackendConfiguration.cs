@@ -9,8 +9,6 @@ public record StateBackendConfiguration
 
     public required StateBackendAuthScheme Auth { get; init; }
 
-    // public required StateBackendIdentifiersConfiguration Identifiers { get; init; }
-
     public required StateBackendOperations Operations { get; init; }
 
     /// <summary>
@@ -21,14 +19,9 @@ public record StateBackendConfiguration
 
     public StateBackendCapabilities Capabilities =>
         new(
-            "",
-            ServiceMode: StateBackendServiceMode.Full,
-            CardDetailsCapability.None, // TODO
             Operations.CardReplacement != null
                 ? CardReplacementCapability.PerCase
                 : CardReplacementCapability.None,
             Operations.AddressUpdate != null,
             Operations.EnrollmentCheck != null);
 }
-
-// public record StateBackendIdentifiersConfiguration(string[] Preferred);

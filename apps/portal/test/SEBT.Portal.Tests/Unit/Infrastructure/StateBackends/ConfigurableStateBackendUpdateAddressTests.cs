@@ -48,12 +48,12 @@ public class ConfigurableStateBackendUpdateAddressTests
                 {
                     new()
                     {
-                        Outcome = CardReplacementOutcome.Success,
+                        Outcome = WriteOutcome.Success,
                         Field = "resultCode",
                         ValueIn = new List<string> { "OK" },
                     },
                 },
-                Default = CardReplacementOutcome.BackendError,
+                Default = WriteOutcome.BackendError,
             },
         };
 
@@ -83,12 +83,12 @@ public class ConfigurableStateBackendUpdateAddressTests
                 {
                     new()
                     {
-                        Outcome = CardReplacementOutcome.Success,
+                        Outcome = WriteOutcome.Success,
                         Field = "respCd",
                         ValueIn = new List<string> { "200", "00" },
                     },
                 },
-                Default = CardReplacementOutcome.BackendError,
+                Default = WriteOutcome.BackendError,
             },
         };
 
