@@ -41,6 +41,15 @@ public interface IDocVerificationChallengeRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retrieves the Socure reference ID from the user's most recent challenge that has one,
+    /// or null when the user has never reached a Socure verification session. Used to pass
+    /// the identifier to state connectors for cross-system correlation.
+    /// </summary>
+    Task<string?> GetLatestSocureReferenceIdByUserIdAsync(
+        Guid userId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Creates a new challenge record.
     /// </summary>
     Task CreateAsync(

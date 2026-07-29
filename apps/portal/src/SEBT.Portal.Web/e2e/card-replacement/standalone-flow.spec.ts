@@ -94,8 +94,15 @@ test.describe('Standalone replacement flow', () => {
       await expect(page).toHaveURL('/dashboard')
       await expect(
         page.locator('.usa-alert--success', {
-          hasText: 'Your replacement card request has been recorded'
+          hasText: 'New cards usually arrive in your mailbox'
         })
+      ).toBeVisible()
+      // The confirm screen hands the replaced card off in memory (PII never rides
+      // the URL); the heading names the child (DC) or the card digits (CO).
+      const expectedHeading =
+        currentState === 'co' ? 'the card ending in 1234' : 'John Doe card will be sent'
+      await expect(
+        page.locator('.usa-alert--success .usa-alert__heading', { hasText: expectedHeading })
       ).toBeVisible()
     })
 

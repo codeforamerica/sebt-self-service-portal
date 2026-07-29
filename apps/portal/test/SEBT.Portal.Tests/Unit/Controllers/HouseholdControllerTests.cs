@@ -64,6 +64,7 @@ public class HouseholdControllerTests
     {
         var logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
         var userRepository = Substitute.For<IUserRepository>();
+        var docVerificationChallengeRepository = Substitute.For<IDocVerificationChallengeRepository>();
         var featureManager = Substitute.For<Microsoft.FeatureManagement.IFeatureManager>();
         featureManager.IsEnabledAsync(SEBT.Portal.Core.AppSettings.FeatureFlags.DeferEbtCardDataLoading)
             .Returns(false);
@@ -72,6 +73,7 @@ public class HouseholdControllerTests
             resolver,
             repository,
             userRepository,
+            docVerificationChallengeRepository,
             _piiVisibilityService,
             _idProofingService,
             _selfServiceEvaluator,

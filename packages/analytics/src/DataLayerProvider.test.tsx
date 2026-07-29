@@ -205,6 +205,37 @@ describe('PageTracker (via DataLayerProvider)', () => {
   })
 })
 
+describe('environment (via DataLayerProvider)', () => {
+  beforeEach(() => {
+    delete (window as unknown as Record<string, unknown>).digitalData
+  })
+
+  it('derives page.environment from the hostname when no prop is given', () => {
+    new DataLayer('digitalData')
+
+    render(
+      <DataLayerProvider application="test">
+        <div />
+      </DataLayerProvider>
+    )
+
+    // jsdom serves from http://localhost
+    expect(window.digitalData!.get('page.environment')).toBe('local')
+  })
+
+  it('prefers an explicit environment prop over host derivation', () => {
+    new DataLayer('digitalData')
+
+    render(
+      <DataLayerProvider application="test" environment="staging">
+        <div />
+      </DataLayerProvider>
+    )
+
+    expect(window.digitalData!.get('page.environment')).toBe('staging')
+  })
+})
+
 describe('WebVitalsTracker (via DataLayerProvider)', () => {
   beforeEach(() => {
     delete (window as unknown as Record<string, unknown>).digitalData

@@ -94,6 +94,7 @@ public class ColoradoSummerEbtCaseService : ColoradoCbmsServiceBase, ISummerEbtC
         PiiVisibility piiVisibility,
         IdentityAssuranceLevel identityAssuranceLevel,
         Guid portalUserId,
+        string? socureReferenceId = null,
         CancellationToken cancellationToken = default)
     {
         return Task.FromResult<HouseholdData?>(null);

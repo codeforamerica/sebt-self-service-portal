@@ -20,6 +20,7 @@ public class GetHouseholdDataQueryHandler(
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository repository,
     IUserRepository userRepository,
+    IDocVerificationChallengeRepository docVerificationChallengeRepository,
     IPiiVisibilityService piiVisibilityService,
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
@@ -72,6 +73,11 @@ public class GetHouseholdDataQueryHandler(
                     && user.DateOfBirth is { } verifiedDob
                     && !string.IsNullOrWhiteSpace(benefitIc))
                 {
+                    // DC's data team correlates warehouse calls against Socure records;
+                    // absent (null) when the user never reached a Socure session.
+                    var socureReferenceId = await docVerificationChallengeRepository
+                        .GetLatestSocureReferenceIdByUserIdAsync(portalUserId.Value, cancellationToken);
+
                     householdData = await repository.GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
                         identifier.Value,
                         benefitIc.Trim(),
@@ -79,6 +85,7 @@ public class GetHouseholdDataQueryHandler(
                         PiiVisibility.Full,
                         userIalLevel,
                         portalUserId.Value,
+                        socureReferenceId,
                         cancellationToken);
                     if (householdData != null)
                     {

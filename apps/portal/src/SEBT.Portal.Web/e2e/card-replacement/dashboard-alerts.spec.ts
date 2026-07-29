@@ -41,7 +41,7 @@ test.describe('DashboardAlerts', () => {
     await page.goto('/dashboard?flash=card_replaced')
     await expect(
       page.locator('.usa-alert--success', {
-        hasText: 'Your replacement card request has been recorded'
+        hasText: 'New cards usually arrive in your mailbox'
       })
     ).toBeVisible()
   })
@@ -76,7 +76,7 @@ test.describe('DashboardAlerts', () => {
     // Alert is visible...
     await expect(
       page.locator('.usa-alert--success', {
-        hasText: 'Your replacement card request has been recorded'
+        hasText: 'New cards usually arrive in your mailbox'
       })
     ).toBeVisible()
     // ...but the param has been removed from the URL

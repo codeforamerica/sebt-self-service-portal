@@ -739,8 +739,56 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal((int)UserIalLevel.None, pending.IalLevel);
         Assert.Null(pending.IdProofingCompletedAt);
         Assert.Equal("8185558438", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.Phone!));
-        Assert.Equal("SNAP-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.SnapId!));
-        Assert.Equal("TANF-CO-001", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.TanfId!));
+        Assert.Equal("87654321", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.SnapId!));
+        Assert.Equal("87654322", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(pending.TanfId!));
+    }
+
+    [Fact]
+    public async Task ReseedUserScenarioAsync_WhenPendingUserWasMutated_RestoresPendingSeedState()
+    {
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };
+        var seeder = CreateSeeder(context, settings);
+
+        await seeder.SeedTestUsersAsync(useMockHouseholdData: true);
+
+        var pending = await context.Users
+            .SingleAsync(u =>
+                u.EmailHash == TestPortalCryptography.FingerprintEmail("co-loaded-pending-id-proofing@example.com")
+                || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("co-loaded-pending-id-proofing@example.com"));
+        pending.IdProofingStatus = (int)IdProofingStatus.Completed;
+        pending.IalLevel = (int)UserIalLevel.IAL1plus;
+        pending.IsCoLoaded = true;
+        pending.IdProofingCompletedAt = FixedSeedTime.UtcDateTime;
+        pending.IdProofingAttemptCount = 2;
+        await context.SaveChangesAsync();
+
+        await seeder.ReseedUserScenarioAsync(
+            SeedScenarios.CoLoadedPendingIdProofing.Name,
+            useMockHouseholdData: true);
+
+        var restored = await context.Users
+            .SingleAsync(u =>
+                u.EmailHash == TestPortalCryptography.FingerprintEmail("co-loaded-pending-id-proofing@example.com")
+                || u.EmailHash == null && u.Email == TestPortalCryptography.NormalizeEmailStrict("co-loaded-pending-id-proofing@example.com"));
+        Assert.False(restored.IsCoLoaded);
+        Assert.Equal((int)IdProofingStatus.NotStarted, restored.IdProofingStatus);
+        Assert.Equal((int)UserIalLevel.None, restored.IalLevel);
+        Assert.Null(restored.IdProofingCompletedAt);
+        Assert.Equal(0, restored.IdProofingAttemptCount);
+        Assert.Equal("87654321", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(restored.SnapId!));
+        Assert.Equal("87654322", TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(restored.TanfId!));
+    }
+
+    [Fact]
+    public async Task ReseedUserScenarioAsync_WhenScenarioUnknown_ThrowsArgumentException()
+    {
+        using var context = CreateContext();
+        var seeder = CreateSeeder(context);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            seeder.ReseedUserScenarioAsync("not-a-real-scenario", useMockHouseholdData: true));
     }
 
     [Fact]
