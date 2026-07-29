@@ -3,6 +3,8 @@ using SEBT.Portal.Core.StateBackends.Configuration;
 
 namespace SEBT.Portal.Core.StateBackends;
 
+public enum HouseholdLookupStatus { Found, NotFound, Ambiguous }
+
 public interface IStateBackend
 {
     StateBackendCapabilities Capabilities { get; }
@@ -24,7 +26,6 @@ public interface IStateBackend
 }
 
 public sealed record IdentitySignal(string Type, string Value, bool Verified);
-public enum HouseholdLookupStatus { Found, NotFound, Ambiguous }
 
 /// <summary>
 /// A household lookup request. <see cref="Signals"/> are household-search keys (email, phone,

@@ -8,11 +8,6 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 public class StateBackendApiKeyAuthHandlerTests
 {
-    private sealed class StubSecretResolver(string value) : IStateBackendSecretResolver
-    {
-        public string Resolve(string reference) => value;
-    }
-
     [Fact]
     public async Task SetsConfiguredHeaderToResolvedKey_OnOutgoingRequest()
     {
@@ -40,5 +35,10 @@ public class StateBackendApiKeyAuthHandlerTests
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         mockHttp.VerifyNoOutstandingExpectation();
+    }
+
+    private sealed class StubSecretResolver(string value) : IStateBackendSecretResolver
+    {
+        public string Resolve(string reference) => value;
     }
 }

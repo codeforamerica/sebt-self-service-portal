@@ -1,6 +1,65 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
 /// <summary>
+/// The closed set of enrollment call-fan-out modes. HARD CAP: exactly these two. A chunked batch
+/// (max N children per call) would be a future <c>batchSize</c> variation — do NOT grow this enum
+/// to model it without stopping first.
+/// </summary>
+public enum EnrollmentCallMode
+{
+    /// <summary>
+    /// One backend call carrying every child as a correlated row. Children are correlated back by
+    /// the request/response <c>indexField</c>, with expansion + any-candidate fan-in (CO).
+    /// </summary>
+    Batch,
+
+    /// <summary>
+    /// The driver loops the child batch and makes ONE call per child (request bound from that single
+    /// child), reading a single result object per call — no correlation index (DC).
+    /// </summary>
+    PerChild,
+}
+
+/// <summary>
+/// The closed set of request-side candidate-expansion strategies. A named brick, NOT a
+/// date-mangling mini-language.
+/// </summary>
+public enum CandidateExpansion
+{
+    /// <summary>Exactly one request row per child.</summary>
+    None,
+
+    /// <summary>
+    /// Emit the entered DOB PLUS its month/day-swapped candidate, but ONLY when the swap yields a
+    /// valid AND different calendar date. Both rows share the child's correlation index.
+    /// </summary>
+    TransposeMonthDay,
+}
+
+/// <summary>
+/// The closed set of enrollment match strategies. HARD CAP: exactly these two named strategies. The
+/// argmax + strict <c>&gt;</c> comparison of <see cref="ConfidenceThreshold"/> live in fixed code —
+/// config NEVER exposes comparison or boolean operators. If a real state needs a third shape, STOP
+/// and add a NAMED strategy; do NOT add a general numeric-condition brick.
+/// </summary>
+public enum EnrollmentMatchStrategy
+{
+    /// <summary>
+    /// A body field's value is in a set (the eligibility flag). Batch = per-row field∈set with
+    /// any-candidate fan-in; PerChild = the single result's field∈set.
+    /// </summary>
+    AnyRowValueIn,
+
+    /// <summary>
+    /// A confidence score strictly exceeds a threshold. Batch = group a child's candidate rows by
+    /// index, take the max score, match iff <c>max &gt; threshold</c> (mirrors CO's argmax + strict
+    /// <c>&gt;</c>); PerChild = the single result's <c>score &gt; threshold</c> (no argmax needed).
+    /// A missing/non-numeric score is not a match.
+    /// </summary>
+    ConfidenceThreshold,
+}
+
+/// <summary>
 /// Enrollment-check operation config (DC-568 spike). Domain-centered on the enrollment op: a
 /// <see cref="Request"/> that turns each child into one or more backend request rows (optionally
 /// expanding DOB candidates under a shared correlation index) and a <see cref="Response"/> that
@@ -30,26 +89,6 @@ public sealed record EnrollmentCheckOperationConfig() : StateBackendReadOperatio
 }
 
 /// <summary>
-/// The closed set of enrollment call-fan-out modes. HARD CAP: exactly these two. A chunked batch
-/// (max N children per call) would be a future <c>batchSize</c> variation — do NOT grow this enum
-/// to model it without stopping first.
-/// </summary>
-public enum EnrollmentCallMode
-{
-    /// <summary>
-    /// One backend call carrying every child as a correlated row. Children are correlated back by
-    /// the request/response <c>indexField</c>, with expansion + any-candidate fan-in (CO).
-    /// </summary>
-    Batch,
-
-    /// <summary>
-    /// The driver loops the child batch and makes ONE call per child (request bound from that single
-    /// child), reading a single result object per call — no correlation index (DC).
-    /// </summary>
-    PerChild,
-}
-
-/// <summary>
 /// Builds the per-child request rows. <see cref="Map"/> is OUR child-field name → dotted target path
 /// in the backend row (closed LHS: firstName / lastName / dob). <see cref="IndexField"/> is the
 /// dotted target path where the row's correlation index is written so the backend can echo it back.
@@ -75,22 +114,6 @@ public sealed record EnrollmentRequestBinding
 }
 
 /// <summary>
-/// The closed set of request-side candidate-expansion strategies. A named brick, NOT a
-/// date-mangling mini-language.
-/// </summary>
-public enum CandidateExpansion
-{
-    /// <summary>Exactly one request row per child.</summary>
-    None,
-
-    /// <summary>
-    /// Emit the entered DOB PLUS its month/day-swapped candidate, but ONLY when the swap yields a
-    /// valid AND different calendar date. Both rows share the child's correlation index.
-    /// </summary>
-    TransposeMonthDay,
-}
-
-/// <summary>
 /// Correlates response rows back to children and decides match. <see cref="Root"/> selects the row
 /// array; <see cref="IndexField"/> is the source property carrying the echoed correlation index;
 /// <see cref="Match"/> is a named-strategy brick selecting how a match is decided. Fan-in (a child
@@ -110,29 +133,6 @@ public sealed record EnrollmentResponseMapping
 
     /// <summary>The named-strategy match brick deciding whether a child matches.</summary>
     public required EnrollmentMatch Match { get; init; }
-}
-
-/// <summary>
-/// The closed set of enrollment match strategies. HARD CAP: exactly these two named strategies. The
-/// argmax + strict <c>&gt;</c> comparison of <see cref="ConfidenceThreshold"/> live in fixed code —
-/// config NEVER exposes comparison or boolean operators. If a real state needs a third shape, STOP
-/// and add a NAMED strategy; do NOT add a general numeric-condition brick.
-/// </summary>
-public enum EnrollmentMatchStrategy
-{
-    /// <summary>
-    /// A body field's value is in a set (the eligibility flag). Batch = per-row field∈set with
-    /// any-candidate fan-in; PerChild = the single result's field∈set.
-    /// </summary>
-    AnyRowValueIn,
-
-    /// <summary>
-    /// A confidence score strictly exceeds a threshold. Batch = group a child's candidate rows by
-    /// index, take the max score, match iff <c>max &gt; threshold</c> (mirrors CO's argmax + strict
-    /// <c>&gt;</c>); PerChild = the single result's <c>score &gt; threshold</c> (no argmax needed).
-    /// A missing/non-numeric score is not a match.
-    /// </summary>
-    ConfidenceThreshold,
 }
 
 /// <summary>

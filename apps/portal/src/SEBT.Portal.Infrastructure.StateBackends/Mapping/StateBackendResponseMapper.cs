@@ -44,6 +44,13 @@ internal static class StateBackendResponseMapper
             ["issuanceType"] = FieldTarget.Enum<IssuanceType>((c, v) => c.IssuanceType = v),
         };
 
+    private enum FieldKind
+    {
+        String,
+        DateTime,
+        Enum,
+    }
+
     /// <summary>
     /// Validates every enum table referenced by any response field mapping (fail-loud, at
     /// configuration time): each OUR value must be a real member of the target C# enum, and no
@@ -458,13 +465,6 @@ internal static class StateBackendResponseMapper
         {
             yield return lookup;
         }
-    }
-
-    private enum FieldKind
-    {
-        String,
-        DateTime,
-        Enum,
     }
 
     /// <summary>

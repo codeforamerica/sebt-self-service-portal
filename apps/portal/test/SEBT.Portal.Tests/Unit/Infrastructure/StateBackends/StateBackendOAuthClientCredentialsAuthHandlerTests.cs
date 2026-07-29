@@ -9,11 +9,6 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 public class StateBackendOAuthClientCredentialsAuthHandlerTests
 {
-    private sealed class StubSecretResolver(string value) : IStateBackendSecretResolver
-    {
-        public string Resolve(string reference) => value;
-    }
-
     private static StateBackendOAuthClientCredentialsAuthScheme BuildScheme() =>
         new()
         {
@@ -90,5 +85,10 @@ public class StateBackendOAuthClientCredentialsAuthHandlerTests
 
         // Assert
         Assert.Equal(1, tokenFetches);
+    }
+
+    private sealed class StubSecretResolver(string value) : IStateBackendSecretResolver
+    {
+        public string Resolve(string reference) => value;
     }
 }
