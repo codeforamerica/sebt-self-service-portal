@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Text.Json;
 
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
@@ -20,7 +21,7 @@ internal static class OpaqueCaseId
         ArgumentNullException.ThrowIfNull(fields);
 
         byte[] json = JsonSerializer.SerializeToUtf8Bytes(fields);
-        return ToUrlSafeBase64(json);
+        return Base64Url.EncodeToString(json);
     }
 
     /// <summary>Decodes a token back into its named routing fields. Fails loud on a malformed token.</summary>
@@ -31,7 +32,7 @@ internal static class OpaqueCaseId
         byte[] json;
         try
         {
-            json = FromUrlSafeBase64(token);
+            json = Base64Url.DecodeFromChars(token);
         }
         catch (FormatException ex)
         {
@@ -50,24 +51,5 @@ internal static class OpaqueCaseId
 
         return fields
             ?? throw new InvalidOperationException($"caseId token '{token}' decoded to no routing fields.");
-    }
-
-    // URL-safe base64: '+' -> '-', '/' -> '_', padding stripped (mirrors RFC 4648 §5).
-    private static string ToUrlSafeBase64(byte[] bytes)
-    {
-        string standard = Convert.ToBase64String(bytes);
-        return standard.TrimEnd('=').Replace('+', '-').Replace('/', '_');
-    }
-
-    private static byte[] FromUrlSafeBase64(string token)
-    {
-        string standard = token.Replace('-', '+').Replace('_', '/');
-        int padding = standard.Length % 4;
-        if (padding > 0)
-        {
-            standard = standard.PadRight(standard.Length + (4 - padding), '=');
-        }
-
-        return Convert.FromBase64String(standard);
     }
 }

@@ -174,7 +174,7 @@ public class ConfigurableStateBackendUpdateAddressTests
         var request = new AddressUpdateRequest(caseIds, SampleAddress());
 
         // Act
-        AddressUpdateResult result = await backend.UpdateAddressAsync(request);
+        WriteResult result = await backend.UpdateAddressAsync(request);
 
         // Assert
         Assert.NotNull(capturedBody);
@@ -216,7 +216,7 @@ public class ConfigurableStateBackendUpdateAddressTests
         var backend = BuildBackend(mockHttp, DcAddressUpdate());
 
         // Act
-        AddressUpdateResult result = await backend.UpdateAddressAsync(
+        WriteResult result = await backend.UpdateAddressAsync(
             new AddressUpdateRequest(caseIds, SampleAddress()));
 
         // Assert — nothing matches → default BackendError.
@@ -252,7 +252,7 @@ public class ConfigurableStateBackendUpdateAddressTests
         var request = new AddressUpdateRequest(caseIds, SampleAddress());
 
         // Act
-        AddressUpdateResult result = await backend.UpdateAddressAsync(request);
+        WriteResult result = await backend.UpdateAddressAsync(request);
 
         // Assert — one array element per decoded caseId, in order.
         Assert.NotNull(capturedBody);

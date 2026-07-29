@@ -3,7 +3,7 @@ using SEBT.Portal.Core.StateBackends.Configuration;
 
 namespace SEBT.Portal.Core.StateBackends;
 
-public enum HouseholdLookupStatus { Found, NotFound, Ambiguous }
+public enum HouseholdLookupStatus { Found, NotFound }
 
 public interface IStateBackend
 {
@@ -12,10 +12,10 @@ public interface IStateBackend
     Task<HouseholdLookupResult> LookupHouseholdAsync(
         HouseholdLookupRequest request, CancellationToken cancellationToken = default);
 
-    Task<CardReplacementResult> RequestCardReplacementAsync(
+    Task<WriteResult> RequestCardReplacementAsync(
         CardReplacementRequest request, CancellationToken cancellationToken = default);
 
-    Task<AddressUpdateResult> UpdateAddressAsync(
+    Task<WriteResult> UpdateAddressAsync(
         AddressUpdateRequest request, CancellationToken cancellationToken = default);
 
     Task<EnrollmentCheckResult> CheckEnrollmentAsync(
@@ -24,7 +24,7 @@ public interface IStateBackend
     Task<StateBackendHealth> GetHealthAsync(CancellationToken cancellationToken = default);
 }
 
-public sealed record IdentitySignal(string Type, string Value, bool Verified);
+public sealed record IdentitySignal(string Type, string Value);
 
 /// <summary>
 /// A household lookup request. <see cref="Signals"/> are household-search keys; <see cref="IsProofed"/>
@@ -61,10 +61,10 @@ public sealed record AddressUpdateAddress
 }
 
 /// <summary>
-/// Canonical address-update outcome: success, a policy rejection (household not eligible), or a
-/// backend error.
+/// Canonical write outcome (card replacement, address update): success, a policy rejection
+/// (household not eligible), or a backend error.
 /// </summary>
-public sealed record AddressUpdateResult
+public sealed record WriteResult
 {
     public bool IsSuccess { get; init; }
 
@@ -75,13 +75,13 @@ public sealed record AddressUpdateResult
 
     public string? ErrorMessage { get; init; }
 
-    public static AddressUpdateResult Success() =>
+    public static WriteResult Success() =>
         new() { IsSuccess = true };
 
-    public static AddressUpdateResult PolicyRejected(string code, string message) =>
+    public static WriteResult PolicyRejected(string code, string message) =>
         new() { IsSuccess = false, IsPolicyRejection = true, ErrorCode = code, ErrorMessage = message };
 
-    public static AddressUpdateResult BackendError(string code, string message) =>
+    public static WriteResult BackendError(string code, string message) =>
         new() { IsSuccess = false, IsPolicyRejection = false, ErrorCode = code, ErrorMessage = message };
 }
 
@@ -92,31 +92,6 @@ public sealed record AddressUpdateResult
 public sealed record CardReplacementRequest(string CaseId)
 {
     public string? Reason { get; init; }
-}
-
-/// <summary>
-/// Canonical card-replacement outcome: success, a policy rejection (household not eligible), or a
-/// backend error.
-/// </summary>
-public sealed record CardReplacementResult
-{
-    public bool IsSuccess { get; init; }
-
-    /// <summary>The failure is a policy rejection rather than a technical backend error.</summary>
-    public bool IsPolicyRejection { get; init; }
-
-    public string? ErrorCode { get; init; }
-
-    public string? ErrorMessage { get; init; }
-
-    public static CardReplacementResult Success() =>
-        new() { IsSuccess = true };
-
-    public static CardReplacementResult PolicyRejected(string code, string message) =>
-        new() { IsSuccess = false, IsPolicyRejection = true, ErrorCode = code, ErrorMessage = message };
-
-    public static CardReplacementResult BackendError(string code, string message) =>
-        new() { IsSuccess = false, IsPolicyRejection = false, ErrorCode = code, ErrorMessage = message };
 }
 
 /// <summary>An enrollment-eligibility check for a batch of children.</summary>

@@ -4,5 +4,4 @@ public sealed record StateBackendApiKeyAuthScheme : StateBackendAuthScheme
 {
     public required string Header { get; init; }
     public required string KeyRef { get; init; }
-    public override AuthSchemes Scheme => AuthSchemes.ApiKey;
 }

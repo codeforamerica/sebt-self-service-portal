@@ -1,6 +1,6 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
-public sealed record AddressUpdateOperationConfig() : StateBackendWriteOperationConfig
+public sealed record AddressUpdateOperationConfig() : StateBackendOperationConfig
 {
     /// <summary>How to build the outgoing address-update request body.</summary>
     public RequestBinding? Request { get; init; }

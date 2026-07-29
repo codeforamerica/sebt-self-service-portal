@@ -3,7 +3,6 @@ namespace SEBT.Portal.Core.StateBackends.Configuration;
 public enum CardReplacementCapability
 {
     None,
-    Batch,
     PerCase
 }
 

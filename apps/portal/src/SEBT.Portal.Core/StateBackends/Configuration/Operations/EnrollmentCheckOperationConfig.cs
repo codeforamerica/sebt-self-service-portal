@@ -40,7 +40,7 @@ public enum EnrollmentMatchStrategy
 /// Turns a batch of children into backend calls (via <see cref="Request"/>) and a match verdict per
 /// child (via <see cref="Response"/>).
 /// </summary>
-public sealed record EnrollmentCheckOperationConfig() : StateBackendReadOperationConfig
+public sealed record EnrollmentCheckOperationConfig() : StateBackendOperationConfig
 {
     /// <summary>How the driver fans a child batch out to backend calls. Required — never inferred.</summary>
     public required EnrollmentCallMode CallMode { get; init; }

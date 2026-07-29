@@ -253,7 +253,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var backend = BuildBackend(mockHttp, DcCardReplacement());
 
         // Act
-        CardReplacementResult result = await backend.RequestCardReplacementAsync(
+        WriteResult result = await backend.RequestCardReplacementAsync(
             new CardReplacementRequest(caseId) { Reason = "lost" });
 
         // Assert
@@ -283,7 +283,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var backend = BuildBackend(mockHttp, DcCardReplacement());
 
         // Act
-        CardReplacementResult result = await backend.RequestCardReplacementAsync(
+        WriteResult result = await backend.RequestCardReplacementAsync(
             new CardReplacementRequest(caseId) { Reason = "lost" });
 
         // Assert — first-match-wins: policy message beats the later success condition.
@@ -312,7 +312,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var backend = BuildBackend(mockHttp, DcCardReplacement());
 
         // Act
-        CardReplacementResult result = await backend.RequestCardReplacementAsync(
+        WriteResult result = await backend.RequestCardReplacementAsync(
             new CardReplacementRequest(caseId) { Reason = "lost" });
 
         // Assert — nothing matches → default BackendError.
@@ -348,7 +348,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var backend = BuildBackend(mockHttp, cardReplacement);
 
         // Act
-        CardReplacementResult result = await backend.RequestCardReplacementAsync(
+        WriteResult result = await backend.RequestCardReplacementAsync(
             new CardReplacementRequest(caseId));
 
         // Assert
@@ -384,7 +384,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var backend = BuildBackend(mockHttp, cardReplacement);
 
         // Act
-        CardReplacementResult result = await backend.RequestCardReplacementAsync(
+        WriteResult result = await backend.RequestCardReplacementAsync(
             new CardReplacementRequest(caseId));
 
         // Assert

@@ -12,6 +12,14 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 public class ConfigurableStateBackendCheckEnrollmentTests
 {
+    // Rebuilds the config with its enrollment-check operation swapped out.
+    private static StateBackendConfiguration WithEnrollment(
+        StateBackendConfiguration config, EnrollmentCheckOperationConfig operation) =>
+        config with
+        {
+            Operations = config.Operations with { EnrollmentCheck = operation },
+        };
+
     // CO-shaped: batch, DOB expansion, eligibility-flag row match.
     private static StateBackendConfiguration CoConfiguration() =>
         new()
@@ -505,16 +513,10 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     {
         StateBackendConfiguration config = BatchNoExpandConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
-        config = config with
+        config = WithEnrollment(config, operation with
         {
-            Operations = config.Operations with
-            {
-                EnrollmentCheck = operation with
-                {
-                    Request = operation.Request! with { IndexField = null },
-                },
-            },
-        };
+            Request = operation.Request! with { IndexField = null },
+        });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -526,16 +528,10 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     {
         StateBackendConfiguration config = DcPerChildConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
-        config = config with
+        config = WithEnrollment(config, operation with
         {
-            Operations = config.Operations with
-            {
-                EnrollmentCheck = operation with
-                {
-                    Request = operation.Request! with { IndexField = "reqInd" },
-                },
-            },
-        };
+            Request = operation.Request! with { IndexField = "reqInd" },
+        });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -547,16 +543,10 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     {
         StateBackendConfiguration config = DcPerChildConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
-        config = config with
+        config = WithEnrollment(config, operation with
         {
-            Operations = config.Operations with
-            {
-                EnrollmentCheck = operation with
-                {
-                    Request = operation.Request! with { Expand = CandidateExpansion.TransposeMonthDay },
-                },
-            },
-        };
+            Request = operation.Request! with { Expand = CandidateExpansion.TransposeMonthDay },
+        });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -568,23 +558,17 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     {
         StateBackendConfiguration config = CoConfidenceThresholdConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
-        config = config with
+        config = WithEnrollment(config, operation with
         {
-            Operations = config.Operations with
+            Response = operation.Response! with
             {
-                EnrollmentCheck = operation with
+                Match = new EnrollmentMatch
                 {
-                    Response = operation.Response! with
-                    {
-                        Match = new EnrollmentMatch
-                        {
-                            // confidenceThreshold with NO scoreField/threshold → fail loud.
-                            Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
-                        },
-                    },
+                    // confidenceThreshold with NO scoreField/threshold → fail loud.
+                    Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
                 },
             },
-        };
+        });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -596,23 +580,17 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     {
         StateBackendConfiguration config = BatchNoExpandConfiguration();
         var operation = config.Operations.EnrollmentCheck!;
-        config = config with
+        config = WithEnrollment(config, operation with
         {
-            Operations = config.Operations with
+            Response = operation.Response! with
             {
-                EnrollmentCheck = operation with
+                Match = new EnrollmentMatch
                 {
-                    Response = operation.Response! with
-                    {
-                        Match = new EnrollmentMatch
-                        {
-                            // anyRowValueIn with NO field/valueIn → fail loud.
-                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
-                        },
-                    },
+                    // anyRowValueIn with NO field/valueIn → fail loud.
+                    Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
                 },
             },
-        };
+        });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));

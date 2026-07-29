@@ -41,6 +41,19 @@ public class ConfigurableStateBackendLookupHouseholdTests
             },
         };
 
+    // Rebuilds the config with its household-lookup operation swapped out.
+    private static StateBackendConfiguration WithLookup(
+        StateBackendConfiguration configuration, HouseholdLookupOperationConfig lookup) =>
+        configuration with
+        {
+            Operations = configuration.Operations with { HouseholdLookup = lookup },
+        };
+
+    // Rebuilds the config with its household-lookup response mapping swapped out.
+    private static StateBackendConfiguration WithLookupResponse(
+        StateBackendConfiguration configuration, StateBackendResponseMapping response) =>
+        WithLookup(configuration, configuration.Operations.HouseholdLookup! with { Response = response });
+
     // Raw passthrough shaped like the DC REST wrapper: multi-result-set, original column names.
     private const string DcRawResponse =
         """
@@ -66,7 +79,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(BuildConfiguration(), httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+            new[] { new IdentitySignal("email", "ada@example.test") });
 
         // Act
         HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
@@ -111,7 +124,19 @@ public class ConfigurableStateBackendLookupHouseholdTests
     public async Task LookupHouseholdAsync_MapsTypedFields_StringsDateAndEnum()
     {
         // Arrange
-        StateBackendConfiguration configuration = BuildConfiguration();
+        StateBackendConfiguration configuration = WithLookupResponse(
+            BuildConfiguration(),
+            new StateBackendResponseMapping
+            {
+                Root = "$.resultSets[0]",
+                Fields = new Dictionary<string, FieldMapping>
+                {
+                    ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
+                    ["childFirstName"] = new() { From = "ChildFirstName" },
+                    ["ebtCardIssueDate"] = new() { From = "IssueDate", Format = "MM/dd/yyyy" },
+                    ["ebtCardStatus"] = new() { From = "CardStatus", Enum = "cardStatus" },
+                },
+            });
         configuration = configuration with
         {
             Enums = new Dictionary<string, StateBackendEnumTable>
@@ -126,23 +151,6 @@ public class ConfigurableStateBackendLookupHouseholdTests
                     Default = "Unknown",
                 },
             },
-            Operations = configuration.Operations with
-            {
-                HouseholdLookup = configuration.Operations.HouseholdLookup! with
-                {
-                    Response = new StateBackendResponseMapping
-                    {
-                        Root = "$.resultSets[0]",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
-                            ["childFirstName"] = new() { From = "ChildFirstName" },
-                            ["ebtCardIssueDate"] = new() { From = "IssueDate", Format = "MM/dd/yyyy" },
-                            ["ebtCardStatus"] = new() { From = "CardStatus", Enum = "cardStatus" },
-                        },
-                    },
-                },
-            },
         };
 
         var mockHttp = new MockHttpMessageHandler();
@@ -153,7 +161,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+            new[] { new IdentitySignal("email", "ada@example.test") });
 
         // Act
         HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
@@ -193,25 +201,17 @@ public class ConfigurableStateBackendLookupHouseholdTests
     private static StateBackendConfiguration WithRequestBinding(RequestBinding binding)
     {
         StateBackendConfiguration configuration = BuildConfiguration();
-        return configuration with
-        {
-            Operations = configuration.Operations with
-            {
-                HouseholdLookup = configuration.Operations.HouseholdLookup! with
-                {
-                    Request = binding,
-                },
-            },
-        };
+        return WithLookup(
+            configuration, configuration.Operations.HouseholdLookup! with { Request = binding });
     }
 
     private static HouseholdLookupRequest DcRequest(bool isProofed) =>
         new(
             new[]
             {
-                new IdentitySignal("email", "ada@example.test", Verified: true),
-                new IdentitySignal("ic", "IC-123", Verified: true),
-                new IdentitySignal("dob", "1815-12-10", Verified: true),
+                new IdentitySignal("email", "ada@example.test"),
+                new IdentitySignal("ic", "IC-123"),
+                new IdentitySignal("dob", "1815-12-10"),
             })
         {
             IsProofed = isProofed,
@@ -306,7 +306,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+            new[] { new IdentitySignal("email", "ada@example.test") });
 
         // Act + Assert
         InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -327,7 +327,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
                 },
             });
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("phone", "5551234567", Verified: true) });
+            new[] { new IdentitySignal("phone", "5551234567") });
 
         // Act
         string capturedBody = await CaptureLookupBodyAsync(configuration, request);
@@ -357,25 +357,18 @@ public class ConfigurableStateBackendLookupHouseholdTests
     {
         // Arrange
         StateBackendConfiguration configuration = BuildConfiguration();
-        configuration = configuration with
-        {
-            Operations = configuration.Operations with
+        configuration = WithLookupResponse(
+            configuration,
+            configuration.Operations.HouseholdLookup!.Response! with
             {
-                HouseholdLookup = configuration.Operations.HouseholdLookup! with
+                Disaggregation = new StateBackendDisaggregation
                 {
-                    Response = configuration.Operations.HouseholdLookup!.Response! with
-                    {
-                        Disaggregation = new StateBackendDisaggregation
-                        {
-                            Rule = DisaggregationRule.Presence,
-                            DiscriminatorField = "ApplicationId",
-                            GroupApplicationsBy = "ApplicationId",
-                            CaseInclusion = CaseInclusionPredicate.All,
-                        },
-                    },
+                    Rule = DisaggregationRule.Presence,
+                    DiscriminatorField = "ApplicationId",
+                    GroupApplicationsBy = "ApplicationId",
+                    CaseInclusion = CaseInclusionPredicate.All,
                 },
-            },
-        };
+            });
 
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
@@ -385,7 +378,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+            new[] { new IdentitySignal("email", "ada@example.test") });
 
         // Act
         HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
@@ -426,33 +419,25 @@ public class ConfigurableStateBackendLookupHouseholdTests
     public async Task LookupHouseholdAsync_ValueInSetRule_All_PartitionsAndGroupsApplications()
     {
         // Arrange
-        StateBackendConfiguration configuration = BuildConfiguration();
-        configuration = configuration with
-        {
-            Operations = configuration.Operations with
+        StateBackendConfiguration configuration = WithLookupResponse(
+            BuildConfiguration(),
+            new StateBackendResponseMapping
             {
-                HouseholdLookup = configuration.Operations.HouseholdLookup! with
+                Root = "$.stdntEnrollDtls",
+                Fields = new Dictionary<string, FieldMapping>
                 {
-                    Response = new StateBackendResponseMapping
-                    {
-                        Root = "$.stdntEnrollDtls",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["summerEBTCaseID"] = new() { From = "sebtChldCwin" },
-                            ["childFirstName"] = new() { From = "chldNm" },
-                        },
-                        Disaggregation = new StateBackendDisaggregation
-                        {
-                            Rule = DisaggregationRule.ValueInSet,
-                            DiscriminatorField = "eligSrc",
-                            ApplicationValues = new List<string> { "CBMS", "PK" },
-                            GroupApplicationsBy = "sebtAppId",
-                            CaseInclusion = CaseInclusionPredicate.All,
-                        },
-                    },
+                    ["summerEBTCaseID"] = new() { From = "sebtChldCwin" },
+                    ["childFirstName"] = new() { From = "chldNm" },
                 },
-            },
-        };
+                Disaggregation = new StateBackendDisaggregation
+                {
+                    Rule = DisaggregationRule.ValueInSet,
+                    DiscriminatorField = "eligSrc",
+                    ApplicationValues = new List<string> { "CBMS", "PK" },
+                    GroupApplicationsBy = "sebtAppId",
+                    CaseInclusion = CaseInclusionPredicate.All,
+                },
+            });
 
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
@@ -462,7 +447,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("phone", "5551234567", Verified: true) });
+            new[] { new IdentitySignal("phone", "5551234567") });
 
         // Act
         HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
@@ -501,7 +486,26 @@ public class ConfigurableStateBackendLookupHouseholdTests
 
     private static StateBackendConfiguration WithCoStatusInclusion()
     {
-        StateBackendConfiguration configuration = BuildConfiguration();
+        StateBackendConfiguration configuration = WithLookupResponse(
+            BuildConfiguration(),
+            new StateBackendResponseMapping
+            {
+                Root = "$.stdntEnrollDtls",
+                Fields = new Dictionary<string, FieldMapping>
+                {
+                    ["summerEBTCaseID"] = new() { From = "sebtChldCwin" },
+                    ["childFirstName"] = new() { From = "chldNm" },
+                    ["applicationStatus"] = new() { From = "sebtAppSts", Enum = "applicationStatus" },
+                },
+                Disaggregation = new StateBackendDisaggregation
+                {
+                    Rule = DisaggregationRule.ValueInSet,
+                    DiscriminatorField = "eligSrc",
+                    ApplicationValues = new List<string> { "CBMS", "PK" },
+                    GroupApplicationsBy = "sebtAppId",
+                    CaseInclusion = CaseInclusionPredicate.WhenApprovedOrNotApplicationBased,
+                },
+            });
         return configuration with
         {
             Enums = new Dictionary<string, StateBackendEnumTable>
@@ -515,30 +519,6 @@ public class ConfigurableStateBackendLookupHouseholdTests
                         ["Pending"] = new() { "PD", "PE" },
                     },
                     Default = "Unknown",
-                },
-            },
-            Operations = configuration.Operations with
-            {
-                HouseholdLookup = configuration.Operations.HouseholdLookup! with
-                {
-                    Response = new StateBackendResponseMapping
-                    {
-                        Root = "$.stdntEnrollDtls",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["summerEBTCaseID"] = new() { From = "sebtChldCwin" },
-                            ["childFirstName"] = new() { From = "chldNm" },
-                            ["applicationStatus"] = new() { From = "sebtAppSts", Enum = "applicationStatus" },
-                        },
-                        Disaggregation = new StateBackendDisaggregation
-                        {
-                            Rule = DisaggregationRule.ValueInSet,
-                            DiscriminatorField = "eligSrc",
-                            ApplicationValues = new List<string> { "CBMS", "PK" },
-                            GroupApplicationsBy = "sebtAppId",
-                            CaseInclusion = CaseInclusionPredicate.WhenApprovedOrNotApplicationBased,
-                        },
-                    },
                 },
             },
         };
@@ -558,7 +538,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("phone", "5551234567", Verified: true) });
+            new[] { new IdentitySignal("phone", "5551234567") });
 
         // Act
         HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
@@ -602,43 +582,33 @@ public class ConfigurableStateBackendLookupHouseholdTests
         }
         """;
 
-    private static StateBackendConfiguration WithIssuanceKeywordRules()
-    {
-        StateBackendConfiguration configuration = BuildConfiguration();
-        return configuration with
-        {
-            Operations = configuration.Operations with
+    private static StateBackendConfiguration WithIssuanceKeywordRules() =>
+        WithLookupResponse(
+            BuildConfiguration(),
+            new StateBackendResponseMapping
             {
-                HouseholdLookup = configuration.Operations.HouseholdLookup! with
+                Root = "$.resultSets[0]",
+                Fields = new Dictionary<string, FieldMapping>
                 {
-                    Response = new StateBackendResponseMapping
+                    ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
+                    ["issuanceType"] = new()
                     {
-                        Root = "$.resultSets[0]",
-                        Fields = new Dictionary<string, FieldMapping>
+                        From = new[] { "HouseholdType", "EligibilityType" },
+                        KeywordRules = new KeywordRules
                         {
-                            ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
-                            ["issuanceType"] = new()
+                            // Order is load-bearing: SummerEbt is evaluated before SnapEbtCard.
+                            Order = new List<string> { "SummerEbt", "SnapEbtCard", "TanfEbtCard" },
+                            Map = new Dictionary<string, List<string>>
                             {
-                                From = new[] { "HouseholdType", "EligibilityType" },
-                                KeywordRules = new KeywordRules
-                                {
-                                    // Order is load-bearing: SummerEbt is evaluated before SnapEbtCard.
-                                    Order = new List<string> { "SummerEbt", "SnapEbtCard", "TanfEbtCard" },
-                                    Map = new Dictionary<string, List<string>>
-                                    {
-                                        ["SummerEbt"] = new() { "OSSE", "NSLP" },
-                                        ["SnapEbtCard"] = new() { "FOOD", "SNAP" },
-                                        ["TanfEbtCard"] = new() { "CASH", "TANF" },
-                                    },
-                                    Default = "Unknown",
-                                },
+                                ["SummerEbt"] = new() { "OSSE", "NSLP" },
+                                ["SnapEbtCard"] = new() { "FOOD", "SNAP" },
+                                ["TanfEbtCard"] = new() { "CASH", "TANF" },
                             },
+                            Default = "Unknown",
                         },
                     },
                 },
-            },
-        };
-    }
+            });
 
     [Fact]
     public async Task LookupHouseholdAsync_InfersIssuanceType_FromKeywordRules_FirstMatchWins()
@@ -654,7 +624,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(configuration, httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("email", "ada@example.test", Verified: true) });
+            new[] { new IdentitySignal("email", "ada@example.test") });
 
         // Act
         HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);
@@ -688,7 +658,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         var httpClient = mockHttp.ToHttpClient();
         var backend = new ConfigurableStateBackend(BuildConfiguration(), httpClient);
         var request = new HouseholdLookupRequest(
-            new[] { new IdentitySignal("email", "nobody@example.test", Verified: true) });
+            new[] { new IdentitySignal("email", "nobody@example.test") });
 
         // Act
         HouseholdLookupResult result = await backend.LookupHouseholdAsync(request);

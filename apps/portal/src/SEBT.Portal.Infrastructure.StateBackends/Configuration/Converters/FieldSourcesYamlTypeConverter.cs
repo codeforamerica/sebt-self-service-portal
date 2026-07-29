@@ -37,25 +37,6 @@ internal sealed class FieldSourcesYamlTypeConverter : IYamlTypeConverter
 
     public void WriteYaml(IEmitter emitter, object? value, Type type, ObjectSerializer serializer)
     {
-        var sources = value as FieldSources;
-        if (sources is null)
-        {
-            emitter.Emit(new Scalar(string.Empty));
-            return;
-        }
-
-        if (sources.All.Count == 1)
-        {
-            emitter.Emit(new Scalar(sources.All[0]));
-            return;
-        }
-
-        emitter.Emit(new SequenceStart(null, null, false, SequenceStyle.Flow));
-        foreach (string source in sources.All)
-        {
-            emitter.Emit(new Scalar(source));
-        }
-
-        emitter.Emit(new SequenceEnd());
+        throw new NotSupportedException("State-backend configs are never serialized to YAML.");
     }
 }

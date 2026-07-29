@@ -82,16 +82,7 @@ public class ConfigurableStateBackend : IStateBackend
         httpRequest.Content = new StringContent(
             rows.ToJsonString(), Encoding.UTF8, "application/json");
 
-        using HttpResponseMessage response = await _httpClient
-            .SendAsync(httpRequest, cancellationToken)
-            .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        await using Stream stream = await response.Content
-            .ReadAsStreamAsync(cancellationToken)
-            .ConfigureAwait(false);
-        using JsonDocument document = await JsonDocument
-            .ParseAsync(stream, cancellationToken: cancellationToken)
+        using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
             .ConfigureAwait(false);
 
         return EnrollmentResponseCorrelator.Correlate(mapping, document.RootElement, request);
@@ -115,16 +106,7 @@ public class ConfigurableStateBackend : IStateBackend
             httpRequest.Content = new StringContent(
                 body.ToJsonString(), Encoding.UTF8, "application/json");
 
-            using HttpResponseMessage response = await _httpClient
-                .SendAsync(httpRequest, cancellationToken)
-                .ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            await using Stream stream = await response.Content
-                .ReadAsStreamAsync(cancellationToken)
-                .ConfigureAwait(false);
-            using JsonDocument document = await JsonDocument
-                .ParseAsync(stream, cancellationToken: cancellationToken)
+            using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
                 .ConfigureAwait(false);
 
             bool isMatch = EnrollmentResponseCorrelator.EvaluateSingleResult(
@@ -170,6 +152,23 @@ public class ConfigurableStateBackend : IStateBackend
     private static HttpRequestMessage BuildRequest(StateBackendOperationConfig operation) =>
         new(ToHttpMethod(operation.Method), operation.Path);
 
+    // Shared read-path plumbing: send, fail loud on a non-success status, parse the JSON body.
+    private async Task<JsonDocument> SendAndParseAsync(
+        HttpRequestMessage httpRequest, CancellationToken cancellationToken)
+    {
+        using HttpResponseMessage response = await _httpClient
+            .SendAsync(httpRequest, cancellationToken)
+            .ConfigureAwait(false);
+        response.EnsureSuccessStatusCode();
+
+        await using Stream stream = await response.Content
+            .ReadAsStreamAsync(cancellationToken)
+            .ConfigureAwait(false);
+        return await JsonDocument
+            .ParseAsync(stream, cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public async Task<HouseholdLookupResult> LookupHouseholdAsync(HouseholdLookupRequest request, CancellationToken cancellationToken = default)
     {
         HouseholdLookupOperationConfig? lookup = _configuration.Operations.HouseholdLookup
@@ -188,16 +187,7 @@ public class ConfigurableStateBackend : IStateBackend
                 body.ToJsonString(), Encoding.UTF8, "application/json");
         }
 
-        using HttpResponseMessage response = await _httpClient
-            .SendAsync(httpRequest, cancellationToken)
-            .ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-
-        await using Stream stream = await response.Content
-            .ReadAsStreamAsync(cancellationToken)
-            .ConfigureAwait(false);
-        using JsonDocument document = await JsonDocument
-            .ParseAsync(stream, cancellationToken: cancellationToken)
+        using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
             .ConfigureAwait(false);
 
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
@@ -211,7 +201,7 @@ public class ConfigurableStateBackend : IStateBackend
         return new HouseholdLookupResult(HouseholdLookupStatus.Found, household);
     }
 
-    public async Task<CardReplacementResult> RequestCardReplacementAsync(CardReplacementRequest request, CancellationToken cancellationToken = default)
+    public async Task<WriteResult> RequestCardReplacementAsync(CardReplacementRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -229,28 +219,13 @@ public class ConfigurableStateBackend : IStateBackend
         // Decode the opaque caseId into its routing fields, exposed (with the reason) to the binding.
         Dictionary<string, string> inputs = BuildCardReplacementInputs(request);
 
-        using HttpRequestMessage httpRequest = BuildRequest(operation);
-
-        if (operation.Request is { } binding)
-        {
-            JsonObject body = StateBackendRequestBinder.BuildBody(binding, inputs);
-            httpRequest.Content = new StringContent(
-                body.ToJsonString(), Encoding.UTF8, "application/json");
-        }
-
-        // Idempotency-Key guards against duplicate replacement issuance on retry.
-        httpRequest.Headers.Add("Idempotency-Key", _idempotencyKeyFactory());
-
-        using HttpResponseMessage response = await _httpClient
-            .SendAsync(httpRequest, cancellationToken)
-            .ConfigureAwait(false);
-
-        JsonElement? body2 = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
-
-        WriteOutcome outcome = WriteResultClassifier.Classify(
-            classifier, (int)response.StatusCode, body2);
-
-        return ToResult(outcome);
+        return await ExecuteWriteAsync(
+            operation,
+            operation.Request,
+            classifier,
+            binding => StateBackendRequestBinder.BuildBody(binding, inputs),
+            policyRejectionMessage: "The household is not eligible to request a replacement via the portal.",
+            cancellationToken).ConfigureAwait(false);
     }
 
     private static Dictionary<string, string> BuildCardReplacementInputs(CardReplacementRequest request)
@@ -296,19 +271,7 @@ public class ConfigurableStateBackend : IStateBackend
         }
     }
 
-    private static CardReplacementResult ToResult(WriteOutcome outcome) =>
-        outcome switch
-        {
-            WriteOutcome.Success => CardReplacementResult.Success(),
-            WriteOutcome.PolicyRejection => CardReplacementResult.PolicyRejected(
-                "POLICY_REJECTION", "The household is not eligible to request a replacement via the portal."),
-            WriteOutcome.BackendError => CardReplacementResult.BackendError(
-                "BACKEND_ERROR", "The state backend returned an error."),
-            _ => throw new NotSupportedException(
-                $"Card-replacement outcome '{outcome}' is not supported."),
-        };
-
-    public async Task<AddressUpdateResult> UpdateAddressAsync(AddressUpdateRequest request, CancellationToken cancellationToken = default)
+    public async Task<WriteResult> UpdateAddressAsync(AddressUpdateRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -323,36 +286,56 @@ public class ConfigurableStateBackend : IStateBackend
         ResultClassifier classifier = operation.Result
             ?? throw new NotSupportedException("Address update has no result classifier configured.");
 
+        return await ExecuteWriteAsync(
+            operation,
+            operation.Request,
+            classifier,
+            binding =>
+            {
+                // Decode the batch of opaque caseIds into their routing fields for the request binding.
+                IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
+                    .Select(OpaqueCaseId.Decode)
+                    .ToList();
+
+                Dictionary<string, string> addressInputs = BuildAddressInputs(request.Address);
+
+                return StateBackendRequestBinder.BuildAddressBody(binding, decodedCaseIds, addressInputs);
+            },
+            policyRejectionMessage: "The household is not eligible to update their address via the portal.",
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    // Shared write pipeline: build request + optional bound body, attach the Idempotency-Key
+    // (guards against a duplicate write on retry), send, classify the response into a WriteResult.
+    private async Task<WriteResult> ExecuteWriteAsync(
+        StateBackendOperationConfig operation,
+        RequestBinding? binding,
+        ResultClassifier classifier,
+        Func<RequestBinding, JsonObject> buildBody,
+        string policyRejectionMessage,
+        CancellationToken cancellationToken)
+    {
         using HttpRequestMessage httpRequest = BuildRequest(operation);
 
-        if (operation.Request is { } binding)
+        if (binding is not null)
         {
-            // Decode the batch of opaque caseIds into their routing fields for the request binding.
-            IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
-                .Select(OpaqueCaseId.Decode)
-                .ToList();
-
-            Dictionary<string, string> addressInputs = BuildAddressInputs(request.Address);
-
-            JsonObject body = StateBackendRequestBinder.BuildAddressBody(
-                binding, decodedCaseIds, addressInputs);
+            JsonObject body = buildBody(binding);
             httpRequest.Content = new StringContent(
                 body.ToJsonString(), Encoding.UTF8, "application/json");
         }
 
-        // Idempotency-Key guards against a duplicate write on retry.
         httpRequest.Headers.Add("Idempotency-Key", _idempotencyKeyFactory());
 
         using HttpResponseMessage response = await _httpClient
             .SendAsync(httpRequest, cancellationToken)
             .ConfigureAwait(false);
 
-        JsonElement? body2 = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
+        JsonElement? responseBody = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
 
         WriteOutcome outcome = WriteResultClassifier.Classify(
-            classifier, (int)response.StatusCode, body2);
+            classifier, (int)response.StatusCode, responseBody);
 
-        return ToAddressResult(outcome);
+        return ToWriteResult(outcome, policyRejectionMessage);
     }
 
     // Only non-null address scalars are included; a config mapping a field the address lacks fails
@@ -389,15 +372,15 @@ public class ConfigurableStateBackend : IStateBackend
         return inputs;
     }
 
-    private static AddressUpdateResult ToAddressResult(WriteOutcome outcome) =>
+    private static WriteResult ToWriteResult(WriteOutcome outcome, string policyRejectionMessage) =>
         outcome switch
         {
-            WriteOutcome.Success => AddressUpdateResult.Success(),
-            WriteOutcome.PolicyRejection => AddressUpdateResult.PolicyRejected(
-                "POLICY_REJECTION", "The household is not eligible to update their address via the portal."),
-            WriteOutcome.BackendError => AddressUpdateResult.BackendError(
+            WriteOutcome.Success => WriteResult.Success(),
+            WriteOutcome.PolicyRejection => WriteResult.PolicyRejected(
+                "POLICY_REJECTION", policyRejectionMessage),
+            WriteOutcome.BackendError => WriteResult.BackendError(
                 "BACKEND_ERROR", "The state backend returned an error."),
             _ => throw new NotSupportedException(
-                $"Address-update outcome '{outcome}' is not supported."),
+                $"Write outcome '{outcome}' is not supported."),
         };
 }

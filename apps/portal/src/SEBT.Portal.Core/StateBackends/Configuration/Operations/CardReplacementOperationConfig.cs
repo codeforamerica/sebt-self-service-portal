@@ -1,6 +1,6 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
-public sealed record CardReplacementOperationConfig() : StateBackendWriteOperationConfig
+public sealed record CardReplacementOperationConfig() : StateBackendOperationConfig
 {
     /// <summary>How to build the outgoing card-replacement request body; inputs include the decoded caseId fields.</summary>
     public RequestBinding? Request { get; init; }
