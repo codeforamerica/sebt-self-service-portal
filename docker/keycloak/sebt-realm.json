@@ -1,0 +1,264 @@
+{
+  "realm": "sebt",
+  "enabled": true,
+  "displayName": "SEBT Local Dev",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": false,
+  "loginTheme": "sebt",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "default-roles-sebt",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+          "realm": ["offline_access", "uma_authorization"]
+        }
+      },
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}"
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}"
+      }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-sebt",
+    "composite": true
+  },
+  "requiredCredentials": ["password"],
+  "users": [
+    {
+      "username": "co-loaded",
+      "enabled": true,
+      "email": "sebt.co+co-loaded@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Jamie",
+      "lastName": "CoLoaded",
+      "attributes": {
+        "phone": ["8185558437"],
+        "phoneNumber": ["8185558437"],
+        "socureIdVerificationLevel": ["1.5"],
+        "socureIdVerificationDate": ["2026-01-15T00:00:00.000Z"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "verified",
+      "enabled": true,
+      "email": "sebt.co+verified@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "John",
+      "lastName": "DoeMOCK",
+      "attributes": {
+        "phone": ["3035551009"],
+        "phoneNumber": ["3035551009"],
+        "socureIdVerificationLevel": ["1.5"],
+        "socureIdVerificationDate": ["2026-01-15T00:00:00.000Z"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "ial1-only",
+      "enabled": true,
+      "email": "sebt.co+non-co-loaded@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Alex",
+      "lastName": "IalOne",
+      "attributes": {
+        "phone": ["3035551999"],
+        "phoneNumber": ["3035551999"]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "sebt-portal",
+      "name": "SEBT Portal (login)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "sebt-portal-dev-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "http://localhost:3000/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email",
+        "phone"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "offline_access"
+      ],
+      "protocolMappers": [
+        {
+          "name": "phone",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "phone",
+            "claim.name": "phone",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "phone_number",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "phoneNumber",
+            "claim.name": "phone_number",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "sebt-portal-stepup",
+      "name": "SEBT Portal (step-up / IAL)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "sebt-portal-stepup-dev-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "redirectUris": [
+        "http://localhost:3000/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "profile",
+        "roles",
+        "email",
+        "phone"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "offline_access"
+      ],
+      "protocolMappers": [
+        {
+          "name": "phone",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "phone",
+            "claim.name": "phone",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "phone_number",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "phoneNumber",
+            "claim.name": "phone_number",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "socureIdVerificationLevel",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "socureIdVerificationLevel",
+            "claim.name": "socureIdVerificationLevel",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        },
+        {
+          "name": "socureIdVerificationDate",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "socureIdVerificationDate",
+            "claim.name": "socureIdVerificationDate",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}
