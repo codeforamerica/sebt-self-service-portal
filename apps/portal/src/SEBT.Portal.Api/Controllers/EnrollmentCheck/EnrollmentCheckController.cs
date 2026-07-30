@@ -10,7 +10,6 @@ using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.EnrollmentCheck;
 
 namespace SEBT.Portal.Api.Controllers.EnrollmentCheck;
@@ -35,7 +34,7 @@ public class EnrollmentCheckController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CheckEnrollment(
-        [FromServices] ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult> handler,
+        [FromServices] ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckOutcome> handler,
         [FromBody] EnrollmentCheckApiRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -56,8 +55,7 @@ public class EnrollmentCheckController : ControllerBase
                 LastName = child.LastName,
                 DateOfBirth = dob,
                 SchoolName = child.SchoolName,
-                SchoolCode = child.SchoolCode,
-                AdditionalFields = child.AdditionalFields
+                SchoolCode = child.SchoolCode
             });
         }
 
@@ -73,7 +71,7 @@ public class EnrollmentCheckController : ControllerBase
             successMap: data => Ok(MapToApiResponse(data)),
             failureMap: r => r switch
             {
-                DependencyFailedResult<EnrollmentCheckResult> =>
+                DependencyFailedResult<EnrollmentCheckOutcome> =>
                     StatusCode(StatusCodes.Status503ServiceUnavailable,
                         new ProblemDetails
                         {
@@ -130,23 +128,24 @@ public class EnrollmentCheckController : ControllerBase
         });
     }
 
-    private static EnrollmentCheckApiResponse MapToApiResponse(EnrollmentCheckResult result)
+    private static EnrollmentCheckApiResponse MapToApiResponse(EnrollmentCheckOutcome outcome)
     {
         return new EnrollmentCheckApiResponse
         {
-            Results = result.Results.Select(r => new ChildCheckApiResponse
+            Results = outcome.Results.Select(r => new ChildCheckApiResponse
             {
                 CheckId = r.CheckId.ToString(),
                 FirstName = r.FirstName,
                 LastName = r.LastName,
                 DateOfBirth = r.DateOfBirth.ToString("yyyy-MM-dd"),
-                Status = r.Status.ToString(),
+                Status = r.IsMatch ? "Match" : "NonMatch",
                 MatchConfidence = r.MatchConfidence,
-                EligibilityType = r.EligibilityType?.ToString(),
-                SchoolName = r.SchoolName,
+                // Reserved wire fields — always null through the enrollment check path.
+                EligibilityType = null,
+                SchoolName = null,
                 StatusMessage = r.StatusMessage
             }).ToList(),
-            Message = result.ResponseMessage
+            Message = outcome.Message
         };
     }
 }

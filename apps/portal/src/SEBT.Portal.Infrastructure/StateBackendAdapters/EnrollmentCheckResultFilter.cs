@@ -1,15 +1,15 @@
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 
-namespace SEBT.Portal.UseCases.EnrollmentCheck;
+namespace SEBT.Portal.Infrastructure.StateBackendAdapters;
 
 /// <summary>
-/// Portal-side filter for enrollment check results. When enabled via the
+/// Portal-side exact-match guard for enrollment check results. When enabled via the
 /// <c>enrollment_check_requires_at_least_one_exact_matched_field</c> feature flag, drops
 /// Match/PossibleMatch candidates where neither the date of birth nor the full name
 /// (first + last) is an exact match against the submitted request. This guards against
 /// false positives from CBMS fuzzy-matching, regardless of the connector's confidence score.
 /// </summary>
-public static class EnrollmentCheckResultFilter
+internal static class EnrollmentCheckResultFilter
 {
     /// <summary>
     /// Filters <paramref name="results"/> against the original <paramref name="requests"/>,

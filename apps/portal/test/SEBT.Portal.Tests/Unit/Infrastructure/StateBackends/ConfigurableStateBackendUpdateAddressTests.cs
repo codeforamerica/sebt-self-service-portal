@@ -171,7 +171,7 @@ public class ConfigurableStateBackendUpdateAddressTests
             .Respond("application/json", """{ "resultCode": "OK" }""");
 
         var backend = BuildBackend(mockHttp, DcAddressUpdate());
-        var request = new AddressUpdateRequest(caseIds, SampleAddress());
+        var request = new AddressUpdateRequest("family@example.test", caseIds, SampleAddress());
 
         // Act
         WriteResult result = await backend.UpdateAddressAsync(request);
@@ -217,7 +217,7 @@ public class ConfigurableStateBackendUpdateAddressTests
 
         // Act
         WriteResult result = await backend.UpdateAddressAsync(
-            new AddressUpdateRequest(caseIds, SampleAddress()));
+            new AddressUpdateRequest("family@example.test", caseIds, SampleAddress()));
 
         // Assert — nothing matches → default BackendError.
         Assert.False(result.IsSuccess);
@@ -249,7 +249,7 @@ public class ConfigurableStateBackendUpdateAddressTests
             .Respond("application/json", """{ "respCd": "00" }""");
 
         var backend = BuildBackend(mockHttp, CoAddressUpdate());
-        var request = new AddressUpdateRequest(caseIds, SampleAddress());
+        var request = new AddressUpdateRequest("family@example.test", caseIds, SampleAddress());
 
         // Act
         WriteResult result = await backend.UpdateAddressAsync(request);
@@ -298,7 +298,7 @@ public class ConfigurableStateBackendUpdateAddressTests
 
         // Act + Assert
         InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => backend.UpdateAddressAsync(new AddressUpdateRequest(caseIds, SampleAddress())));
+            () => backend.UpdateAddressAsync(new AddressUpdateRequest("family@example.test", caseIds, SampleAddress())));
         Assert.Contains("householdEmail", ex.Message);
     }
 }

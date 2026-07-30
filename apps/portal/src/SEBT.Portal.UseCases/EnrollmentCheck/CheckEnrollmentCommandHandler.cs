@@ -5,74 +5,73 @@ using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.EnrollmentCheck;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 
 namespace SEBT.Portal.UseCases.EnrollmentCheck;
 
 public class CheckEnrollmentCommandHandler(
-    IEnrollmentCheckService enrollmentCheckService,
+    IEnrollmentCheckBackend enrollmentCheckBackend,
     IEnrollmentCheckSubmissionLogger submissionLogger,
     ILogger<CheckEnrollmentCommandHandler> logger,
     IFeatureManager featureManager)
-    : ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult>
+    : ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckOutcome>
 {
-    public async Task<Result<EnrollmentCheckResult>> Handle(
+    public async Task<Result<EnrollmentCheckOutcome>> Handle(
         CheckEnrollmentCommand command,
         CancellationToken cancellationToken = default)
     {
         if (command.Children.Count == 0)
         {
-            return Result<EnrollmentCheckResult>.ValidationFailed(
+            return Result<EnrollmentCheckOutcome>.ValidationFailed(
                 "Children", "At least one child is required.");
         }
 
         const int maxChildren = 20;
         if (command.Children.Count > maxChildren)
         {
-            return Result<EnrollmentCheckResult>.ValidationFailed(
+            return Result<EnrollmentCheckOutcome>.ValidationFailed(
                 "Children", $"A maximum of {maxChildren} children can be checked per request.");
         }
 
         logger.LogInformation("Enrollment check requested for {ChildCount} child(ren)", command.Children.Count);
 
-        var request = new EnrollmentCheckRequest
-        {
-            Children = command.Children.Select(c => new ChildCheckRequest
-            {
-                CheckId = Guid.NewGuid(),
-                FirstName = c.FirstName,
-                LastName = c.LastName,
-                DateOfBirth = c.DateOfBirth,
-                SchoolName = c.SchoolName,
-                SchoolCode = c.SchoolCode,
-                AdditionalFields = c.AdditionalFields
-            }).ToList()
-        };
+        // Mint one correlation id per submitted child; the backend echoes it on each result,
+        // and the outcome's identity fields always come from these submitted children.
+        var submittedChildren = command.Children
+            .Select(c => (CheckId: Guid.NewGuid(), Child: c))
+            .ToList();
+
+        var request = new EnrollmentCheckRequest(
+            submittedChildren
+                .Select(x => new EnrollmentChild(
+                    x.CheckId.ToString(),
+                    x.Child.FirstName,
+                    x.Child.LastName,
+                    x.Child.DateOfBirth,
+                    SchoolIdentifier: x.Child.SchoolCode ?? x.Child.SchoolName))
+                .ToList());
 
         EnrollmentCheckResult result;
         try
         {
-            result = await enrollmentCheckService.CheckEnrollmentAsync(request, cancellationToken);
+            result = await enrollmentCheckBackend.CheckEnrollmentAsync(request, cancellationToken);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Enrollment check plugin failed");
-            return Result<EnrollmentCheckResult>.DependencyFailed(
+            logger.LogError(ex, "Enrollment check backend failed");
+            return Result<EnrollmentCheckOutcome>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Enrollment check service is temporarily unavailable.");
         }
 
+        var outcome = BuildOutcome(submittedChildren, result);
+
         if (await featureManager.IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField))
         {
-            result = ApplyExactMatchFilter(request.Children, result);
+            outcome = AppendSyntheticNonMatches(submittedChildren, outcome);
         }
-
-        // Replace connector-returned identity fields with submitted values so no state-system
-        // PII is ever surfaced to the UI, regardless of flag state.
-        result = ReplaceWithSubmittedIdentity(request.Children, result);
 
         // Log de-identified submission (fire and forget, don't fail the request)
         try
@@ -81,14 +80,14 @@ public class CheckEnrollmentCommandHandler(
             {
                 SubmissionId = Guid.NewGuid(),
                 CheckedAtUtc = DateTime.UtcNow,
-                ChildrenChecked = result.Results.Count,
+                ChildrenChecked = outcome.Results.Count,
                 IpAddressHash = HashIpAddress(command.IpAddress),
-                ChildResults = result.Results.Select(r => new DeidentifiedChildResult
+                ChildResults = outcome.Results.Select(r => new DeidentifiedChildResult
                 {
                     BirthYear = r.DateOfBirth.Year,
-                    Status = r.Status.ToString(),
-                    EligibilityType = r.EligibilityType?.ToString(),
-                    SchoolName = r.SchoolName
+                    Status = r.IsMatch ? "Match" : "NonMatch"
+                    // EligibilityType and SchoolName stay null: the lean backend result
+                    // doesn't carry them, and no state connector ever populated them.
                 }).ToList()
             };
 
@@ -99,72 +98,61 @@ public class CheckEnrollmentCommandHandler(
             logger.LogWarning(ex, "Failed to log enrollment check submission (non-fatal)");
         }
 
-        return Result<EnrollmentCheckResult>.Success(result);
+        return Result<EnrollmentCheckOutcome>.Success(outcome);
     }
 
-    private EnrollmentCheckResult ApplyExactMatchFilter(IList<ChildCheckRequest> requestChildren, EnrollmentCheckResult result)
-    {
-        var beforeCount = result.Results.Count;
-        var filtered = EnrollmentCheckResultFilter.Filter(requestChildren, result.Results);
-        var droppedCount = beforeCount - filtered.Count;
-
-        if (droppedCount > 0)
-        {
-            logger.LogWarning(
-                "Enrollment check filter dropped {DroppedCount} of {TotalCount} candidates — neither DOB nor full name matched the submission",
-                droppedCount, beforeCount);
-        }
-
-        // For any submitted child with no surviving candidate, insert a NonMatch so the
-        // response always contains one result per submitted child.
-        var survivingIds = filtered.Select(r => r.CheckId).ToHashSet();
-        var synthetic = requestChildren
-            .Where(c => !survivingIds.Contains(c.CheckId))
-            .Select(c => new ChildCheckResult
-            {
-                CheckId = c.CheckId,
-                FirstName = c.FirstName,
-                LastName = c.LastName,
-                DateOfBirth = c.DateOfBirth,
-                Status = EnrollmentStatus.NonMatch
-            });
-
-        return new EnrollmentCheckResult
-        {
-            Results = [.. filtered, .. synthetic],
-            ResponseMessage = result.ResponseMessage
-        };
-    }
-
-    private static EnrollmentCheckResult ReplaceWithSubmittedIdentity(
-        IList<ChildCheckRequest> requestChildren,
+    /// <summary>
+    /// Joins backend results (in backend order) to the submitted children by correlation id.
+    /// Identity fields come from the submission, never from the backend, so no state-system
+    /// PII is ever surfaced to the UI. A result whose CheckId matches no submitted child has
+    /// no identity to surface and is dropped.
+    /// </summary>
+    private static EnrollmentCheckOutcome BuildOutcome(
+        IReadOnlyList<(Guid CheckId, CheckEnrollmentCommand.ChildInput Child)> submittedChildren,
         EnrollmentCheckResult result)
     {
-        var submittedById = requestChildren.ToDictionary(c => c.CheckId);
-        return new EnrollmentCheckResult
-        {
-            Results = result.Results.Select(r =>
-            {
-                if (!submittedById.TryGetValue(r.CheckId, out var submitted))
-                {
-                    return r;
-                }
+        var submittedByCheckId = submittedChildren.ToDictionary(x => x.CheckId.ToString());
 
-                return new ChildCheckResult
-                {
-                    CheckId = r.CheckId,
-                    FirstName = submitted.FirstName,
-                    LastName = submitted.LastName,
-                    DateOfBirth = submitted.DateOfBirth,
-                    Status = r.Status,
-                    MatchConfidence = r.MatchConfidence,
-                    StatusMessage = r.StatusMessage,
-                    SchoolName = r.SchoolName,
-                    EligibilityType = r.EligibilityType
-                };
-            }).ToList(),
-            ResponseMessage = result.ResponseMessage
-        };
+        var results = new List<EnrollmentChildOutcome>(result.Results.Count);
+        foreach (var childResult in result.Results)
+        {
+            if (!submittedByCheckId.TryGetValue(childResult.CheckId, out var submitted))
+            {
+                continue;
+            }
+
+            results.Add(new EnrollmentChildOutcome(
+                submitted.CheckId,
+                submitted.Child.FirstName,
+                submitted.Child.LastName,
+                submitted.Child.DateOfBirth,
+                childResult.IsMatch,
+                childResult.MatchConfidence,
+                childResult.StatusMessage));
+        }
+
+        return new EnrollmentCheckOutcome(results, result.Message);
+    }
+
+    /// <summary>
+    /// For any submitted child with no backend result (e.g. dropped by the exact-match guard),
+    /// appends a bare NonMatch so the response always contains one result per submitted child.
+    /// </summary>
+    private static EnrollmentCheckOutcome AppendSyntheticNonMatches(
+        IReadOnlyList<(Guid CheckId, CheckEnrollmentCommand.ChildInput Child)> submittedChildren,
+        EnrollmentCheckOutcome outcome)
+    {
+        var surfacedIds = outcome.Results.Select(r => r.CheckId).ToHashSet();
+        var synthetic = submittedChildren
+            .Where(x => !surfacedIds.Contains(x.CheckId))
+            .Select(x => new EnrollmentChildOutcome(
+                x.CheckId,
+                x.Child.FirstName,
+                x.Child.LastName,
+                x.Child.DateOfBirth,
+                IsMatch: false));
+
+        return outcome with { Results = [.. outcome.Results, .. synthetic] };
     }
 
     private static string? HashIpAddress(string? ipAddress)

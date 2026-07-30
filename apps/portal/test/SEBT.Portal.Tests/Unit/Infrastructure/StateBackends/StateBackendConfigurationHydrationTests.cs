@@ -145,9 +145,9 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("firstName", dcEnrollment.Request.Map["firstName"]);
         Assert.Equal("dateOfBirth", dcEnrollment.Request.Map["dob"]);
 
-        // schoolName is optional: the portal may not carry it, but DC's match reads it when sent.
+        // schoolIdentifier is optional: the portal may not carry it, but DC's match reads it when sent.
         Assert.NotNull(dcEnrollment.Request.MapOptional);
-        Assert.Equal("schoolName", dcEnrollment.Request.MapOptional["schoolName"]);
+        Assert.Equal("schoolName", dcEnrollment.Request.MapOptional["schoolIdentifier"]);
 
         Assert.NotNull(dcEnrollment.Response);
         Assert.Equal("$", dcEnrollment.Response.Root);
@@ -249,9 +249,9 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("stdLastName", coEnrollment.Request.Map["lastName"]);
         Assert.Equal("stdDob", coEnrollment.Request.Map["dob"]);
 
-        // schoolName is optional: the portal may not carry it, but CO's match reads it when sent.
+        // schoolIdentifier is optional: the portal may not carry it, but CO's match reads it when sent.
         Assert.NotNull(coEnrollment.Request.MapOptional);
-        Assert.Equal("StdSchlCd", coEnrollment.Request.MapOptional["schoolName"]);
+        Assert.Equal("StdSchlCd", coEnrollment.Request.MapOptional["schoolIdentifier"]);
 
         Assert.NotNull(coEnrollment.Response);
         Assert.Equal("$.stdntDtls", coEnrollment.Response.Root);

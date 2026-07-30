@@ -1,7 +1,7 @@
+using SEBT.Portal.Infrastructure.StateBackendAdapters;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
-using SEBT.Portal.UseCases.EnrollmentCheck;
 
-namespace SEBT.Portal.Tests.Unit.UseCases.EnrollmentCheck;
+namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackendAdapters;
 
 public class EnrollmentCheckResultFilterTests
 {

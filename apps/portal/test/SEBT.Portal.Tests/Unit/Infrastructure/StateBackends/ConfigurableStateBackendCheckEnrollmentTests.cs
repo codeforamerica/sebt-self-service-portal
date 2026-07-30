@@ -653,9 +653,9 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     }
 
     [Fact]
-    public async Task CheckEnrollmentAsync_PerChild_MapOptional_BindsSchoolNameWhenChildCarriesIt()
+    public async Task CheckEnrollmentAsync_PerChild_MapOptional_BindsSchoolIdentifierWhenChildCarriesIt()
     {
-        // Arrange — the child carries a schoolName, so the optional input resolves and binds.
+        // Arrange — the child carries a schoolIdentifier, so the optional input resolves and binds.
         StateBackendConfiguration config = DcPerChildWithRequest(
             new EnrollmentRequestBinding
             {
@@ -667,7 +667,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                 },
                 MapOptional = new Dictionary<string, string>
                 {
-                    ["schoolName"] = "schlNm",
+                    ["schoolIdentifier"] = "schlNm",
                 },
             });
         var request = new EnrollmentCheckRequest(
@@ -688,7 +688,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     [Fact]
     public async Task CheckEnrollmentAsync_PerChild_MapOptional_OmitsFieldWhenInputDoesNotResolve()
     {
-        // Arrange — the child carries no schoolName, so the optional input resolves to nothing.
+        // Arrange — the child carries no schoolIdentifier, so the optional input resolves to nothing.
         StateBackendConfiguration config = DcPerChildWithRequest(
             new EnrollmentRequestBinding
             {
@@ -700,7 +700,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                 },
                 MapOptional = new Dictionary<string, string>
                 {
-                    ["schoolName"] = "schlNm",
+                    ["schoolIdentifier"] = "schlNm",
                 },
             });
         var request = new EnrollmentCheckRequest(
@@ -748,10 +748,10 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.Contains("middleName", ex.Message);
     }
 
-    // schoolName is a KNOWN child field but nullable — in the required map, a child without one
-    // must fail loud, never silently drop the field.
+    // schoolIdentifier is a KNOWN child field but nullable — in the required map, a child without
+    // one must fail loud, never silently drop the field.
     [Fact]
-    public async Task CheckEnrollmentAsync_PerChild_RequiredMapSchoolName_ThrowsWhenChildHasNone()
+    public async Task CheckEnrollmentAsync_PerChild_RequiredMapSchoolIdentifier_ThrowsWhenChildHasNone()
     {
         StateBackendConfiguration config = DcPerChildWithRequest(
             new EnrollmentRequestBinding
@@ -761,7 +761,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                     ["firstName"] = "firstName",
                     ["lastName"] = "lastName",
                     ["dob"] = "dateOfBirth",
-                    ["schoolName"] = "schlNm",
+                    ["schoolIdentifier"] = "schlNm",
                 },
             });
         var request = new EnrollmentCheckRequest(
@@ -776,7 +776,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         // Act + Assert
         InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => backend.CheckEnrollmentAsync(request));
-        Assert.Contains("schoolName", ex.Message);
+        Assert.Contains("schoolIdentifier", ex.Message);
     }
 
     // Batch rows honor the same optional-map semantics as PerChild bodies.
@@ -793,7 +793,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
                 MapOptional = new Dictionary<string, string>
                 {
                     ["lastName"] = "surname",
-                    ["schoolName"] = "schlNm",
+                    ["schoolIdentifier"] = "schlNm",
                 },
             },
         });

@@ -66,7 +66,8 @@ public class DefaultEnrollmentCheckIntegrationTests : IDisposable
         Assert.Equal("Doe", first.GetProperty("lastName").GetString());
         Assert.Equal("2015-03-12", first.GetProperty("dateOfBirth").GetString());
         Assert.Equal("NonMatch", first.GetProperty("status").GetString());
-        Assert.Equal("Lincoln Elementary", first.GetProperty("schoolName").GetString());
+        // schoolName is a reserved wire field — always null through the lean enrollment path.
+        Assert.Equal(JsonValueKind.Null, first.GetProperty("schoolName").ValueKind);
     }
 
     public void Dispose()

@@ -90,8 +90,10 @@ public class EnrollmentCheckEndpointTests : IClassFixture<PortalWebApplicationFa
         Assert.Equal("Doe", first.GetProperty("lastName").GetString());
         Assert.Equal("2015-03-12", first.GetProperty("dateOfBirth").GetString());
         Assert.Equal("Match", first.GetProperty("status").GetString());
-        Assert.Equal("Snap", first.GetProperty("eligibilityType").GetString());
-        Assert.Equal("Lincoln Elementary", first.GetProperty("schoolName").GetString());
+        // eligibilityType and schoolName are reserved wire fields — always null through the
+        // lean enrollment path, even when the mock connector populates them.
+        Assert.Equal(JsonValueKind.Null, first.GetProperty("eligibilityType").ValueKind);
+        Assert.Equal(JsonValueKind.Null, first.GetProperty("schoolName").ValueKind);
 
         // checkId should be a valid GUID (server-generated)
         var checkId = first.GetProperty("checkId").GetString();

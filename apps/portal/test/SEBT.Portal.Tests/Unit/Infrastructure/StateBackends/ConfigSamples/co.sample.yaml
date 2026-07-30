@@ -63,7 +63,7 @@ operations:
         dob: stdDob
       # CO's match also reads the school code; optional because the portal may not have it.
       mapOptional:
-        schoolName: StdSchlCd
+        schoolIdentifier: StdSchlCd
     response:
       root: $.stdntDtls
       indexField: stdReqInd

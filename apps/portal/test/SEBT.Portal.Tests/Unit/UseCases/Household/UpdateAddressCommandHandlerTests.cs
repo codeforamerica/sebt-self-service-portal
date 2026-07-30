@@ -8,16 +8,11 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases.Household;
-using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
-using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
-using AddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
-using AddressUpdateResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateResult;
-using HouseholdData = SEBT.Portal.Core.Models.Household.HouseholdData;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Household;
 
@@ -27,14 +22,14 @@ public class UpdateAddressCommandHandlerTests
         new DataAnnotationsValidator<UpdateAddressCommand>(null!);
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
-    private readonly ICoreAddressUpdateService _addressUpdateService = Substitute.For<ICoreAddressUpdateService>();
+    private readonly IAddressUpdateService _addressUpdateService = Substitute.For<IAddressUpdateService>();
     private readonly IAddressValidationService _addressValidationService = Substitute.For<IAddressValidationService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
     private readonly IPiiVisibilityService _piiVisibilityService =
         Substitute.For<IPiiVisibilityService>();
-    private readonly IStateAddressUpdateService _stateAddressUpdateService =
-        Substitute.For<IStateAddressUpdateService>();
+    private readonly IAddressUpdateBackend _addressUpdateBackend =
+        Substitute.For<IAddressUpdateBackend>();
     private readonly IIdProofingService _idProofingService =
         Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _selfServiceEvaluator =
@@ -63,8 +58,8 @@ public class UpdateAddressCommandHandlerTests
                     })));
         _addressValidationService.ValidateAsync(Arg.Any<Address>(), Arg.Any<CancellationToken>())
             .Returns(AddressValidationResult.Valid());
-        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
-            .Returns(AddressUpdateResult.Success());
+        _addressUpdateBackend.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(WriteResult.Success());
         _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(false, false, false));
         // Default: IAL gate passes (no elevated requirement)
@@ -79,7 +74,7 @@ public class UpdateAddressCommandHandlerTests
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
-            _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _stateAddressUpdateService, _logger);
+            _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _addressUpdateBackend, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
@@ -430,7 +425,7 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _stateAddressUpdateService.DidNotReceive()
+        await _addressUpdateBackend.DidNotReceive()
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -509,7 +504,7 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _stateAddressUpdateService.DidNotReceive()
+        await _addressUpdateBackend.DidNotReceive()
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -536,8 +531,8 @@ public class UpdateAddressCommandHandlerTests
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithCases();
-        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
-            .Returns(AddressUpdateResult.PolicyRejected("HOUSEHOLD_NOT_ELIGIBLE", "Not eligible."));
+        _addressUpdateBackend.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(WriteResult.PolicyRejected("HOUSEHOLD_NOT_ELIGIBLE", "Not eligible."));
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -554,8 +549,8 @@ public class UpdateAddressCommandHandlerTests
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithCases();
-        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
-            .Returns(AddressUpdateResult.PolicyRejected("HOUSEHOLD_NOT_FOUND", "No enrollment rows for the household."));
+        _addressUpdateBackend.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(WriteResult.PolicyRejected("HOUSEHOLD_NOT_FOUND", "No enrollment rows for the household."));
 
         await handler.Handle(command, CancellationToken.None);
 
@@ -578,8 +573,8 @@ public class UpdateAddressCommandHandlerTests
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithCases();
-        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
-            .Returns(AddressUpdateResult.BackendError("BACKEND_ERROR", "Something went wrong."));
+        _addressUpdateBackend.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(WriteResult.BackendError("BACKEND_ERROR", "Something went wrong."));
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -595,7 +590,7 @@ public class UpdateAddressCommandHandlerTests
 
         SetupResolverReturnsEmail();
         SetupHouseholdWithCases();
-        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+        _addressUpdateBackend.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("Connection failed"));
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -617,7 +612,7 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _stateAddressUpdateService.DidNotReceive()
+        await _addressUpdateBackend.DidNotReceive()
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -667,7 +662,7 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, token);
 
-        await _stateAddressUpdateService.Received(1)
+        await _addressUpdateBackend.Received(1)
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), token);
     }
 
@@ -766,7 +761,7 @@ public class UpdateAddressCommandHandlerTests
         Assert.False(success.Value.IsValid);
         Assert.Equal("suggested", success.Value.Reason);
         Assert.Equal("123 MAIN ST NW", success.Value.SuggestedAddress?.StreetAddress1);
-        await _stateAddressUpdateService.DidNotReceive()
+        await _addressUpdateBackend.DidNotReceive()
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -807,7 +802,7 @@ public class UpdateAddressCommandHandlerTests
         Assert.False(success.Value.IsValid);
         Assert.Equal("suggested", success.Value.Reason);
         Assert.Equal("2400 MLK JR Ave SE", success.Value.SuggestedAddress?.StreetAddress1);
-        await _stateAddressUpdateService.DidNotReceive()
+        await _addressUpdateBackend.DidNotReceive()
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -852,9 +847,9 @@ public class UpdateAddressCommandHandlerTests
         Assert.True(success.Value.IsValid);
         Assert.Equal("2400 Martin Luther King Jr Ave SE", success.Value.NormalizedAddress?.StreetAddress1);
 
-        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+        await _addressUpdateBackend.Received(1).UpdateAddressAsync(
             Arg.Is<AddressUpdateRequest>(r =>
-                r.Address.StreetAddress1 == "2400 Martin Luther King Jr Ave SE"),
+                r.Address.Line1 == "2400 Martin Luther King Jr Ave SE"),
             Arg.Any<CancellationToken>());
     }
 
@@ -895,9 +890,9 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+        await _addressUpdateBackend.Received(1).UpdateAddressAsync(
             Arg.Is<AddressUpdateRequest>(r =>
-                r.Address.StreetAddress1 == "2207 Orchard Creek Drive"),
+                r.Address.Line1 == "2207 Orchard Creek Drive"),
             Arg.Any<CancellationToken>());
     }
 
@@ -938,9 +933,9 @@ public class UpdateAddressCommandHandlerTests
         var result = await handler.Handle(command, CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+        await _addressUpdateBackend.Received(1).UpdateAddressAsync(
             Arg.Is<AddressUpdateRequest>(r =>
-                r.Address.StreetAddress1 == "2207 Orchard Creek Dr"),
+                r.Address.Line1 == "2207 Orchard Creek Dr"),
             Arg.Any<CancellationToken>());
     }
 
@@ -1009,9 +1004,9 @@ public class UpdateAddressCommandHandlerTests
         Assert.True(success.Value.IsValid);
         Assert.Equal("2207 Orchard Creek Drive", success.Value.NormalizedAddress?.StreetAddress1);
 
-        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+        await _addressUpdateBackend.Received(1).UpdateAddressAsync(
             Arg.Is<AddressUpdateRequest>(r =>
-                r.Address.StreetAddress1 == "2207 Orchard Creek Drive"),
+                r.Address.Line1 == "2207 Orchard Creek Drive"),
             Arg.Any<CancellationToken>());
     }
 
@@ -1069,7 +1064,7 @@ public class UpdateAddressCommandHandlerTests
         var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
         Assert.False(success.Value.IsValid);
         Assert.Equal("too_long", success.Value.Reason);
-        await _stateAddressUpdateService.DidNotReceive()
+        await _addressUpdateBackend.DidNotReceive()
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -1111,7 +1106,7 @@ public class UpdateAddressCommandHandlerTests
         Assert.True(result.IsSuccess);
         var success = Assert.IsType<SuccessResult<AddressValidationResult>>(result);
         Assert.True(success.Value.IsValid);
-        await _stateAddressUpdateService.Received(1)
+        await _addressUpdateBackend.Received(1)
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
     }
 }

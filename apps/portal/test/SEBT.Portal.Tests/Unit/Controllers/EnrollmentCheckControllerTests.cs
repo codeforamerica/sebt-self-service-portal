@@ -5,15 +5,14 @@ using SEBT.Portal.Api.Controllers.EnrollmentCheck;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.EnrollmentCheck;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
 public class EnrollmentCheckControllerTests
 {
-    private readonly ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult> _handler =
-        Substitute.For<ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult>>();
+    private readonly ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckOutcome> _handler =
+        Substitute.For<ICommandHandler<CheckEnrollmentCommand, EnrollmentCheckOutcome>>();
 
     [Fact]
     public async Task CheckEnrollment_WithValidRequest_ReturnsOk()
@@ -27,21 +26,11 @@ public class EnrollmentCheckControllerTests
         };
 
         _handler.Handle(Arg.Any<CheckEnrollmentCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Result<EnrollmentCheckResult>.Success(new EnrollmentCheckResult
-            {
-                Results = new List<ChildCheckResult>
-                {
-                    new()
-                    {
-                        CheckId = Guid.NewGuid(),
-                        FirstName = "Jane",
-                        LastName = "Doe",
-                        DateOfBirth = new DateOnly(2015, 3, 12),
-                        Status = EnrollmentStatus.Match,
-                        SchoolName = "Lincoln Elementary"
-                    }
-                }
-            }));
+            .Returns(Result<EnrollmentCheckOutcome>.Success(new EnrollmentCheckOutcome(
+                [
+                    new EnrollmentChildOutcome(
+                        Guid.NewGuid(), "Jane", "Doe", new DateOnly(2015, 3, 12), IsMatch: true)
+                ])));
 
         var request = new EnrollmentCheckApiRequest
         {
@@ -96,7 +85,7 @@ public class EnrollmentCheckControllerTests
     }
 
     [Fact]
-    public async Task CheckEnrollment_WhenPluginFails_Returns503()
+    public async Task CheckEnrollment_WhenBackendFails_Returns503()
     {
         var controller = new EnrollmentCheckController
         {
@@ -107,7 +96,7 @@ public class EnrollmentCheckControllerTests
         };
 
         _handler.Handle(Arg.Any<CheckEnrollmentCommand>(), Arg.Any<CancellationToken>())
-            .Returns(Result<EnrollmentCheckResult>.DependencyFailed(
+            .Returns(Result<EnrollmentCheckOutcome>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Service unavailable."));
 

@@ -16,7 +16,7 @@ internal static class EnrollmentRequestBuilder
     private const string FirstNameInput = "firstName";
     private const string LastNameInput = "lastName";
     private const string DobInput = "dob";
-    private const string SchoolNameInput = "schoolName";
+    private const string SchoolIdentifierInput = "schoolIdentifier";
 
     public static JsonArray BuildRows(EnrollmentRequestBinding binding, EnrollmentCheckRequest request)
     {
@@ -104,7 +104,7 @@ internal static class EnrollmentRequestBuilder
             FirstNameInput => child.FirstName,
             LastNameInput => child.LastName,
             DobInput => dob.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-            SchoolNameInput => child.SchoolName,
+            SchoolIdentifierInput => child.SchoolIdentifier,
             _ => null,
         };
 }

@@ -4,32 +4,29 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using PluginAddress = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Address;
-using PluginAddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
-using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
-using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
 
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles mailing address updates for an authenticated user's household.
-/// Validates input, normalizes the address via <see cref="ICoreAddressUpdateService"/>,
-/// enforces self-service rules and benefit-type policy, and persists via state connector.
+/// Validates input, normalizes the address via <see cref="IAddressUpdateService"/>,
+/// enforces self-service rules and benefit-type policy, and persists via the Core
+/// state-backend port.
 /// </summary>
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
-    ICoreAddressUpdateService addressUpdateService,
+    IAddressUpdateService addressUpdateService,
     IAddressValidationService addressValidationService,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
     IPiiVisibilityService piiVisibilityService,
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
-    IStateAddressUpdateService stateAddressUpdateService,
+    IAddressUpdateBackend addressUpdateBackend,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
 {
@@ -229,25 +226,29 @@ public class UpdateAddressCommandHandler(
             }
         }
 
-        // Use the persisted address (normalized or user-entered when opted in) for the state connector call.
-        var pluginAddress = new PluginAddress
+        // Use the persisted address (normalized or user-entered when opted in) for the backend call.
+        var backendAddress = new AddressUpdateAddress
         {
-            StreetAddress1 = persistAddress.StreetAddress1,
-            StreetAddress2 = persistAddress.StreetAddress2,
+            Line1 = persistAddress.StreetAddress1,
+            Line2 = persistAddress.StreetAddress2,
             City = persistAddress.City,
             State = persistAddress.State,
-            PostalCode = persistAddress.PostalCode
+            Zip = persistAddress.PostalCode
         };
 
-        var updateRequest = new PluginAddressUpdateRequest
-        {
-            HouseholdIdentifierValue = identifier.Value,
-            Address = pluginAddress
-        };
+        // The household's case IDs are the opaque tokens the read path served; driver
+        // configs collect per-case write-ids from them. The update itself is
+        // household-routed by the identifier, so an empty batch is valid.
+        var caseTokens = household.SummerEbtCases
+            .Select(c => c.SummerEBTCaseID)
+            .OfType<string>()
+            .ToList();
+
+        var updateRequest = new AddressUpdateRequest(identifier.Value, caseTokens, backendAddress);
 
         try
         {
-            var updateResult = await stateAddressUpdateService.UpdateAddressAsync(updateRequest, cancellationToken);
+            var updateResult = await addressUpdateBackend.UpdateAddressAsync(updateRequest, cancellationToken);
 
             if (updateResult.IsSuccess)
             {

@@ -11,11 +11,11 @@ public sealed record EnrollmentCheckRequest(IReadOnlyList<EnrollmentChild> Child
 
 /// <summary>
 /// One child to check. <see cref="CheckId"/> is an opaque caller correlation id echoed on the result.
-/// <see cref="SchoolName"/> is the state's school identifier for enrollment matching — optional
-/// because the portal doesn't always have it.
+/// <see cref="SchoolIdentifier"/> is the state's school identifier for enrollment matching (a name
+/// or a code, whichever the state's match reads) — optional because the portal doesn't always have it.
 /// </summary>
 public sealed record EnrollmentChild(
-    string CheckId, string FirstName, string LastName, DateOnly DateOfBirth, string? SchoolName = null);
+    string CheckId, string FirstName, string LastName, DateOnly DateOfBirth, string? SchoolIdentifier = null);
 
 /// <summary>
 /// The per-child enrollment outcomes, one entry per requested child, in request order.

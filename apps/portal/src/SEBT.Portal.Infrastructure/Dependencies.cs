@@ -115,11 +115,17 @@ public static class Dependencies
         // Self-service rules evaluator — evaluates per-state config against household data
         services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
 
-        // Card-replacement writes go through the Core state-backend port. The plugin
-        // path adapts the contract service (registered as a singleton by AddPlugins)
-        // behind it, decoding the opaque case tokens reads serve.
+        // Card-replacement and address-update writes go through the Core state-backend
+        // ports. The plugin path adapts the contract services (registered as singletons
+        // by AddPlugins) behind them, decoding the opaque case tokens reads serve.
         services.AddSingleton<Core.StateBackends.ICardReplacementBackend,
             StateBackendAdapters.PluginCardReplacementBackend>();
+        services.AddSingleton<Core.StateBackends.IAddressUpdateBackend,
+            StateBackendAdapters.PluginAddressUpdateBackend>();
+        // The enrollment-check read follows the same pattern: the Core port fronts the
+        // contract service, and the adapter owns the exact-match guard.
+        services.AddSingleton<Core.StateBackends.IEnrollmentCheckBackend,
+            StateBackendAdapters.PluginEnrollmentCheckBackend>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
         // Cooldown hashes key on the raw state case ID; this resolver decodes
         // the opaque case tokens that reads serve back to that canonical form.

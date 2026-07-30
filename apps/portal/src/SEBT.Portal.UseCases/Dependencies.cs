@@ -2,7 +2,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Kernel;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.Auth;
 using SEBT.Portal.UseCases.Auth.SessionLifetime;
 using SEBT.Portal.UseCases.Diagnostics;
@@ -25,7 +24,7 @@ public static class Dependencies
         services.RegisterCommandHandler<ResubmitChallengeCommand, ResubmitChallengeResponse, ResubmitChallengeCommandHandler>();
         services.RegisterQueryHandler<GetVerificationStatusQuery, VerificationStatusResponse, GetVerificationStatusQueryHandler>();
         services.RegisterCommandHandler<ProcessWebhookCommand, ProcessWebhookCommandHandler>();
-        services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult, CheckEnrollmentCommandHandler>();
+        services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckOutcome, CheckEnrollmentCommandHandler>();
         services.RegisterCommandHandler<UpdateAddressCommand, Core.Services.AddressValidationResult, UpdateAddressCommandHandler>();
         services.RegisterCommandHandler<RequestCardReplacementCommand, RequestCardReplacementCommandHandler>();
         services.RegisterCommandHandler<TestErrorCommand, TestErrorCommandHandler>();

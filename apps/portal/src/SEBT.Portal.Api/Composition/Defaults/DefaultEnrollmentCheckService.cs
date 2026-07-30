@@ -21,8 +21,8 @@ internal class DefaultEnrollmentCheckService : IEnrollmentCheckService
                 FirstName = c.FirstName,
                 LastName = c.LastName,
                 DateOfBirth = c.DateOfBirth,
-                Status = EnrollmentStatus.NonMatch,
-                SchoolName = c.SchoolName
+                Status = EnrollmentStatus.NonMatch
+                // SchoolName is not echoed — no result through the lean enrollment path carries one.
             }).ToList(),
             ResponseMessage = "No enrollment check service configured."
         });

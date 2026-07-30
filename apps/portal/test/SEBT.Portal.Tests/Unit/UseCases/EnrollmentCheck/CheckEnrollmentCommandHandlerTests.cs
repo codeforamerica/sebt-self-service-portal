@@ -5,36 +5,72 @@ using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.EnrollmentCheck;
 using SEBT.Portal.Core.Services;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.UseCases.EnrollmentCheck;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.EnrollmentCheck;
 
 public class CheckEnrollmentCommandHandlerTests
 {
-    private readonly IEnrollmentCheckService _enrollmentCheckService = Substitute.For<IEnrollmentCheckService>();
+    private readonly IEnrollmentCheckBackend _enrollmentCheckBackend = Substitute.For<IEnrollmentCheckBackend>();
     private readonly IEnrollmentCheckSubmissionLogger _submissionLogger = Substitute.For<IEnrollmentCheckSubmissionLogger>();
     private readonly ILogger<CheckEnrollmentCommandHandler> _logger = Substitute.For<ILogger<CheckEnrollmentCommandHandler>>();
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
 
     private CheckEnrollmentCommandHandler CreateHandler() =>
-        new(_enrollmentCheckService, _submissionLogger, _logger, _featureManager);
+        new(_enrollmentCheckBackend, _submissionLogger, _logger, _featureManager);
+
+    private static CheckEnrollmentCommand CreateCommand(params CheckEnrollmentCommand.ChildInput[] children) =>
+        new()
+        {
+            Children = children.ToList(),
+            IpAddress = "127.0.0.1"
+        };
+
+    private static CheckEnrollmentCommand.ChildInput JaneDoe(
+        string? schoolName = null, string? schoolCode = null) =>
+        new()
+        {
+            FirstName = "Jane",
+            LastName = "Doe",
+            DateOfBirth = new DateOnly(2015, 3, 12),
+            SchoolName = schoolName,
+            SchoolCode = schoolCode
+        };
+
+    /// <summary>
+    /// Stubs the backend to return one lean result per submitted child, echoing the
+    /// handler-minted CheckIds so results correlate back to the submission.
+    /// </summary>
+    private void StubBackend(
+        string? message,
+        params Func<string, EnrollmentChildResult>?[] resultBuilders) =>
+        _enrollmentCheckBackend
+            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
+            .Returns(call =>
+            {
+                var request = call.Arg<EnrollmentCheckRequest>();
+                var results = new List<EnrollmentChildResult>();
+                for (var i = 0; i < request.Children.Count; i++)
+                {
+                    if (resultBuilders[i] is { } build)
+                    {
+                        results.Add(build(request.Children[i].CheckId));
+                    }
+                }
+
+                return new EnrollmentCheckResult(results, message);
+            });
 
     [Fact]
     public async Task Handle_WhenNoChildren_ReturnsValidationFailed()
     {
         var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children = new List<CheckEnrollmentCommand.ChildInput>(),
-            IpAddress = "127.0.0.1"
-        };
 
-        var result = await handler.Handle(command);
+        var result = await handler.Handle(CreateCommand());
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<Portal.Kernel.Results.ValidationFailedResult<EnrollmentCheckResult>>(result);
+        Assert.IsType<Portal.Kernel.Results.ValidationFailedResult<EnrollmentCheckOutcome>>(result);
     }
 
     [Fact]
@@ -46,314 +82,144 @@ public class CheckEnrollmentCommandHandlerTests
             FirstName = $"Child{i}",
             LastName = "Doe",
             DateOfBirth = new DateOnly(2015, 1, 1)
-        }).ToList();
-        var command = new CheckEnrollmentCommand
-        {
-            Children = children,
-            IpAddress = "127.0.0.1"
-        };
+        }).ToArray();
 
-        var result = await handler.Handle(command);
+        var result = await handler.Handle(CreateCommand(children));
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<Portal.Kernel.Results.ValidationFailedResult<EnrollmentCheckResult>>(result);
+        Assert.IsType<Portal.Kernel.Results.ValidationFailedResult<EnrollmentCheckOutcome>>(result);
     }
 
     [Fact]
-    public async Task Handle_WithValidChild_CallsPluginAndReturnsResults()
+    public async Task Handle_WithValidChild_CallsBackendAndReturnsResults()
     {
+        StubBackend(null, checkId => new EnrollmentChildResult(checkId, IsMatch: true));
         var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children = new List<CheckEnrollmentCommand.ChildInput>
-            {
-                new()
-                {
-                    FirstName = "Jane",
-                    LastName = "Doe",
-                    DateOfBirth = new DateOnly(2015, 3, 12),
-                    SchoolName = "Lincoln Elementary"
-                }
-            },
-            IpAddress = "127.0.0.1"
-        };
 
-        _enrollmentCheckService
-            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new EnrollmentCheckResult
-            {
-                Results = new List<ChildCheckResult>
-                {
-                    new()
-                    {
-                        CheckId = Guid.NewGuid(),
-                        FirstName = "Jane",
-                        LastName = "Doe",
-                        DateOfBirth = new DateOnly(2015, 3, 12),
-                        Status = EnrollmentStatus.Match,
-                        SchoolName = "Lincoln Elementary"
-                    }
-                }
-            });
-
-        var result = await handler.Handle(command);
+        var result = await handler.Handle(CreateCommand(JaneDoe()));
 
         Assert.True(result.IsSuccess);
-        Assert.Single(result.Value.Results);
-        Assert.Equal(EnrollmentStatus.Match, result.Value.Results[0].Status);
+        var returned = Assert.Single(result.Value.Results);
+        Assert.True(returned.IsMatch);
+    }
+
+    [Fact]
+    public async Task Handle_IdentityAlwaysComesFromTheSubmission()
+    {
+        // The lean backend result carries no identity at all — the outcome's name and DOB
+        // can only come from the submitted command, so no state-system PII can surface.
+        StubBackend(null, checkId => new EnrollmentChildResult(
+            checkId, IsMatch: true, MatchConfidence: 97.5, StatusMessage: "SEBT ELIGIBLE"));
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(CreateCommand(JaneDoe()));
+
+        Assert.True(result.IsSuccess);
+        var returned = Assert.Single(result.Value.Results);
+        Assert.Equal("Jane", returned.FirstName);
+        Assert.Equal("Doe", returned.LastName);
+        Assert.Equal(new DateOnly(2015, 3, 12), returned.DateOfBirth);
+        Assert.Equal(97.5, returned.MatchConfidence);
+        Assert.Equal("SEBT ELIGIBLE", returned.StatusMessage);
+    }
+
+    [Fact]
+    public async Task Handle_SendsCoalescedSchoolIdentifier_SchoolCodeWins()
+    {
+        EnrollmentCheckRequest? seenRequest = null;
+        _enrollmentCheckBackend
+            .CheckEnrollmentAsync(
+                Arg.Do<EnrollmentCheckRequest>(r => seenRequest = r), Arg.Any<CancellationToken>())
+            .Returns(new EnrollmentCheckResult([]));
+        var handler = CreateHandler();
+
+        await handler.Handle(CreateCommand(JaneDoe(schoolName: "Lincoln Elementary", schoolCode: "SCH-042")));
+
+        var child = Assert.Single(Assert.IsAssignableFrom<EnrollmentCheckRequest>(seenRequest).Children);
+        Assert.Equal("SCH-042", child.SchoolIdentifier);
     }
 
     [Fact]
     public async Task Handle_LogsDeidentifiedSubmission()
     {
+        StubBackend(null, checkId => new EnrollmentChildResult(checkId, IsMatch: true));
         var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children = new List<CheckEnrollmentCommand.ChildInput>
-            {
-                new()
-                {
-                    FirstName = "Jane",
-                    LastName = "Doe",
-                    DateOfBirth = new DateOnly(2015, 3, 12),
-                    SchoolName = "Lincoln Elementary"
-                }
-            },
-            IpAddress = "127.0.0.1"
-        };
 
-        _enrollmentCheckService
-            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new EnrollmentCheckResult
-            {
-                Results = new List<ChildCheckResult>
-                {
-                    new()
-                    {
-                        CheckId = Guid.NewGuid(),
-                        FirstName = "Jane",
-                        LastName = "Doe",
-                        DateOfBirth = new DateOnly(2015, 3, 12),
-                        Status = EnrollmentStatus.Match,
-                        SchoolName = "Lincoln Elementary",
-                        EligibilityType = EligibilityType.Snap
-                    }
-                }
-            });
-
-        await handler.Handle(command);
+        await handler.Handle(CreateCommand(JaneDoe(schoolName: "Lincoln Elementary")));
 
         await _submissionLogger.Received(1).LogSubmissionAsync(
             Arg.Is<EnrollmentCheckSubmission>(s =>
                 s.ChildrenChecked == 1 &&
                 s.ChildResults[0].BirthYear == 2015 &&
                 s.ChildResults[0].Status == "Match" &&
-                s.ChildResults[0].SchoolName == "Lincoln Elementary"),
+                s.ChildResults[0].EligibilityType == null &&
+                s.ChildResults[0].SchoolName == null),
             Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task Handle_WhenPluginThrows_ReturnsDependencyFailed()
+    public async Task Handle_WhenBackendThrows_ReturnsDependencyFailed()
     {
-        var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children = new List<CheckEnrollmentCommand.ChildInput>
-            {
-                new()
-                {
-                    FirstName = "Jane",
-                    LastName = "Doe",
-                    DateOfBirth = new DateOnly(2015, 3, 12),
-                    SchoolName = "Lincoln Elementary"
-                }
-            },
-            IpAddress = "127.0.0.1"
-        };
-
-        _enrollmentCheckService
+        _enrollmentCheckBackend
             .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new Exception("Plugin error"));
+            .ThrowsAsync(new Exception("Backend error"));
+        var handler = CreateHandler();
 
-        var result = await handler.Handle(command);
+        var result = await handler.Handle(CreateCommand(JaneDoe()));
 
         Assert.False(result.IsSuccess);
-        Assert.IsType<Portal.Kernel.Results.DependencyFailedResult<EnrollmentCheckResult>>(result);
+        Assert.IsType<Portal.Kernel.Results.DependencyFailedResult<EnrollmentCheckOutcome>>(result);
     }
 
     [Fact]
-    public async Task Handle_AlwaysReplacesConnectorNameAndDobWithSubmittedValues()
+    public async Task Handle_FlagOn_BackendOmitsChild_InsertsSyntheticNonMatch()
     {
-        // The connector now returns CBMS values (not submitted ones). The handler must
-        // replace FirstName/LastName/DateOfBirth with the submitted values before
-        // returning to the API — regardless of flag state — so no state-system PII
-        // is ever surfaced to the UI.
-        _featureManager
-            .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
-            .Returns(false);
-
-        var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children =
-            [
-                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
-            ],
-            IpAddress = "127.0.0.1"
-        };
-
-        // Connector returns CBMS-normalized values — different name, different month/day
-        _enrollmentCheckService
-            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
-            .Returns(call => new EnrollmentCheckResult
-            {
-                Results =
-                [
-                    new()
-                    {
-                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
-                        FirstName = "JANE",
-                        LastName = "DOE",
-                        DateOfBirth = new DateOnly(2015, 3, 12),
-                        Status = EnrollmentStatus.Match
-                    }
-                ]
-            });
-
-        var result = await handler.Handle(command);
-
-        Assert.True(result.IsSuccess);
-        var returned = Assert.Single(result.Value.Results);
-        Assert.Equal("Jane", returned.FirstName);
-        Assert.Equal("Doe", returned.LastName);
-        Assert.Equal(new DateOnly(2015, 3, 12), returned.DateOfBirth);
-    }
-
-    [Fact]
-    public async Task Handle_WhenAllCandidatesDroppedByFilter_InsertsSyntheticNonMatch()
-    {
+        // The backend returned no result for the child (e.g. the exact-match guard dropped
+        // it). With the flag on, the outcome still carries one entry per submitted child.
         _featureManager
             .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
             .Returns(true);
-
+        StubBackend(null, new Func<string, EnrollmentChildResult>?[] { null });
         var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children =
-            [
-                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
-            ],
-            IpAddress = "127.0.0.1"
-        };
 
-        // Connector returns a candidate with a wrong year — filter drops it, leaving no result for this child
-        _enrollmentCheckService
-            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
-            .Returns(call => new EnrollmentCheckResult
-            {
-                Results =
-                [
-                    new()
-                    {
-                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
-                        FirstName = "Jane",
-                        LastName = "Doe",
-                        DateOfBirth = new DateOnly(2014, 3, 12),
-                        Status = EnrollmentStatus.Match
-                    }
-                ]
-            });
-
-        var result = await handler.Handle(command);
+        var result = await handler.Handle(CreateCommand(JaneDoe()));
 
         Assert.True(result.IsSuccess);
         var returned = Assert.Single(result.Value.Results);
-        Assert.Equal(EnrollmentStatus.NonMatch, returned.Status);
+        Assert.False(returned.IsMatch);
         Assert.Equal("Jane", returned.FirstName);
         Assert.Equal("Doe", returned.LastName);
         Assert.Equal(new DateOnly(2015, 3, 12), returned.DateOfBirth);
+        Assert.Null(returned.MatchConfidence);
+        Assert.Null(returned.StatusMessage);
     }
 
     [Fact]
-    public async Task Handle_WhenExactMatchFlagEnabled_DropsResultWithNoExactMatch()
-    {
-        _featureManager
-            .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
-            .Returns(true);
-
-        var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children =
-            [
-                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
-            ],
-            IpAddress = "127.0.0.1"
-        };
-
-        // Connector returns a candidate whose name and DOB don't match the submission
-        _enrollmentCheckService
-            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
-            .Returns(call => new EnrollmentCheckResult
-            {
-                Results =
-                [
-                    new()
-                    {
-                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
-                        FirstName = "Robert",
-                        LastName = "Smith",
-                        DateOfBirth = new DateOnly(2010, 6, 1),
-                        Status = EnrollmentStatus.PossibleMatch
-                    }
-                ]
-            });
-
-        var result = await handler.Handle(command);
-
-        Assert.True(result.IsSuccess);
-        var returned = Assert.Single(result.Value.Results);
-        Assert.Equal(EnrollmentStatus.NonMatch, returned.Status);
-    }
-
-    [Fact]
-    public async Task Handle_WhenExactMatchFlagDisabled_KeepsResultRegardlessOfMatch()
+    public async Task Handle_FlagOff_BackendOmitsChild_NoSyntheticInserted()
     {
         _featureManager
             .IsEnabledAsync(FeatureFlags.EnrollmentCheckRequiresAtLeastOneExactMatchedField)
             .Returns(false);
-
+        StubBackend("Processed", new Func<string, EnrollmentChildResult>?[] { null });
         var handler = CreateHandler();
-        var command = new CheckEnrollmentCommand
-        {
-            Children =
-            [
-                new() { FirstName = "Jane", LastName = "Doe", DateOfBirth = new DateOnly(2015, 3, 12) }
-            ],
-            IpAddress = "127.0.0.1"
-        };
 
-        // Same non-matching candidate as above — should be kept because flag is off
-        _enrollmentCheckService
-            .CheckEnrollmentAsync(Arg.Any<EnrollmentCheckRequest>(), Arg.Any<CancellationToken>())
-            .Returns(call => new EnrollmentCheckResult
-            {
-                Results =
-                [
-                    new()
-                    {
-                        CheckId = call.Arg<EnrollmentCheckRequest>().Children[0].CheckId,
-                        FirstName = "Robert",
-                        LastName = "Smith",
-                        DateOfBirth = new DateOnly(2010, 6, 1),
-                        Status = EnrollmentStatus.PossibleMatch
-                    }
-                ]
-            });
-
-        var result = await handler.Handle(command);
+        var result = await handler.Handle(CreateCommand(JaneDoe()));
 
         Assert.True(result.IsSuccess);
-        Assert.Single(result.Value.Results);
+        Assert.Empty(result.Value.Results);
+        Assert.Equal("Processed", result.Value.Message);
+    }
+
+    [Fact]
+    public async Task Handle_BackendResultWithUnknownCheckId_IsDropped()
+    {
+        // A result that correlates to no submitted child has no identity to surface.
+        StubBackend(null, _ => new EnrollmentChildResult(Guid.NewGuid().ToString(), IsMatch: true));
+        var handler = CreateHandler();
+
+        var result = await handler.Handle(CreateCommand(JaneDoe()));
+
+        Assert.True(result.IsSuccess);
+        Assert.Empty(result.Value.Results);
     }
 }

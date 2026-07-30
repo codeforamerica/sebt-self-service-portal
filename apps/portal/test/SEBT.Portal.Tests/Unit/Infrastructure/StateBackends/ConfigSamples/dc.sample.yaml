@@ -115,9 +115,9 @@ operations:
         firstName: firstName
         lastName: lastName
         dob: dateOfBirth
-      # DC's sproc match also reads schoolName; optional because the portal may not have it.
+      # DC's sproc match also reads the school name; optional because the portal may not have it.
       mapOptional:
-        schoolName: schoolName
+        schoolIdentifier: schoolName
     response:
       # The single result object is the response root; the anyRowValueIn strategy reads the boolean
       # eligibility flag (one result, so no fan-in).

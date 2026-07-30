@@ -306,6 +306,8 @@ public class ConfigurableStateBackend :
             binding =>
             {
                 // Decode the batch of opaque caseIds into their routing fields for the request binding.
+                // Token-carried shared fields stay the binding source; the envelope's
+                // HouseholdIdentifier is available for a future binding brick.
                 IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
                     .Select(OpaqueCaseId.Decode)
                     .ToList();
