@@ -115,17 +115,34 @@ public static class Dependencies
         // Self-service rules evaluator — evaluates per-state config against household data
         services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
 
-        // Card-replacement and address-update writes go through the Core state-backend
-        // ports. The plugin path adapts the contract services (registered as singletons
-        // by AddPlugins) behind them, decoding the opaque case tokens reads serve.
-        services.AddSingleton<Core.StateBackends.ICardReplacementBackend,
-            StateBackendAdapters.PluginCardReplacementBackend>();
-        services.AddSingleton<Core.StateBackends.IAddressUpdateBackend,
-            StateBackendAdapters.PluginAddressUpdateBackend>();
-        // The enrollment-check read follows the same pattern: the Core port fronts the
-        // contract service, and the adapter owns the exact-match guard.
-        services.AddSingleton<Core.StateBackends.IEnrollmentCheckBackend,
-            StateBackendAdapters.PluginEnrollmentCheckBackend>();
+        // Card-replacement and address-update writes and the enrollment-check read go through
+        // the Core state-backend ports. Two implementations sit behind them:
+        //  - Plugin adapters over the contract services (registered as singletons by AddPlugins),
+        //    decoding the opaque case tokens reads serve; the enrollment adapter also owns the
+        //    exact-match guard.
+        //  - The config-driven ConfigurableStateBackend, composed lazily inside
+        //    ConfigurableStateBackendPorts so its YAML config is only loaded when the flag is on.
+        // The household read path flips with the same flag in AddPortalInfrastructureRepositories;
+        // health and Swagger stay plugin-provided regardless of the flag.
+        services.AddSingleton<StateBackendAdapters.PluginCardReplacementBackend>();
+        services.AddSingleton<StateBackendAdapters.PluginAddressUpdateBackend>();
+        services.AddSingleton<StateBackendAdapters.PluginEnrollmentCheckBackend>();
+        services.AddSingleton<Core.StateBackends.IStateBackendSecretResolver,
+            StateBackends.Auth.ConfigurationStateBackendSecretResolver>();
+        services.AddSingleton<StateBackends.ConfigurableStateBackendPorts>();
+
+        services.AddTransient<Core.StateBackends.ICardReplacementBackend>(sp =>
+            UseConfigurableStateBackend(sp)
+                ? sp.GetRequiredService<StateBackends.ConfigurableStateBackendPorts>().CardReplacement
+                : sp.GetRequiredService<StateBackendAdapters.PluginCardReplacementBackend>());
+        services.AddTransient<Core.StateBackends.IAddressUpdateBackend>(sp =>
+            UseConfigurableStateBackend(sp)
+                ? sp.GetRequiredService<StateBackends.ConfigurableStateBackendPorts>().AddressUpdate
+                : sp.GetRequiredService<StateBackendAdapters.PluginAddressUpdateBackend>());
+        services.AddTransient<Core.StateBackends.IEnrollmentCheckBackend>(sp =>
+            UseConfigurableStateBackend(sp)
+                ? sp.GetRequiredService<StateBackends.ConfigurableStateBackendPorts>().EnrollmentCheck
+                : sp.GetRequiredService<StateBackendAdapters.PluginEnrollmentCheckBackend>());
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
         // Cooldown hashes key on the raw state case ID; this resolver decodes
         // the opaque case tokens that reads serve back to that canonical form.
@@ -162,6 +179,14 @@ public static class Dependencies
         return services;
     }
 
+    // The use_configurable_state_backend flag is GLOBAL and atomic: the three write/enrollment
+    // ports and the household read path all flip together, never per-operation. Read per resolve
+    // so an AppConfig toggle takes effect without a restart, mirroring the UseMockHouseholdData
+    // factory; every branch returns shared singleton instances.
+    private static bool UseConfigurableStateBackend(IServiceProvider sp) =>
+        sp.GetRequiredService<IConfiguration>()
+            .GetValue<bool>($"FeatureManagement:{FeatureFlags.UseConfigurableStateBackend}");
+
     public static IServiceCollection AddPortalInfrastructureRepositories(
         this IServiceCollection services,
         IConfiguration? configuration = null)
@@ -184,6 +209,14 @@ public static class Dependencies
                 return sp.GetRequiredService<MockHouseholdRepository>();
             }
 
+            // Mock beats the flag: mock mode serves in-memory data with no state backend at
+            // all. With mock off, the same atomic use_configurable_state_backend flag that
+            // flips the write/enrollment ports also flips reads to the config-driven backend.
+            if (UseConfigurableStateBackend(sp))
+            {
+                return sp.GetRequiredService<StateBackends.StateBackendHouseholdRepository>();
+            }
+
             var summerEbtCaseService = sp.GetService<ISummerEbtCaseService>();
             if (summerEbtCaseService != null)
             {
@@ -196,6 +229,10 @@ public static class Dependencies
         });
         services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();
+        // Composed via the lazy ports holder, so the config-driven stack (YAML load included)
+        // is only ever built when the flag-on branch above resolves this repository.
+        services.AddTransient(sp => new StateBackends.StateBackendHouseholdRepository(
+            sp.GetRequiredService<StateBackends.ConfigurableStateBackendPorts>().HouseholdLookup));
 
         return services;
     }

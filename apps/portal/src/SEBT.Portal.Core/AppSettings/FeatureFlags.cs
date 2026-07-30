@@ -52,4 +52,13 @@ public static class FeatureFlags
     /// checker polls the enrollment features endpoint, so no checker redeploy is required.
     /// </summary>
     public const string CheckerOutagePageEnabled = "checker_outage_page_enabled";
+
+    /// <summary>
+    /// When enabled, the card-replacement, address-update, and enrollment-check ports and
+    /// the household read path are served by the config-driven state backend (YAML at
+    /// StateBackend:ConfigPath) instead of the state-connector plugin path. One global
+    /// switch — every port flips together, never per-operation. Mock household data
+    /// (UseMockHouseholdData) beats this flag for reads. Defaults to false everywhere.
+    /// </summary>
+    public const string UseConfigurableStateBackend = "use_configurable_state_backend";
 }
