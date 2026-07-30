@@ -99,7 +99,6 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("portal", cardReplacement.Request.Constants!["source"]);
         Assert.Equal("summerEbtCaseId", cardReplacement.Request.Map!["caseId"]);
         Assert.Equal("applicationId", cardReplacement.Request.Map["applicationId"]);
-        Assert.Equal("reason", cardReplacement.Request.Map["reason"]);
 
         ResultClassifier classifier = Assert.IsType<ResultClassifier>(cardReplacement.Result);
         Assert.Equal(2, classifier.Conditions.Count);

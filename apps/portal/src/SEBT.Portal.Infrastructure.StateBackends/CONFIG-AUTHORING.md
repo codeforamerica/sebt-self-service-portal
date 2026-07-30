@@ -182,9 +182,9 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 The binding vocabulary:
 
 - `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
-- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. `reason`, or the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path.
+- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path.
 
-DC card replacement — `constants` plus a scalar `map`; the map's left-hand names are the decoded `caseId` fields plus `reason`:
+DC card replacement — `constants` plus a scalar `map`; the map's left-hand names are the decoded `caseId` fields:
 
 ```yaml
     request:
@@ -193,7 +193,6 @@ DC card replacement — `constants` plus a scalar `map`; the map's left-hand nam
       map:
         caseId: summerEbtCaseId
         applicationId: applicationId
-        reason: reason
 ```
 
 Address update spans every case a household owns, so it adds two **batch shapes**:

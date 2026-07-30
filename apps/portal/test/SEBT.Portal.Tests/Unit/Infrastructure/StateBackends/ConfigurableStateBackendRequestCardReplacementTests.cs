@@ -29,7 +29,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
                 {
                     ["caseId"] = "summerEbtCaseId",
                     ["applicationId"] = "applicationId",
-                    ["reason"] = "reason",
                 },
             },
             Result = new ResultClassifier
@@ -187,7 +186,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             .Respond("application/json", """{ "resultCode": "OK" }""");
 
         var backend = BuildBackend(mockHttp, DcCardReplacement());
-        var request = new CardReplacementRequest(caseId) { Reason = "lost" };
+        var request = new CardReplacementRequest(new List<string> { caseId });
 
         // Act
         await backend.RequestCardReplacementAsync(request);
@@ -200,7 +199,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         Assert.Equal("portal", root.GetProperty("source").GetString());
         Assert.Equal("SEBT-001", root.GetProperty("summerEbtCaseId").GetString());
         Assert.Equal("APP-100", root.GetProperty("applicationId").GetString());
-        Assert.Equal("lost", root.GetProperty("reason").GetString());
     }
 
     [Fact]
@@ -227,7 +225,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var backend = BuildBackend(mockHttp, DcCardReplacement());
 
         // Act
-        await backend.RequestCardReplacementAsync(new CardReplacementRequest(caseId) { Reason = "lost" });
+        await backend.RequestCardReplacementAsync(new CardReplacementRequest(new List<string> { caseId }));
 
         // Assert — the injected key is attached (a per-call UUID in production).
         Assert.Equal(FixedIdempotencyKey, capturedKey);
@@ -260,7 +258,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(caseId) { Reason = "lost" });
+            new CardReplacementRequest(new List<string> { caseId }));
 
         // Assert
         Assert.Equal(isSuccess, result.IsSuccess);
@@ -296,7 +294,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(caseId));
+            new CardReplacementRequest(new List<string> { caseId }));
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -332,10 +330,97 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(caseId));
+            new CardReplacementRequest(new List<string> { caseId }));
 
         // Assert
         Assert.True(result.IsSuccess);
+    }
+
+    // ---- 4. Batch fan-out: one call per caseId, fail fast on the first non-success -------------
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_SendsOneCallPerCaseId()
+    {
+        // Arrange — two caseIds routing to two different raw cases.
+        string caseId1 = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["caseId"] = "SEBT-001",
+            ["applicationId"] = "APP-100",
+        });
+        string caseId2 = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["caseId"] = "SEBT-002",
+            ["applicationId"] = "APP-200",
+        });
+
+        var capturedCaseIds = new List<string?>();
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/cards/replace")
+            .With(message =>
+            {
+                string body = message.Content!.ReadAsStringAsync().GetAwaiter().GetResult();
+                using JsonDocument document = JsonDocument.Parse(body);
+                capturedCaseIds.Add(document.RootElement.GetProperty("summerEbtCaseId").GetString());
+                return true;
+            })
+            .Respond("application/json", """{ "resultCode": "OK" }""");
+
+        var backend = BuildBackend(mockHttp, DcCardReplacement());
+
+        // Act
+        WriteResult result = await backend.RequestCardReplacementAsync(
+            new CardReplacementRequest(new List<string> { caseId1, caseId2 }));
+
+        // Assert — one POST per decoded caseId, in request order.
+        Assert.True(result.IsSuccess);
+        Assert.Equal(new List<string?> { "SEBT-001", "SEBT-002" }, capturedCaseIds);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_FailsFast_OnFirstNonSuccess()
+    {
+        // Arrange — the first case classifies BackendError; the second must never be sent.
+        string caseId1 = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["caseId"] = "SEBT-001",
+            ["applicationId"] = "APP-100",
+        });
+        string caseId2 = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["caseId"] = "SEBT-002",
+            ["applicationId"] = "APP-200",
+        });
+
+        int callCount = 0;
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/cards/replace")
+            .With(_ =>
+            {
+                callCount++;
+                return true;
+            })
+            .Respond(HttpStatusCode.InternalServerError, "application/json", """{ "resultCode": "ERR" }""");
+
+        var backend = BuildBackend(mockHttp, DcCardReplacement());
+
+        // Act
+        WriteResult result = await backend.RequestCardReplacementAsync(
+            new CardReplacementRequest(new List<string> { caseId1, caseId2 }));
+
+        // Assert — the failing result is returned and the loop stops.
+        Assert.False(result.IsSuccess);
+        Assert.Equal(1, callCount);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_FailsLoud_OnEmptyCaseIds()
+    {
+        var backend = BuildBackend(new MockHttpMessageHandler(), DcCardReplacement());
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            backend.RequestCardReplacementAsync(new CardReplacementRequest(new List<string>())));
     }
 
     // ---- Fail-loud classifier config validation ------------------------------------------------

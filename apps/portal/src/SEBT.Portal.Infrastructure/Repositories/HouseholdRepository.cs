@@ -112,6 +112,11 @@ public class HouseholdRepository : IHouseholdRepository
         {
             return null;
         }
+
+        // Serve case IDs as opaque tokens so plugin-path reads share the
+        // JSON-adapter path's ID namespace. Composed from the identifier this
+        // lookup used so a later write can route without re-deriving it.
+        HouseholdCaseTokenizer.ReplaceCaseIdsWithTokens(core, normalizedValue);
         return HouseholdPiiFilter.Apply(core, piiVisibility);
     }
 
@@ -211,6 +216,9 @@ public class HouseholdRepository : IHouseholdRepository
             return null;
         }
 
+        // Same tokenization as the identifier path; this lookup is keyed by the
+        // benefit identifier, so that is the identifier the tokens carry.
+        HouseholdCaseTokenizer.ReplaceCaseIdsWithTokens(core, benefitIdentifierIc.Trim());
         return HouseholdPiiFilter.Apply(core, piiVisibility);
     }
 

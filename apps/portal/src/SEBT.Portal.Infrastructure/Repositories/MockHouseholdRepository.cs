@@ -87,6 +87,13 @@ public class MockHouseholdRepository : IHouseholdRepository
         }
 
         var result = CreateCopy(household, piiVisibility);
+
+        // Serve case IDs as opaque tokens, same as the real read paths, so
+        // mock-mode round trips (frontend merge keys, card replacement case
+        // refs) behave like production. Tokenizing the copy keeps the seeded
+        // originals raw, so reads never double-wrap.
+        HouseholdCaseTokenizer.ReplaceCaseIdsWithTokens(result, lookupValue!);
+
         _logger.LogDebug(
             "Returning mock household data for identifier type {Type}, PII visibility: Address={IncludeAddress}, Email={IncludeEmail}, Phone={IncludePhone}",
             identifier.Type,

@@ -9,7 +9,12 @@ using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 namespace SEBT.Portal.Infrastructure.StateBackends;
 
-public class ConfigurableStateBackend : IStateBackend
+public class ConfigurableStateBackend :
+    IHouseholdLookupBackend,
+    ICardReplacementBackend,
+    IAddressUpdateBackend,
+    IEnrollmentCheckBackend,
+    IStateBackendHealth
 {
     private readonly StateBackendConfiguration _configuration;
     private readonly HttpClient _httpClient;
@@ -34,7 +39,8 @@ public class ConfigurableStateBackend : IStateBackend
         _httpClient.BaseAddress ??= _configuration.BaseUrl;
     }
 
-    public StateBackendCapabilities Capabilities =>
+    // Capability guards derive from the loaded configuration; capabilities are not part of the ports.
+    private StateBackendCapabilities Capabilities =>
         _configuration.Capabilities;
 
     public async Task<EnrollmentCheckResult> CheckEnrollmentAsync(EnrollmentCheckRequest request, CancellationToken cancellationToken = default)
@@ -220,31 +226,34 @@ public class ConfigurableStateBackend : IStateBackend
         ResultClassifier classifier = operation.Result
             ?? throw new NotSupportedException("Card replacement has no result classifier configured.");
 
-        // Decode the opaque caseId into its routing fields, exposed (with the reason) to the binding.
-        Dictionary<string, string> inputs = BuildCardReplacementInputs(request);
-
-        return await ExecuteWriteAsync(
-            operation,
-            operation.Request,
-            classifier,
-            binding => StateBackendRequestBinder.BuildBody(binding, inputs),
-            policyRejectionMessage: "The household is not eligible to request a replacement via the portal.",
-            cancellationToken).ConfigureAwait(false);
-    }
-
-    private static Dictionary<string, string> BuildCardReplacementInputs(CardReplacementRequest request)
-    {
-        IReadOnlyDictionary<string, string> routingFields = OpaqueCaseId.Decode(request.CaseId);
-
-        var inputs = new Dictionary<string, string>(routingFields, StringComparer.Ordinal);
-
-        // "reason" is caller context, not a routing field.
-        if (request.Reason is { } reason)
+        if (request.CaseIds.Count == 0)
         {
-            inputs["reason"] = reason;
+            throw new ArgumentException("CaseIds must contain at least one case token.", nameof(request));
         }
 
-        return inputs;
+        // One call per decoded caseId, each built exactly like the single-case path (a batch write
+        // brick is deferred until a state needs one). Fail fast on the first non-success, mirroring
+        // the DC connector's per-case dispatch loop.
+        foreach (string caseId in request.CaseIds)
+        {
+            // Decode the opaque caseId into its routing fields, exposed to the binding.
+            var inputs = new Dictionary<string, string>(OpaqueCaseId.Decode(caseId), StringComparer.Ordinal);
+
+            WriteResult result = await ExecuteWriteAsync(
+                operation,
+                operation.Request,
+                classifier,
+                binding => StateBackendRequestBinder.BuildBody(binding, inputs),
+                policyRejectionMessage: "The household is not eligible to request a replacement via the portal.",
+                cancellationToken).ConfigureAwait(false);
+
+            if (!result.IsSuccess)
+            {
+                return result;
+            }
+        }
+
+        return WriteResult.Success();
     }
 
     private static async Task<JsonElement?> TryParseBodyAsync(

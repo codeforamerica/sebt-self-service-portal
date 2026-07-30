@@ -26,6 +26,7 @@ public class GetHouseholdDataQueryHandler(
     ISelfServiceEvaluator selfServiceEvaluator,
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
+    ICooldownIdentityResolver cooldownIdentityResolver,
     CoLoadedCohortFilterSettings coLoadedCohortFilter,
     IFeatureManager featureManager,
     ILogger<GetHouseholdDataQueryHandler> logger)
@@ -164,7 +165,11 @@ public class GetHouseholdDataQueryHandler(
             {
                 if (summerEbtCase.SummerEBTCaseID != null)
                 {
-                    var caseHash = identifierHasher.Hash(summerEbtCase.SummerEBTCaseID);
+                    // Cooldown rows are keyed by the hash of the canonical (raw
+                    // state) case ID, never an encoding-specific token — must
+                    // match the hash the card-replacement handler persisted.
+                    var caseHash = identifierHasher.Hash(
+                        cooldownIdentityResolver.ResolveCanonicalCaseIdentity(summerEbtCase.SummerEBTCaseID));
                     if (caseHash != null)
                     {
                         summerEbtCase.CardRequestedAt = await cardReplacementRepo

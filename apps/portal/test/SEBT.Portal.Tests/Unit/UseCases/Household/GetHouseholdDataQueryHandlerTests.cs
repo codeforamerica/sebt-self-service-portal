@@ -9,6 +9,7 @@ using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Household;
 
@@ -26,6 +27,10 @@ public class GetHouseholdDataQueryHandlerTests
     private readonly ISelfServiceEvaluator _selfServiceEvaluator = Substitute.For<ISelfServiceEvaluator>();
     private readonly ICardReplacementRequestRepository _cardReplacementRepo = Substitute.For<ICardReplacementRequestRepository>();
     private readonly IIdentifierHasher _identifierHasher = Substitute.For<IIdentifierHasher>();
+    // Real resolver: pure and dependency-free, and raw case IDs pass through
+    // unchanged, so hashing assertions see exactly what production would hash.
+    private readonly ICooldownIdentityResolver _cooldownIdentityResolver =
+        new OpaqueTokenCooldownIdentityResolver();
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
     private readonly NullLogger<GetHouseholdDataQueryHandler> _logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
 
@@ -40,6 +45,7 @@ public class GetHouseholdDataQueryHandlerTests
             _selfServiceEvaluator,
             _cardReplacementRepo,
             _identifierHasher,
+            _cooldownIdentityResolver,
             coLoadedCohortFilter ?? new CoLoadedCohortFilterSettings(),
             _featureManager,
             _logger);

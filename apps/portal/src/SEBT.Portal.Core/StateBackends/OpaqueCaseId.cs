@@ -1,19 +1,22 @@
 using System.Buffers.Text;
 using System.Text.Json;
 
-namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
+namespace SEBT.Portal.Core.StateBackends;
 
 /// <summary>
-/// Packs a write's named routing fields into a URL-safe base64 JSON token; reads compose it, writes
-/// decode it. Config declares which fields go in (see
-/// <see cref="Core.StateBackends.Configuration.Operations.CaseIdComposition"/>); the pack/unpack
-/// mechanism is fixed here.
+/// Packs a case's named routing fields into a URL-safe base64 JSON token; reads compose it, writes
+/// decode it. The JSON-adapter driver composes from config (see
+/// <see cref="Configuration.Operations.CaseIdComposition"/>); the plugin read path composes a fixed
+/// field set. The pack/unpack mechanism is fixed here so both integration paths share one token
+/// namespace.
 /// </summary>
 /// <remarks>
 /// The token is opaque, not encrypted — it carries no secrets, only routing identifiers the backend
 /// already returned. A mangled token fails to decode; it is not cryptographically signed.
+/// Serialization preserves the dictionary's insertion order, so callers that build fields in a fixed
+/// order get byte-identical tokens for the same record — callers rely on that determinism.
 /// </remarks>
-internal static class OpaqueCaseId
+public static class OpaqueCaseId
 {
     /// <summary>Packs the named routing fields into a URL-safe base64 JSON token.</summary>
     public static string Compose(IReadOnlyDictionary<string, string> fields)

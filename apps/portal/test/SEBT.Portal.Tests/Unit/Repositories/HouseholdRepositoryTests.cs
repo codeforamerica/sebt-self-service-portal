@@ -3,6 +3,7 @@ using NSubstitute;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Repositories;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
@@ -222,7 +223,13 @@ public class HouseholdRepositoryTests
         Assert.NotNull(result);
         Assert.Single(result.SummerEbtCases);
         var sec = result.SummerEbtCases[0];
-        Assert.Equal("CASE-001", sec.SummerEBTCaseID);
+        // The read path serves SummerEBTCaseID as an opaque token packing the
+        // raw case ID, the application IDs, and the lookup identifier.
+        Assert.NotNull(sec.SummerEBTCaseID);
+        var routingFields = OpaqueCaseId.Decode(sec.SummerEBTCaseID);
+        Assert.Equal("CASE-001", routingFields["caseId"]);
+        Assert.Equal("APP-001", routingFields["applicationId"]);
+        Assert.Equal(email, routingFields["householdIdentifier"]);
         Assert.Equal("APP-001", sec.ApplicationId);
         Assert.Equal("Maria", sec.ChildFirstName);
         Assert.Equal("Garcia", sec.ChildLastName);

@@ -4,13 +4,10 @@ using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using IStateCardReplacementService = SEBT.Portal.StatesPlugins.Interfaces.ICardReplacementService;
-using PluginCardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
-using PluginCaseRef = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CaseRef;
-using CardReplacementResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementResult;
 
 namespace SEBT.Portal.UseCases.Household;
 
@@ -18,10 +15,10 @@ namespace SEBT.Portal.UseCases.Household;
 /// Handles card replacement requests for an authenticated user's household.
 /// Validates input, resolves household identity, enforces minimum IAL, enforces
 /// per-case self-service rules, enforces 2-week cooldown via portal DB, and
-/// dispatches to the state connector. Persists replacement-request records for
-/// future cooldown enforcement only when the connector reports success, so a
+/// dispatches to the state backend. Persists replacement-request records for
+/// future cooldown enforcement only when the backend reports success, so a
 /// failed dispatch does not burn the user's 14-day cooldown for an action that
-/// never executed. Connector policy rejections and backend errors are mapped to
+/// never executed. Backend policy rejections and backend errors are mapped to
 /// portal <see cref="Result"/> types.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
@@ -30,9 +27,10 @@ public class RequestCardReplacementCommandHandler(
     IHouseholdRepository repository,
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
-    IStateCardReplacementService cardReplacementService,
+    ICardReplacementBackend cardReplacementBackend,
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
+    ICooldownIdentityResolver cooldownIdentityResolver,
     IDistributedLockProvider distributedLockProvider,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
@@ -129,11 +127,11 @@ public class RequestCardReplacementCommandHandler(
 
         var identifierKind = identifier.Type.ToString();
 
-        // Distributed lock prevents TOCTOU race between cooldown check, connector
+        // Distributed lock prevents TOCTOU race between cooldown check, backend
         // dispatch, and persist. Scoped to the user — a single user can only be
-        // in one card replacement flow at a time. Note: held during the connector
+        // in one card replacement flow at a time. Note: held during the backend
         // call, which is acceptable because (a) the lock is per-user, not global,
-        // and (b) the connector call has its own cancellation token plumbing.
+        // and (b) the backend call has its own cancellation token plumbing.
         await using (await distributedLockProvider.AcquireLockAsync(
             $"CardReplacement:{userId.Value}", cancellationToken: cancellationToken))
         {
@@ -143,7 +141,11 @@ public class RequestCardReplacementCommandHandler(
 
             foreach (var caseRef in command.CaseRefs)
             {
-                var caseHash = identifierHasher.Hash(caseRef.SummerEbtCaseId);
+                // Cooldown rows are keyed by the hash of the canonical (raw
+                // state) case ID, never an encoding-specific token — hashing is
+                // one-way, so an encoding change would silently reset cooldowns.
+                var caseHash = identifierHasher.Hash(
+                    cooldownIdentityResolver.ResolveCanonicalCaseIdentity(caseRef.SummerEbtCaseId));
                 if (householdHash != null && caseHash != null)
                 {
                     var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
@@ -165,46 +167,34 @@ public class RequestCardReplacementCommandHandler(
                 return Result.ValidationFailed(cooldownErrors);
             }
 
-            // Cooldown clear — dispatch to the state connector. Persist only on
-            // connector success so a failed dispatch does not burn the 14-day
+            // Cooldown clear — dispatch to the state backend. Persist only on
+            // backend success so a failed dispatch does not burn the 14-day
             // cooldown for a request that never executed.
             logger.LogInformation(
-                "Card replacement dispatching to state connector for household identifier kind {Kind}, {Count} case(s)",
+                "Card replacement dispatching to state backend for household identifier kind {Kind}, {Count} case(s)",
                 identifierKind,
                 command.CaseRefs.Count);
 
-            var pluginCaseRefs = command.CaseRefs
-                .Select(r => new PluginCaseRef
-                {
-                    SummerEbtCaseId = r.SummerEbtCaseId,
-                    ApplicationId = r.ApplicationId,
-                    ApplicationStudentId = r.ApplicationStudentId,
-                })
-                .ToList();
+            // The command's case IDs are the opaque tokens the read path served;
+            // the backend decodes them into whatever routing fields it needs.
+            var backendRequest = new CardReplacementRequest(
+                command.CaseRefs.Select(r => r.SummerEbtCaseId).ToList());
 
-            var pluginRequest = new PluginCardReplacementRequest
-            {
-                HouseholdIdentifierValue = identifier.Value,
-                CaseRefs = pluginCaseRefs,
-                Reason = StatesPlugins.Interfaces.Models.Household.CardReplacementReason.Unspecified,
-            };
-
-            CardReplacementResult connectorResult;
+            WriteResult backendResult;
             try
             {
-                connectorResult = await cardReplacementService.RequestCardReplacementAsync(
-                    pluginRequest,
+                backendResult = await cardReplacementBackend.RequestCardReplacementAsync(
+                    backendRequest,
                     cancellationToken);
             }
             catch (Exception ex)
             {
-                // Plugin threw before returning a result — treat as transient backend
-                // failure. The SP signature is still being settled with DC; until then
-                // unexpected exceptions are plausible. Cooldown is NOT recorded so the
-                // user can retry without waiting 14 days.
+                // Backend threw before returning a result — treat as transient backend
+                // failure. Cooldown is NOT recorded so the user can retry without
+                // waiting 14 days.
                 logger.LogError(
                     ex,
-                    "Card replacement plugin threw for household identifier kind {Kind}, {Count} case(s); cooldown NOT recorded, user may retry",
+                    "Card replacement backend threw for household identifier kind {Kind}, {Count} case(s); cooldown NOT recorded, user may retry",
                     identifierKind,
                     command.CaseRefs.Count);
                 return Result.DependencyFailed(
@@ -212,41 +202,46 @@ public class RequestCardReplacementCommandHandler(
                     "Card replacement service is temporarily unavailable.");
             }
 
-            if (!connectorResult.IsSuccess)
+            if (!backendResult.IsSuccess)
             {
-                if (connectorResult.IsPolicyRejection)
+                if (backendResult.IsPolicyRejection)
                 {
-                    // DC-side policy declined the request (e.g., card already in flight,
-                    // case ineligible). Surface to the user as PreconditionFailed; do not
-                    // cooldown so they can take a different action immediately.
+                    // State-side policy declined the request (e.g., card already in
+                    // flight, case ineligible). Surface to the user as
+                    // PreconditionFailed; do not cooldown so they can take a different
+                    // action immediately.
                     logger.LogWarning(
                         "Card replacement policy rejection for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded",
                         identifierKind,
-                        connectorResult.ErrorCode);
+                        backendResult.ErrorCode);
                     return Result.PreconditionFailed(
                         PreconditionFailedReason.Conflict,
-                        connectorResult.ErrorMessage);
+                        backendResult.ErrorMessage);
                 }
 
                 logger.LogError(
                     "Card replacement backend error for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded, user may retry",
                     identifierKind,
-                    connectorResult.ErrorCode);
+                    backendResult.ErrorCode);
                 return Result.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
-                    connectorResult.ErrorMessage);
+                    backendResult.ErrorMessage);
             }
 
-            // Connector reported success — persist replacement requests for cooldown
-            // enforcement. If persistence fails after a successful dispatch, the SP
-            // has executed but we have no portal-side record. Log critically: the
-            // user is not blocked from re-requesting (DC-side dedup is the backstop
-            // until next portal-side persist succeeds).
+            // Backend reported success — persist replacement requests for cooldown
+            // enforcement. If persistence fails after a successful dispatch, the
+            // state-side write has executed but we have no portal-side record. Log
+            // critically: the user is not blocked from re-requesting (state-side
+            // dedup is the backstop until the next portal-side persist succeeds).
             try
             {
                 foreach (var caseRef in command.CaseRefs)
                 {
-                    var caseHash = identifierHasher.Hash(caseRef.SummerEbtCaseId);
+                    // Must resolve to the same canonical identity as the
+                    // cooldown check above, or persisted rows would never match
+                    // later lookups.
+                    var caseHash = identifierHasher.Hash(
+                        cooldownIdentityResolver.ResolveCanonicalCaseIdentity(caseRef.SummerEbtCaseId));
                     if (householdHash != null && caseHash != null)
                     {
                         await cardReplacementRepo.CreateAsync(
@@ -258,7 +253,7 @@ public class RequestCardReplacementCommandHandler(
             {
                 logger.LogCritical(
                     ex,
-                    "Card replacement: connector reported success but cooldown persistence failed for household identifier kind {Kind}, {Count} case(s). Subsequent portal requests within {Days} days will not be cooldown-blocked; relying on DC-side dedup.",
+                    "Card replacement: backend reported success but cooldown persistence failed for household identifier kind {Kind}, {Count} case(s). Subsequent portal requests within {Days} days will not be cooldown-blocked; relying on state-side dedup.",
                     identifierKind,
                     command.CaseRefs.Count,
                     CooldownPeriod.TotalDays);

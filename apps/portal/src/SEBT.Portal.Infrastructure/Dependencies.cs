@@ -114,7 +114,16 @@ public static class Dependencies
 
         // Self-service rules evaluator — evaluates per-state config against household data
         services.AddTransient<ISelfServiceEvaluator, SelfServiceEvaluator>();
+
+        // Card-replacement writes go through the Core state-backend port. The plugin
+        // path adapts the contract service (registered as a singleton by AddPlugins)
+        // behind it, decoding the opaque case tokens reads serve.
+        services.AddSingleton<Core.StateBackends.ICardReplacementBackend,
+            StateBackendAdapters.PluginCardReplacementBackend>();
         services.AddSingleton<IIdentifierHasher, IdentifierHasher>();
+        // Cooldown hashes key on the raw state case ID; this resolver decodes
+        // the opaque case tokens that reads serve back to that canonical form.
+        services.AddSingleton<ICooldownIdentityResolver, OpaqueTokenCooldownIdentityResolver>();
         services.AddSingleton<IHMACSHA256Hasher, HMACSHA256Hasher>();
         services.AddSingleton<IPiiSymmetricEncryption>(sp =>
             PiiSymmetricEncryptionFactory.Create(sp.GetRequiredService<IOptions<PiiEncryptionSettings>>()));

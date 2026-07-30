@@ -62,12 +62,11 @@ operations:
     request:
       constants:
         source: portal
-      # Map LHS are the decoded caseId routing fields (+ the caller-context "reason"); RHS are the
-      # backend's write-body target paths.
+      # Map LHS are the decoded caseId routing fields; RHS are the backend's
+      # write-body target paths.
       map:
         caseId: summerEbtCaseId
         applicationId: applicationId
-        reason: reason
     result:
       # Ordered, first-match-wins. Each condition is EXACTLY ONE of three closed kinds:
       # statusIn / valueIn(field) / messageContains(messageField). NO combinators, NO nesting.

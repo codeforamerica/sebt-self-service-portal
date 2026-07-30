@@ -7,6 +7,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Seeding;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Infrastructure.Repositories;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
@@ -52,6 +53,27 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result.Applications);
         Assert.NotEmpty(result.Applications);
         Assert.Equal(ApplicationStatus.Approved, result.Applications.First().ApplicationStatus);
+    }
+
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_ServesCaseIdsAsOpaqueTokens_LikeRealReadPaths()
+    {
+        var email = "co-loaded@example.com";
+
+        var result = await _repository.GetHouseholdByIdentifierAsync(
+            HouseholdIdentifier.Email(email), FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.NotEmpty(result.SummerEbtCases);
+        Assert.All(result.SummerEbtCases, c =>
+        {
+            // Mock reads serve the same opaque case-ID namespace as the real
+            // read paths so mock-mode round trips behave like production.
+            Assert.NotNull(c.SummerEBTCaseID);
+            var routingFields = OpaqueCaseId.Decode(c.SummerEBTCaseID);
+            Assert.False(string.IsNullOrEmpty(routingFields["caseId"]));
+            Assert.Equal(email, routingFields["householdIdentifier"]);
+        });
     }
 
     [Fact]

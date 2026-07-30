@@ -9,13 +9,12 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases.Household;
-using CardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
-using CardReplacementResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementResult;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Household;
 
@@ -33,12 +32,16 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _evaluator =
         Substitute.For<ISelfServiceEvaluator>();
-    private readonly ICardReplacementService _cardReplacementService =
-        Substitute.For<ICardReplacementService>();
+    private readonly ICardReplacementBackend _cardReplacementBackend =
+        Substitute.For<ICardReplacementBackend>();
     private readonly ICardReplacementRequestRepository _cardReplacementRepo =
         Substitute.For<ICardReplacementRequestRepository>();
     private readonly IIdentifierHasher _identifierHasher =
         Substitute.For<IIdentifierHasher>();
+    // Real resolver: pure and dependency-free, and raw case IDs pass through
+    // unchanged, so hashing assertions see exactly what production would hash.
+    private readonly ICooldownIdentityResolver _cooldownIdentityResolver =
+        new OpaqueTokenCooldownIdentityResolver();
     private readonly IDistributedLockProvider _distributedLockProvider =
         Substitute.For<IDistributedLockProvider>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
@@ -57,9 +60,9 @@ public class RequestCardReplacementCommandHandlerTests
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
 
         // Default: connector reports success so existing happy-path tests reach the persist step
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
-            .Returns(CardReplacementResult.Success());
+            .Returns(WriteResult.Success());
 
         // Default: hasher returns a deterministic hash for any input
         _identifierHasher.Hash(Arg.Any<string?>()).Returns(callInfo =>
@@ -79,8 +82,8 @@ public class RequestCardReplacementCommandHandlerTests
 
     private RequestCardReplacementCommandHandler CreateHandler() =>
         new(_validator, _resolver, _repository, _idProofingService, _evaluator,
-            _cardReplacementService, _cardReplacementRepo, _identifierHasher,
-            _distributedLockProvider, _logger);
+            _cardReplacementBackend, _cardReplacementRepo, _identifierHasher,
+            _cooldownIdentityResolver, _distributedLockProvider, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -631,7 +634,7 @@ public class RequestCardReplacementCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _cardReplacementService.Received(1).RequestCardReplacementAsync(
+        await _cardReplacementBackend.Received(1).RequestCardReplacementAsync(
             Arg.Any<CardReplacementRequest>(),
             Arg.Any<CancellationToken>());
     }
@@ -645,9 +648,9 @@ public class RequestCardReplacementCommandHandlerTests
         SetupRepositoryReturns(CreateHouseholdWithCases(
             new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
         ));
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
-            .Returns(CardReplacementResult.Success());
+            .Returns(WriteResult.Success());
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -664,9 +667,9 @@ public class RequestCardReplacementCommandHandlerTests
         SetupRepositoryReturns(CreateHouseholdWithCases(
             new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
         ));
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
-            .Returns(CardReplacementResult.PolicyRejected("INELIGIBLE", "Not allowed right now."));
+            .Returns(WriteResult.PolicyRejected("INELIGIBLE", "Not allowed right now."));
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -684,9 +687,9 @@ public class RequestCardReplacementCommandHandlerTests
         SetupRepositoryReturns(CreateHouseholdWithCases(
             new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
         ));
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
-            .Returns(CardReplacementResult.BackendError("UPSTREAM_500", "Something broke downstream."));
+            .Returns(WriteResult.BackendError("UPSTREAM_500", "Something broke downstream."));
 
         var result = await handler.Handle(command, CancellationToken.None);
 
@@ -704,7 +707,7 @@ public class RequestCardReplacementCommandHandlerTests
         SetupRepositoryReturns(CreateHouseholdWithCases(
             new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
         ));
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("connector blew up"));
 
@@ -722,7 +725,7 @@ public class RequestCardReplacementCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+        await _cardReplacementBackend.DidNotReceive().RequestCardReplacementAsync(
             Arg.Any<CardReplacementRequest>(),
             Arg.Any<CancellationToken>());
     }
@@ -737,7 +740,7 @@ public class RequestCardReplacementCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+        await _cardReplacementBackend.DidNotReceive().RequestCardReplacementAsync(
             Arg.Any<CardReplacementRequest>(),
             Arg.Any<CancellationToken>());
     }
@@ -758,7 +761,7 @@ public class RequestCardReplacementCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+        await _cardReplacementBackend.DidNotReceive().RequestCardReplacementAsync(
             Arg.Any<CardReplacementRequest>(),
             Arg.Any<CancellationToken>());
     }
@@ -787,7 +790,7 @@ public class RequestCardReplacementCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+        await _cardReplacementBackend.DidNotReceive().RequestCardReplacementAsync(
             Arg.Any<CardReplacementRequest>(),
             Arg.Any<CancellationToken>());
     }
@@ -808,13 +811,13 @@ public class RequestCardReplacementCommandHandlerTests
 
         await handler.Handle(command, token);
 
-        await _cardReplacementService.Received(1).RequestCardReplacementAsync(
+        await _cardReplacementBackend.Received(1).RequestCardReplacementAsync(
             Arg.Any<CardReplacementRequest>(),
             token);
     }
 
     [Fact]
-    public async Task Handle_PassesCaseRefsAndIdentifierToConnector()
+    public async Task Handle_PassesCommandCaseIdsToBackendUnchanged()
     {
         var handler = CreateHandler();
         var caseIds = new List<string> { "SEBT-001", "SEBT-002" };
@@ -827,12 +830,14 @@ public class RequestCardReplacementCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _cardReplacementService.Received(1).RequestCardReplacementAsync(
+        // The handler forwards the command's case IDs to the backend exactly as
+        // the read path served them; routing data (household identifier,
+        // application IDs) rides inside the tokens, not the request.
+        await _cardReplacementBackend.Received(1).RequestCardReplacementAsync(
             Arg.Is<CardReplacementRequest>(r =>
-                r.HouseholdIdentifierValue == EmailNormalizer.Normalize("user@example.com") &&
-                r.CaseRefs.Count == 2 &&
-                r.CaseRefs[0].SummerEbtCaseId == "SEBT-001" &&
-                r.CaseRefs[1].SummerEbtCaseId == "SEBT-002"),
+                r.CaseIds.Count == 2 &&
+                r.CaseIds[0] == "SEBT-001" &&
+                r.CaseIds[1] == "SEBT-002"),
             Arg.Any<CancellationToken>());
     }
 
@@ -848,9 +853,9 @@ public class RequestCardReplacementCommandHandlerTests
         SetupRepositoryReturns(CreateHouseholdWithCases(
             new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }
         ));
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
-            .Returns(CardReplacementResult.PolicyRejected("INELIGIBLE", "Not allowed."));
+            .Returns(WriteResult.PolicyRejected("INELIGIBLE", "Not allowed."));
 
         await CreateHandler().Handle(command);
 
@@ -866,9 +871,9 @@ public class RequestCardReplacementCommandHandlerTests
         SetupRepositoryReturns(CreateHouseholdWithCases(
             new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }
         ));
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
-            .Returns(CardReplacementResult.BackendError("UPSTREAM_500", "Downstream broke."));
+            .Returns(WriteResult.BackendError("UPSTREAM_500", "Downstream broke."));
 
         await CreateHandler().Handle(command);
 
@@ -884,7 +889,7 @@ public class RequestCardReplacementCommandHandlerTests
         SetupRepositoryReturns(CreateHouseholdWithCases(
             new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }
         ));
-        _cardReplacementService
+        _cardReplacementBackend
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
             .Throws(new InvalidOperationException("connector blew up"));
 

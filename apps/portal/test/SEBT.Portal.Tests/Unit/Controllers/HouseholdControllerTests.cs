@@ -79,6 +79,7 @@ public class HouseholdControllerTests
             _selfServiceEvaluator,
             _cardReplacementRepo,
             _identifierHasher,
+            new OpaqueTokenCooldownIdentityResolver(),
             new CoLoadedCohortFilterSettings(),
             featureManager,
             logger);
