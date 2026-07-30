@@ -29,10 +29,11 @@ operations:
         childLastName:
           from: ChildLastName
         ebtCardIssueDate:
-          from: IssueDate
-          format: MM/dd/yyyy
+          from: EbtCardIssueDate
+          # The wrapper serializes DC's DATE column as ISO 8601 (System.Text.Json default).
+          format: yyyy-MM-ddTHH:mm:ss
         ebtCardStatus:
-          from: CardStatus
+          from: EbtCardStatus
           enum: cardStatus
         # Issuance type is inferred from free-text fields via contains-match, first-match-wins.
         # `from` lists one OR MORE source fields; a keyword found in ANY of them counts.
@@ -56,28 +57,33 @@ operations:
         fields:
           caseId: SummerEBTCaseID
           applicationId: ApplicationId
+        # The lookup response never echoes the household email DC's writes bind, so it packs from
+        # the lookup's caller context. Context names are a closed set — today only householdIdentifier.
+        fromContext:
+          householdEmail: householdIdentifier
   cardReplacement:
     method: post
-    path: /cards/replace
+    path: /card-replacements
     request:
-      constants:
-        source: portal
-      # Map LHS are the decoded caseId routing fields; RHS are the backend's
-      # write-body target paths.
+      # Map LHS are the decoded caseId routing fields; RHS are the wrapper's request keys
+      # (bound 1:1 to the sproc's @householdEmail / @summerEbtCaseId params). The canonical
+      # contract carries no replacement reason, so the wrapper's `reason` key is unbound (SQL NULL).
       map:
         caseId: summerEbtCaseId
-        applicationId: applicationId
+        householdEmail: householdEmail
     result:
       # Ordered, first-match-wins. Each condition is EXACTLY ONE of three closed kinds:
       # statusIn / valueIn(field) / messageContains(messageField). NO combinators, NO nesting.
+      # The wrapper returns HTTP 200 with the sproc's raw OUTPUT params: numeric resultCode
+      # (0 = success) and resultMessage (policy rejections carry "policy" wording).
       conditions:
         # DC: a "policy" message is a policy rejection — evaluated BEFORE success (order matters).
         - outcome: policyRejection
-          messageField: message
+          messageField: resultMessage
           messageContains: [policy]
         - outcome: success
           field: resultCode
-          valueIn: [OK]
+          valueIn: ["0"]  # numeric 0 — JsonRead stringifies numbers
       default: backendError
   addressUpdate:
     method: post

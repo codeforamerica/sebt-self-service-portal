@@ -200,8 +200,12 @@ public class ConfigurableStateBackend :
         using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
             .ConfigureAwait(false);
 
+        // Caller context for caseId composition: identifiers a later write must route by that the
+        // lookup response never echoes.
+        var caseIdContext = new CaseIdContext { HouseholdIdentifier = request.HouseholdIdentifier };
+
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
-            document.RootElement, _configuration, mapping);
+            document.RootElement, _configuration, mapping, caseIdContext);
 
         if (household.SummerEbtCases.Count == 0)
         {

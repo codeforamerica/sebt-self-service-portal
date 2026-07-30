@@ -154,6 +154,9 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
         {
             IsProofed = IsProofed(userIalLevel),
             PortalUuid = portalUserId.ToString("D"),
+            // This lookup is keyed by IC + DOB; the login email is the household identifier
+            // writes route by, mirroring the envelope-email stamping below.
+            HouseholdIdentifier = normalizedEmail,
         };
 
         var result = await _lookupBackend.LookupHouseholdAsync(request, cancellationToken);
@@ -199,6 +202,9 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
         {
             IsProofed = IsProofed(userIalLevel),
             PortalUuid = portalUserId?.ToString("D"),
+            // The searched-by value doubles as caller context so a caseId composition can pack
+            // it into tokens when the backend's response never echoes it.
+            HouseholdIdentifier = normalizedValue,
         };
 
         var result = await _lookupBackend.LookupHouseholdAsync(request, cancellationToken);

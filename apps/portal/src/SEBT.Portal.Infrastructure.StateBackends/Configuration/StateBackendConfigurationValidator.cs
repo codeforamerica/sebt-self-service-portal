@@ -17,6 +17,7 @@ internal static class StateBackendConfigurationValidator
         ArgumentNullException.ThrowIfNull(configuration);
 
         StateBackendResponseMapper.ValidateEnumTables(configuration);
+        StateBackendResponseMapper.ValidateCaseIdCompositions(configuration);
 
         StateBackendOperations operations = configuration.Operations;
 

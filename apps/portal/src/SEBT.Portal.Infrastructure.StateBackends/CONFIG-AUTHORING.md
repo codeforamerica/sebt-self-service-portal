@@ -62,10 +62,10 @@ Under a read operation's `response:`, `root` is a path to the record (or array o
         childFirstName:
           from: ChildFirstName
         ebtCardIssueDate:
-          from: IssueDate
-          format: MM/dd/yyyy
+          from: EbtCardIssueDate
+          format: yyyy-MM-ddTHH:mm:ss
         ebtCardStatus:
-          from: CardStatus
+          from: EbtCardStatus
           enum: cardStatus
 ```
 
@@ -169,9 +169,16 @@ A write (card replacement, address update) has to route its call, but the portal
         fields:
           caseId: SummerEBTCaseID
           applicationId: ApplicationId
+        fromContext:
+          householdEmail: householdIdentifier
 ```
 
 On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8). The portal and UI treat the token as opaque throughout — a malformed token fails loud on decode.
+
+- `fields` — token field → the response record property whose value it carries.
+- `fromContext` — token field → a **named caller-context value** from the lookup itself, for routing identifiers a write needs but the response never echoes (most lookups don't echo the identifier the portal searched with). Context names are a **closed vocabulary resolved in fixed code** — today only `householdIdentifier`, the identifier value the lookup searched by. No expressions, no fallbacks; a new context value means a new name in code.
+
+A token field may come from `fields` or `fromContext`, never both — the loader fails loud on a collision, and on an unknown context name. An unset context value packs as empty, exactly like an absent response column.
 
 ## Step 8: Writes — request binding and result classification
 
@@ -184,15 +191,13 @@ The binding vocabulary:
 - `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
 - `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path.
 
-DC card replacement — `constants` plus a scalar `map`; the map's left-hand names are the decoded `caseId` fields:
+DC card replacement — a scalar `map` whose left-hand names are the decoded `caseId` fields:
 
 ```yaml
     request:
-      constants:
-        source: portal
       map:
         caseId: summerEbtCaseId
-        applicationId: applicationId
+        householdEmail: householdEmail
 ```
 
 Address update spans every case a household owns, so it adds two **batch shapes**:
@@ -241,11 +246,11 @@ DC — order matters: a "policy" message is checked *before* success, so a polic
     result:
       conditions:
         - outcome: policyRejection
-          messageField: message
+          messageField: resultMessage
           messageContains: [policy]
         - outcome: success
           field: resultCode
-          valueIn: [OK]
+          valueIn: ["0"]
       default: backendError
 ```
 

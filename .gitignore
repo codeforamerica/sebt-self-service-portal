@@ -33,6 +33,8 @@ certs/
 apps/portal/src/SEBT.Portal.Api/appsettings.Development.json
 apps/portal/src/SEBT.Portal.Api/appsettings.dc.json
 apps/portal/src/SEBT.Portal.Api/appsettings.co.json
+# Local state-backend YAML bundles with real endpoint/client values (DC-568)
+apps/portal/src/SEBT.Portal.Api/statebackend.*.uat.yaml
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

@@ -56,12 +56,13 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("SummerEBTCaseID", response.Fields["summerEBTCaseID"].From);
         Assert.Equal("ChildFirstName", response.Fields["childFirstName"].From);
 
+        // The wrapper passes DC's raw column names through and serializes DATE columns as ISO 8601.
         FieldMapping issueDate = response.Fields["ebtCardIssueDate"];
-        Assert.Equal("IssueDate", issueDate.From);
-        Assert.Equal("MM/dd/yyyy", issueDate.Format);
+        Assert.Equal("EbtCardIssueDate", issueDate.From);
+        Assert.Equal("yyyy-MM-ddTHH:mm:ss", issueDate.Format);
 
         FieldMapping cardStatus = response.Fields["ebtCardStatus"];
-        Assert.Equal("CardStatus", cardStatus.From);
+        Assert.Equal("EbtCardStatus", cardStatus.From);
         Assert.Equal("cardStatus", cardStatus.Enum);
 
         FieldMapping issuanceType = response.Fields["issuanceType"];
@@ -90,24 +91,32 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("SummerEBTCaseID", caseId.Fields["caseId"]);
         Assert.Equal("ApplicationId", caseId.Fields["applicationId"]);
 
+        // The lookup response never echoes the household email DC's writes bind, so the token
+        // packs it from the lookup's caller context.
+        Assert.NotNull(caseId.FromContext);
+        Assert.Equal("householdIdentifier", caseId.FromContext["householdEmail"]);
+
         CardReplacementOperationConfig? cardReplacement = config.Operations.CardReplacement;
         Assert.NotNull(cardReplacement);
         Assert.Equal(StateBackendHttpMethod.Post, cardReplacement.Method);
-        Assert.Equal("/cards/replace", cardReplacement.Path);
+        Assert.Equal("/card-replacements", cardReplacement.Path);
 
+        // The wrapper's request model is the sproc's three inputs; the canonical contract carries
+        // no replacement reason, so only the two token-carried routing fields bind.
         Assert.NotNull(cardReplacement.Request);
-        Assert.Equal("portal", cardReplacement.Request.Constants!["source"]);
+        Assert.Null(cardReplacement.Request.Constants);
         Assert.Equal("summerEbtCaseId", cardReplacement.Request.Map!["caseId"]);
-        Assert.Equal("applicationId", cardReplacement.Request.Map["applicationId"]);
+        Assert.Equal("householdEmail", cardReplacement.Request.Map["householdEmail"]);
 
+        // The wrapper returns the sproc's raw OUTPUT params: numeric resultCode + resultMessage.
         ResultClassifier classifier = Assert.IsType<ResultClassifier>(cardReplacement.Result);
         Assert.Equal(2, classifier.Conditions.Count);
         Assert.Equal(WriteOutcome.PolicyRejection, classifier.Conditions[0].Outcome);
-        Assert.Equal("message", classifier.Conditions[0].MessageField);
+        Assert.Equal("resultMessage", classifier.Conditions[0].MessageField);
         Assert.Equal(new[] { "policy" }, classifier.Conditions[0].MessageContains);
         Assert.Equal(WriteOutcome.Success, classifier.Conditions[1].Outcome);
         Assert.Equal("resultCode", classifier.Conditions[1].Field);
-        Assert.Equal(new[] { "OK" }, classifier.Conditions[1].ValueIn);
+        Assert.Equal(new[] { "0" }, classifier.Conditions[1].ValueIn);
         Assert.Equal(WriteOutcome.BackendError, classifier.Default);
 
         // DC address update uses the SHARED batch shape (one household field across all cases).
@@ -382,6 +391,62 @@ public class StateBackendConfigurationHydrationTests
             () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("mapOptional", ex.Message);
     }
+
+    // A fromContext entry referencing a context name outside the closed vocabulary fails at load —
+    // context names are resolved in fixed code, never expressions.
+    [Fact]
+    public void Validate_FailsLoud_WhenCaseIdFromContextNameIsUnknown()
+    {
+        StateBackendConfiguration config = BuildCaseIdConfig(new CaseIdComposition
+        {
+            Fields = new Dictionary<string, string> { ["caseId"] = "SummerEBTCaseID" },
+            FromContext = new Dictionary<string, string> { ["householdEmail"] = "guardianEmail" },
+        });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("guardianEmail", ex.Message);
+    }
+
+    // The same token field sourced from BOTH a response column and caller context is ambiguous.
+    [Fact]
+    public void Validate_FailsLoud_WhenCaseIdFieldIsInBothFieldsAndFromContext()
+    {
+        StateBackendConfiguration config = BuildCaseIdConfig(new CaseIdComposition
+        {
+            Fields = new Dictionary<string, string> { ["householdEmail"] = "GuardianEmail" },
+            FromContext = new Dictionary<string, string> { ["householdEmail"] = "householdIdentifier" },
+        });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("householdEmail", ex.Message);
+    }
+
+    // Minimal config whose household lookup composes caseId tokens with the supplied brick.
+    private static StateBackendConfiguration BuildCaseIdConfig(CaseIdComposition caseId) =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                HouseholdLookup = new HouseholdLookupOperationConfig
+                {
+                    Method = StateBackendHttpMethod.Post,
+                    Path = "/lookup",
+                    Response = new StateBackendResponseMapping
+                    {
+                        Root = "$.records",
+                        Fields = new Dictionary<string, FieldMapping>
+                        {
+                            ["childFirstName"] = new() { From = "ChildFirstName" },
+                        },
+                        CaseId = caseId,
+                    },
+                },
+            },
+        };
 
     // A write-op request binding carrying a mapOptional entry — unsupported on the write path.
     private static RequestBinding MapOptionalRequestBinding() =>

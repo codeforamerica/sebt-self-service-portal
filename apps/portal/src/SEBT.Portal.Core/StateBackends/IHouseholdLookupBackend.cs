@@ -24,5 +24,13 @@ public sealed record HouseholdLookupRequest(IReadOnlyList<IdentitySignal> Signal
 {
     public bool IsProofed { get; init; }
     public string? PortalUuid { get; init; }
+
+    /// <summary>
+    /// The household identifier value this lookup searched by. A caseId composition packs it into
+    /// tokens via <c>fromContext</c> when a write must route by an identifier the lookup response
+    /// never echoes. Null when the caller has no single household identifier (e.g. an existence
+    /// check whose result data is discarded).
+    /// </summary>
+    public string? HouseholdIdentifier { get; init; }
 }
 public sealed record HouseholdLookupResult(HouseholdLookupStatus Status, HouseholdData? Household);

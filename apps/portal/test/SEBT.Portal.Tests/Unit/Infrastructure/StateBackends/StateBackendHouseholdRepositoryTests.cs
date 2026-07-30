@@ -144,6 +144,20 @@ public class StateBackendHouseholdRepositoryTests
         Assert.Null(_capturedRequest.PortalUuid);
     }
 
+    // The searched-by identifier rides along as caller context so a caseId composition can pack
+    // it into tokens (fromContext) when the backend's response never echoes it.
+    [Fact]
+    public async Task GetHouseholdByIdentifierAsync_StampsHouseholdIdentifier_WithNormalizedValue()
+    {
+        BackendReturnsNotFound();
+
+        await _repository.GetHouseholdByIdentifierAsync(
+            HouseholdIdentifier.Email("  USER@EXAMPLE.COM  "), FullPii, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(_capturedRequest);
+        Assert.Equal("user@example.com", _capturedRequest.HouseholdIdentifier);
+    }
+
     // ---------------------------------------------------------------------------
     // GetHouseholdByIdentifierAsync — results and PII filtering
     // ---------------------------------------------------------------------------
@@ -294,6 +308,20 @@ public class StateBackendHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task TryMatch_LeavesHouseholdIdentifierNull()
+    {
+        // An existence check discards the household data, so no identifier context is carried —
+        // composed tokens are never used.
+        BackendReturnsFound(new HouseholdData());
+
+        await _repository.TryMatchCoLoadedGuardianByBenefitIdAndDobAsync(
+            "IC000001", new DateOnly(1984, 3, 5), Guid.NewGuid());
+
+        Assert.NotNull(_capturedRequest);
+        Assert.Null(_capturedRequest.HouseholdIdentifier);
+    }
+
+    [Fact]
     public async Task TryMatch_WhenNotFound_ReturnsFalse()
     {
         BackendReturnsNotFound();
@@ -383,6 +411,25 @@ public class StateBackendHouseholdRepositoryTests
 
         Assert.NotNull(result);
         Assert.Equal("guardian@example.com", result.Email);
+    }
+
+    // This lookup is keyed by IC + DOB; the login email is the household identifier DC's writes
+    // route by (mirroring the envelope-email stamping), so it becomes the identifier context.
+    [Fact]
+    public async Task GetByBenefitIdAndDob_StampsHouseholdIdentifier_WithNormalizedLoginEmail()
+    {
+        BackendReturnsNotFound();
+
+        await _repository.GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+            "  GUARDIAN@EXAMPLE.COM  ",
+            "IC000001",
+            new DateOnly(1984, 3, 5),
+            FullPii,
+            UserIalLevel.IAL1plus,
+            Guid.NewGuid());
+
+        Assert.NotNull(_capturedRequest);
+        Assert.Equal("guardian@example.com", _capturedRequest.HouseholdIdentifier);
     }
 
     [Fact]
