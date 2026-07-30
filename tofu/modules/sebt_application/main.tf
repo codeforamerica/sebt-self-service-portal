@@ -257,9 +257,7 @@ module "ses" {
 }
 
 module "cloudfront_waf" {
-  # feat/certificate-sans adds optional ACM SANs for preview hostnames.
-  # Bump to a released tag once that lands (expected >= 2.7.0).
-  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=feat/certificate-sans"
+  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.7.0"
   depends_on = [module.web.load_balancer_arn]
 
   project          = "${var.project}-${var.state}"
