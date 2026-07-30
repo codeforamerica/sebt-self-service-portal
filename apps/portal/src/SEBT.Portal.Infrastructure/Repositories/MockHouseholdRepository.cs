@@ -392,8 +392,8 @@ public class MockHouseholdRepository : IHouseholdRepository
         verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "DoeMOCK" };
         _households[verifiedEmail] = verified;
         IndexByPhone(verified);
-        // To test CO OIDC login locally, uncomment and replace with your PingOne sandbox user email:
-        // _households["sebt.co+YOUR_PHONE@codeforamerica.org"] = verified;
+        // To test CO OIDC login locally against PingOne, map your sandbox user email onto a household.
+        // For local Keycloak, see docs/development/keycloak-oidc.md and docker/keycloak/sebt-realm.json.
 
         // Scenario 3: Pending application without address (not ID verified)
         // Note: Address should not be included for non-ID-verified users, but we set it here
