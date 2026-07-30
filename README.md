@@ -340,6 +340,8 @@ The API serves public config via `GET /api/auth/oidc/{stateCode}/config` (no sec
 
 See `apps/portal/src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md).
 
+There is a local Keycloak stand-in that can be used for local development if desired. See [docs/development/keycloak-oidc.md](docs/development/keycloak-oidc.md) and `appsettings.keycloak.example.json` for additional details.
+
 ### Development Phone Override (Local dev only)
 
 For states that use phone number as their primary Household ID and OIDC, local development sometimes requires bypassing MFA. You can override the phone number used for household lookup in `appsettings.Development.json`.
