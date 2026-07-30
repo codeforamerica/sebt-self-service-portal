@@ -22,6 +22,7 @@ import { i18n } from '@sebt/design-system/client'
 
 import amDcValidation from '@/content/locales/am/dc/validation.json'
 import enCoStepUpProcessing from '@/content/locales/en/co/step-upProcessing.json'
+import enDcIdProofing from '@/content/locales/en/dc/idProofing.json'
 import enDcValidation from '@/content/locales/en/dc/validation.json'
 import esDcValidation from '@/content/locales/es/dc/validation.json'
 import { server } from '@/mocks/server'
@@ -184,6 +185,18 @@ describe('IdProofingForm', () => {
   })
 
   describe('Rendering', () => {
+    it('shows the DOB helper text inside the date-of-birth fieldset', () => {
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      const helper = screen.getByText(enDcIdProofing.helperDob)
+      expect(helper.closest('fieldset')).not.toBeNull()
+    })
+
     it('renders all provided ID options as radio buttons', () => {
       renderWithProviders(
         <IdProofingForm

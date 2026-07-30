@@ -20,38 +20,55 @@ function formatAddress(address: Address): string {
 
 type StatusInfo = {
   labelKey: string
-  fallback: string
   variant: 'success' | 'warning' | 'error' | 'info'
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Profile Table - Status {Status}"
+const ENROLLED: StatusInfo = { labelKey: 'profileTableStatusEnrolled', variant: 'success' }
+const APPLICATION_APPROVED: StatusInfo = {
+  labelKey: 'profileTableStatusApplicationApproved',
+  variant: 'success'
+}
+const APPLICATION_DENIED: StatusInfo = {
+  labelKey: 'profileTableStatusApplicationDenied',
+  variant: 'error'
+}
+const APPLICATION_IN_PROGRESS: StatusInfo = {
+  labelKey: 'profileTableStatusApplicationIn-progress',
+  variant: 'warning'
+}
+const APPLICATION_CANCELLED: StatusInfo = {
+  labelKey: 'profileTableStatusCancelled',
+  variant: 'info'
+}
+// Safe default when a connector reports a status the portal does not recognize. Distinct from
+// APPLICATION_APPROVED, which is a known state that simply has no issued case yet.
+const STATUS_UNAVAILABLE: StatusInfo = { labelKey: 'profileTableStatusUnknown', variant: 'info' }
+
+/**
+ * Every status label this component can render. Exported so statusLabelCoverage.test.ts can
+ * assert each one resolves in every shipped locale. Keep in step with the constants above.
+ */
+export const PROFILE_STATUS_LABEL_KEYS = [
+  ENROLLED,
+  APPLICATION_APPROVED,
+  APPLICATION_DENIED,
+  APPLICATION_IN_PROGRESS,
+  APPLICATION_CANCELLED,
+  STATUS_UNAVAILABLE
+].map((status) => status.labelKey)
+
 function getApplicationStatus(data: HouseholdData): StatusInfo | null {
   const statuses = data.applications.map((app) => app.applicationStatus)
   if (statuses.length === 0) return null
 
-  // If all applications are approved, there's no distinct application status to show
-  if (statuses.every((s) => s === 'Approved')) return null
-
-  if (statuses.includes('Denied')) {
-    return {
-      labelKey: 'profileTableStatusApplicationDenied',
-      fallback: 'Application denied',
-      variant: 'error'
-    }
-  }
+  if (statuses.includes('Denied')) return APPLICATION_DENIED
   if (statuses.includes('Pending') || statuses.includes('UnderReview')) {
-    return {
-      labelKey: 'profileTableStatusApplicationIn-progress',
-      fallback: 'Application in-process',
-      variant: 'warning'
-    }
+    return APPLICATION_IN_PROGRESS
   }
-  if (statuses.includes('Cancelled')) {
-    // TODO: Add CSV row "S2 - Portal Dashboard - Profile Table - Status Cancelled"
-    return { labelKey: 'profileTableStatusCancelled', fallback: 'Cancelled', variant: 'info' }
-  }
-  // TODO: Add CSV row "S2 - Portal Dashboard - Profile Table - Status Unknown"
-  return { labelKey: 'profileTableStatusUnknown', fallback: 'Unknown', variant: 'info' }
+  if (statuses.includes('Cancelled')) return APPLICATION_CANCELLED
+  if (statuses.every((s) => s === 'Approved')) return APPLICATION_APPROVED
+  return STATUS_UNAVAILABLE
 }
 
 function getOverallStatus(data: HouseholdData): {
@@ -62,9 +79,10 @@ function getOverallStatus(data: HouseholdData): {
   const appStatus = getApplicationStatus(data)
 
   if (hasEnrolledCases) {
+    // "Enrolled" already communicates approval, so an approved application adds nothing.
     return {
-      primary: { labelKey: 'profileTableStatusEnrolled', fallback: 'Enrolled', variant: 'success' },
-      secondary: appStatus
+      primary: ENROLLED,
+      secondary: appStatus === APPLICATION_APPROVED ? null : appStatus
     }
   }
 
@@ -72,10 +90,8 @@ function getOverallStatus(data: HouseholdData): {
     return { primary: appStatus, secondary: null }
   }
 
-  return {
-    primary: { labelKey: 'profileTableStatusUnknown', fallback: 'Unknown', variant: 'info' },
-    secondary: null
-  }
+  // No cases and no applications. DashboardContent renders EmptyState before reaching here.
+  return { primary: STATUS_UNAVAILABLE, secondary: null }
 }
 
 function getStatusTextClass(variant: string): string {
@@ -107,13 +123,13 @@ export function HouseholdSummary() {
           <dt className="text-bold">{t('profileTableHeadingStatus')}</dt>
           <dd className="margin-left-0 margin-bottom-2">
             <span className={`text-bold ${getStatusTextClass(primary.variant)}`}>
-              {t(primary.labelKey, primary.fallback)}
+              {t(primary.labelKey)}
             </span>
             {secondary && (
               <>
                 <span className="text-base-dark">{' / '}</span>
                 <span className={`text-bold ${getStatusTextClass(secondary.variant)}`}>
-                  {t(secondary.labelKey, secondary.fallback)}
+                  {t(secondary.labelKey)}
                 </span>
               </>
             )}

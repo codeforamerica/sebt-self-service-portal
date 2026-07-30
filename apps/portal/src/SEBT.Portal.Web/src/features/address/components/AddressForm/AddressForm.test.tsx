@@ -337,6 +337,32 @@ describe('AddressForm', () => {
     })
   })
 
+  it('shows built-in street-length copy when confirmInfo.helperStreetAddress is missing from the bundle', async () => {
+    // The DC sheet marks this key !N/A!, so a DC bundle omits it entirely.
+    const bundle = i18n.getResourceBundle('en', 'confirmInfo')
+    const withoutKey = structuredClone(bundle) as Record<string, string>
+    delete withoutKey.helperStreetAddress
+    i18n.removeResourceBundle('en', 'confirmInfo')
+    i18n.addResourceBundle('en', 'confirmInfo', withoutKey, true, true)
+
+    try {
+      const { user } = renderForm()
+
+      await user.type(getStreetInput(), '1234567890 Northeast Pennsylvania Ave NW')
+      await user.type(getPostalInput(), '20001')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => {
+        const inlineError = document.querySelector('.usa-error-message')
+        expect(inlineError).toBeInTheDocument()
+        expect(inlineError).toHaveTextContent(/shorter than 30 characters/i)
+      })
+    } finally {
+      i18n.removeResourceBundle('en', 'confirmInfo')
+      i18n.addResourceBundle('en', 'confirmInfo', bundle, true, true)
+    }
+  })
+
   it('shows page-level error alert with contact link when backend rejects an unabbreviatable long address', async () => {
     server.use(
       http.put('/api/household/address', () =>

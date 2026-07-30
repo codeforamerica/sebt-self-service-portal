@@ -1,3 +1,4 @@
+export { AdentifiPixels } from './AdentifiPixels'
 export { AmplitudeAnalytics } from './AmplitudeAnalytics'
 export { initAmplitudeBridge } from './amplitude-bridge'
 export type { AmplitudeLike } from './amplitude-bridge'
