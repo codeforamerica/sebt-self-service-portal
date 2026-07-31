@@ -20,10 +20,14 @@ Environment:
   PREVIEW_BASE_WEB_SERVICE         Base dev-co Web ECS service name (optional)
   PREVIEW_API_SERVICE              Alias for PREVIEW_BASE_API_SERVICE (optional)
   PREVIEW_WEB_SERVICE              Alias for PREVIEW_BASE_WEB_SERVICE (optional)
-  PREVIEW_INGRESS_CIDR             CIDR allowed for direct HTTPS to web ALB (default: 0.0.0.0/0)
   ECR_API_REPOSITORY_URL           API image repository (required)
   ECR_WEB_REPOSITORY_URL           Web image repository (required)
   AWS_REGION                       AWS region (default: us-east-1)
+
+Notes:
+  Web preview hosts are aliased to the shared CloudFront distribution (which
+  already reaches the internal web ALB). API preview hosts still alias to the
+  API ALB; the Next.js server reaches them via BACKEND_URL.
 EOF
 }
 
@@ -170,15 +174,16 @@ ensure_route53_alias \
   "$(get_alb_dns_name "${API_ALB_ARN}")" \
   "$(get_alb_hosted_zone_id "${API_ALB_ARN}")"
 
-WEB_ALB_DNS="$(get_alb_dns_name "${WEB_ALB_ARN}")"
-WEB_ALB_ZONE="$(get_alb_hosted_zone_id "${WEB_ALB_ARN}")"
-ensure_route53_alias "${HOSTED_ZONE_ID}" "${WEB_HOST}" "${WEB_ALB_DNS}" "${WEB_ALB_ZONE}"
-
-# Dev web ALBs are often reachable only through CloudFront. Allow direct HTTPS for preview hosts.
-while IFS= read -r security_group_id; do
-  [ -n "${security_group_id}" ] || continue
-  ensure_preview_https_ingress "${security_group_id}"
-done < <(get_alb_security_groups "${WEB_ALB_ARN}" | jq -r '.[]')
+# Public preview traffic goes through CloudFront (VPC origin to the internal web ALB).
+# Direct ALB DNS would resolve to private IPs and is not reachable from the internet.
+read -r CLOUDFRONT_DNS CLOUDFRONT_ID CLOUDFRONT_ZONE < <(resolve_cloudfront_distribution "${DOMAIN}")
+log_info "Routing preview web host through CloudFront distribution ${CLOUDFRONT_ID} (${CLOUDFRONT_DNS})"
+ensure_route53_alias \
+  "${HOSTED_ZONE_ID}" \
+  "${WEB_HOST}" \
+  "${CLOUDFRONT_DNS}" \
+  "${CLOUDFRONT_ZONE:-${CLOUDFRONT_ROUTE53_ZONE_ID}}" \
+  false
 
 # Record deploy marker so PR-close destroy can skip PRs that never deployed a preview.
 write_preview_deploy_marker "${IMAGE_TAG}"

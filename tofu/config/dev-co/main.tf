@@ -90,6 +90,8 @@ module "app" {
   domain                     = var.domain
   # Cover pr-N / api-pr-N preview hosts on the shared ALBs (ACM one-level wildcard).
   certificate_sans           = ["*.${var.domain}"]
+  # Serve pr-N preview hosts through CloudFront (same wildcard as certificate_sans).
+  cloudfront_extra_aliases   = ["*.${var.domain}"]
   hosted_zone_id             = data.aws_route53_zone.main.zone_id
   environment                = var.environment
   image_tag                  = var.image_tag

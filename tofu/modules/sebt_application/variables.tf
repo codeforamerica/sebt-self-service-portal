@@ -54,6 +54,17 @@ variable "certificate_sans" {
   default     = []
 }
 
+variable "cloudfront_extra_aliases" {
+  type        = list(string)
+  description = <<-EOT
+    Additional CloudFront alternate domain names beyond the primary site
+    domain. Pass the same wildcard used in `certificate_sans` (such as
+    `["*.dev.co.example.app"]`) so preview hosts can be served publicly
+    through CloudFront. Defaults to none.
+    EOT
+  default     = []
+}
+
 variable "enable_appconfig" {
   type        = bool
   description = <<-EOT

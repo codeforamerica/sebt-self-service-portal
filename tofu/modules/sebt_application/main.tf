@@ -257,7 +257,9 @@ module "ses" {
 }
 
 module "cloudfront_waf" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.7.0"
+  # feat/extra-aliases adds CloudFront alternate domain names for preview hosts.
+  # Bump to a released tag once that lands (expected >= 2.8.0).
+  source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=feat/extra-aliases"
   depends_on = [module.web.load_balancer_arn]
 
   project          = "${var.project}-${var.state}"
@@ -265,6 +267,7 @@ module "cloudfront_waf" {
   domain           = var.domain
   subdomain        = ""
   certificate_sans = var.certificate_sans
+  extra_aliases    = var.cloudfront_extra_aliases
   origin_alb_arn   = module.web.load_balancer_arn
   log_bucket       = var.logging_bucket_domain_name
   log_group        = var.waf_log_group

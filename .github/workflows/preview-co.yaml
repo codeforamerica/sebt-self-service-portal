@@ -8,13 +8,14 @@
 # strip OTEL/AppConfig sidecars, so traces will not appear in Datadog.
 #
 # Prerequisites (dev-co environment / AWS):
-#   - ACM certificate on API and Web ALBs must cover pr-*.{DOMAIN} and api-pr-*.{DOMAIN}
-#     (DOMAIN is often a subdomain, e.g. dev.co.*, with records in the co.* hosted zone)
+#   - ACM certificates (API ALB + CloudFront) must cover pr-*.{DOMAIN} and api-pr-*.{DOMAIN}
+#     via certificate_sans / cloudfront_extra_aliases (DOMAIN is often a subdomain, e.g. dev.co.*)
+#   - CloudFront distribution must include *.{DOMAIN} as an alternate domain name
 #   - Create the "preview-co" label on this repository
 #   - Set PREVIEW_BASE_API_SERVICE and PREVIEW_BASE_WEB_SERVICE before first deploy
 #     (or rely on auto-discovery in per-role clusters: *-development-api / *-development-web)
 #   - Optional vars: PREVIEW_API_ECS_CLUSTER, PREVIEW_WEB_ECS_CLUSTER, PREVIEW_ECS_CLUSTER,
-#     PREVIEW_HOSTED_ZONE_ID (zone ID or apex name), PREVIEW_INGRESS_CIDR
+#     PREVIEW_HOSTED_ZONE_ID (zone ID or apex name)
 #   - PREVIEW_API_SERVICE / PREVIEW_WEB_SERVICE are accepted aliases for the base services
 
 name: Preview (CO Tier 1)
@@ -215,7 +216,6 @@ jobs:
           PREVIEW_API_SERVICE: ${{ vars.PREVIEW_API_SERVICE }}
           PREVIEW_WEB_SERVICE: ${{ vars.PREVIEW_WEB_SERVICE }}
           PREVIEW_HOSTED_ZONE_ID: ${{ vars.PREVIEW_HOSTED_ZONE_ID }}
-          PREVIEW_INGRESS_CIDR: ${{ vars.PREVIEW_INGRESS_CIDR }}
           ECR_API_REPOSITORY_URL: ${{ secrets.ECR_API_REPOSITORY_URL }}
           ECR_WEB_REPOSITORY_URL: ${{ secrets.ECR_WEB_REPOSITORY_URL }}
           PR_NUMBER: ${{ needs.build.outputs.pr_number }}

@@ -72,32 +72,42 @@ BASE_WEB_SERVICE="$(discover_base_service web "${WEB_CLUSTER}")"
 API_HOST="api-pr-${PR_NUMBER}.${DOMAIN}"
 WEB_HOST="pr-${PR_NUMBER}.${DOMAIN}"
 
-delete_route53_record() {
+# Delete an existing A alias record by reading the live RRSet first so we can
+# remove either legacy ALB targets or current CloudFront targets.
+delete_route53_alias_if_exists() {
   local hosted_zone_id="$1"
   local record_name="$2"
-  local alb_dns_name="$3"
-  local alb_zone_id="$4"
+  local existing
+
+  existing="$(aws route53 list-resource-record-sets \
+    --hosted-zone-id "${hosted_zone_id}" \
+    --start-record-name "${record_name}" \
+    --max-items 10 \
+    --output json \
+    | jq -c --arg name "${record_name}." '
+      .ResourceRecordSets[]
+      | select(.Type == "A")
+      | select(.Name == $name or .Name == ($name | rtrimstr(".")))
+      | select(.AliasTarget != null)
+      | {
+          Name: .Name,
+          Type: .Type,
+          AliasTarget: .AliasTarget
+        }
+    ' | head -n1)"
+
+  if [ -z "${existing}" ]; then
+    return
+  fi
 
   aws route53 change-resource-record-sets \
     --hosted-zone-id "${hosted_zone_id}" \
-    --change-batch "$(jq -n \
-      --arg record_name "${record_name}" \
-      --arg alb_dns_name "${alb_dns_name}" \
-      --arg alb_zone_id "${alb_zone_id}" \
-      '{
-        "Changes": [{
-          "Action": "DELETE",
-          "ResourceRecordSet": {
-            "Name": $record_name,
-            "Type": "A",
-            "AliasTarget": {
-              "HostedZoneId": $alb_zone_id,
-              "DNSName": $alb_dns_name,
-              "EvaluateTargetHealth": true
-            }
-          }
-        }]
-      }')" 2>/dev/null || true
+    --change-batch "$(jq -n --argjson rrset "${existing}" '{
+      "Changes": [{
+        "Action": "DELETE",
+        "ResourceRecordSet": $rrset
+      }]
+    }')" 2>/dev/null || true
 }
 
 delete_ecs_service_if_exists() {
@@ -201,18 +211,10 @@ delete_listener_rule_if_exists "${WEB_LISTENER_ARN}" "${WEB_HOST}"
 delete_target_group_if_exists "${API_TG_NAME}"
 delete_target_group_if_exists "${WEB_TG_NAME}"
 
-delete_route53_record \
-  "${HOSTED_ZONE_ID}" \
-  "${API_HOST}" \
-  "$(get_alb_dns_name "${API_ALB_ARN}")" \
-  "$(get_alb_hosted_zone_id "${API_ALB_ARN}")"
+delete_route53_alias_if_exists "${HOSTED_ZONE_ID}" "${API_HOST}"
+delete_route53_alias_if_exists "${HOSTED_ZONE_ID}" "${WEB_HOST}"
 
-delete_route53_record \
-  "${HOSTED_ZONE_ID}" \
-  "${WEB_HOST}" \
-  "$(get_alb_dns_name "${WEB_ALB_ARN}")" \
-  "$(get_alb_hosted_zone_id "${WEB_ALB_ARN}")"
-
+# Clean up leftover direct-ALB HTTPS ingress from earlier preview iterations.
 while IFS= read -r security_group_id; do
   [ -n "${security_group_id}" ] || continue
   revoke_preview_https_ingress "${security_group_id}"

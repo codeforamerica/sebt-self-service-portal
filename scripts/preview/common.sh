@@ -477,15 +477,17 @@ wait_for_preview_services_stable() {
 ensure_route53_alias() {
   local hosted_zone_id="$1"
   local record_name="$2"
-  local alb_dns_name="$3"
-  local alb_zone_id="$4"
+  local target_dns_name="$3"
+  local target_zone_id="$4"
+  local evaluate_target_health="${5:-true}"
 
   aws route53 change-resource-record-sets \
     --hosted-zone-id "${hosted_zone_id}" \
     --change-batch "$(jq -n \
       --arg record_name "${record_name}" \
-      --arg alb_dns_name "${alb_dns_name}" \
-      --arg alb_zone_id "${alb_zone_id}" \
+      --arg target_dns_name "${target_dns_name}" \
+      --arg target_zone_id "${target_zone_id}" \
+      --argjson evaluate_target_health "${evaluate_target_health}" \
       '{
         "Changes": [{
           "Action": "UPSERT",
@@ -493,38 +495,48 @@ ensure_route53_alias() {
             "Name": $record_name,
             "Type": "A",
             "AliasTarget": {
-              "HostedZoneId": $alb_zone_id,
-              "DNSName": $alb_dns_name,
-              "EvaluateTargetHealth": true
+              "HostedZoneId": $target_zone_id,
+              "DNSName": $target_dns_name,
+              "EvaluateTargetHealth": $evaluate_target_health
             }
           }
         }]
       }')"
 }
 
-ensure_preview_https_ingress() {
-  local security_group_id="$1"
-  local description="sebt-preview-direct-https-pr-${PR_NUMBER}"
-  local ingress_cidr="${PREVIEW_INGRESS_CIDR:-0.0.0.0/0}"
+# CloudFront alias records always use this Route53 hosted zone ID.
+CLOUDFRONT_ROUTE53_ZONE_ID="Z2FDTNDATAQYW2"
 
-  if aws ec2 describe-security-group-rules \
-    --filters "Name=group-id,Values=${security_group_id}" \
-    --query "SecurityGroupRules[?Description=='${description}'].SecurityGroupRuleId" \
-    --output text | grep -q .; then
-    return
+# Resolve the CloudFront distribution that serves the given domain (exact alias
+# or a matching wildcard alternate domain name such as *.example.org).
+resolve_cloudfront_distribution() {
+  local domain="$1"
+  local match
+
+  match="$(aws cloudfront list-distributions --output json \
+    | jq -r --arg domain "${domain}" '
+      .DistributionList.Items[]?
+      | select(.Aliases.Items != null)
+      | select(
+          (.Aliases.Items | index($domain) != null)
+          or (
+            .Aliases.Items
+            | map(select(startswith("*.")))
+            | map(.[2:])
+            | map(select($domain == . or ($domain | endswith("." + .))))
+            | length > 0
+          )
+        )
+      | [.DomainName, .Id, (.HostedZoneId // "Z2FDTNDATAQYW2")]
+      | @tsv
+    ' | head -n1)"
+
+  if [ -z "${match}" ]; then
+    log_error "Could not find CloudFront distribution for ${domain}. Ensure tofu applied cloudfront_extra_aliases (for example *.${domain#*.})."
+    exit 1
   fi
 
-  aws ec2 authorize-security-group-ingress \
-    --group-id "${security_group_id}" \
-    --ip-permissions "$(jq -n \
-      --arg description "${description}" \
-      --arg cidr "${ingress_cidr}" \
-      '[{
-        "IpProtocol": "tcp",
-        "FromPort": 443,
-        "ToPort": 443,
-        "IpRanges": [{"CidrIp": $cidr, "Description": $description}]
-      }]')"
+  echo "${match}"
 }
 
 normalize_hosted_zone_id() {
