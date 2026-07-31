@@ -35,7 +35,7 @@ auth:
 
 Everything the backend can do lives under `operations:`. The set of possible operations is fixed: `householdLookup`, `cardReplacement`, `addressUpdate`, `enrollmentCheck`, and `health`. **The presence of an operation is its capability** — if you declare `cardReplacement`, the portal reports that the state supports card replacement. If you omit it, the portal reports it as unsupported. The capability manifest is derived from the config; you never declare capabilities separately.
 
-Every operation sets `method` and `path`, and optionally `timeoutSeconds`.
+Every operation sets `method` and `path`.
 
 ```yaml
 operations:
@@ -51,7 +51,7 @@ operations:
 
 ## Step 3: Map the response fields
 
-Under a read operation's `response:`, `root` is a path to the record (or array of records) inside the raw response — dotted property access and `[index]` element access only. `fields` maps each of our canonical field names to how to pull it from that record.
+Under a read operation's `response:`, `root` is a path to the record (or array of records) inside the raw response — dotted property access and `[index]` element access only. For a household lookup, `root` must select an **array** of records; a selection that isn't an array maps zero cases, which the lookup reads as not-found. `fields` maps each of our canonical field names to how to pull it from that record.
 
 ```yaml
     response:
@@ -79,7 +79,7 @@ Coercion is driven by the canonical field's known type — a string field copies
 
 ## Step 4: Enum translation tables
 
-Top-level `enums:` declares named translation tables that response fields reference by name via the field mapping's `enum` key. Each table is **domain-centered**: keyed by *our* canonical enum value, mapping to the one-or-more state tokens that mean it, plus a `default` for tokens the table does not list.
+Top-level `enums:` declares named translation tables that response fields reference by name via the field mapping's `enum` key. Each table is **domain-centered**: keyed by *our* canonical enum value, mapping to the one-or-more state tokens that mean it, plus an optional `default` for tokens the table does not list. Omitting `default` means an unlisted token fails loud at map time instead of falling through.
 
 ```yaml
 enums:
@@ -189,7 +189,10 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 The binding vocabulary:
 
 - `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
-- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path.
+- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. An input that resolves to no value fails loud.
+- `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing loud. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
+
+The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid`, plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
 
 DC card replacement — a scalar `map` whose left-hand names are the decoded `caseId` fields:
 
@@ -234,7 +237,7 @@ Note the read/write asymmetry: reads bind by walking the *response* shape (Step 
 
 ### Result classifier
 
-`result:` classifies the backend's response into a canonical outcome. It's an **ordered, first-match-wins** list of `conditions` plus a `default`. Each condition maps to exactly one `outcome` — one of the `WriteOutcome` members `Success`, `PolicyRejection`, `BackendError` — and is **exactly one** of three closed kinds:
+`result:` classifies the backend's response into a canonical outcome. It's an **ordered, first-match-wins** list of `conditions` plus a `default`. Each condition maps to exactly one `outcome` — spelled `success`, `policyRejection`, or `backendError` in YAML — and is **exactly one** of three closed kinds:
 
 - `statusIn: [ints]` — the HTTP status code is in this set.
 - `valueIn: [strings]` + `field` — the response body property `field`'s value is in this set.
@@ -265,7 +268,9 @@ CO:
       default: backendError
 ```
 
-`default` applies when no condition matches; it defaults to `BackendError` when unset. No AND/OR combinators, no nesting — if a real case needs to combine conditions, stop.
+`default` applies when no condition matches; it defaults to `backendError` when unset. No AND/OR combinators, no nesting — if a real case needs to combine conditions, stop.
+
+**The backend's own message propagates.** On a non-success outcome, the text read from a `messageField` — the matched condition's, or the first any condition declares — carries into the write result the portal surfaces. The generic fallback text applies only when the backend supplied no readable message.
 
 ## Step 9: Enrollment check
 
@@ -281,7 +286,12 @@ The enrollment op turns a batch of children into backend calls, then decides a m
 **`match.strategy`** is one of two named strategies:
 
 - `anyRowValueIn` — needs `field` + `valueIn`. A row matches when `field`'s value is in `valueIn`. In batch mode a child matches if *any* of its rows match.
-- `confidenceThreshold` — needs `scoreField` + `threshold`. A child matches when its best candidate's score is *strictly greater than* `threshold`. The argmax and the `>` live in code; config only supplies the field and number.
+- `confidenceThreshold` — needs `scoreField` + `threshold`. A child matches when its best candidate row's score (the argmax) is *strictly greater than* `threshold`. An optional eligibility check — `field` + `valueIn`, taken **together or not at all** (the validator rejects one alone) — requires that same argmax row to also carry an eligible value; a lower-scoring eligible row cannot rescue an ineligible best row. The argmax, the `>`, and the AND live in code; config only supplies the params.
+
+Two optional message carriers sit on the response mapping:
+
+- `statusMessageField` — the winning row's status text, reported per child (even on a non-match under `confidenceThreshold`, so callers can surface why).
+- `messageField` — a result-level message read from the response **document root** (the parent of `root`'s rows), reported once per check.
 
 DC — `perChild`, single result object as root, `anyRowValueIn`:
 
@@ -295,6 +305,8 @@ DC — `perChild`, single result object as root, `anyRowValueIn`:
         firstName: firstName
         lastName: lastName
         dob: dateOfBirth
+      mapOptional:
+        schoolIdentifier: schoolName
     response:
       root: $
       match:
@@ -303,7 +315,7 @@ DC — `perChild`, single result object as root, `anyRowValueIn`:
         valueIn: ["true"]
 ```
 
-CO — `batch`, correlated rows via `indexField`, DOB `expand`, `confidenceThreshold`:
+CO — `batch`, correlated rows via `indexField`, DOB `expand`, eligibility-gated `confidenceThreshold`:
 
 ```yaml
   enrollmentCheck:
@@ -317,16 +329,22 @@ CO — `batch`, correlated rows via `indexField`, DOB `expand`, `confidenceThres
         firstName: stdFirstName
         lastName: stdLastName
         dob: stdDob
+      mapOptional:
+        schoolIdentifier: StdSchlCd
     response:
       root: $.stdntDtls
       indexField: stdReqInd
+      statusMessageField: sebtEligSts
+      messageField: RespMsg
       match:
         strategy: confidenceThreshold
         scoreField: mtchCnfd
         threshold: 90
+        field: sebtEligSts
+        valueIn: ["Y"]
 ```
 
-The request `map`'s left-hand keys are the fixed child fields `firstName` / `lastName` / `dob`.
+The request `map` / `mapOptional` left-hand keys are a closed set of four child fields: `firstName` / `lastName` / `dob` / `schoolIdentifier`.
 
 ## When you hit the cap
 
@@ -340,7 +358,10 @@ The worked precedent is `confidenceThreshold`. CO needed a match that couldn't b
 
 Config validates at **load** via `StateBackendConfigurationValidator`, immediately after deserialization. Every check is a function of the config alone, so a bad config fails at **startup**, not on the first user request. What fails loud:
 
-- An enum table whose canonical key isn't a real enum member, or an ambiguous state token listed under two canonical values.
-- A `keywordRules` block whose `order` doesn't cover every `map` key or names a non-member.
+- A response field mapping that targets an unknown canonical field, or a date-typed field without an exact `format`.
+- An enum table that doesn't exist, is referenced by a non-enum field, has a canonical key that isn't a real enum member, or lists an ambiguous state token under two canonical values.
+- A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, or that names a non-member (including its `default`).
 - A result classifier condition that isn't exactly one of `statusIn` / `valueIn` / `messageContains`, or a `valueIn` without `field`, or a `messageContains` without `messageField`.
-- An incoherent enrollment op: `batch` missing an `indexField` on either side, `perChild` that sets one, `perChild` combined with `expand`, or a match strategy missing its required params (`anyRowValueIn` without `field` + `valueIn`, `confidenceThreshold` without `scoreField` + `threshold`).
+- A `caseId` composition whose `fromContext` names an unknown context name, or that sources one token field from both `fields` and `fromContext`.
+- A `mapOptional` on a write op (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so it's rejected rather than silently ignored.
+- An incoherent enrollment op: `batch` missing an `indexField` on either side, `perChild` that sets one, `perChild` combined with `expand`, a match strategy missing its required params (`anyRowValueIn` without `field` + `valueIn`, `confidenceThreshold` without `scoreField` + `threshold`), or a `confidenceThreshold` eligibility check with `field` or `valueIn` alone — they come together or not at all.

@@ -488,6 +488,132 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         Assert.True(result.IsSuccess);
     }
 
+    // ---- Backend message propagation: generic text only when the backend supplied none ---------
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_PropagatesBackendMessage_OnPolicyRejection()
+    {
+        // Arrange — DC's mock policy rejection carries the sproc's own message text.
+        const string policyMessage = "Policy Failure: household is not eligible for a replacement.";
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/card-replacements")
+            .Respond(
+                "application/json",
+                $$"""{ "resultCode": 1, "resultMessage": "{{policyMessage}}" }""");
+
+        var backend = BuildBackend(mockHttp, DcCardReplacement());
+
+        // Act
+        WriteResult result = await backend.RequestCardReplacementAsync(
+            new CardReplacementRequest(new List<string> { DefaultCaseId() }));
+
+        // Assert — the backend's message flows through, not the generic policy prose.
+        Assert.True(result.IsPolicyRejection);
+        Assert.Equal("POLICY_REJECTION", result.ErrorCode);
+        Assert.Equal(policyMessage, result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_PropagatesBackendMessage_OnDefaultClassifiedBackendError()
+    {
+        // Arrange — nothing matches (default BackendError), but the body still carries the
+        // backend's message via the classifier's declared messageField.
+        const string backendMessage = "Backend Failure: the request could not be completed.";
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/card-replacements")
+            .Respond(
+                "application/json",
+                $$"""{ "resultCode": 1, "resultMessage": "{{backendMessage}}" }""");
+
+        var backend = BuildBackend(mockHttp, DcCardReplacement());
+
+        // Act
+        WriteResult result = await backend.RequestCardReplacementAsync(
+            new CardReplacementRequest(new List<string> { DefaultCaseId() }));
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("BACKEND_ERROR", result.ErrorCode);
+        Assert.Equal(backendMessage, result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_FallsBackToGenericMessage_WhenBackendSuppliesNone()
+    {
+        // Arrange — CO's classifier declares no messageField, so there is no backend message to read.
+        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string> { ["caseId"] = "CO-001" });
+
+        var cardReplacement = new CardReplacementOperationConfig
+        {
+            Method = StateBackendHttpMethod.Post,
+            Path = "/cards/replace",
+            Request = new RequestBinding
+            {
+                Map = new Dictionary<string, string> { ["caseId"] = "sebtChldCwin" },
+            },
+            Result = CoResultClassifier(),
+        };
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/cards/replace")
+            .Respond("application/json", """{ "respCd": "500" }""");
+
+        var backend = BuildBackend(mockHttp, cardReplacement);
+
+        // Act
+        WriteResult result = await backend.RequestCardReplacementAsync(
+            new CardReplacementRequest(new List<string> { caseId }));
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        Assert.Equal("The state backend returned an error.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_FallsBackToGenericPolicyMessage_WhenBackendSuppliesNone()
+    {
+        // Arrange — a status-driven policy rejection with an empty body: no message to propagate.
+        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string> { ["caseId"] = "SEBT-001" });
+
+        var cardReplacement = new CardReplacementOperationConfig
+        {
+            Method = StateBackendHttpMethod.Post,
+            Path = "/cards/replace",
+            Request = new RequestBinding { Map = new Dictionary<string, string> { ["caseId"] = "caseId" } },
+            Result = new ResultClassifier
+            {
+                Conditions = new List<ResultCondition>
+                {
+                    new() { Outcome = WriteOutcome.PolicyRejection, StatusIn = new List<int> { 422 } },
+                    new() { Outcome = WriteOutcome.Success, StatusIn = new List<int> { 200 } },
+                },
+                Default = WriteOutcome.BackendError,
+            },
+        };
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/cards/replace")
+            .Respond(HttpStatusCode.UnprocessableEntity, "application/json", "{}");
+
+        var backend = BuildBackend(mockHttp, cardReplacement);
+
+        // Act
+        WriteResult result = await backend.RequestCardReplacementAsync(
+            new CardReplacementRequest(new List<string> { caseId }));
+
+        // Assert
+        Assert.True(result.IsPolicyRejection);
+        Assert.Equal(
+            "The household is not eligible to request a replacement via the portal.",
+            result.ErrorMessage);
+    }
+
     // ---- 4. Batch fan-out: one call per caseId, fail fast on the first non-success -------------
 
     [Fact]

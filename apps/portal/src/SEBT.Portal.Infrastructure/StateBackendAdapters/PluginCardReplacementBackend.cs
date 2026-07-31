@@ -12,7 +12,7 @@ namespace SEBT.Portal.Infrastructure.StateBackendAdapters;
 /// <see cref="PluginCaseRef"/> carries, resolves the single household identifier
 /// every token must agree on (fail loud on absence or disagreement, mirroring the
 /// JSON-adapter driver's shared batch shape), and dispatches ONE batched contract
-/// call — exactly what the plugin observed before the port existed.
+/// call.
 /// </summary>
 public class PluginCardReplacementBackend(IStateCardReplacementService cardReplacementService)
     : ICardReplacementBackend

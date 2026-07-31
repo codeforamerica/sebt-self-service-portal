@@ -764,4 +764,28 @@ public class ConfigurableStateBackendLookupHouseholdTests
         Assert.Equal(HouseholdLookupStatus.NotFound, result.Status);
         Assert.Null(result.Household);
     }
+
+    // Pins the current read-path contract: a non-2xx lookup response throws a raw
+    // HttpRequestException (no error mapping, no partial result). A future error-mapping
+    // design must change this test deliberately.
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task LookupHouseholdAsync_NonSuccessStatus_ThrowsHttpRequestException(
+        HttpStatusCode status)
+    {
+        // Arrange
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/households/lookup")
+            .Respond(status);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var backend = new ConfigurableStateBackend(BuildConfiguration(), httpClient);
+        var request = new HouseholdLookupRequest(
+            new[] { new IdentitySignal("email", "ada@example.test") });
+
+        // Act + Assert
+        await Assert.ThrowsAsync<HttpRequestException>(() => backend.LookupHouseholdAsync(request));
+    }
 }

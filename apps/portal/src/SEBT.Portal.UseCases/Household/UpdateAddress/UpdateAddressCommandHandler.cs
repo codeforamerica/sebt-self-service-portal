@@ -275,7 +275,7 @@ public class UpdateAddressCommandHandler(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Address update plugin failed for household identifier kind {Kind}", identifierKind);
+            logger.LogError(ex, "Address update backend failed for household identifier kind {Kind}", identifierKind);
             return Result<AddressValidationResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Address update service is temporarily unavailable.");

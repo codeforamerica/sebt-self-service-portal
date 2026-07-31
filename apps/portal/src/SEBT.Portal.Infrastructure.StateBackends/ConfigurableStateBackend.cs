@@ -132,7 +132,7 @@ public class ConfigurableStateBackend :
         HealthOperationConfig? health = _configuration.Operations.Health
             ?? throw new NotSupportedException("Health check is not configured for the state backend.");
 
-        // Unauthenticated liveness probe — no auth scheme applied.
+        // Liveness probe; the shared handler chain still applies the state's auth scheme.
         using HttpRequestMessage request = BuildRequest(health);
 
         try
@@ -207,6 +207,7 @@ public class ConfigurableStateBackend :
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
             document.RootElement, _configuration, mapping, caseIdContext);
 
+        // A lookup mapping zero cases reads as NotFound — mirrors the plugin path's contract.
         if (household.SummerEbtCases.Count == 0)
         {
             return new HouseholdLookupResult(HouseholdLookupStatus.NotFound, Household: null);
@@ -351,10 +352,10 @@ public class ConfigurableStateBackend :
 
         JsonElement? responseBody = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
 
-        WriteOutcome outcome = WriteResultClassifier.Classify(
+        WriteClassification classification = WriteResultClassifier.Classify(
             classifier, (int)response.StatusCode, responseBody);
 
-        return ToWriteResult(outcome, policyRejectionMessage);
+        return ToWriteResult(classification, policyRejectionMessage);
     }
 
     // Only non-null address scalars are included; a config mapping a field the address lacks fails
@@ -391,15 +392,16 @@ public class ConfigurableStateBackend :
         return inputs;
     }
 
-    private static WriteResult ToWriteResult(WriteOutcome outcome, string policyRejectionMessage) =>
-        outcome switch
+    // The backend's own message text wins; generic text applies only when the backend supplied none.
+    private static WriteResult ToWriteResult(WriteClassification classification, string policyRejectionMessage) =>
+        classification.Outcome switch
         {
             WriteOutcome.Success => WriteResult.Success(),
             WriteOutcome.PolicyRejection => WriteResult.PolicyRejected(
-                "POLICY_REJECTION", policyRejectionMessage),
+                "POLICY_REJECTION", classification.Message ?? policyRejectionMessage),
             WriteOutcome.BackendError => WriteResult.BackendError(
-                "BACKEND_ERROR", "The state backend returned an error."),
+                "BACKEND_ERROR", classification.Message ?? "The state backend returned an error."),
             _ => throw new NotSupportedException(
-                $"Write outcome '{outcome}' is not supported."),
+                $"Write outcome '{classification.Outcome}' is not supported."),
         };
 }

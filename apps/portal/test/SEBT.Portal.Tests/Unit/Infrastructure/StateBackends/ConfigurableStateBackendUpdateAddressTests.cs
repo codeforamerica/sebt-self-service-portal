@@ -219,9 +219,67 @@ public class ConfigurableStateBackendUpdateAddressTests
         WriteResult result = await backend.UpdateAddressAsync(
             new AddressUpdateRequest("family@example.test", caseIds, SampleAddress()));
 
-        // Assert — nothing matches → default BackendError.
+        // Assert — nothing matches → default BackendError. DC's classifier declares no
+        // messageField, so the generic fallback text applies.
         Assert.False(result.IsSuccess);
         Assert.False(result.IsPolicyRejection);
+        Assert.Equal("The state backend returned an error.", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task UpdateAddressAsync_PropagatesBackendMessage_OnPolicyRejection()
+    {
+        // Arrange — a message-driven policy rejection propagates the backend's own text.
+        const string policyMessage = "Policy Failure: address updates are locked for this household.";
+
+        AddressUpdateOperationConfig operation = DcAddressUpdate() with
+        {
+            Result = new ResultClassifier
+            {
+                Conditions = new List<ResultCondition>
+                {
+                    new()
+                    {
+                        Outcome = WriteOutcome.PolicyRejection,
+                        MessageField = "resultMessage",
+                        MessageContains = new List<string> { "policy" },
+                    },
+                    new()
+                    {
+                        Outcome = WriteOutcome.Success,
+                        Field = "resultCode",
+                        ValueIn = new List<string> { "OK" },
+                    },
+                },
+                Default = WriteOutcome.BackendError,
+            },
+        };
+
+        var caseIds = new List<string>
+        {
+            OpaqueCaseId.Compose(new Dictionary<string, string>
+            {
+                ["writeId"] = "W-1",
+                ["householdEmail"] = "family@example.test",
+            }),
+        };
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/households/address")
+            .Respond(
+                "application/json",
+                $$"""{ "resultCode": "ERR", "resultMessage": "{{policyMessage}}" }""");
+
+        var backend = BuildBackend(mockHttp, operation);
+
+        // Act
+        WriteResult result = await backend.UpdateAddressAsync(
+            new AddressUpdateRequest("family@example.test", caseIds, SampleAddress()));
+
+        // Assert
+        Assert.True(result.IsPolicyRejection);
+        Assert.Equal(policyMessage, result.ErrorMessage);
     }
 
     // ---- 3. CO body: collect per-case write-ids into an array, classified ------------------------

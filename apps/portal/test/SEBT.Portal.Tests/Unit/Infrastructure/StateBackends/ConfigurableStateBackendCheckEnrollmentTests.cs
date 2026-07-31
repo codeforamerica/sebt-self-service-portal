@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using RichardSzalay.MockHttp;
 using SEBT.Portal.Core.StateBackends;
@@ -1213,5 +1214,29 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     public void TryTransposeMonthDay_ReturnsNull_WhenInvalidOrSame(int y, int m, int d)
     {
         Assert.Null(EnrollmentCandidateExpander.TryTransposeMonthDay(new DateOnly(y, m, d)));
+    }
+
+    // Pins the current read-path contract: a non-2xx enrollment response throws a raw
+    // HttpRequestException (no error mapping, no partial result). A future error-mapping
+    // design must change this test deliberately.
+    [Theory]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    public async Task CheckEnrollmentAsync_NonSuccessStatus_ThrowsHttpRequestException(
+        HttpStatusCode status)
+    {
+        // Arrange
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/enrollment/check")
+            .Respond(status);
+
+        var httpClient = mockHttp.ToHttpClient();
+        var backend = new ConfigurableStateBackend(BatchNoExpandConfiguration(), httpClient);
+        var request = new EnrollmentCheckRequest(
+            new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
+
+        // Act + Assert
+        await Assert.ThrowsAsync<HttpRequestException>(() => backend.CheckEnrollmentAsync(request));
     }
 }

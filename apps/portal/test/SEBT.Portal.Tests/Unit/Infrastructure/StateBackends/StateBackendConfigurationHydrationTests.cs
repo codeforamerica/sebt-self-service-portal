@@ -423,6 +423,124 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("householdEmail", ex.Message);
     }
 
+    // A date-typed target without an exact 'format' must fail at LOAD, not on the first mapped
+    // record.
+    [Fact]
+    public void Validate_FailsLoud_WhenDateFieldHasNoFormat()
+    {
+        StateBackendConfiguration config = BuildLookupFieldsConfig(
+            new Dictionary<string, FieldMapping>
+            {
+                ["ebtCardIssueDate"] = new() { From = "IssueDate" }, // no format
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("ebtCardIssueDate", ex.Message);
+        Assert.Contains("format", ex.Message);
+    }
+
+    // A fields entry naming a target outside the closed canonical set must fail at LOAD, not on
+    // the first mapped record.
+    [Fact]
+    public void Validate_FailsLoud_WhenFieldNamesUnknownCanonicalTarget()
+    {
+        StateBackendConfiguration config = BuildLookupFieldsConfig(
+            new Dictionary<string, FieldMapping>
+            {
+                ["ebtCardIssueDte"] = new() { From = "IssueDate" }, // typo: not a canonical target
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("ebtCardIssueDte", ex.Message);
+    }
+
+    // A messageContains condition without a messageField has no body property to read.
+    [Fact]
+    public void Validate_FailsLoud_WhenMessageContainsHasNoMessageField()
+    {
+        StateBackendConfiguration config = BuildWriteClassifierConfig(
+            cardReplacementClassifier: new ResultClassifier
+            {
+                Conditions = new List<ResultCondition>
+                {
+                    new()
+                    {
+                        Outcome = WriteOutcome.PolicyRejection,
+                        MessageContains = new List<string> { "policy" },
+                    },
+                },
+            },
+            addressUpdateClassifier: null);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("messageField", ex.Message);
+    }
+
+    // A keywordRules 'order' that omits a map key would make that keyword set silently unreachable.
+    [Fact]
+    public void Validate_FailsLoud_WhenKeywordRulesOrderDoesNotCoverMapKey()
+    {
+        StateBackendConfiguration config = BuildIssuanceKeywordConfig(
+            new KeywordRules
+            {
+                Order = new List<string> { "SummerEbt" }, // SnapEbtCard is mapped but not ordered
+                Map = new Dictionary<string, List<string>>
+                {
+                    ["SummerEbt"] = new() { "OSSE" },
+                    ["SnapEbtCard"] = new() { "SNAP" },
+                },
+                Default = "Unknown",
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("SnapEbtCard", ex.Message);
+    }
+
+    // A field referencing an enum table the config never defines fails at load.
+    [Fact]
+    public void Validate_FailsLoud_WhenReferencedEnumTableIsUndefined()
+    {
+        StateBackendConfiguration config = BuildEnumConfig(
+            new StateBackendEnumTable
+            {
+                Map = new Dictionary<string, List<string>> { ["Active"] = new() { "ACTIVE" } },
+                Default = "Unknown",
+            }) with
+        {
+            Enums = null, // the field's Enum = "cardStatus" now dangles
+        };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("cardStatus", ex.Message);
+    }
+
+    // Minimal config whose household lookup maps the supplied fields.
+    private static StateBackendConfiguration BuildLookupFieldsConfig(
+        Dictionary<string, FieldMapping> fields) =>
+        new()
+        {
+            BaseUrl = new Uri("http://backend.test"),
+            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
+            Operations = new StateBackendOperations
+            {
+                HouseholdLookup = new HouseholdLookupOperationConfig
+                {
+                    Method = StateBackendHttpMethod.Post,
+                    Path = "/lookup",
+                    Response = new StateBackendResponseMapping
+                    {
+                        Root = "$.records",
+                        Fields = fields,
+                    },
+                },
+            },
+        };
+
     // Minimal config whose household lookup composes caseId tokens with the supplied brick.
     private static StateBackendConfiguration BuildCaseIdConfig(CaseIdComposition caseId) =>
         new()

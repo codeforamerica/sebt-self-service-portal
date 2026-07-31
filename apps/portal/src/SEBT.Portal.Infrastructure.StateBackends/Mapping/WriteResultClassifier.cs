@@ -4,6 +4,12 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
+/// A classified write outcome plus the backend-supplied message, when one was readable from the
+/// response body.
+/// </summary>
+internal readonly record struct WriteClassification(WriteOutcome Outcome, string? Message);
+
+/// <summary>
 /// Classifies a write response into a canonical <see cref="WriteOutcome"/> by evaluating the
 /// classifier's ordered conditions first-match-wins, falling back to its default. <see cref="Validate"/>
 /// enforces the closed condition shape fail-loud at load time.
@@ -60,17 +66,36 @@ internal static class WriteResultClassifier
     /// Classifies a response. <paramref name="body"/> is null when the backend returned no/invalid
     /// JSON — status-only conditions still apply.
     /// </summary>
-    public static WriteOutcome Classify(ResultClassifier classifier, int statusCode, JsonElement? body)
+    public static WriteClassification Classify(ResultClassifier classifier, int statusCode, JsonElement? body)
     {
         foreach (ResultCondition condition in classifier.Conditions)
         {
             if (Matches(condition, statusCode, body))
             {
-                return condition.Outcome;
+                return new WriteClassification(condition.Outcome, ReadMessage(classifier, condition, body));
             }
         }
 
-        return classifier.Default;
+        return new WriteClassification(classifier.Default, ReadMessage(classifier, matched: null, body));
+    }
+
+    // The backend's own message text: read via the matched condition's messageField when it has
+    // one, else the first messageField any condition declares — so a default-classified error
+    // still surfaces the backend's message.
+    private static string? ReadMessage(ResultClassifier classifier, ResultCondition? matched, JsonElement? body)
+    {
+        string? messageField = matched?.MessageField
+            ?? classifier.Conditions
+                .FirstOrDefault(condition => !string.IsNullOrWhiteSpace(condition.MessageField))?
+                .MessageField;
+
+        if (messageField is null || body is null)
+        {
+            return null;
+        }
+
+        string? message = JsonRead.AsString(body, messageField);
+        return string.IsNullOrWhiteSpace(message) ? null : message;
     }
 
     private static bool Matches(ResultCondition condition, int statusCode, JsonElement? body)

@@ -83,6 +83,38 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
+    /// Validates every response field mapping names a known canonical target and that date-typed
+    /// targets carry an exact <c>format</c>, so a config typo fails loud at load rather than on the
+    /// first mapped record. Invoked at load time by
+    /// <see cref="Configuration.StateBackendConfigurationValidator"/>.
+    /// </summary>
+    internal static void ValidateFieldMappings(StateBackendConfiguration configuration)
+    {
+        foreach (StateBackendResponseMapping mapping in ResponseMappings(configuration))
+        {
+            foreach ((string canonicalField, FieldMapping fieldMapping) in mapping.Fields)
+            {
+                if (!FieldTargets.TryGetValue(canonicalField, out FieldTarget? target))
+                {
+                    throw new InvalidOperationException(
+                        $"Response mapping targets unknown canonical field '{canonicalField}'. " +
+                        $"Known fields: {string.Join(", ", FieldTargets.Keys)}.");
+                }
+
+                // A keywordRules brick on a date target gets its (more precise) rejection from
+                // ValidateKeywordRules instead.
+                if (target.Kind == FieldKind.DateTime
+                    && fieldMapping.KeywordRules is null
+                    && fieldMapping.Format is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Date field '{canonicalField}' requires an exact 'format'.");
+                }
+            }
+        }
+    }
+
+    /// <summary>
     /// Validates every enum table referenced by a response field mapping: each canonical value must
     /// be a real enum member, and no source token may appear under two canonical values. Invoked at
     /// load time by <see cref="Configuration.StateBackendConfigurationValidator"/>.

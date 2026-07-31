@@ -111,10 +111,7 @@ operations:
   enrollmentCheck:
     method: post
     path: /enrollment/check
-    # PerChild fan-out: the driver loops the batch and makes ONE call per child. No correlation
-    # index (each call is a single child), no DOB expansion. NOTE: the single-child wrapper endpoint
-    # that accepts one child and returns { isEligible: bool } is NOT built yet — it lands in phase 4/5
-    # alongside the DC state-backend adapter. This config declares the shape the driver will drive.
+    # PerChild fan-out: the driver loops the batch, one call per child. No correlation index, no DOB expansion.
     callMode: perChild
     request:
       map:

@@ -28,6 +28,10 @@ public static class OpaqueCaseId
     }
 
     /// <summary>Decodes a token back into its named routing fields. Fails loud on a malformed token.</summary>
+    /// <remarks>
+    /// Failure messages never echo the token: it can carry email/phone in
+    /// <c>householdIdentifier</c>, and callers log these exceptions in full.
+    /// </remarks>
     public static IReadOnlyDictionary<string, string> Decode(string token)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(token);
@@ -39,7 +43,7 @@ public static class OpaqueCaseId
         }
         catch (FormatException ex)
         {
-            throw new InvalidOperationException($"caseId token '{token}' is not valid base64.", ex);
+            throw new InvalidOperationException("caseId token is not valid base64.", ex);
         }
 
         Dictionary<string, string>? fields;
@@ -49,10 +53,10 @@ public static class OpaqueCaseId
         }
         catch (JsonException ex)
         {
-            throw new InvalidOperationException($"caseId token '{token}' does not decode to routing fields.", ex);
+            throw new InvalidOperationException("caseId token does not decode to routing fields.", ex);
         }
 
         return fields
-            ?? throw new InvalidOperationException($"caseId token '{token}' decoded to no routing fields.");
+            ?? throw new InvalidOperationException("caseId token decoded to no routing fields.");
     }
 }

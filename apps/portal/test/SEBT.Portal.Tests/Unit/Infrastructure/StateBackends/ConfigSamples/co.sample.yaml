@@ -71,7 +71,7 @@ operations:
       # non-match — and CBMS's root-level RespMsg is surfaced result-level.
       statusMessageField: sebtEligSts
       messageField: RespMsg
-      # CO's REAL match: pick the child's highest-confidence candidate row (argmax by mtchCnfd) and
+      # CO's match: pick the child's highest-confidence candidate row (argmax by mtchCnfd) and
       # match iff that best is STRICTLY greater than the threshold AND that SAME row is SEBT-eligible.
       # The argmax, `>`, and the AND are fixed code; config only names the strategy and its params.
       match:
