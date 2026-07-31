@@ -63,8 +63,8 @@ public class HttpSocureClient(
         var stepupWorkflow = socureSettingsSnapshot.Value.DocvStepupWorkflow;
 
         // docv_stepup tolerates an empty DOB and no national_id; the workflow only re-runs the
-        // Document Request enrichment to mint a fresh capture URL. Sandbox-confirmed via
-        // docs/.local/socure-context/docv_stepup-experiments/FINDINGS.md (2026-04-18).
+        // Document Request enrichment to mint a fresh capture URL. Confirmed against the Socure
+        // sandbox (2026-04-18).
         return await RunEvaluationAsync(
             userId, email,
             dateOfBirth: string.Empty,

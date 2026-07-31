@@ -68,7 +68,8 @@ public class DocVerificationChallengeTests
     }
 
     // Socure RESUBMIT terminates the workflow; the portal treats Resubmit as a terminal
-    // status from which a fresh challenge can be opened. See branch-context/DC-301/socure-validation.md.
+    // status from which a fresh challenge can be opened. Confirmed against the Socure sandbox
+    // under DC-301.
     [Fact]
     public void TransitionTo_ShouldSucceed_WhenPendingToResubmit()
     {

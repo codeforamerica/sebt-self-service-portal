@@ -156,8 +156,9 @@ describe('LanguageSelector', () => {
       items.forEach((item) => {
         expect(item.textContent?.trim()).not.toBe('')
       })
-      // No option matches the active language, so none is marked current. See the
-      // open question in questions.md about whether that is the desired behavior.
+      // No option matches the active language, so none is marked current. This
+      // pins the current behavior; whether the selector should instead mark the
+      // resolved display language is an open design question.
       expect(document.querySelector('[aria-current="true"]')).toBeNull()
     })
   })
