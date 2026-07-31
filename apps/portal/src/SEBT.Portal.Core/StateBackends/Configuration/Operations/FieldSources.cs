@@ -2,10 +2,7 @@ using System.Collections;
 
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
-/// <summary>
-/// One-or-more source property names for a <see cref="FieldMapping.From"/>; hydrates from both
-/// scalar and sequence YAML, and converts implicitly at single-source call sites.
-/// </summary>
+/// <summary>One-or-more source property names for <see cref="FieldMapping.From"/>; hydrates from scalar or sequence YAML.</summary>
 public sealed class FieldSources : IEnumerable<string>
 {
     private readonly IReadOnlyList<string> _sources;

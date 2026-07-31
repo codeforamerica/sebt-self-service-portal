@@ -286,7 +286,7 @@ The enrollment op turns a batch of children into backend calls, then decides a m
 **`match.strategy`** is one of two named strategies:
 
 - `anyRowValueIn` — needs `field` + `valueIn`. A row matches when `field`'s value is in `valueIn`. In batch mode a child matches if *any* of its rows match.
-- `confidenceThreshold` — needs `scoreField` + `threshold`. A child matches when its best candidate row's score (the argmax) is *strictly greater than* `threshold`. An optional eligibility check — `field` + `valueIn`, taken **together or not at all** (the validator rejects one alone) — requires that same argmax row to also carry an eligible value; a lower-scoring eligible row cannot rescue an ineligible best row. The argmax, the `>`, and the AND live in code; config only supplies the params.
+- `confidenceThreshold` — needs `scoreField` + `threshold`. A child matches when its best candidate row's score (the argmax) is *strictly greater than* `threshold`; a missing or non-numeric score never matches. An optional eligibility check — `field` + `valueIn`, taken **together or not at all** (the validator rejects one alone) — requires that same argmax row to also carry an eligible value; a lower-scoring eligible row cannot rescue an ineligible best row. The argmax, the `>`, and the AND live in code; config only supplies the params.
 
 Two optional message carriers sit on the response mapping:
 

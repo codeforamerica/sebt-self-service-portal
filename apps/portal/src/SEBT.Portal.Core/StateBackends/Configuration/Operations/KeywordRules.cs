@@ -1,9 +1,6 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
-/// <summary>
-/// Classifies an enum-typed field by scanning its <see cref="FieldMapping.From"/> source(s) for
-/// keyword substrings, first-match-wins over <see cref="Order"/>, case-insensitive.
-/// </summary>
+/// <summary>Classifies an enum-typed field by keyword-substring scan of its <see cref="FieldMapping.From"/> source(s).</summary>
 public sealed record KeywordRules
 {
     /// <summary>Canonical enum values in evaluation order; first-match-wins, so order is load-bearing.</summary>

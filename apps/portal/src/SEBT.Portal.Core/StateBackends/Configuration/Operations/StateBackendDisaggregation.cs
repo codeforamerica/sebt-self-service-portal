@@ -10,7 +10,7 @@ public enum DisaggregationRule
     ValueInSet,
 }
 
-/// <summary>Named case-inclusion predicate deciding which records become cases.</summary>
+/// <summary>Named case-inclusion predicate — closed set; add a named member, never operators.</summary>
 public enum CaseInclusionPredicate
 {
     /// <summary>Include every record.</summary>
@@ -23,7 +23,6 @@ public enum CaseInclusionPredicate
 /// <summary>How to group records into applications and which records to include as cases.</summary>
 public sealed record StateBackendDisaggregation
 {
-    /// <summary>The rule used to classify a record as application-based.</summary>
     public required DisaggregationRule Rule { get; init; }
 
     /// <summary>Source field inspected by <see cref="Rule"/>.</summary>
@@ -35,6 +34,5 @@ public sealed record StateBackendDisaggregation
     /// <summary>For <see cref="DisaggregationRule.ValueInSet"/>: the discriminator values that mean "application-based".</summary>
     public List<string>? ApplicationValues { get; init; }
 
-    /// <summary>The named predicate deciding which records are included as cases.</summary>
     public required CaseInclusionPredicate CaseInclusion { get; init; }
 }

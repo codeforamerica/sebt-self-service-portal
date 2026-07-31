@@ -3,7 +3,7 @@ namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 /// <summary>Maps a state backend's raw JSON response into canonical domain types.</summary>
 public sealed record StateBackendResponseMapping
 {
-    /// <summary>Path to the array of records within the raw response (e.g. <c>$.resultSets[0]</c>).</summary>
+    /// <summary>Path to the array of records within the raw response.</summary>
     public required string Root { get; init; }
 
     /// <summary>Canonical field name → how to pull and coerce it from the record selected by <see cref="Root"/>.</summary>
