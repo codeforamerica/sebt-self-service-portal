@@ -12,9 +12,6 @@ public sealed record StateBackendResponseMapping
     /// <summary>Optional strategy for grouping records into applications and deciding case inclusion.</summary>
     public StateBackendDisaggregation? Disaggregation { get; init; }
 
-    /// <summary>
-    /// Optional composition of the case's opaque (not encrypted) caseId token; a later write decodes
-    /// it to recover the routing fields. See <see cref="CaseIdComposition"/>.
-    /// </summary>
+    /// <summary>Optional composition of the case's opaque caseId token; a later write decodes it to recover routing fields.</summary>
     public CaseIdComposition? CaseId { get; init; }
 }

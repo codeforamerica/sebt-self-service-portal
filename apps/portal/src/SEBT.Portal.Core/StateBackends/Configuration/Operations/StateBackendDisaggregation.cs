@@ -32,10 +32,7 @@ public sealed record StateBackendDisaggregation
     /// <summary>Source field whose value groups records belonging to the same application.</summary>
     public string? GroupApplicationsBy { get; init; }
 
-    /// <summary>
-    /// For <see cref="DisaggregationRule.ValueInSet"/>: the discriminator values that mean
-    /// "application-based".
-    /// </summary>
+    /// <summary>For <see cref="DisaggregationRule.ValueInSet"/>: the discriminator values that mean "application-based".</summary>
     public List<string>? ApplicationValues { get; init; }
 
     /// <summary>The named predicate deciding which records are included as cases.</summary>

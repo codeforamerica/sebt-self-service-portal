@@ -5,11 +5,9 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Builds an outgoing lookup request body from a domain-centered <see cref="RequestBinding"/>.
-/// Input resolution is a closed set — a map input that resolves to nothing fails loud, while a
-/// mapOptional input is omitted from the body entirely. The binder passes
-/// <see cref="HouseholdLookupRequest.IsProofed"/> straight through; it never computes an
-/// authorization decision.
+/// Builds an outgoing request body from a <see cref="RequestBinding"/>: a map input resolving to
+/// nothing fails loud, a mapOptional input is omitted. <c>isProofed</c> passes straight through —
+/// never an authorization decision here.
 /// </summary>
 internal static class StateBackendRequestBinder
 {
@@ -49,8 +47,8 @@ internal static class StateBackendRequestBinder
     }
 
     /// <summary>
-    /// Write-path binding: builds the body from constants plus the routing fields decoded from the
-    /// opaque caseId. A map input with no matching routing field fails loud (never silently drops).
+    /// Write-path binding: constants plus the routing fields decoded from the opaque caseId; an
+    /// unmatched map input fails loud.
     /// </summary>
     public static JsonObject BuildBody(RequestBinding binding, IReadOnlyDictionary<string, string> inputs)
     {
@@ -85,10 +83,9 @@ internal static class StateBackendRequestBinder
     }
 
     /// <summary>
-    /// Batch write-path binding (address update): constants + scalar address map, plus the
-    /// <c>shared</c> and <c>collect</c> batch shapes fanning out over the decoded caseIds. A
-    /// <c>shared</c> field failing loud on disagreement across cases is load-bearing — the household
-    /// must resolve to one value. A shared/collect field missing from any caseId fails loud.
+    /// Batch write-path binding (address update): the scalar binding plus the <c>shared</c> and
+    /// <c>collect</c> shapes over the decoded caseIds. A <c>shared</c> field that disagrees across
+    /// cases, or a shared/collect field missing from any caseId, fails loud.
     /// </summary>
     public static JsonObject BuildAddressBody(
         RequestBinding binding,

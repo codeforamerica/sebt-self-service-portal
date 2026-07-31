@@ -3,9 +3,8 @@ using System.Collections;
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
 /// <summary>
-/// One-or-more source property names for a <see cref="FieldMapping.From"/>. A value type so both a
-/// scalar YAML <c>from: X</c> and a sequence <c>from: [X, Y]</c> hydrate, and a scalar still behaves
-/// like a bare string at single-source call sites via the implicit conversions below.
+/// One-or-more source property names for a <see cref="FieldMapping.From"/>; hydrates from both
+/// scalar and sequence YAML, and converts implicitly at single-source call sites.
 /// </summary>
 public sealed class FieldSources : IEnumerable<string>
 {

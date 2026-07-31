@@ -12,10 +12,8 @@ using SEBT.Portal.Kernel.Results;
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
-/// Handles mailing address updates for an authenticated user's household.
-/// Validates input, normalizes the address via <see cref="IAddressUpdateService"/>,
-/// enforces self-service rules and benefit-type policy, and persists via the Core
-/// state-backend port.
+/// Handles mailing address updates: validates and normalizes the address, enforces self-service
+/// rules and benefit-type policy, and persists via the Core state-backend port.
 /// </summary>
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
@@ -55,9 +53,8 @@ public class UpdateAddressCommandHandler(
         switch (addressOutcome)
         {
             case ValidationFailedResult<AddressUpdateSuccess> addressValidationFailed:
-                // Smarty couldn't verify the address. Return a structured "not-found"
-                // result so the frontend routes to the Address Not Found screen (422)
-                // instead of showing a generic validation error (400).
+                // Smarty couldn't verify: return a structured "not-found" (422) so the frontend
+                // routes to the Address Not Found screen instead of a generic 400.
                 logger.LogWarning("Address update failed verification or policy checks");
                 var firstError = addressValidationFailed.Errors.FirstOrDefault();
                 return Result<AddressValidationResult>.Success(
@@ -84,9 +81,8 @@ public class UpdateAddressCommandHandler(
         var stateValidationOnNormalized = await addressValidationService.ValidateAsync(
             normalizedAddress!, cancellationToken);
 
-        // Smarty's USPS-long canonical street can exceed DC's connector limit while the user's typed
-        // street still fits. Abbreviated suggestions must not loop forever when the user explicitly
-        // chooses "address you entered" - validate and persist those lines instead.
+        // Smarty's USPS-long canonical street can exceed DC's connector limit while the user's
+        // typed street still fits; when the user chooses "address you entered", persist those lines.
         var abbreviatedOnlyBlocksPersist = false;
         if (!stateValidationOnNormalized.IsValid)
         {
@@ -201,9 +197,8 @@ public class UpdateAddressCommandHandler(
 
         if (household.SummerEbtCases.Count > 0)
         {
-            // Mixed households: co-loaded cases are excluded from the self-service
-            // permission surface; a household with any non-co-loaded case retains
-            // address-update access. Only fully co-loaded households are blocked.
+            // Co-loaded cases are excluded from the self-service permission surface; only fully
+            // co-loaded households are blocked.
             var nonCoLoaded = household.SummerEbtCases.Where(c => !c.IsCoLoaded).ToList();
             if (nonCoLoaded.Count == 0)
             {
@@ -236,8 +231,7 @@ public class UpdateAddressCommandHandler(
             Zip = persistAddress.PostalCode
         };
 
-        // The household's case IDs are the opaque tokens the read path served; driver
-        // configs collect per-case write-ids from them. The update itself is
+        // The case IDs are the opaque tokens the read path served; the update itself is
         // household-routed by the identifier, so an empty batch is valid.
         var caseTokens = household.SummerEbtCases
             .Select(c => c.SummerEBTCaseID)

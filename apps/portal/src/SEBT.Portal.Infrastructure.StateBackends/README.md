@@ -4,7 +4,7 @@ One adapter — [`ConfigurableStateBackend`](./ConfigurableStateBackend.cs) — 
 
 ## The thesis
 
-Every state backend speaks JSON over HTTP. Per-state variation — different endpoints, field names, enum tokens, batch shapes, match rules — collapses to config plus a closed catalog of narrow named bricks. DC's SQL sprocs sit behind a thin REST wrapper, so DC speaks JSON too. Once every state is JSON-over-HTTP, the only thing that varies is the mapping, and mapping is data.
+Every state backend speaks JSON over HTTP. Per-state variation — different endpoints, field names, enum tokens, batch shapes, match rules — collapses to config plus a closed catalog of narrow named primitives. DC's SQL sprocs sit behind a thin REST wrapper, so DC speaks JSON too. Once every state is JSON-over-HTTP, the only thing that varies is the mapping, and mapping is data.
 
 ## The ports
 
@@ -18,9 +18,11 @@ The Core ports are transport-free — Core has no HTTP or plugin-contract depend
 
 `Capabilities` is derived from which operations the config declares — the presence of an operation *is* its capability.
 
-## The closed brick catalog
+Card data is batch-loaded today: both DC and CO return card details inline in the household lookup, so there is no per-case card fetch port. A state that only exposes cards via a per-case endpoint needs a new port method plus a `cardDetails` operation config — deferred until a real state needs it.
 
-Config picks from a fixed set of narrow, named bricks. It never exposes comparison or boolean operators. Detail and worked YAML live in [CONFIG-AUTHORING.md](./CONFIG-AUTHORING.md).
+## The closed catalog of primitives
+
+Config picks from a fixed set of narrow, named primitives. It never exposes comparison or boolean operators. Detail and worked YAML live in [CONFIG-AUTHORING.md](./CONFIG-AUTHORING.md).
 
 - **Auth schemes.** `api_key` (header + `keyRef`) or `client_credentials` (`tokenUrl` + `clientId` + `clientSecretRef`). Secrets are key *references*, resolved from env / `/run/secrets` — never inlined.
 - **Field mapping.** `from` (source property), optional exact date `format`, optional named `enum` table. LHS is our canonical field name, RHS is the state's flavor.
@@ -46,26 +48,26 @@ Config loads from YAML via YamlDotNet in [`StateBackendConfigurationLoader`](./C
 
 ## The anti-DSL discipline
 
-This is the load-bearing rule. Config exposes a **closed set of narrow named bricks** — never comparison operators, boolean combinators, or an expression language. The `>` in `confidenceThreshold`, the `contains` in `keywordRules`, the argmax in the match strategy all live in fixed code; config only names the brick and supplies its parameters.
+Config exposes a **closed set of narrow named primitives** — never comparison operators, boolean combinators, or an expression language. The `>` in `confidenceThreshold`, the `contains` in `keywordRules`, the argmax in the match strategy live in fixed code; config names the primitive and supplies its parameters.
 
-When a real state needs something no brick covers, you **stop** and add a **new named brick** in code plus tests — the promotion rule. You don't add operators or a mini-language to the YAML. This keeps every config finite and auditable: the set of behaviors a config can express equals the set of bricks that exist in code.
+When a real state needs something no primitive covers, stop and add a **new named primitive** in code, with tests — the promotion rule. No operators, no mini-language in the YAML. The set of behaviors a config can express equals the set of primitives that exist in code. Rationale: [`docs/adr/0020-config-driven-state-backend-adapter.md`](../../../../docs/adr/0020-config-driven-state-backend-adapter.md).
 
 ## Status
 
-This is a spike / prototype (DC-568). Be honest about what that means:
+Spike / prototype (DC-568), dark behind a feature flag.
 
-- **Phase-4 dark wiring is done.** The write/enrollment ports and the household read path flip atomically behind the `FeatureManagement:use_configurable_state_backend` flag — read per resolve, so a toggle takes effect without a restart. The YAML path comes from `StateBackend:ConfigPath`.
-- **MEF plugins remain the default** and serve all traffic while the flag is off. The adapter coexists with them; nothing dispatches through `ConfigurableStateBackend` until the flag flips.
-- **Real-backend testing (phase 5) is in progress.** The DC wrapper surface is complete; CO UAT smoke testing is underway. Green is still substantially mock-based — MockHttp and self-authored fixtures.
+- **Wired:** the write/enrollment ports and the household read path flip atomically behind `FeatureManagement:use_configurable_state_backend` — read per resolve, so a toggle takes effect without a restart. The YAML path comes from `StateBackend:ConfigPath`.
+- **Default:** MEF plugins serve all traffic while the flag is off. Nothing dispatches through `ConfigurableStateBackend` until it flips.
+- **Validation:** the DC wrapper surface is complete; CO UAT smoke testing is underway. Test green is still substantially mock-based (MockHttp + self-authored fixtures) — the adapter is unvalidated against production traffic.
 - **Config trust model:** the YAML defines egress targets and constants. It is deployment-owned config, sitting inside the same trust boundary as appsettings secrets — not user- or state-supplied input.
 
-## References
+## Key files
 
-- Ports: [`SEBT.Portal.Core/StateBackends/`](../SEBT.Portal.Core/StateBackends/)
+- Ports: [`SEBT.Portal.Core/StateBackends/`](../SEBT.Portal.Core/StateBackends/) — `IHouseholdLookupBackend`, `ICardReplacementBackend`, `IAddressUpdateBackend`, `IEnrollmentCheckBackend`, `IStateBackendHealth`
 - Config model: [`SEBT.Portal.Core/StateBackends/Configuration/`](../SEBT.Portal.Core/StateBackends/Configuration/)
 - Loader: [`StateBackendConfigurationLoader`](./Configuration/StateBackendConfigurationLoader.cs)
 - Validator: [`StateBackendConfigurationValidator`](./Configuration/StateBackendConfigurationValidator.cs)
-- Brick implementations: [`Mapping/`](./Mapping/) and [`Auth/`](./Auth/)
+- Primitive implementations: [`Mapping/`](./Mapping/) and [`Auth/`](./Auth/)
 - Sample configs: [`dc.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml), [`co.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml)
-- Spike plan: [`docs/spikes/dc-568/json-adapter-prototype-plan.md`](../../../../docs/spikes/dc-568/json-adapter-prototype-plan.md)
 - Authoring guide: [CONFIG-AUTHORING.md](./CONFIG-AUTHORING.md)
+- ADR: [`docs/adr/0020-config-driven-state-backend-adapter.md`](../../../../docs/adr/0020-config-driven-state-backend-adapter.md)

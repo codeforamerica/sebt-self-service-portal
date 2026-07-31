@@ -4,7 +4,6 @@ using RichardSzalay.MockHttp;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.StateBackends.Configuration;
-using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends;
 
@@ -12,47 +11,9 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 public class ConfigurableStateBackendLookupHouseholdTests
 {
+    // The DC-shaped lookup base every test in this class starts from.
     private static StateBackendConfiguration BuildConfiguration() =>
-        new()
-        {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme
-            {
-                Header = "X-Api-Key",
-                KeyRef = "dc-api-key",
-            },
-            Operations = new StateBackendOperations
-            {
-                HouseholdLookup = new HouseholdLookupOperationConfig
-                {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/households/lookup",
-                    Response = new StateBackendResponseMapping
-                    {
-                        Root = "$.resultSets[0]",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["summerEBTCaseID"] = new() { From = "SummerEBTCaseID" },
-                            ["childFirstName"] = new() { From = "ChildFirstName" },
-                            ["childLastName"] = new() { From = "ChildLastName" },
-                        },
-                    },
-                },
-            },
-        };
-
-    // Rebuilds the config with its household-lookup operation swapped out.
-    private static StateBackendConfiguration WithLookup(
-        StateBackendConfiguration configuration, HouseholdLookupOperationConfig lookup) =>
-        configuration with
-        {
-            Operations = configuration.Operations with { HouseholdLookup = lookup },
-        };
-
-    // Rebuilds the config with its household-lookup response mapping swapped out.
-    private static StateBackendConfiguration WithLookupResponse(
-        StateBackendConfiguration configuration, StateBackendResponseMapping response) =>
-        WithLookup(configuration, configuration.Operations.HouseholdLookup! with { Response = response });
+        StateBackendTestConfig.DcLookup();
 
     // Raw passthrough shaped like the DC REST wrapper: multi-result-set, original column names.
     private const string DcRawResponse =
@@ -130,8 +91,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         string cardStatusToken, CardStatus expectedCardStatus)
     {
         // Arrange
-        StateBackendConfiguration configuration = WithLookupResponse(
-            BuildConfiguration(),
+        StateBackendConfiguration configuration = BuildConfiguration().WithLookupResponse(
             new StateBackendResponseMapping
             {
                 Root = "$.resultSets[0]",
@@ -203,12 +163,8 @@ public class ConfigurableStateBackendLookupHouseholdTests
             },
         };
 
-    private static StateBackendConfiguration WithRequestBinding(RequestBinding binding)
-    {
-        StateBackendConfiguration configuration = BuildConfiguration();
-        return WithLookup(
-            configuration, configuration.Operations.HouseholdLookup! with { Request = binding });
-    }
+    private static StateBackendConfiguration WithRequestBinding(RequestBinding binding) =>
+        BuildConfiguration().WithLookupRequest(binding);
 
     private static HouseholdLookupRequest DcRequest(bool isProofed) =>
         new(
@@ -452,8 +408,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
     {
         // Arrange
         StateBackendConfiguration configuration = BuildConfiguration();
-        configuration = WithLookupResponse(
-            configuration,
+        configuration = configuration.WithLookupResponse(
             configuration.Operations.HouseholdLookup!.Response! with
             {
                 Disaggregation = new StateBackendDisaggregation
@@ -514,8 +469,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
     public async Task LookupHouseholdAsync_ValueInSetRule_All_PartitionsAndGroupsApplications()
     {
         // Arrange
-        StateBackendConfiguration configuration = WithLookupResponse(
-            BuildConfiguration(),
+        StateBackendConfiguration configuration = BuildConfiguration().WithLookupResponse(
             new StateBackendResponseMapping
             {
                 Root = "$.stdntEnrollDtls",
@@ -581,8 +535,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
 
     private static StateBackendConfiguration WithCoStatusInclusion()
     {
-        StateBackendConfiguration configuration = WithLookupResponse(
-            BuildConfiguration(),
+        StateBackendConfiguration configuration = BuildConfiguration().WithLookupResponse(
             new StateBackendResponseMapping
             {
                 Root = "$.stdntEnrollDtls",
@@ -678,8 +631,7 @@ public class ConfigurableStateBackendLookupHouseholdTests
         """;
 
     private static StateBackendConfiguration WithIssuanceKeywordRules() =>
-        WithLookupResponse(
-            BuildConfiguration(),
+        BuildConfiguration().WithLookupResponse(
             new StateBackendResponseMapping
             {
                 Root = "$.resultSets[0]",

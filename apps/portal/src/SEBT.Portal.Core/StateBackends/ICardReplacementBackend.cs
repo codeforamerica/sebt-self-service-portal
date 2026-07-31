@@ -7,8 +7,7 @@ public interface ICardReplacementBackend
 }
 
 /// <summary>
-/// A card-replacement request routed by a batch of opaque decodable <see cref="CaseIds"/> tokens;
-/// the backend decodes each token into the routing fields a write needs — including the household
-/// identifier, which rides inside the tokens. Cooldown, persistence, and hashing stay portal-side.
+/// A card-replacement request routed by opaque case tokens; the household identifier rides inside
+/// them. Cooldown, persistence, and hashing stay portal-side.
 /// </summary>
 public sealed record CardReplacementRequest(IReadOnlyList<string> CaseIds);

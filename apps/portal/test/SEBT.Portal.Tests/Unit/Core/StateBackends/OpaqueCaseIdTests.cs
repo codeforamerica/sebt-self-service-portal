@@ -66,39 +66,25 @@ public class OpaqueCaseIdTests
         Assert.Equal(fields, decoded);
     }
 
-    [Fact]
-    public void Decode_TokenIsNotValidBase64_ThrowsWithoutEchoingToken()
+    // Tokens can carry email/phone in householdIdentifier, and write handlers log full
+    // exceptions — the raw token must never appear in the failure message.
+    [Theory]
+    // Not base64 at all.
+    [InlineData("not!valid@base64#user@example.com", false, "not valid base64")]
+    // Base64, but the payload is not JSON.
+    [InlineData("user@example.com is not json", true, "does not decode to routing fields")]
+    // The JSON literal "null" deserializes without error to a null dictionary.
+    [InlineData("null", true, "decoded to no routing fields")]
+    public void Decode_MalformedToken_ThrowsWithoutEchoingToken(
+        string payload, bool encodeAsBase64, string expectedMessageFragment)
     {
-        // Tokens can carry email/phone in householdIdentifier, and write handlers log full
-        // exceptions — the raw token must never appear in the failure message.
-        const string token = "not!valid@base64#user@example.com";
+        string token = encodeAsBase64
+            ? Base64Url.EncodeToString(Encoding.UTF8.GetBytes(payload))
+            : payload;
 
         var ex = Assert.Throws<InvalidOperationException>(() => OpaqueCaseId.Decode(token));
 
-        Assert.Contains("not valid base64", ex.Message);
-        Assert.DoesNotContain(token, ex.Message);
-    }
-
-    [Fact]
-    public void Decode_TokenIsNotValidJson_ThrowsWithoutEchoingToken()
-    {
-        string token = Base64Url.EncodeToString(Encoding.UTF8.GetBytes("user@example.com is not json"));
-
-        var ex = Assert.Throws<InvalidOperationException>(() => OpaqueCaseId.Decode(token));
-
-        Assert.Contains("does not decode to routing fields", ex.Message);
-        Assert.DoesNotContain(token, ex.Message);
-    }
-
-    [Fact]
-    public void Decode_TokenDecodesToJsonNull_ThrowsWithoutEchoingToken()
-    {
-        // The JSON literal "null" deserializes without error to a null dictionary.
-        string token = Base64Url.EncodeToString(Encoding.UTF8.GetBytes("null"));
-
-        var ex = Assert.Throws<InvalidOperationException>(() => OpaqueCaseId.Decode(token));
-
-        Assert.Contains("decoded to no routing fields", ex.Message);
+        Assert.Contains(expectedMessageFragment, ex.Message);
         Assert.DoesNotContain(token, ex.Message);
     }
 

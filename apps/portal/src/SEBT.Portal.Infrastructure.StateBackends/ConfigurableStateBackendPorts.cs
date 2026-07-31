@@ -8,12 +8,9 @@ using SEBT.Portal.Infrastructure.StateBackends.Configuration;
 namespace SEBT.Portal.Infrastructure.StateBackends;
 
 /// <summary>
-/// Composes the config-driven state-backend stack — YAML config, auth handler chain, HttpClient,
-/// and one shared <see cref="ConfigurableStateBackend"/> — and exposes it per Core port: the
-/// three write/enrollment ports plus the household-lookup read port. Composition is lazy:
-/// nothing (not even the config path) is touched until the first port is read, so registering
-/// this type is free while the feature flag is off. Ports whose operation the config does not
-/// declare get a throwing <see cref="UnsupportedStateBackendOperation"/>.
+/// Composes the config-driven state-backend stack and exposes it per Core port. Composition is
+/// lazy — nothing is touched until the first port read, so registration is free while the feature
+/// flag is off. Ports the config does not declare get a throwing <see cref="UnsupportedStateBackendOperation"/>.
 /// </summary>
 public sealed class ConfigurableStateBackendPorts
 {
@@ -80,10 +77,9 @@ public sealed class ConfigurableStateBackendPorts
             config.Operations.HouseholdLookup is not null ? backend : unsupported);
     }
 
-    // The production equivalent of the handler chain the adapter tests compose: the config's
-    // auth scheme as a DelegatingHandler in front of a SocketsHttpHandler. Hand-built once for
-    // the singleton backend rather than via IHttpClientFactory — the client lives for the
-    // process, so the factory's per-name handler rotation adds nothing here.
+    // The config's auth scheme as a DelegatingHandler in front of the transport. Hand-built once
+    // for the singleton backend — a process-lifetime client gains nothing from IHttpClientFactory's
+    // handler rotation.
     private static HttpClient BuildHttpClient(
         StateBackendConfiguration config, IStateBackendSecretResolver secretResolver)
     {

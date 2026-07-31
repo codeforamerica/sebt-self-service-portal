@@ -91,8 +91,7 @@ internal static class EnrollmentRequestBuilder
         }
     }
 
-    // A map input with no value — an unknown name, or a nullable child field the child doesn't
-    // carry — fails loud rather than silently dropping. mapOptional is the omit-instead channel.
+    // A map input with no value fails loud; mapOptional is the omit-instead channel.
     private static string ResolveInput(string inputName, EnrollmentChild child, DateOnly dob) =>
         TryResolveInput(inputName, child, dob)
             ?? throw new InvalidOperationException(

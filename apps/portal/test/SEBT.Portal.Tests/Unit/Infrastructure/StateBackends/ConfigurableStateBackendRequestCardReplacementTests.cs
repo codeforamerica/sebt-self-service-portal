@@ -3,7 +3,6 @@ using System.Text.Json;
 using RichardSzalay.MockHttp;
 using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.StateBackends.Configuration;
-using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends;
 using SEBT.Portal.Infrastructure.StateBackends.Mapping;
@@ -66,20 +65,12 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             Default = WriteOutcome.BackendError,
         };
 
-    private static StateBackendConfiguration BuildConfiguration(CardReplacementOperationConfig cardReplacement) =>
-        new()
-        {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "dc-api-key" },
-            Operations = new StateBackendOperations
-            {
-                CardReplacement = cardReplacement,
-            },
-        };
-
     private static ConfigurableStateBackend BuildBackend(
         MockHttpMessageHandler mockHttp, CardReplacementOperationConfig cardReplacement) =>
-        new(BuildConfiguration(cardReplacement), mockHttp.ToHttpClient(), () => FixedIdempotencyKey);
+        new(
+            StateBackendTestConfig.Base().WithCardReplacement(cardReplacement),
+            mockHttp.ToHttpClient(),
+            () => FixedIdempotencyKey);
 
     // An opaque caseId carrying the DC routing fields most tests decode on write. The token also
     // carries applicationId (composed on read for DC) even though card replacement doesn't bind it.
@@ -197,11 +188,8 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     public async Task RequestCardReplacementAsync_BindsHouseholdEmail_PackedFromLookupContext()
     {
         // Arrange — one config carrying both operations, DC-shaped.
-        StateBackendConfiguration configuration = LookupWithFromContextComposition();
-        configuration = configuration with
-        {
-            Operations = configuration.Operations with { CardReplacement = DcCardReplacement() },
-        };
+        StateBackendConfiguration configuration =
+            LookupWithFromContextComposition().WithCardReplacement(DcCardReplacement());
 
         string? capturedBody = null;
         var mockHttp = new MockHttpMessageHandler();
@@ -245,69 +233,53 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     // DC-shaped composition whose householdEmail is context-sourced: the lookup response carries
     // only the case key, never the identifier the portal searched with.
     private static StateBackendConfiguration LookupWithFromContextComposition() =>
-        new()
+        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/households/lookup",
+            Response = new StateBackendResponseMapping
             {
-                HouseholdLookup = new HouseholdLookupOperationConfig
+                Root = "$.resultSets[0]",
+                Fields = new Dictionary<string, FieldMapping>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/households/lookup",
-                    Response = new StateBackendResponseMapping
+                    ["childFirstName"] = new() { From = "CaseKey" }, // placeholder to keep a field present
+                },
+                CaseId = new CaseIdComposition
+                {
+                    Fields = new Dictionary<string, string>
                     {
-                        Root = "$.resultSets[0]",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["childFirstName"] = new() { From = "CaseKey" }, // placeholder to keep a field present
-                        },
-                        CaseId = new CaseIdComposition
-                        {
-                            Fields = new Dictionary<string, string>
-                            {
-                                ["caseId"] = "CaseKey",
-                            },
-                            FromContext = new Dictionary<string, string>
-                            {
-                                ["householdEmail"] = "householdIdentifier",
-                            },
-                        },
+                        ["caseId"] = "CaseKey",
+                    },
+                    FromContext = new Dictionary<string, string>
+                    {
+                        ["householdEmail"] = "householdIdentifier",
                     },
                 },
             },
-        };
+        });
 
     private static StateBackendConfiguration LookupWithCaseIdComposition() =>
-        new()
+        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/households/lookup",
+            Response = new StateBackendResponseMapping
             {
-                HouseholdLookup = new HouseholdLookupOperationConfig
+                Root = "$.resultSets[0]",
+                Fields = new Dictionary<string, FieldMapping>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/households/lookup",
-                    Response = new StateBackendResponseMapping
+                    ["childFirstName"] = new() { From = "CaseKey" }, // placeholder to keep a field present
+                },
+                CaseId = new CaseIdComposition
+                {
+                    Fields = new Dictionary<string, string>
                     {
-                        Root = "$.resultSets[0]",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["childFirstName"] = new() { From = "CaseKey" }, // placeholder to keep a field present
-                        },
-                        CaseId = new CaseIdComposition
-                        {
-                            Fields = new Dictionary<string, string>
-                            {
-                                ["caseId"] = "CaseKey",
-                                ["applicationId"] = "AppKey",
-                            },
-                        },
+                        ["caseId"] = "CaseKey",
+                        ["applicationId"] = "AppKey",
                     },
                 },
             },
-        };
+        });
 
     // ---- 2. Request body built from decoded caseId fields + constants/map + idempotency header --
 
@@ -490,38 +462,19 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
     // ---- Backend message propagation: generic text only when the backend supplied none ---------
 
-    [Fact]
-    public async Task RequestCardReplacementAsync_PropagatesBackendMessage_OnPolicyRejection()
+    // The backend's own message flows through — never the generic prose — whether the condition
+    // matched (policy wording) or nothing did (default BackendError reading the declared messageField).
+    [Theory]
+    [InlineData(
+        "Policy Failure: household is not eligible for a replacement.",
+        "POLICY_REJECTION", true)]
+    [InlineData(
+        "Backend Failure: the request could not be completed.",
+        "BACKEND_ERROR", false)]
+    public async Task RequestCardReplacementAsync_PropagatesBackendMessage_OnFailure(
+        string backendMessage, string expectedCode, bool expectedPolicyRejection)
     {
-        // Arrange — DC's mock policy rejection carries the sproc's own message text.
-        const string policyMessage = "Policy Failure: household is not eligible for a replacement.";
-
-        var mockHttp = new MockHttpMessageHandler();
-        mockHttp
-            .When(HttpMethod.Post, "http://backend.test/card-replacements")
-            .Respond(
-                "application/json",
-                $$"""{ "resultCode": 1, "resultMessage": "{{policyMessage}}" }""");
-
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
-
-        // Act
-        WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { DefaultCaseId() }));
-
-        // Assert — the backend's message flows through, not the generic policy prose.
-        Assert.True(result.IsPolicyRejection);
-        Assert.Equal("POLICY_REJECTION", result.ErrorCode);
-        Assert.Equal(policyMessage, result.ErrorMessage);
-    }
-
-    [Fact]
-    public async Task RequestCardReplacementAsync_PropagatesBackendMessage_OnDefaultClassifiedBackendError()
-    {
-        // Arrange — nothing matches (default BackendError), but the body still carries the
-        // backend's message via the classifier's declared messageField.
-        const string backendMessage = "Backend Failure: the request could not be completed.";
-
+        // Arrange
         var mockHttp = new MockHttpMessageHandler();
         mockHttp
             .When(HttpMethod.Post, "http://backend.test/card-replacements")
@@ -537,7 +490,8 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Assert
         Assert.False(result.IsSuccess);
-        Assert.Equal("BACKEND_ERROR", result.ErrorCode);
+        Assert.Equal(expectedPolicyRejection, result.IsPolicyRejection);
+        Assert.Equal(expectedCode, result.ErrorCode);
         Assert.Equal(backendMessage, result.ErrorMessage);
     }
 
@@ -706,61 +660,50 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
     // ---- Fail-loud classifier config validation ------------------------------------------------
 
-    [Fact]
-    public void Validate_FailsLoud_WhenConditionSetsMoreThanOneKind()
-    {
-        // Arrange — a condition that sets BOTH statusIn and valueIn is not one of the 3 closed kinds.
-        var classifier = new ResultClassifier
+    public static TheoryData<string, ResultCondition, string> MalformedConditions() =>
+        new()
         {
-            Conditions = new List<ResultCondition>
             {
-                new()
+                // Setting BOTH statusIn and valueIn is not one of the 3 closed kinds.
+                "two kinds",
+                new ResultCondition
                 {
                     Outcome = WriteOutcome.Success,
                     StatusIn = new List<int> { 200 },
                     ValueIn = new List<string> { "OK" },
                     Field = "resultCode",
                 },
+                "exactly one"
             },
+            {
+                // No kind set at all.
+                "no kind",
+                new ResultCondition { Outcome = WriteOutcome.Success },
+                "exactly one"
+            },
+            {
+                // The value-in-set kind requires a source field.
+                "valueIn without field",
+                new ResultCondition { Outcome = WriteOutcome.Success, ValueIn = new List<string> { "OK" } },
+                "field"
+            },
+        };
+
+    [Theory]
+    [MemberData(nameof(MalformedConditions))]
+    public void Validate_FailsLoud_OnMalformedCondition(
+        string label, ResultCondition condition, string expectedMessageFragment)
+    {
+        // Arrange
+        _ = label; // row identifier only
+        var classifier = new ResultClassifier
+        {
+            Conditions = new List<ResultCondition> { condition },
         };
 
         // Act + Assert
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => WriteResultClassifier.Validate(classifier));
-        Assert.Contains("exactly one", ex.Message);
-    }
-
-    [Fact]
-    public void Validate_FailsLoud_WhenConditionSetsNoKind()
-    {
-        // Arrange — a condition with no kind set at all.
-        var classifier = new ResultClassifier
-        {
-            Conditions = new List<ResultCondition>
-            {
-                new() { Outcome = WriteOutcome.Success },
-            },
-        };
-
-        // Act + Assert
-        Assert.Throws<InvalidOperationException>(() => WriteResultClassifier.Validate(classifier));
-    }
-
-    [Fact]
-    public void Validate_FailsLoud_WhenValueInHasNoField()
-    {
-        // Arrange — value-in-set kind requires a source field.
-        var classifier = new ResultClassifier
-        {
-            Conditions = new List<ResultCondition>
-            {
-                new() { Outcome = WriteOutcome.Success, ValueIn = new List<string> { "OK" } },
-            },
-        };
-
-        // Act + Assert
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => WriteResultClassifier.Validate(classifier));
-        Assert.Contains("field", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(expectedMessageFragment, ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 }

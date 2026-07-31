@@ -11,10 +11,7 @@ public record StateBackendConfiguration
 
     public required StateBackendOperations Operations { get; init; }
 
-    /// <summary>
-    /// Named enum translation tables referenced by response field mappings
-    /// (<see cref="Operations.FieldMapping.Enum"/>). Null when the backend maps no enums.
-    /// </summary>
+    /// <summary>Named enum translation tables referenced by <see cref="Operations.FieldMapping.Enum"/>.</summary>
     public Dictionary<string, StateBackendEnumTable>? Enums { get; init; }
 
     public StateBackendCapabilities Capabilities =>

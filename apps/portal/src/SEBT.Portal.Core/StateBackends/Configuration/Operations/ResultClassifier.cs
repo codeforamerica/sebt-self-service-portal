@@ -3,10 +3,9 @@ namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 /// <summary>Canonical write-outcome vocabulary, shared by the card-replacement and address-update paths.</summary>
 public enum WriteOutcome
 {
-    /// <summary>The replacement was initiated successfully.</summary>
     Success,
 
-    /// <summary>The household is not eligible to request a replacement via the portal.</summary>
+    /// <summary>The household is not eligible for the operation via the portal.</summary>
     PolicyRejection,
 
     /// <summary>The state backend returned an error.</summary>
@@ -28,11 +27,10 @@ public sealed record ResultClassifier
 
 /// <summary>
 /// One classifier condition; exactly one of <see cref="StatusIn"/> / <see cref="ValueIn"/> /
-/// <see cref="MessageContains"/> must be set (validated fail-loud at load).
+/// <see cref="MessageContains"/> must be set, validated fail-loud at load.
 /// </summary>
 public sealed record ResultCondition
 {
-    /// <summary>Outcome selected when this condition matches.</summary>
     public required WriteOutcome Outcome { get; init; }
 
     /// <summary>Kind 1 — HTTP status code is in this set.</summary>

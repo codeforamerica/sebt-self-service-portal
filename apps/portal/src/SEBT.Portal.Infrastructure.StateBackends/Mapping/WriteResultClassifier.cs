@@ -10,15 +10,14 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 internal readonly record struct WriteClassification(WriteOutcome Outcome, string? Message);
 
 /// <summary>
-/// Classifies a write response into a canonical <see cref="WriteOutcome"/> by evaluating the
-/// classifier's ordered conditions first-match-wins, falling back to its default. <see cref="Validate"/>
-/// enforces the closed condition shape fail-loud at load time.
+/// Classifies a write response into a canonical <see cref="WriteOutcome"/>: ordered conditions,
+/// first-match-wins, falling back to the default.
 /// </summary>
 internal static class WriteResultClassifier
 {
     /// <summary>
-    /// Validates each condition sets exactly one closed kind, and that value/message kinds name the
-    /// body property they read. Fail-loud.
+    /// Fails loud at load unless each condition sets exactly one closed kind and value/message
+    /// kinds name the body property they read.
     /// </summary>
     public static void Validate(ResultClassifier classifier)
     {
@@ -79,9 +78,8 @@ internal static class WriteResultClassifier
         return new WriteClassification(classifier.Default, ReadMessage(classifier, matched: null, body));
     }
 
-    // The backend's own message text: read via the matched condition's messageField when it has
-    // one, else the first messageField any condition declares — so a default-classified error
-    // still surfaces the backend's message.
+    // The matched condition's messageField, else the first messageField any condition declares —
+    // so a default-classified error still surfaces the backend's message.
     private static string? ReadMessage(ResultClassifier classifier, ResultCondition? matched, JsonElement? body)
     {
         string? messageField = matched?.MessageField

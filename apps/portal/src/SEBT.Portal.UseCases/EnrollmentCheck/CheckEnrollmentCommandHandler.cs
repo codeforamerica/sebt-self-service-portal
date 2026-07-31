@@ -86,8 +86,7 @@ public class CheckEnrollmentCommandHandler(
                 {
                     BirthYear = r.DateOfBirth.Year,
                     Status = r.IsMatch ? "Match" : "NonMatch"
-                    // EligibilityType and SchoolName stay null: the lean backend result
-                    // doesn't carry them, and no state connector ever populated them.
+                    // EligibilityType and SchoolName stay null — no state connector ever populated them.
                 }).ToList()
             };
 
@@ -102,10 +101,9 @@ public class CheckEnrollmentCommandHandler(
     }
 
     /// <summary>
-    /// Joins backend results (in backend order) to the submitted children by correlation id.
-    /// Identity fields come from the submission, never from the backend, so no state-system
-    /// PII is ever surfaced to the UI. A result whose CheckId matches no submitted child has
-    /// no identity to surface and is dropped.
+    /// Joins backend results to the submitted children by correlation id. Identity fields come
+    /// from the submission, never the backend, so no state-system PII reaches the UI; a result
+    /// matching no submitted child is dropped.
     /// </summary>
     private static EnrollmentCheckOutcome BuildOutcome(
         IReadOnlyList<(Guid CheckId, CheckEnrollmentCommand.ChildInput Child)> submittedChildren,

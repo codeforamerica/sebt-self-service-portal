@@ -12,14 +12,10 @@ using SEBT.Portal.Kernel.Results;
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
-/// Handles card replacement requests for an authenticated user's household.
-/// Validates input, resolves household identity, enforces minimum IAL, enforces
-/// per-case self-service rules, enforces 2-week cooldown via portal DB, and
-/// dispatches to the state backend. Persists replacement-request records for
-/// future cooldown enforcement only when the backend reports success, so a
-/// failed dispatch does not burn the user's 14-day cooldown for an action that
-/// never executed. Backend policy rejections and backend errors are mapped to
-/// portal <see cref="Result"/> types.
+/// Handles card replacement requests: validates, resolves household identity, enforces IAL,
+/// per-case self-service rules, and the 14-day cooldown (via portal DB), then dispatches to the
+/// state backend. Cooldown records persist only on backend success, so a failed dispatch never
+/// burns the cooldown for an action that never executed.
 /// </summary>
 public class RequestCardReplacementCommandHandler(
     IValidator<RequestCardReplacementCommand> validator,
@@ -102,9 +98,8 @@ public class RequestCardReplacementCommandHandler(
                 "Card replacements are not available for co-loaded benefits. Please contact your case worker.");
         }
 
-        // Per-case self-service rules enforcement: each case's own issuance type
-        // and card status determine eligibility (per James's 4.3.26 guidance that
-        // self-service actions are case-scoped, not household-scoped).
+        // Self-service actions are case-scoped, not household-scoped: each case's own issuance
+        // type and card status determine eligibility.
         foreach (var summerEbtCase in requestedCases)
         {
             var allowedActions = selfServiceEvaluator.Evaluate(summerEbtCase);
@@ -127,11 +122,9 @@ public class RequestCardReplacementCommandHandler(
 
         var identifierKind = identifier.Type.ToString();
 
-        // Distributed lock prevents TOCTOU race between cooldown check, backend
-        // dispatch, and persist. Scoped to the user — a single user can only be
-        // in one card replacement flow at a time. Note: held during the backend
-        // call, which is acceptable because (a) the lock is per-user, not global,
-        // and (b) the backend call has its own cancellation token plumbing.
+        // Per-user distributed lock prevents a TOCTOU race between cooldown check, backend
+        // dispatch, and persist. Held during the backend call — acceptable because it is
+        // per-user, not global.
         await using (await distributedLockProvider.AcquireLockAsync(
             $"CardReplacement:{userId.Value}", cancellationToken: cancellationToken))
         {
@@ -141,9 +134,8 @@ public class RequestCardReplacementCommandHandler(
 
             foreach (var caseRef in command.CaseRefs)
             {
-                // Cooldown rows are keyed by the hash of the canonical (raw
-                // state) case ID, never an encoding-specific token — hashing is
-                // one-way, so an encoding change would silently reset cooldowns.
+                // Cooldown rows are keyed by the hash of the canonical (raw state) case ID, never
+                // an encoding-specific token — an encoding change would silently reset cooldowns.
                 var caseHash = identifierHasher.Hash(
                     cooldownIdentityResolver.ResolveCanonicalCaseIdentity(caseRef.SummerEbtCaseId));
                 if (householdHash != null && caseHash != null)
@@ -167,16 +159,13 @@ public class RequestCardReplacementCommandHandler(
                 return Result.ValidationFailed(cooldownErrors);
             }
 
-            // Cooldown clear — dispatch to the state backend. Persist only on
-            // backend success so a failed dispatch does not burn the 14-day
-            // cooldown for a request that never executed.
+            // Cooldown clear — dispatch to the state backend.
             logger.LogInformation(
                 "Card replacement dispatching to state backend for household identifier kind {Kind}, {Count} case(s)",
                 identifierKind,
                 command.CaseRefs.Count);
 
-            // The command's case IDs are the opaque tokens the read path served;
-            // the backend decodes them into whatever routing fields it needs.
+            // The case IDs are the opaque tokens the read path served; the backend decodes them.
             var backendRequest = new CardReplacementRequest(
                 command.CaseRefs.Select(r => r.SummerEbtCaseId).ToList());
 
@@ -189,9 +178,8 @@ public class RequestCardReplacementCommandHandler(
             }
             catch (Exception ex)
             {
-                // Backend threw before returning a result — treat as transient backend
-                // failure. Cooldown is NOT recorded so the user can retry without
-                // waiting 14 days.
+                // Treat a throw as a transient backend failure; cooldown is NOT recorded so the
+                // user can retry.
                 logger.LogError(
                     ex,
                     "Card replacement backend threw for household identifier kind {Kind}, {Count} case(s); cooldown NOT recorded, user may retry",
@@ -206,10 +194,8 @@ public class RequestCardReplacementCommandHandler(
             {
                 if (backendResult.IsPolicyRejection)
                 {
-                    // State-side policy declined the request (e.g., card already in
-                    // flight, case ineligible). Surface to the user as
-                    // PreconditionFailed; do not cooldown so they can take a different
-                    // action immediately.
+                    // State-side policy declined the request; surface as PreconditionFailed and
+                    // skip the cooldown so the user can act immediately.
                     logger.LogWarning(
                         "Card replacement policy rejection for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded",
                         identifierKind,
@@ -228,18 +214,15 @@ public class RequestCardReplacementCommandHandler(
                     backendResult.ErrorMessage);
             }
 
-            // Backend reported success — persist replacement requests for cooldown
-            // enforcement. If persistence fails after a successful dispatch, the
-            // state-side write has executed but we have no portal-side record. Log
-            // critically: the user is not blocked from re-requesting (state-side
-            // dedup is the backstop until the next portal-side persist succeeds).
+            // Backend success — persist replacement requests for cooldown enforcement. If
+            // persistence fails after a successful dispatch, log critically; state-side dedup is
+            // the backstop.
             try
             {
                 foreach (var caseRef in command.CaseRefs)
                 {
-                    // Must resolve to the same canonical identity as the
-                    // cooldown check above, or persisted rows would never match
-                    // later lookups.
+                    // Must match the cooldown check's canonical identity, or persisted rows would
+                    // never match later lookups.
                     var caseHash = identifierHasher.Hash(
                         cooldownIdentityResolver.ResolveCanonicalCaseIdentity(caseRef.SummerEbtCaseId));
                     if (householdHash != null && caseHash != null)
@@ -257,8 +240,7 @@ public class RequestCardReplacementCommandHandler(
                     identifierKind,
                     command.CaseRefs.Count,
                     CooldownPeriod.TotalDays);
-                // The user-facing action did execute — return success rather than
-                // misleading the user with a failure for an action that happened.
+                // The state-side action executed — return success rather than a misleading failure.
                 return Result.Success();
             }
 

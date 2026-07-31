@@ -53,7 +53,7 @@ operations:
     # Batch fan-out: ONE call carries every child as a correlated row.
     callMode: batch
     request:
-      # Closed candidate-expansion brick: emit the entered DOB plus its month/day-swapped
+      # Closed candidate-expansion primitive: emit the entered DOB plus its month/day-swapped
       # candidate (when valid AND different) under one shared correlation index.
       expand: transposeMonthDay
       indexField: stdReqInd

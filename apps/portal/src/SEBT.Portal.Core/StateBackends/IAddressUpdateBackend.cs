@@ -7,11 +7,8 @@ public interface IAddressUpdateBackend
 }
 
 /// <summary>
-/// A household-level mailing-address update. <see cref="HouseholdIdentifier"/> is the operation's
-/// subject — the update is household-routed, so <see cref="CaseIds"/> MAY BE EMPTY (a zero-case
-/// household still updates). When present, the opaque case tokens span every case the household
-/// owns; driver configs collect per-case write-ids from them. No per-case success channel — a
-/// single backend call yields a single <see cref="WriteResult"/>.
+/// A household-routed mailing-address update: <see cref="CaseIds"/> MAY BE EMPTY (a zero-case
+/// household still updates), and a single backend call yields a single <see cref="WriteResult"/>.
 /// </summary>
 public sealed record AddressUpdateRequest(
     string HouseholdIdentifier,

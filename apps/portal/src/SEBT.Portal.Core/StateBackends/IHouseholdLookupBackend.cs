@@ -13,23 +13,17 @@ public interface IHouseholdLookupBackend
 public sealed record IdentitySignal(string Type, string Value);
 
 /// <summary>
-/// A household lookup request. <see cref="Signals"/> are household-search keys; <see cref="IsProofed"/>
-/// and <see cref="PortalUuid"/> are caller context about the authenticated user.
+/// <see cref="IsProofed"/> gates DC's email-lookup branch, so it must reflect the caller's real
+/// proofing status.
 /// </summary>
-/// <remarks>
-/// <see cref="IsProofed"/> is passed through to the backend, never used for an authorization decision
-/// here; DC gates its email-lookup branch on it, so it must reflect the caller's real proofing status.
-/// </remarks>
 public sealed record HouseholdLookupRequest(IReadOnlyList<IdentitySignal> Signals)
 {
     public bool IsProofed { get; init; }
     public string? PortalUuid { get; init; }
 
     /// <summary>
-    /// The household identifier value this lookup searched by. A caseId composition packs it into
-    /// tokens via <c>fromContext</c> when a write must route by an identifier the lookup response
-    /// never echoes. Null when the caller has no single household identifier (e.g. an existence
-    /// check whose result data is discarded).
+    /// The identifier this lookup searched by; <c>fromContext</c> caseId compositions pack it when a
+    /// write routes by a value the lookup response never echoes. Null when the caller has none.
     /// </summary>
     public string? HouseholdIdentifier { get; init; }
 }

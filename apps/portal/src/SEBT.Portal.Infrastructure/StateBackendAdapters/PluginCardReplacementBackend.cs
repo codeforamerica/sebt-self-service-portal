@@ -7,12 +7,9 @@ using PluginCaseRef = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Case
 namespace SEBT.Portal.Infrastructure.StateBackendAdapters;
 
 /// <summary>
-/// Adapts the Core card-replacement port onto the state-connector plugin contract.
-/// Decodes each opaque case token into the routing triple the contract's
-/// <see cref="PluginCaseRef"/> carries, resolves the single household identifier
-/// every token must agree on (fail loud on absence or disagreement, mirroring the
-/// JSON-adapter driver's shared batch shape), and dispatches ONE batched contract
-/// call.
+/// Adapts the Core card-replacement port onto the state-connector plugin contract: decodes each
+/// opaque case token into a <see cref="PluginCaseRef"/>, resolves the single household identifier
+/// every token must agree on (fail loud on absence or disagreement), and dispatches ONE batched call.
 /// </summary>
 public class PluginCardReplacementBackend(IStateCardReplacementService cardReplacementService)
     : ICardReplacementBackend

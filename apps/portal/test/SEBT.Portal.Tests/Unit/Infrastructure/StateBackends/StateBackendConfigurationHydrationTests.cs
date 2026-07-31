@@ -344,48 +344,32 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("Snap", ex.Message);
     }
 
-    // A malformed card-replacement classifier (a condition setting no closed kind) fails loud at load.
-    [Fact]
-    public void Validate_FailsLoud_WhenCardReplacementClassifierConditionSetsNoKind()
+    // A malformed classifier (a condition setting no closed kind) fails loud at load — the
+    // validator checks BOTH write ops.
+    [Theory]
+    [InlineData(true)] // card replacement
+    [InlineData(false)] // address update
+    public void Validate_FailsLoud_WhenWriteClassifierConditionSetsNoKind(bool onCardReplacement)
     {
         StateBackendConfiguration config = BuildWriteClassifierConfig(
-            cardReplacementClassifier: MalformedClassifier(), addressUpdateClassifier: null);
+            cardReplacementClassifier: onCardReplacement ? MalformedClassifier() : null,
+            addressUpdateClassifier: onCardReplacement ? null : MalformedClassifier());
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("exactly one", ex.Message);
     }
 
-    // The validator checks BOTH write ops: the same malformed classifier on address-update fails too.
-    [Fact]
-    public void Validate_FailsLoud_WhenAddressUpdateClassifierConditionSetsNoKind()
-    {
-        StateBackendConfiguration config = BuildWriteClassifierConfig(
-            cardReplacementClassifier: null, addressUpdateClassifier: MalformedClassifier());
-
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("exactly one", ex.Message);
-    }
-
-    // The write-path body builders ignore mapOptional, so a config setting it must fail at load
-    // rather than silently dropping the binding.
-    [Fact]
-    public void Validate_FailsLoud_WhenCardReplacementRequestSetsMapOptional()
+    // The write-path body builders ignore mapOptional, so a config setting it — on EITHER write
+    // op — must fail at load rather than silently dropping the binding.
+    [Theory]
+    [InlineData(true)] // card replacement
+    [InlineData(false)] // address update
+    public void Validate_FailsLoud_WhenWriteRequestSetsMapOptional(bool onCardReplacement)
     {
         StateBackendConfiguration config = BuildWriteMapOptionalConfig(
-            cardReplacementRequest: MapOptionalRequestBinding(), addressUpdateRequest: null);
-
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("mapOptional", ex.Message);
-    }
-
-    [Fact]
-    public void Validate_FailsLoud_WhenAddressUpdateRequestSetsMapOptional()
-    {
-        StateBackendConfiguration config = BuildWriteMapOptionalConfig(
-            cardReplacementRequest: null, addressUpdateRequest: MapOptionalRequestBinding());
+            cardReplacementRequest: onCardReplacement ? MapOptionalRequestBinding() : null,
+            addressUpdateRequest: onCardReplacement ? null : MapOptionalRequestBinding());
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -522,49 +506,33 @@ public class StateBackendConfigurationHydrationTests
     // Minimal config whose household lookup maps the supplied fields.
     private static StateBackendConfiguration BuildLookupFieldsConfig(
         Dictionary<string, FieldMapping> fields) =>
-        new()
+        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/lookup",
+            Response = new StateBackendResponseMapping
             {
-                HouseholdLookup = new HouseholdLookupOperationConfig
-                {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/lookup",
-                    Response = new StateBackendResponseMapping
-                    {
-                        Root = "$.records",
-                        Fields = fields,
-                    },
-                },
+                Root = "$.records",
+                Fields = fields,
             },
-        };
+        });
 
-    // Minimal config whose household lookup composes caseId tokens with the supplied brick.
+    // Minimal config whose household lookup composes caseId tokens with the supplied composition.
     private static StateBackendConfiguration BuildCaseIdConfig(CaseIdComposition caseId) =>
-        new()
+        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/lookup",
+            Response = new StateBackendResponseMapping
             {
-                HouseholdLookup = new HouseholdLookupOperationConfig
+                Root = "$.records",
+                Fields = new Dictionary<string, FieldMapping>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/lookup",
-                    Response = new StateBackendResponseMapping
-                    {
-                        Root = "$.records",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["childFirstName"] = new() { From = "ChildFirstName" },
-                        },
-                        CaseId = caseId,
-                    },
+                    ["childFirstName"] = new() { From = "ChildFirstName" },
                 },
+                CaseId = caseId,
             },
-        };
+        });
 
     // A write-op request binding carrying a mapOptional entry — unsupported on the write path.
     private static RequestBinding MapOptionalRequestBinding() =>
@@ -578,10 +546,8 @@ public class StateBackendConfigurationHydrationTests
     // the supplied request binding.
     private static StateBackendConfiguration BuildWriteMapOptionalConfig(
         RequestBinding? cardReplacementRequest, RequestBinding? addressUpdateRequest) =>
-        new()
+        StateBackendTestConfig.Base() with
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
             Operations = new StateBackendOperations
             {
                 CardReplacement = cardReplacementRequest is null
@@ -617,10 +583,8 @@ public class StateBackendConfigurationHydrationTests
     // the supplied result classifier.
     private static StateBackendConfiguration BuildWriteClassifierConfig(
         ResultClassifier? cardReplacementClassifier, ResultClassifier? addressUpdateClassifier) =>
-        new()
+        StateBackendTestConfig.Base() with
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
             Operations = new StateBackendOperations
             {
                 CardReplacement = cardReplacementClassifier is null
@@ -642,56 +606,42 @@ public class StateBackendConfigurationHydrationTests
             },
         };
 
-    // Minimal config whose household lookup infers issuanceType via a keywordRules brick.
+    // Minimal config whose household lookup infers issuanceType via a keywordRules primitive.
     private static StateBackendConfiguration BuildIssuanceKeywordConfig(KeywordRules keywordRules) =>
-        new()
+        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/lookup",
+            Response = new StateBackendResponseMapping
             {
-                HouseholdLookup = new HouseholdLookupOperationConfig
+                Root = "$.records",
+                Fields = new Dictionary<string, FieldMapping>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/lookup",
-                    Response = new StateBackendResponseMapping
+                    ["issuanceType"] = new()
                     {
-                        Root = "$.records",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["issuanceType"] = new()
-                            {
-                                From = new[] { "HouseholdType", "EligibilityType" },
-                                KeywordRules = keywordRules,
-                            },
-                        },
+                        From = new[] { "HouseholdType", "EligibilityType" },
+                        KeywordRules = keywordRules,
                     },
                 },
             },
-        };
+        });
 
     // Minimal config whose household lookup maps ebtCardStatus through a named "cardStatus" table.
     private static StateBackendConfiguration BuildEnumConfig(StateBackendEnumTable cardStatusTable) =>
-        new()
+        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/lookup",
+            Response = new StateBackendResponseMapping
             {
-                HouseholdLookup = new HouseholdLookupOperationConfig
+                Root = "$.records",
+                Fields = new Dictionary<string, FieldMapping>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/lookup",
-                    Response = new StateBackendResponseMapping
-                    {
-                        Root = "$.records",
-                        Fields = new Dictionary<string, FieldMapping>
-                        {
-                            ["ebtCardStatus"] = new() { From = "CardStatus", Enum = "cardStatus" },
-                        },
-                    },
+                    ["ebtCardStatus"] = new() { From = "CardStatus", Enum = "cardStatus" },
                 },
             },
+        }) with
+        {
             Enums = new Dictionary<string, StateBackendEnumTable>
             {
                 ["cardStatus"] = cardStatusTable,

@@ -7,7 +7,7 @@ using YamlDotNet.Serialization;
 
 /// <summary>
 /// Hydrates a <see cref="FieldSources"/> from either a scalar (<c>from: X</c>) or a sequence
-/// (<c>from: [X, Y]</c>). Most fields bind a single source; the keyword-rules brick may list more.
+/// (<c>from: [X, Y]</c>). Most fields bind a single source; the keyword-rules primitive may list more.
 /// </summary>
 internal sealed class FieldSourcesYamlTypeConverter : IYamlTypeConverter
 {

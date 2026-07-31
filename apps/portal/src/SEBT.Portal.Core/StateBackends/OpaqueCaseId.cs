@@ -4,17 +4,12 @@ using System.Text.Json;
 namespace SEBT.Portal.Core.StateBackends;
 
 /// <summary>
-/// Packs a case's named routing fields into a URL-safe base64 JSON token; reads compose it, writes
-/// decode it. The JSON-adapter driver composes from config (see
-/// <see cref="Configuration.Operations.CaseIdComposition"/>); the plugin read path composes a fixed
-/// field set. The pack/unpack mechanism is fixed here so both integration paths share one token
-/// namespace.
+/// Packs a case's routing fields into a URL-safe base64 JSON token; reads compose it, writes decode
+/// it. Fixed here so both integration paths share one token namespace.
 /// </summary>
 /// <remarks>
-/// The token is opaque, not encrypted — it carries no secrets, only routing identifiers the backend
-/// already returned. A mangled token fails to decode; it is not cryptographically signed.
-/// Serialization preserves the dictionary's insertion order, so callers that build fields in a fixed
-/// order get byte-identical tokens for the same record — callers rely on that determinism.
+/// Opaque, not encrypted — it carries only routing identifiers the backend already returned.
+/// Insertion order is preserved, so a fixed field order yields byte-identical tokens; callers rely on that.
 /// </remarks>
 public static class OpaqueCaseId
 {
@@ -27,11 +22,8 @@ public static class OpaqueCaseId
         return Base64Url.EncodeToString(json);
     }
 
-    /// <summary>Decodes a token back into its named routing fields. Fails loud on a malformed token.</summary>
-    /// <remarks>
-    /// Failure messages never echo the token: it can carry email/phone in
-    /// <c>householdIdentifier</c>, and callers log these exceptions in full.
-    /// </remarks>
+    /// <summary>Decodes a token back into its routing fields. Fails loud on a malformed token.</summary>
+    /// <remarks>Failure messages never echo the token — it can carry email/phone, and callers log in full.</remarks>
     public static IReadOnlyDictionary<string, string> Decode(string token)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(token);

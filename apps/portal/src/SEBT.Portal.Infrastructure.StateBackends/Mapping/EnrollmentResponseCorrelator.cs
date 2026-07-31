@@ -6,10 +6,8 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Response-side fan-in: selects the rows at <see cref="EnrollmentResponseMapping.Root"/> and
-/// decides each child's match via the named <see cref="EnrollmentResponseMapping.Match"/> strategy,
-/// fanning verdicts back in by the echoed 1-based correlation index. The argmax and the strict
-/// <c>&gt;</c> in confidence matching live here, not in config.
+/// Response-side fan-in: decides each child's match and fans verdicts back in by the echoed 1-based
+/// correlation index. The argmax and the strict <c>&gt;</c> in confidence matching live here, not in config.
 /// </summary>
 internal static class EnrollmentResponseCorrelator
 {
@@ -47,10 +45,8 @@ internal static class EnrollmentResponseCorrelator
     }
 
     /// <summary>
-    /// PerChild evaluation: selects the single result object at <see cref="EnrollmentResponseMapping.Root"/>
-    /// and applies the named <see cref="EnrollmentResponseMapping.Match"/> strategy to it. No
-    /// correlation index and no argmax — one call reads one child's verdict, and the single result
-    /// object supplies the confidence and status-message carriers.
+    /// PerChild evaluation: applies the match strategy to the single result object at
+    /// <see cref="EnrollmentResponseMapping.Root"/> — no correlation index, no argmax.
     /// </summary>
     public static EnrollmentChildResult EvaluateSingleResult(
         EnrollmentResponseMapping mapping, JsonElement root, string checkId)
@@ -67,8 +63,7 @@ internal static class EnrollmentResponseCorrelator
                 $"Unsupported enrollment match strategy '{mapping.Match.Strategy}'."),
         };
 
-        // Confidence only exists under confidenceThreshold; like the batch path, it is reported
-        // even on the sub-threshold non-match path.
+        // Like the batch path, confidence is reported even on the sub-threshold non-match path.
         double? confidence =
             mapping.Match.Strategy == EnrollmentMatchStrategy.ConfidenceThreshold
                 && TryReadScore(mapping.Match, result, out double score)
@@ -78,10 +73,7 @@ internal static class EnrollmentResponseCorrelator
         return new EnrollmentChildResult(checkId, isMatch, confidence, ReadStatusMessage(mapping, result));
     }
 
-    /// <summary>
-    /// Reads the result-level message (when a <c>messageField</c> is configured) from the response
-    /// document root — the parent of <see cref="EnrollmentResponseMapping.Root"/>'s rows, not a row.
-    /// </summary>
+    /// <summary>Reads the configured <c>messageField</c> from the response document root — not a row.</summary>
     public static string? ReadResultMessage(EnrollmentResponseMapping mapping, JsonElement root)
     {
         ArgumentNullException.ThrowIfNull(mapping);
@@ -91,15 +83,14 @@ internal static class EnrollmentResponseCorrelator
             : JsonRead.AsString(JsonPathSelector.Select(root, mapping.MessageField));
     }
 
-    // A child's fan-in verdict plus the optional carriers its winning row supplied. `None` is the
-    // verdict for a child the response carried no (matching/scored) rows for.
+    // A child's fan-in verdict; None means the response carried no matching/scored rows for it.
     private sealed record ChildVerdict(bool IsMatch, double? MatchConfidence, string? StatusMessage)
     {
         public static readonly ChildVerdict None = new(false, null, null);
     }
 
-    // An index matches when any of its rows has the flag in the set; the FIRST matching row is the
-    // winner and supplies the status message. No score field, so confidence is always null.
+    // The FIRST matching row wins and supplies the status message; no score field, so confidence
+    // is always null.
     private static Dictionary<string, ChildVerdict> CorrelateAnyRowValueIn(
         EnrollmentResponseMapping mapping, JsonElement rows, string indexField)
     {
@@ -152,8 +143,7 @@ internal static class EnrollmentResponseCorrelator
         foreach ((string index, (double score, JsonElement row)) in bestByIndex)
         {
             // Eligibility is read from the argmax row only — a lower-scoring eligible candidate
-            // cannot rescue an ineligible best row. The argmax row's carriers are reported even on
-            // the non-match path (mirrors the CO plugin, so callers can surface the computed score).
+            // cannot rescue it. Its carriers are reported even on the non-match path (CO-plugin parity).
             bool isMatch = score > threshold && PassesEligibility(match, row);
             verdicts[index] = new ChildVerdict(isMatch, score, ReadStatusMessage(mapping, row));
         }
@@ -171,8 +161,7 @@ internal static class EnrollmentResponseCorrelator
         return value is not null && match.ValueIn!.Contains(value, StringComparer.Ordinal);
     }
 
-    // The optional eligibility check on confidenceThreshold: when field/valueIn are configured,
-    // the row must ALSO carry an eligible flag value (fixed AND — config only names the params).
+    // The optional eligibility check on confidenceThreshold: a fixed AND — config only names the params.
     private static bool PassesEligibility(EnrollmentMatch match, JsonElement row) =>
         match.Field is null || RowValueInSet(match, row);
 

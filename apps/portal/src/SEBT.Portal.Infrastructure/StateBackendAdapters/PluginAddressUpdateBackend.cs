@@ -6,12 +6,10 @@ using PluginAddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.H
 namespace SEBT.Portal.Infrastructure.StateBackendAdapters;
 
 /// <summary>
-/// Adapts the Core address-update port onto the state-connector plugin contract.
-/// The update is household-routed: the envelope's <c>HouseholdIdentifier</c> drives the
-/// ONE contract call, and an empty <c>CaseIds</c> batch is valid (zero-case households
-/// still update). When tokens are present, each is decoded and cross-checked against the
-/// envelope identifier — fail loud on absence or disagreement, mirroring the shared-brick
-/// discipline of the JSON-adapter driver.
+/// Adapts the Core address-update port onto the state-connector plugin contract: the envelope's
+/// <c>HouseholdIdentifier</c> drives ONE contract call, an empty <c>CaseIds</c> batch is valid
+/// (zero-case households still update), and each present token is cross-checked against the
+/// envelope identifier, fail loud.
 /// </summary>
 public class PluginAddressUpdateBackend(IStateAddressUpdateService addressUpdateService)
     : IAddressUpdateBackend

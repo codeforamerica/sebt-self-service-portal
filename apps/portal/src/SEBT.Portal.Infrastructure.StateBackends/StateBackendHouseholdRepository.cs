@@ -9,17 +9,12 @@ using SEBT.Portal.Core.Utilities;
 namespace SEBT.Portal.Infrastructure.StateBackends;
 
 /// <summary>
-/// Household repository over the config-driven state backend's household-lookup port —
-/// the behavioral mirror of the plugin-path <c>HouseholdRepository</c> with the
-/// state-specific call shape moved into the state's YAML config. Each read becomes an
-/// identity-signal lookup; which signals a state actually binds (and whether a missing
-/// one fails loud or is omitted) is decided by the config's request map vs mapOptional.
+/// The behavioral mirror of the plugin-path <c>HouseholdRepository</c>, with the state-specific
+/// call shape moved into YAML config: each read becomes an identity-signal lookup.
 /// </summary>
 /// <remarks>
-/// The backend returns full data per its response mapping; PII masking stays a
-/// portal-layer concern applied through the same shared <see cref="HouseholdPiiFilter"/>
-/// the plugin path uses. Case IDs arrive already composed into opaque tokens by the
-/// lookup driver (per the config's caseId fields), so no tokenization happens here.
+/// PII masking stays portal-side via the shared <see cref="HouseholdPiiFilter"/>; case IDs arrive
+/// already composed into opaque tokens by the lookup driver.
 /// </remarks>
 public class StateBackendHouseholdRepository : IHouseholdRepository
 {
@@ -39,9 +34,8 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
 
     /// <inheritdoc />
     /// <remarks>
-    /// <paramref name="includeCardService"/> is a plugin-path fetch optimization (CO skips
-    /// its FIS card-detail call when false). The adapter path has no per-request knob —
-    /// card fields arrive, or not, per the state's response mapping — so it is a no-op here.
+    /// <paramref name="includeCardService"/> is a plugin-path fetch optimization; the adapter path
+    /// has no per-request knob, so it is a no-op here.
     /// </remarks>
     public Task<HouseholdData?> GetHouseholdByIdentifierAsync(
         HouseholdIdentifier identifier,
@@ -105,8 +99,7 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
             new IdentitySignal(DobSignal, FormatDob(guardianDateOfBirth)),
         ])
         {
-            // The plugin path sends isIdentityProofed=false on this call — the match runs
-            // before proofing completes — so IsProofed stays at its false default.
+            // The match runs before proofing completes, so IsProofed stays at its false default.
             PortalUuid = portalUserId.ToString("D"),
         };
 
@@ -145,8 +138,7 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
         };
         if (!string.IsNullOrWhiteSpace(socureReferenceId))
         {
-            // Absent when the guardian has no Socure verification. Omitted entirely — a
-            // config binding it via mapOptional drops the field instead of sending "".
+            // Omitted when absent — a mapOptional binding drops the field instead of sending "".
             signals.Add(new IdentitySignal(SocureUuidSignal, socureReferenceId.Trim()));
         }
 
@@ -154,8 +146,7 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
         {
             IsProofed = IsProofed(userIalLevel),
             PortalUuid = portalUserId.ToString("D"),
-            // This lookup is keyed by IC + DOB; the login email is the household identifier
-            // writes route by, mirroring the envelope-email stamping below.
+            // The lookup is keyed by IC + DOB; the login email is the identifier writes route by.
             HouseholdIdentifier = normalizedEmail,
         };
 
@@ -165,9 +156,8 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
             return null;
         }
 
-        // Envelope email mirrors the DC connector's stamping: this lookup is keyed by
-        // IC + DOB, so the login email the guardian authenticated with becomes the
-        // household's contact email. Stamped before the mask so visibility still applies.
+        // Envelope-email stamping mirrors the DC connector; applied before the mask so
+        // visibility still applies.
         var household = result.Household with { Email = normalizedEmail };
         return HouseholdPiiFilter.Apply(household, piiVisibility);
     }
@@ -202,8 +192,8 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
         {
             IsProofed = IsProofed(userIalLevel),
             PortalUuid = portalUserId?.ToString("D"),
-            // The searched-by value doubles as caller context so a caseId composition can pack
-            // it into tokens when the backend's response never echoes it.
+            // Doubles as caller context so a caseId composition can pack it when the response
+            // never echoes it.
             HouseholdIdentifier = normalizedValue,
         };
 
@@ -229,8 +219,8 @@ public class StateBackendHouseholdRepository : IHouseholdRepository
         };
     }
 
-    // Exact mirror of the DC connector's derivation (ial >= IAL1plus). The backend never
-    // sees the IAL itself — only this boolean, which gates its proofed-only lookup branches.
+    // Mirrors the DC connector's derivation; the backend sees only this boolean, which gates
+    // its proofed-only lookup branches.
     private static bool IsProofed(UserIalLevel userIalLevel) =>
         userIalLevel >= UserIalLevel.IAL1plus;
 

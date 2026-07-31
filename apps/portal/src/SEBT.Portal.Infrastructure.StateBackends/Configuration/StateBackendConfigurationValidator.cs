@@ -5,10 +5,8 @@ using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 namespace SEBT.Portal.Infrastructure.StateBackends.Configuration;
 
 /// <summary>
-/// The single load-time validation entry point for a state-backend config, run immediately after
-/// deserialization in <see cref="StateBackendConfigurationLoader"/>. Every check is a function of
-/// the loaded config alone, so a malformed config fails loud at startup rather than on the first
-/// user request.
+/// The single load-time validation entry point for a state-backend config: a malformed config
+/// fails loud at startup rather than on the first user request.
 /// </summary>
 internal static class StateBackendConfigurationValidator
 {
@@ -32,13 +30,11 @@ internal static class StateBackendConfigurationValidator
             WriteResultClassifier.Validate(addressUpdateClassifier);
         }
 
-        // The write-path body builders don't read mapOptional yet, so a config setting it would be
-        // a silent no-op. Fail loud instead; wire it through when a state actually needs it.
+        // Write-path body builders don't read mapOptional yet; fail loud rather than silently no-op.
         RejectMapOptional(operations.CardReplacement?.Request, "cardReplacement");
         RejectMapOptional(operations.AddressUpdate?.Request, "addressUpdate");
 
-        // A partially modeled enrollment op (missing request/response) has nothing coherent to
-        // validate here; the dispatch path's not-supported guards catch it.
+        // A partially modeled enrollment op is caught by the dispatch path's not-supported guards.
         if (operations.EnrollmentCheck is { Request: { } binding, Response: { } mapping } enrollment)
         {
             EnrollmentOperationValidator.Validate(enrollment.CallMode, binding, mapping);

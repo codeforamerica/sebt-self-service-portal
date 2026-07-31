@@ -1,6 +1,6 @@
 # Authoring a state backend config
 
-A state config bundle is a single YAML file that tells the portal how to talk to one state's household backend: its base URL, how to authenticate, which operations it supports, and how to translate each request and response between the portal's canonical vocabulary and the state's flavor. One rule governs everything in this guide: **you configure within a closed catalog of named bricks, and you never invent operators.** There is no expression language, no comparison syntax, no conditionals. When you need behavior no brick provides, you stop and ask for a new named brick to be added in code (see [When you hit the cap](#when-you-hit-the-cap)).
+A state config bundle is a single YAML file that tells the portal how to talk to one state's household backend: its base URL, how to authenticate, which operations it supports, and how to translate each request and response between the portal's canonical vocabulary and the state's flavor. One rule governs everything in this guide: **you configure within a closed catalog of named primitives, and you never invent operators.** There is no expression language, no comparison syntax, no conditionals. When you need behavior no primitive provides, you stop and ask for a new named primitive to be added in code (see [When you hit the cap](#when-you-hit-the-cap)).
 
 The two worked examples throughout are [`dc.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml) (District of Columbia, API-key auth) and [`co.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml) (Colorado, OAuth client-credentials auth). Every YAML fragment below is copied from one of those files.
 
@@ -125,7 +125,7 @@ When an enum-typed field can't be read from a single clean token but must be *in
 
 Semantics: evaluate the canonical values in `order`; the first whose *any* substring (from its `map` entry) is contained in *any* of the `from` sources wins. Matching is case-insensitive. Nothing matches → `default`. **Ordering is load-bearing** — `order` decides which rule wins when more than one could match. A field using `keywordRules` may list several sources in `from`; a keyword found in any counts.
 
-This brick is capped at substring-contains, first-match-wins. No regex, no conditionals, no transforms.
+This primitive is capped at substring-contains, first-match-wins. No regex, no conditionals, no transforms.
 
 ## Step 6: Disaggregation — records into cases and applications
 
@@ -281,7 +281,7 @@ The enrollment op turns a batch of children into backend calls, then decides a m
 - `batch` — one backend call carries every child as a correlated row. Requires an `indexField` on **both** the request binding and response mapping so rows correlate back to children. Supports candidate `expand`.
 - `perChild` — the driver loops the batch and makes one call per child, reading a single result object each. Must **not** set an `indexField` on either side (there's nothing to correlate), and does not support `expand` yet.
 
-**`expand`** (request side) is a closed candidate-expansion brick, not a date-mangling language. `transposeMonthDay` emits the entered DOB plus its month/day-swapped candidate — but only when the swap yields a valid *and* different date — under the same correlation index. Omit it (or set `none`) for exactly one row per child.
+**`expand`** (request side) is a closed candidate-expansion primitive, not a date-mangling language. `transposeMonthDay` emits the entered DOB plus its month/day-swapped candidate — but only when the swap yields a valid *and* different date — under the same correlation index. Omit it (or set `none`) for exactly one row per child.
 
 **`match.strategy`** is one of two named strategies:
 
@@ -348,9 +348,9 @@ The request `map` / `mapOptional` left-hand keys are a closed set of four child 
 
 ## When you hit the cap
 
-The brick catalog is deliberately finite. When a state needs something no brick expresses — a new match rule, a new inclusion predicate, a new expansion — **stop.** Do not add operators, conditionals, or an expression syntax to the YAML. Doing so turns config into a programming language no one can audit.
+The catalog of primitives is deliberately finite. When a state needs something no primitive expresses — a new match rule, a new inclusion predicate, a new expansion — **stop.** Do not add operators, conditionals, or an expression syntax to the YAML. Doing so turns config into a programming language no one can audit.
 
-Instead, add a **new named brick**: a new enum member plus its fixed algorithm in code, with tests. Or ask, if you're not sure it belongs in the platform.
+Instead, add a **new named primitive**: a new enum member plus its fixed algorithm in code, with tests. Or ask, if you're not sure it belongs in the platform. The rationale for the cap and the promotion rule lives in [`docs/adr/0020-config-driven-state-backend-adapter.md`](../../../../docs/adr/0020-config-driven-state-backend-adapter.md).
 
 The worked precedent is `confidenceThreshold`. CO needed a match that couldn't be expressed as "value in a set." The answer was not a numeric-comparison DSL in YAML. It was a new *named strategy* — `confidenceThreshold` — whose argmax and strict `>` live in code, with config supplying only the score field and threshold. That's the pattern every future need follows.
 

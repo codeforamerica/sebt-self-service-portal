@@ -1,9 +1,8 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 
 /// <summary>
-/// Maps a single canonical domain field to one (or, for <see cref="KeywordRules"/>, one-or-more)
-/// source properties on a state backend record. Coercion is driven by the canonical field's known
-/// C# type, not by an explicit kind here.
+/// Maps one canonical domain field to source propert(ies) on a state backend record; coercion is
+/// driven by the canonical field's C# type, not an explicit kind here.
 /// </summary>
 public sealed record FieldMapping
 {

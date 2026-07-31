@@ -3,7 +3,6 @@ using System.Text.Json;
 using RichardSzalay.MockHttp;
 using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.StateBackends.Configuration;
-using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends;
 using SEBT.Portal.Infrastructure.StateBackends.Mapping;
@@ -87,20 +86,12 @@ public class ConfigurableStateBackendUpdateAddressTests
             },
         };
 
-    private static StateBackendConfiguration BuildConfiguration(AddressUpdateOperationConfig addressUpdate) =>
-        new()
-        {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "dc-api-key" },
-            Operations = new StateBackendOperations
-            {
-                AddressUpdate = addressUpdate,
-            },
-        };
-
     private static ConfigurableStateBackend BuildBackend(
         MockHttpMessageHandler mockHttp, AddressUpdateOperationConfig addressUpdate) =>
-        new(BuildConfiguration(addressUpdate), mockHttp.ToHttpClient(), () => FixedIdempotencyKey);
+        new(
+            StateBackendTestConfig.Base().WithAddressUpdate(addressUpdate),
+            mockHttp.ToHttpClient(),
+            () => FixedIdempotencyKey);
 
     private static AddressUpdateAddress SampleAddress() =>
         new()

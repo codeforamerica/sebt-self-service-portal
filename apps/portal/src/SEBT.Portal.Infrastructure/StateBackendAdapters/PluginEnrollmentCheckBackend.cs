@@ -11,12 +11,9 @@ using PluginEnrollmentStatus = SEBT.Portal.StatesPlugins.Interfaces.Models.Enrol
 namespace SEBT.Portal.Infrastructure.StateBackendAdapters;
 
 /// <summary>
-/// Adapts the Core enrollment-check port onto the state-connector plugin contract.
-/// Builds the contract request from the Core batch, applies the flag-gated exact-match
-/// guard (<see cref="EnrollmentCheckResultFilter"/>) to the connector's candidates, and
-/// maps the rich contract results down to the lean Core verdicts: Match becomes IsMatch,
-/// everything else does not, with confidence and status text riding along. A guarded-out
-/// candidate simply vanishes from the results — its confidence and status text with it.
+/// Adapts the Core enrollment-check port onto the state-connector plugin contract: builds the
+/// contract request, applies the flag-gated exact-match guard, and maps contract results to Core
+/// verdicts (only Match becomes IsMatch). A guarded-out candidate vanishes from the results entirely.
 /// </summary>
 public class PluginEnrollmentCheckBackend(
     IStateEnrollmentCheckService enrollmentCheckService,
@@ -32,14 +29,12 @@ public class PluginEnrollmentCheckBackend(
         var pluginChildren = request.Children
             .Select(c => new PluginChildCheckRequest
             {
-                // The contract correlates by Guid; Core CheckIds arriving here are the
-                // handler-minted Guids, so parse rather than mint a second id.
+                // Core CheckIds are the handler-minted Guids — parse, don't mint a second id.
                 CheckId = Guid.Parse(c.CheckId),
                 FirstName = c.FirstName,
                 LastName = c.LastName,
                 DateOfBirth = c.DateOfBirth,
-                // The school identifier fans out to BOTH contract fields: DC's match reads
-                // SchoolName and ignores SchoolCode, CO's reads SchoolCode and ignores SchoolName.
+                // Fans out to BOTH contract fields: DC's match reads SchoolName, CO's reads SchoolCode.
                 SchoolName = c.SchoolIdentifier,
                 SchoolCode = c.SchoolIdentifier,
                 // AdditionalFields stays unpopulated — no connector reads it.

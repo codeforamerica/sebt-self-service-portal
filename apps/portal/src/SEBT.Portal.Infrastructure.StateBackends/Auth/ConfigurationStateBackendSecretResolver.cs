@@ -5,9 +5,8 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Auth;
 
 /// <summary>
 /// Resolves secret references against <see cref="IConfiguration"/>, so secrets ride the same
-/// pipeline as the rest of runtime config (environment variables, per-state overlays, AppConfig).
-/// A missing or empty key fails loud here — a silently empty credential would only surface later
-/// as an opaque auth failure on the first backend call.
+/// pipeline as the rest of runtime config. A missing or empty key fails loud — a silently empty
+/// credential would only surface later as an opaque auth failure.
 /// </summary>
 public sealed class ConfigurationStateBackendSecretResolver : IStateBackendSecretResolver
 {

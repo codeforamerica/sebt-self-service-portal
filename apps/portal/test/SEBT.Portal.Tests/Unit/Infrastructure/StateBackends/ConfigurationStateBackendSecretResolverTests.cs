@@ -27,24 +27,15 @@ public class ConfigurationStateBackendSecretResolverTests
         Assert.Equal("super-secret-value", value);
     }
 
-    [Fact]
-    public void Resolve_WithMissingKey_ThrowsNamingTheReference()
+    // A missing key and a present-but-empty key both fail loud, naming the reference.
+    [Theory]
+    [InlineData(null)] // key absent entirely
+    [InlineData("")] // key present but empty
+    public void Resolve_WithMissingOrEmptyKey_ThrowsNamingTheReference(string? configuredValue)
     {
-        var resolver = BuildResolver([]);
-
-        var ex = Assert.Throws<InvalidOperationException>(
-            () => resolver.Resolve("StateBackend:Auth:ApiKey"));
-
-        Assert.Contains("StateBackend:Auth:ApiKey", ex.Message);
-    }
-
-    [Fact]
-    public void Resolve_WithEmptyValue_ThrowsNamingTheReference()
-    {
-        var resolver = BuildResolver(new Dictionary<string, string?>
-        {
-            ["StateBackend:Auth:ApiKey"] = "",
-        });
+        var resolver = BuildResolver(configuredValue is null
+            ? []
+            : new Dictionary<string, string?> { ["StateBackend:Auth:ApiKey"] = configuredValue });
 
         var ex = Assert.Throws<InvalidOperationException>(
             () => resolver.Resolve("StateBackend:Auth:ApiKey"));

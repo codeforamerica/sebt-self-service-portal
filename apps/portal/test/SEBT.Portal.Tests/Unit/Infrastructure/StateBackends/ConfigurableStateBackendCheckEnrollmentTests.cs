@@ -3,7 +3,6 @@ using System.Text.Json;
 using RichardSzalay.MockHttp;
 using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.StateBackends.Configuration;
-using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends;
 using SEBT.Portal.Infrastructure.StateBackends.Configuration;
@@ -13,219 +12,164 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 
 public class ConfigurableStateBackendCheckEnrollmentTests
 {
-    // Rebuilds the config with its enrollment-check operation swapped out.
-    private static StateBackendConfiguration WithEnrollment(
-        StateBackendConfiguration config, EnrollmentCheckOperationConfig operation) =>
-        config with
-        {
-            Operations = config.Operations with { EnrollmentCheck = operation },
-        };
-
     // CO-shaped: batch, DOB expansion, eligibility-flag row match.
     private static StateBackendConfiguration CoConfiguration() =>
-        new()
+        StateBackendTestConfig.Base().WithEnrollment(new EnrollmentCheckOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/sebt/check-enrollment",
+            CallMode = EnrollmentCallMode.Batch,
+            Request = new EnrollmentRequestBinding
             {
-                EnrollmentCheck = new EnrollmentCheckOperationConfig
+                IndexField = "stdReqInd",
+                Expand = CandidateExpansion.TransposeMonthDay,
+                Map = new Dictionary<string, string>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/sebt/check-enrollment",
-                    CallMode = EnrollmentCallMode.Batch,
-                    Request = new EnrollmentRequestBinding
-                    {
-                        IndexField = "stdReqInd",
-                        Expand = CandidateExpansion.TransposeMonthDay,
-                        Map = new Dictionary<string, string>
-                        {
-                            ["firstName"] = "stdFirstName",
-                            ["lastName"] = "stdLastName",
-                            ["dob"] = "stdDob",
-                        },
-                    },
-                    Response = new EnrollmentResponseMapping
-                    {
-                        Root = "$.stdntDtls",
-                        IndexField = "stdReqInd",
-                        Match = new EnrollmentMatch
-                        {
-                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
-                            Field = "sebtEligSts",
-                            ValueIn = new List<string> { "Y" },
-                        },
-                    },
+                    ["firstName"] = "stdFirstName",
+                    ["lastName"] = "stdLastName",
+                    ["dob"] = "stdDob",
                 },
             },
-        };
-
-    // Batch, no expansion: single row per child, correlated by index.
-    private static StateBackendConfiguration BatchNoExpandConfiguration() =>
-        new()
-        {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Response = new EnrollmentResponseMapping
             {
-                EnrollmentCheck = new EnrollmentCheckOperationConfig
+                Root = "$.stdntDtls",
+                IndexField = "stdReqInd",
+                Match = new EnrollmentMatch
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/enrollment/check",
-                    CallMode = EnrollmentCallMode.Batch,
-                    Request = new EnrollmentRequestBinding
-                    {
-                        IndexField = "reqInd",
-                        Map = new Dictionary<string, string>
-                        {
-                            ["firstName"] = "firstName",
-                            ["lastName"] = "lastName",
-                            ["dob"] = "dateOfBirth",
-                        },
-                    },
-                    Response = new EnrollmentResponseMapping
-                    {
-                        Root = "$.results",
-                        IndexField = "reqInd",
-                        Match = new EnrollmentMatch
-                        {
-                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
-                            Field = "eligible",
-                            ValueIn = new List<string> { "true" },
-                        },
-                    },
-                },
-            },
-        };
-
-    // Batch confidenceThreshold: argmax a child's candidate scores, match iff best > threshold (strict).
-    private static StateBackendConfiguration CoConfidenceThresholdConfiguration() =>
-        new()
-        {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
-            {
-                EnrollmentCheck = new EnrollmentCheckOperationConfig
-                {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/sebt/check-enrollment",
-                    CallMode = EnrollmentCallMode.Batch,
-                    Request = new EnrollmentRequestBinding
-                    {
-                        IndexField = "stdReqInd",
-                        Expand = CandidateExpansion.TransposeMonthDay,
-                        Map = new Dictionary<string, string>
-                        {
-                            ["firstName"] = "stdFirstName",
-                            ["lastName"] = "stdLastName",
-                            ["dob"] = "stdDob",
-                        },
-                    },
-                    Response = new EnrollmentResponseMapping
-                    {
-                        Root = "$.stdntDtls",
-                        IndexField = "stdReqInd",
-                        Match = new EnrollmentMatch
-                        {
-                            Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
-                            ScoreField = "mtchCnfd",
-                            Threshold = 90.0,
-                        },
-                    },
-                },
-            },
-        };
-
-    // CO's REAL rule: best-candidate score > threshold AND that SAME row's eligibility flag is set.
-    private static StateBackendConfiguration CoConfidenceThresholdWithEligibilityConfiguration()
-    {
-        StateBackendConfiguration config = CoConfidenceThresholdConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        return WithEnrollment(config, operation with
-        {
-            Response = operation.Response! with
-            {
-                Match = operation.Response.Match with
-                {
+                    Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
                     Field = "sebtEligSts",
                     ValueIn = new List<string> { "Y" },
                 },
             },
         });
+
+    // Batch, no expansion: single row per child, correlated by index.
+    private static StateBackendConfiguration BatchNoExpandConfiguration() =>
+        StateBackendTestConfig.Base().WithEnrollment(new EnrollmentCheckOperationConfig
+        {
+            Method = StateBackendHttpMethod.Post,
+            Path = "/enrollment/check",
+            CallMode = EnrollmentCallMode.Batch,
+            Request = new EnrollmentRequestBinding
+            {
+                IndexField = "reqInd",
+                Map = new Dictionary<string, string>
+                {
+                    ["firstName"] = "firstName",
+                    ["lastName"] = "lastName",
+                    ["dob"] = "dateOfBirth",
+                },
+            },
+            Response = new EnrollmentResponseMapping
+            {
+                Root = "$.results",
+                IndexField = "reqInd",
+                Match = new EnrollmentMatch
+                {
+                    Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
+                    Field = "eligible",
+                    ValueIn = new List<string> { "true" },
+                },
+            },
+        });
+
+    // Batch confidenceThreshold: argmax a child's candidate scores, match iff best > threshold (strict).
+    private static StateBackendConfiguration CoConfidenceThresholdConfiguration() =>
+        StateBackendTestConfig.Base().WithEnrollment(new EnrollmentCheckOperationConfig
+        {
+            Method = StateBackendHttpMethod.Post,
+            Path = "/sebt/check-enrollment",
+            CallMode = EnrollmentCallMode.Batch,
+            Request = new EnrollmentRequestBinding
+            {
+                IndexField = "stdReqInd",
+                Expand = CandidateExpansion.TransposeMonthDay,
+                Map = new Dictionary<string, string>
+                {
+                    ["firstName"] = "stdFirstName",
+                    ["lastName"] = "stdLastName",
+                    ["dob"] = "stdDob",
+                },
+            },
+            Response = new EnrollmentResponseMapping
+            {
+                Root = "$.stdntDtls",
+                IndexField = "stdReqInd",
+                Match = new EnrollmentMatch
+                {
+                    Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
+                    ScoreField = "mtchCnfd",
+                    Threshold = 90.0,
+                },
+            },
+        });
+
+    // CO's REAL rule: best-candidate score > threshold AND that SAME row's eligibility flag is set.
+    private static StateBackendConfiguration CoConfidenceThresholdWithEligibilityConfiguration()
+    {
+        StateBackendConfiguration config = CoConfidenceThresholdConfiguration();
+        return config.WithEnrollmentMatch(config.Operations.EnrollmentCheck!.Response!.Match with
+        {
+            Field = "sebtEligSts",
+            ValueIn = new List<string> { "Y" },
+        });
     }
 
     // PerChild + confidenceThreshold: single result's score > threshold, no argmax.
     private static StateBackendConfiguration PerChildConfidenceThresholdConfiguration() =>
-        new()
+        StateBackendTestConfig.Base().WithEnrollment(new EnrollmentCheckOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/enrollment/check",
+            CallMode = EnrollmentCallMode.PerChild,
+            Request = new EnrollmentRequestBinding
             {
-                EnrollmentCheck = new EnrollmentCheckOperationConfig
+                Map = new Dictionary<string, string>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/enrollment/check",
-                    CallMode = EnrollmentCallMode.PerChild,
-                    Request = new EnrollmentRequestBinding
-                    {
-                        Map = new Dictionary<string, string>
-                        {
-                            ["firstName"] = "firstName",
-                            ["lastName"] = "lastName",
-                            ["dob"] = "dateOfBirth",
-                        },
-                    },
-                    Response = new EnrollmentResponseMapping
-                    {
-                        Root = "$",
-                        Match = new EnrollmentMatch
-                        {
-                            Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
-                            ScoreField = "mtchCnfd",
-                            Threshold = 90.0,
-                        },
-                    },
+                    ["firstName"] = "firstName",
+                    ["lastName"] = "lastName",
+                    ["dob"] = "dateOfBirth",
                 },
             },
-        };
+            Response = new EnrollmentResponseMapping
+            {
+                Root = "$",
+                Match = new EnrollmentMatch
+                {
+                    Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
+                    ScoreField = "mtchCnfd",
+                    Threshold = 90.0,
+                },
+            },
+        });
 
     // DC-shaped: PerChild fan-out, one call per child, single { isEligible } result, no index.
     private static StateBackendConfiguration DcPerChildConfiguration() =>
-        new()
+        StateBackendTestConfig.Base().WithEnrollment(new EnrollmentCheckOperationConfig
         {
-            BaseUrl = new Uri("http://backend.test"),
-            Auth = new StateBackendApiKeyAuthScheme { Header = "X-Api-Key", KeyRef = "k" },
-            Operations = new StateBackendOperations
+            Method = StateBackendHttpMethod.Post,
+            Path = "/enrollment/check",
+            CallMode = EnrollmentCallMode.PerChild,
+            Request = new EnrollmentRequestBinding
             {
-                EnrollmentCheck = new EnrollmentCheckOperationConfig
+                Map = new Dictionary<string, string>
                 {
-                    Method = StateBackendHttpMethod.Post,
-                    Path = "/enrollment/check",
-                    CallMode = EnrollmentCallMode.PerChild,
-                    Request = new EnrollmentRequestBinding
-                    {
-                        Map = new Dictionary<string, string>
-                        {
-                            ["firstName"] = "firstName",
-                            ["lastName"] = "lastName",
-                            ["dob"] = "dateOfBirth",
-                        },
-                    },
-                    Response = new EnrollmentResponseMapping
-                    {
-                        Root = "$",
-                        Match = new EnrollmentMatch
-                        {
-                            Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
-                            Field = "isEligible",
-                            ValueIn = new List<string> { "true" },
-                        },
-                    },
+                    ["firstName"] = "firstName",
+                    ["lastName"] = "lastName",
+                    ["dob"] = "dateOfBirth",
                 },
             },
-        };
+            Response = new EnrollmentResponseMapping
+            {
+                Root = "$",
+                Match = new EnrollmentMatch
+                {
+                    Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
+                    Field = "isEligible",
+                    ValueIn = new List<string> { "true" },
+                },
+            },
+        });
 
     private static async Task<(string Body, EnrollmentCheckResult Result)> RunAsync(
         StateBackendConfiguration configuration, EnrollmentCheckRequest request, string responseJson)
@@ -387,18 +331,21 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         Assert.False(child.IsMatch);
     }
 
-    // A confident candidate that is NOT SEBT-eligible must not report a match.
-    [Fact]
-    public async Task CheckEnrollmentAsync_CoConfidenceThresholdWithEligibility_ConfidentButIneligible_NotAMatch()
+    // A confident candidate matches only when it is ALSO SEBT-eligible: the score clears the
+    // threshold (95 > 90) in both rows, so the eligibility flag alone decides.
+    [Theory]
+    [InlineData("Y", true)]
+    [InlineData("N", false)]
+    public async Task CheckEnrollmentAsync_CoConfidenceThresholdWithEligibility_EligibilityFlagDecides(
+        string eligibility, bool expectedMatch)
     {
         // Arrange
         var request = new EnrollmentCheckRequest(
             new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
 
-        // Score clears the threshold (95 > 90), but the row's eligibility flag says "N".
-        const string responseJson =
-            """
-            { "stdntDtls": [ { "stdReqInd": "1", "mtchCnfd": 95.0, "sebtEligSts": "N" } ] }
+        string responseJson =
+            $$"""
+            { "stdntDtls": [ { "stdReqInd": "1", "mtchCnfd": 95.0, "sebtEligSts": "{{eligibility}}" } ] }
             """;
 
         // Act
@@ -407,28 +354,7 @@ public class ConfigurableStateBackendCheckEnrollmentTests
 
         // Assert
         EnrollmentChildResult child = Assert.Single(result.Results);
-        Assert.False(child.IsMatch);
-    }
-
-    [Fact]
-    public async Task CheckEnrollmentAsync_CoConfidenceThresholdWithEligibility_ConfidentAndEligible_Matches()
-    {
-        // Arrange
-        var request = new EnrollmentCheckRequest(
-            new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
-
-        const string responseJson =
-            """
-            { "stdntDtls": [ { "stdReqInd": "1", "mtchCnfd": 95.0, "sebtEligSts": "Y" } ] }
-            """;
-
-        // Act
-        (_, EnrollmentCheckResult result) = await RunAsync(
-            CoConfidenceThresholdWithEligibilityConfiguration(), request, responseJson);
-
-        // Assert
-        EnrollmentChildResult child = Assert.Single(result.Results);
-        Assert.True(child.IsMatch);
+        Assert.Equal(expectedMatch, child.IsMatch);
     }
 
     // Eligibility is read from the ARGMAX row only — a lower-scoring eligible candidate cannot
@@ -470,17 +396,10 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     {
         // Arrange
         StateBackendConfiguration config = PerChildConfidenceThresholdConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
+        config = config.WithEnrollmentMatch(config.Operations.EnrollmentCheck!.Response!.Match with
         {
-            Response = operation.Response! with
-            {
-                Match = operation.Response.Match with
-                {
-                    Field = "sebtEligSts",
-                    ValueIn = new List<string> { "Y" },
-                },
-            },
+            Field = "sebtEligSts",
+            ValueIn = new List<string> { "Y" },
         });
         var request = new EnrollmentCheckRequest(
             new[] { new EnrollmentChild("chk-1", "Ada", "Lovelace", new DateOnly(2015, 6, 25)) });
@@ -617,12 +536,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     }
 
     // Rebuilds the DC PerChild config with its request binding swapped out.
-    private static StateBackendConfiguration DcPerChildWithRequest(EnrollmentRequestBinding request)
-    {
-        StateBackendConfiguration config = DcPerChildConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        return WithEnrollment(config, operation with { Request = request });
-    }
+    private static StateBackendConfiguration DcPerChildWithRequest(EnrollmentRequestBinding request) =>
+        DcPerChildConfiguration().WithEnrollmentRequest(request);
 
     [Fact]
     public async Task CheckEnrollmentAsync_PerChild_MapOptional_BindsWhenInputResolves()
@@ -786,16 +701,12 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     {
         // Arrange
         StateBackendConfiguration config = BatchNoExpandConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
+        config = config.WithEnrollmentRequest(config.Operations.EnrollmentCheck!.Request! with
         {
-            Request = operation.Request! with
+            MapOptional = new Dictionary<string, string>
             {
-                MapOptional = new Dictionary<string, string>
-                {
-                    ["lastName"] = "surname",
-                    ["schoolIdentifier"] = "schlNm",
-                },
+                ["lastName"] = "surname",
+                ["schoolIdentifier"] = "schlNm",
             },
         });
         var request = new EnrollmentCheckRequest(
@@ -836,8 +747,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     private static StateBackendConfiguration WithResponseCarriers(
         StateBackendConfiguration config, string? statusMessageField, string? messageField)
     {
-        var operation = config.Operations.EnrollmentCheck!;
-        return WithEnrollment(config, operation with
+        EnrollmentCheckOperationConfig operation = config.Operations.EnrollmentCheck!;
+        return config.WithEnrollment(operation with
         {
             Response = operation.Response! with
             {
@@ -1083,11 +994,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     public void Validate_Batch_WithoutIndexField_Throws()
     {
         StateBackendConfiguration config = BatchNoExpandConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
-        {
-            Request = operation.Request! with { IndexField = null },
-        });
+        config = config.WithEnrollmentRequest(
+            config.Operations.EnrollmentCheck!.Request! with { IndexField = null });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -1098,11 +1006,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     public void Validate_PerChild_WithIndexField_Throws()
     {
         StateBackendConfiguration config = DcPerChildConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
-        {
-            Request = operation.Request! with { IndexField = "reqInd" },
-        });
+        config = config.WithEnrollmentRequest(
+            config.Operations.EnrollmentCheck!.Request! with { IndexField = "reqInd" });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -1113,11 +1018,8 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     public void Validate_PerChild_WithExpand_ThrowsNotSupported()
     {
         StateBackendConfiguration config = DcPerChildConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
-        {
-            Request = operation.Request! with { Expand = CandidateExpansion.TransposeMonthDay },
-        });
+        config = config.WithEnrollmentRequest(
+            config.Operations.EnrollmentCheck!.Request! with { Expand = CandidateExpansion.TransposeMonthDay });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -1127,19 +1029,12 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     [Fact]
     public void Validate_ConfidenceThreshold_MissingScoreFieldOrThreshold_Throws()
     {
-        StateBackendConfiguration config = CoConfidenceThresholdConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
-        {
-            Response = operation.Response! with
+        // confidenceThreshold with NO scoreField/threshold → fail loud.
+        StateBackendConfiguration config = CoConfidenceThresholdConfiguration()
+            .WithEnrollmentMatch(new EnrollmentMatch
             {
-                Match = new EnrollmentMatch
-                {
-                    // confidenceThreshold with NO scoreField/threshold → fail loud.
-                    Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
-                },
-            },
-        });
+                Strategy = EnrollmentMatchStrategy.ConfidenceThreshold,
+            });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
@@ -1154,17 +1049,10 @@ public class ConfigurableStateBackendCheckEnrollmentTests
         string? field, string? valueIn)
     {
         StateBackendConfiguration config = CoConfidenceThresholdConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
+        config = config.WithEnrollmentMatch(config.Operations.EnrollmentCheck!.Response!.Match with
         {
-            Response = operation.Response! with
-            {
-                Match = operation.Response.Match with
-                {
-                    Field = field,
-                    ValueIn = valueIn is null ? null : new List<string> { valueIn },
-                },
-            },
+            Field = field,
+            ValueIn = valueIn is null ? null : new List<string> { valueIn },
         });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
@@ -1175,19 +1063,12 @@ public class ConfigurableStateBackendCheckEnrollmentTests
     [Fact]
     public void Validate_AnyRowValueIn_MissingFieldOrValueIn_Throws()
     {
-        StateBackendConfiguration config = BatchNoExpandConfiguration();
-        var operation = config.Operations.EnrollmentCheck!;
-        config = WithEnrollment(config, operation with
-        {
-            Response = operation.Response! with
+        // anyRowValueIn with NO field/valueIn → fail loud.
+        StateBackendConfiguration config = BatchNoExpandConfiguration()
+            .WithEnrollmentMatch(new EnrollmentMatch
             {
-                Match = new EnrollmentMatch
-                {
-                    // anyRowValueIn with NO field/valueIn → fail loud.
-                    Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
-                },
-            },
-        });
+                Strategy = EnrollmentMatchStrategy.AnyRowValueIn,
+            });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));

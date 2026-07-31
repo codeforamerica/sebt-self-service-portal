@@ -1,9 +1,8 @@
 namespace SEBT.Portal.Core.StateBackends.Configuration;
 
 /// <summary>
-/// An enum translation table keyed by our canonical enum value, mapping to the state token(s) that
-/// mean it. <see cref="Default"/> applies only to genuinely-unlisted tokens; a token mapped to a
-/// mistyped canonical value fails loud at load rather than falling through to the default.
+/// An enum translation table keyed by our canonical enum value. <see cref="Default"/> applies only
+/// to genuinely-unlisted tokens; a mistyped canonical value fails loud at load.
 /// </summary>
 public sealed record StateBackendEnumTable
 {

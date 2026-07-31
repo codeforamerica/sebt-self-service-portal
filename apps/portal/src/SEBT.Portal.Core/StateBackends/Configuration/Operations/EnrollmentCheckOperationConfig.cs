@@ -17,8 +17,8 @@ public enum CandidateExpansion
     None,
 
     /// <summary>
-    /// Emit the entered DOB plus its month/day-swapped candidate, but only when the swap yields a
-    /// valid and different calendar date. Both rows share the child's correlation index.
+    /// Also emit a month/day-swapped DOB row when the swap is a valid, different date; both rows
+    /// share the child's correlation index.
     /// </summary>
     TransposeMonthDay,
 }
@@ -30,9 +30,8 @@ public enum EnrollmentMatchStrategy
     AnyRowValueIn,
 
     /// <summary>
-    /// A confidence score strictly exceeds a threshold; in batch mode the child's best candidate is
-    /// taken. The argmax and the strict <c>&gt;</c> live in code. A missing/non-numeric score is not a match.
-    /// An optional <c>field</c> + <c>valueIn</c> pair adds a fixed-AND eligibility check on that same best row.
+    /// The best candidate's score strictly exceeds a threshold; a missing/non-numeric score is not a
+    /// match. An optional <c>field</c> + <c>valueIn</c> pair adds an AND eligibility check on that row.
     /// </summary>
     ConfidenceThreshold,
 }
@@ -43,7 +42,6 @@ public enum EnrollmentMatchStrategy
 /// </summary>
 public sealed record EnrollmentCheckOperationConfig() : StateBackendOperationConfig
 {
-    /// <summary>How the driver fans a child batch out to backend calls. Required — never inferred.</summary>
     public required EnrollmentCallMode CallMode { get; init; }
 
     /// <summary>How to build each outgoing request row from a child. Null when unmodeled.</summary>
@@ -59,15 +57,12 @@ public sealed record EnrollmentRequestBinding
     /// <summary>Our child-field name (firstName / lastName / dob) → dotted target path in the request row.</summary>
     public required Dictionary<string, string> Map { get; init; }
 
-    /// <summary>
-    /// Like <see cref="Map"/>, but an input that resolves to no value is omitted from the row
-    /// entirely (never written as null) instead of failing loud.
-    /// </summary>
+    /// <summary>Like <see cref="Map"/>, but an unresolved input is omitted from the row (never written as null).</summary>
     public Dictionary<string, string>? MapOptional { get; init; }
 
     /// <summary>
-    /// Dotted target path carrying the row's correlation index. Required for
-    /// <see cref="EnrollmentCallMode.Batch"/>; must be null for <see cref="EnrollmentCallMode.PerChild"/>.
+    /// Dotted target path carrying the row's correlation index; required for batch mode, must be
+    /// null for perChild.
     /// </summary>
     public string? IndexField { get; init; }
 
@@ -82,23 +77,15 @@ public sealed record EnrollmentResponseMapping
     public required string Root { get; init; }
 
     /// <summary>
-    /// Source property carrying the echoed correlation index. Required for
-    /// <see cref="EnrollmentCallMode.Batch"/>; must be null for <see cref="EnrollmentCallMode.PerChild"/>.
+    /// Source property carrying the echoed correlation index; required for batch mode, must be null
+    /// for perChild.
     /// </summary>
     public string? IndexField { get; init; }
 
-    /// <summary>
-    /// Source row property surfaced as the child's <c>StatusMessage</c>, read from the winning row
-    /// (the argmax row for confidenceThreshold — even below the threshold — the first matching row
-    /// for anyRowValueIn, or the single result object in perChild mode). Optional.
-    /// </summary>
+    /// <summary>Optional source row property surfaced as the child's <c>StatusMessage</c>, read from the winning row.</summary>
     public string? StatusMessageField { get; init; }
 
-    /// <summary>
-    /// Result-level source property surfaced as <c>EnrollmentCheckResult.Message</c>, read from the
-    /// response document root (path-selector grammar, e.g. <c>RespMsg</c> or <c>$.RespMsg</c>) —
-    /// not per-row. Optional.
-    /// </summary>
+    /// <summary>Optional result-level property surfaced as <c>EnrollmentCheckResult.Message</c>, read from the response root — not per-row.</summary>
     public string? MessageField { get; init; }
 
     /// <summary>The match strategy deciding whether a child matches.</summary>
@@ -106,25 +93,22 @@ public sealed record EnrollmentResponseMapping
 }
 
 /// <summary>
-/// The match strategy and its params: <see cref="AnyRowValueIn"/> uses <see cref="Field"/> +
-/// <see cref="ValueIn"/>; <see cref="ConfidenceThreshold"/> uses <see cref="ScoreField"/> +
-/// <see cref="Threshold"/>, optionally AND-ed with a <see cref="Field"/> + <see cref="ValueIn"/>
-/// eligibility check on the best row. The validator fails loud on the wrong params for the chosen strategy.
+/// The match strategy and its params; the validator fails loud on the wrong params for the chosen
+/// strategy.
 /// </summary>
 public sealed record EnrollmentMatch
 {
-    /// <summary>Which strategy decides a match. Required — never inferred.</summary>
     public required EnrollmentMatchStrategy Strategy { get; init; }
 
-    /// <summary>Source body property inspected on a row. Required for <see cref="EnrollmentMatchStrategy.AnyRowValueIn"/>; optional (with <see cref="ValueIn"/>) on <see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/> as an eligibility check on the best row.</summary>
+    /// <summary>Source body property inspected on a row; required for anyRowValueIn, an optional best-row eligibility check (with <see cref="ValueIn"/>) for confidenceThreshold.</summary>
     public string? Field { get; init; }
 
-    /// <summary>The row passes when <see cref="Field"/>'s value is one of these. Supplied together with <see cref="Field"/> or not at all.</summary>
+    /// <summary>The row passes when <see cref="Field"/>'s value is one of these; supplied together with <see cref="Field"/> or not at all.</summary>
     public List<string>? ValueIn { get; init; }
 
-    /// <summary>Source body property carrying the numeric confidence score. Required for <see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/>.</summary>
+    /// <summary>Source body property carrying the numeric confidence score; required for confidenceThreshold.</summary>
     public string? ScoreField { get; init; }
 
-    /// <summary>The score must be strictly greater than this to match. Required for <see cref="EnrollmentMatchStrategy.ConfidenceThreshold"/>.</summary>
+    /// <summary>The score must be strictly greater than this to match; required for confidenceThreshold.</summary>
     public double? Threshold { get; init; }
 }

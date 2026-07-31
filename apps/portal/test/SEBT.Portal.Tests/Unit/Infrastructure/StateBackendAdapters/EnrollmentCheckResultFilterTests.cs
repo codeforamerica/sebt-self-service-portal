@@ -33,108 +33,44 @@ public class EnrollmentCheckResultFilterTests
             Status = status
         };
 
-    [Fact]
-    public void Filter_WhenDobMatchesExactly_KeepsResult()
+    // The guard rule over a request for Jane Doe born on the given date: the birth year must
+    // always match, and then either the full DOB or the full name (case-insensitive) exactly.
+    [Theory]
+    // Everything matches → kept.
+    [InlineData("2015-03-12", "Jane", "Doe", "2015-03-12", true)]
+    // DOB matches, names differ → DOB alone is enough.
+    [InlineData("2015-03-12", "Janet", "Smith", "2015-03-12", true)]
+    // Name matches case-insensitively + year matches (month/day differ) → name combo + year is enough.
+    [InlineData("2000-06-06", "jane", "doe", "2000-01-01", true)]
+    // Full name matches but birth year is wrong — year is always required.
+    [InlineData("2000-06-06", "Jane", "Doe", "1999-06-06", false)]
+    // Neither DOB nor name matches.
+    [InlineData("2015-03-12", "Robert", "Smith", "2010-06-01", false)]
+    // First name alone is not enough.
+    [InlineData("2015-03-12", "Jane", "Smith", "2010-06-01", false)]
+    // Last name alone is not enough.
+    [InlineData("2015-03-12", "Robert", "Doe", "2010-06-01", false)]
+    public void Filter_KeepsMatchCandidate_OnlyWhenDobOrFullNameExactlyMatches(
+        string requestDob, string resultFirstName, string resultLastName, string resultDob, bool expectedKept)
     {
-        var request = MakeRequest(firstName: "Janet", lastName: "Smith");
-        var result = MakeResult(firstName: "Janet", lastName: "Smith");
+        var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: DateOnly.Parse(requestDob));
+        var result = MakeResult(
+            firstName: resultFirstName, lastName: resultLastName, dob: DateOnly.Parse(resultDob));
 
         var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
 
-        Assert.Single(filtered);
+        Assert.Equal(expectedKept ? 1 : 0, filtered.Count);
     }
 
-    [Fact]
-    public void Filter_WhenFullNameMatchesCaseInsensitively_KeepsResult()
+    // Error and NonMatch results aren't match candidates; they pass through unfiltered.
+    [Theory]
+    [InlineData(EnrollmentStatus.Error)]
+    [InlineData(EnrollmentStatus.NonMatch)]
+    public void Filter_WhenResultStatusIsNotACandidate_KeepsRegardlessOfMatch(EnrollmentStatus status)
     {
-        // Names match (case-insensitive), birth year matches, but month/day differ — name combo + year is enough
-        var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: new DateOnly(2000, 6, 6));
-        var result = MakeResult(firstName: "jane", lastName: "doe", dob: new DateOnly(2000, 1, 1));
-
-        var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
-
-        Assert.Single(filtered);
-    }
-
-    [Fact]
-    public void Filter_WhenNameMatchesButBirthYearDiffers_DropsResult()
-    {
-        // Full name matches but birth year is wrong — year is always required
-        var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: new DateOnly(2000, 6, 6));
-        var result = MakeResult(firstName: "Jane", lastName: "Doe", dob: new DateOnly(1999, 6, 6));
-
-        var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
-
-        Assert.Empty(filtered);
-    }
-
-    [Fact]
-    public void Filter_WhenDobMatchesButNamesAreDifferent_KeepsResult()
-    {
-        // DOB matches (default on both), names differ — DOB alone is enough
-        var request = MakeRequest(firstName: "Jane", lastName: "Doe");
-        var result = MakeResult(firstName: "Janet", lastName: "Smith");
-
-        var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
-
-        Assert.Single(filtered);
-    }
-
-    [Fact]
-    public void Filter_WhenNeitherDobNorNameMatches_DropsResult()
-    {
-        var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: new DateOnly(2015, 3, 12));
-        var result = MakeResult(firstName: "Robert", lastName: "Smith", dob: new DateOnly(2010, 6, 1));
-
-        var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
-
-        Assert.Empty(filtered);
-    }
-
-    [Fact]
-    public void Filter_WhenOnlyFirstNameMatches_DropsResult()
-    {
-        // First name matches, last name does not, DOB does not — full combo required
-        var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: new DateOnly(2015, 3, 12));
-        var result = MakeResult(firstName: "Jane", lastName: "Smith", dob: new DateOnly(2010, 6, 1));
-
-        var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
-
-        Assert.Empty(filtered);
-    }
-
-    [Fact]
-    public void Filter_WhenOnlyLastNameMatches_DropsResult()
-    {
-        // Last name matches, first name does not, DOB does not — full combo required
-        var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: new DateOnly(2015, 3, 12));
-        var result = MakeResult(firstName: "Robert", lastName: "Doe", dob: new DateOnly(2010, 6, 1));
-
-        var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
-
-        Assert.Empty(filtered);
-    }
-
-    [Fact]
-    public void Filter_WhenResultStatusIsError_KeepsRegardlessOfMatch()
-    {
-        // Errors aren't candidates; don't filter them
         var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: new DateOnly(2015, 3, 12));
         var result = MakeResult(firstName: "Robert", lastName: "Smith", dob: new DateOnly(2010, 6, 1),
-            status: EnrollmentStatus.Error);
-
-        var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
-
-        Assert.Single(filtered);
-    }
-
-    [Fact]
-    public void Filter_WhenResultStatusIsNonMatch_KeepsRegardlessOfMatch()
-    {
-        // NonMatch results are already non-matches; no need to filter further
-        var request = MakeRequest(firstName: "Jane", lastName: "Doe", dob: new DateOnly(2015, 3, 12));
-        var result = MakeResult(firstName: "Robert", lastName: "Smith", dob: new DateOnly(2010, 6, 1),
-            status: EnrollmentStatus.NonMatch);
+            status: status);
 
         var filtered = EnrollmentCheckResultFilter.Filter([request], [result]);
 

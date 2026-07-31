@@ -3,20 +3,16 @@ using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 namespace SEBT.Portal.Infrastructure.StateBackendAdapters;
 
 /// <summary>
-/// Portal-side exact-match guard for enrollment check results. When enabled via the
-/// <c>enrollment_check_requires_at_least_one_exact_matched_field</c> feature flag, drops
-/// Match/PossibleMatch candidates where neither the date of birth nor the full name
-/// (first + last) is an exact match against the submitted request. This guards against
-/// false positives from CBMS fuzzy-matching, regardless of the connector's confidence score.
+/// Flag-gated portal-side exact-match guard: drops Match/PossibleMatch candidates where neither
+/// the DOB nor the full name exactly matches the submission — guards against CBMS fuzzy-match
+/// false positives, regardless of the connector's confidence score.
 /// </summary>
 internal static class EnrollmentCheckResultFilter
 {
     /// <summary>
-    /// Filters <paramref name="results"/> against the original <paramref name="requests"/>,
-    /// removing any Match or PossibleMatch entry where the birth year does not match, or where
-    /// the year matches but neither the full DOB nor the full name (first + last, case-insensitive)
-    /// is an exact match. Error and NonMatch results pass through unchanged.
-    /// Results whose CheckId has no corresponding request are kept (defensive).
+    /// Removes any Match/PossibleMatch whose birth year differs, or where neither the full DOB nor
+    /// the full name (case-insensitive) matches exactly. Error and NonMatch pass through; results
+    /// whose CheckId has no corresponding request are kept (defensive).
     /// </summary>
     public static IList<ChildCheckResult> Filter(
         IList<ChildCheckRequest> requests,

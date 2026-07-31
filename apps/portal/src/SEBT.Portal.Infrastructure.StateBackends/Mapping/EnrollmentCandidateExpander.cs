@@ -5,8 +5,7 @@ internal static class EnrollmentCandidateExpander
 {
     /// <summary>
     /// Returns the month/day-swapped DOB, or <c>null</c> when the swap yields the same date or an
-    /// invalid one. The swap is only valid when the day is a valid month (1-12); the original month
-    /// is always a valid day, so no day-range check is needed.
+    /// invalid one. Only a day ≤ 12 can be a month; the original month is always a valid day.
     /// </summary>
     public static DateOnly? TryTransposeMonthDay(DateOnly dob)
     {

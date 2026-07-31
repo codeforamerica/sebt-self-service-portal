@@ -4,8 +4,8 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
 /// Write-side path writer: sets a value at a dotted target path, building intermediate objects as
-/// needed. Dotted property paths only — no <c>$</c>/<c>[index]</c> grammar, a narrower brick than
-/// the read-side <see cref="JsonPathSelector"/> by design.
+/// needed. Dotted property paths only — no <c>$</c>/<c>[index]</c> grammar, narrower than the
+/// read-side <see cref="JsonPathSelector"/> by design.
 /// </summary>
 internal static class JsonPathWriter
 {

@@ -13,10 +13,7 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 /// </summary>
 internal static class StateBackendResponseMapper
 {
-    /// <summary>
-    /// The closed set of canonical field targets, each with its coercion kind and (for enums) the
-    /// target C# enum type. A new canonical field means a new entry here — never reflection.
-    /// </summary>
+    /// <summary>The closed set of canonical field targets; a new canonical field means a new entry here — never reflection.</summary>
     private static readonly IReadOnlyDictionary<string, FieldTarget> FieldTargets =
         new Dictionary<string, FieldTarget>(StringComparer.Ordinal)
         {
@@ -31,9 +28,8 @@ internal static class StateBackendResponseMapper
         };
 
     /// <summary>
-    /// The closed vocabulary of caller-context names a caseId <c>fromContext</c> entry may
-    /// reference, each resolved in fixed code off <see cref="CaseIdContext"/>. A new context value
-    /// means a new entry here and on the record — never expressions in config.
+    /// The closed vocabulary of caller-context names a caseId <c>fromContext</c> entry may reference;
+    /// a new context value means a new entry here and on the record — never expressions in config.
     /// </summary>
     private static readonly IReadOnlyDictionary<string, Func<CaseIdContext, string?>> ContextSources =
         new Dictionary<string, Func<CaseIdContext, string?>>(StringComparer.Ordinal)
@@ -49,10 +45,8 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Validates every caseId composition: each <c>fromContext</c> entry must reference a known
-    /// context name, and no token field may be sourced from both a response column and caller
-    /// context. Invoked at load time by
-    /// <see cref="Configuration.StateBackendConfigurationValidator"/>.
+    /// Fails loud at load when a <c>fromContext</c> entry references an unknown context name, or a
+    /// token field is sourced from both a response column and caller context.
     /// </summary>
     internal static void ValidateCaseIdCompositions(StateBackendConfiguration configuration)
     {
@@ -83,10 +77,8 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Validates every response field mapping names a known canonical target and that date-typed
-    /// targets carry an exact <c>format</c>, so a config typo fails loud at load rather than on the
-    /// first mapped record. Invoked at load time by
-    /// <see cref="Configuration.StateBackendConfigurationValidator"/>.
+    /// Fails loud at load on a field mapping naming an unknown canonical target, or a date-typed
+    /// target missing an exact <c>format</c>.
     /// </summary>
     internal static void ValidateFieldMappings(StateBackendConfiguration configuration)
     {
@@ -101,7 +93,7 @@ internal static class StateBackendResponseMapper
                         $"Known fields: {string.Join(", ", FieldTargets.Keys)}.");
                 }
 
-                // A keywordRules brick on a date target gets its (more precise) rejection from
+                // A keywordRules primitive on a date target gets its (more precise) rejection from
                 // ValidateKeywordRules instead.
                 if (target.Kind == FieldKind.DateTime
                     && fieldMapping.KeywordRules is null
@@ -115,9 +107,8 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Validates every enum table referenced by a response field mapping: each canonical value must
-    /// be a real enum member, and no source token may appear under two canonical values. Invoked at
-    /// load time by <see cref="Configuration.StateBackendConfigurationValidator"/>.
+    /// Fails loud at load when a referenced enum table names a non-member canonical value, or maps
+    /// one source token to two canonical values.
     /// </summary>
     internal static void ValidateEnumTables(StateBackendConfiguration configuration)
     {
@@ -179,8 +170,7 @@ internal static class StateBackendResponseMapper
 
         foreach (JsonElement record in records.EnumerateArray())
         {
-            // Map to canonical first — the inclusion predicate reads the canonical model, never raw
-            // state fields.
+            // Map to canonical first — the inclusion predicate never reads raw state fields.
             SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers, keywordResolvers);
 
             if (mapping.CaseId is { } caseIdComposition)
@@ -196,8 +186,7 @@ internal static class StateBackendResponseMapper
 
             bool isApplicationBased = IsApplicationBased(record, disaggregation);
 
-            // Every application-based record belongs to its grouped application, even when it isn't
-            // included as a case (e.g. a pending application).
+            // Application-based records join their grouped application even when excluded as cases.
             if (isApplicationBased && GroupKey(record, disaggregation) is { } key)
             {
                 summerEbtCase.ApplicationId = key;
@@ -223,10 +212,8 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// The named case-inclusion predicate. For
-    /// <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/>, an unknown or unmapped
-    /// <see cref="ApplicationStatus"/> is not Approved, so an application-based record with such a
-    /// status is excluded (fail-closed).
+    /// For <see cref="CaseInclusionPredicate.WhenApprovedOrNotApplicationBased"/>, an unknown or
+    /// unmapped <see cref="ApplicationStatus"/> is not Approved — excluded, fail-closed.
     /// </summary>
     private static bool IncludeAsCase(
         CaseInclusionPredicate caseInclusion, bool isApplicationBased, ApplicationStatus applicationStatus)
@@ -268,9 +255,8 @@ internal static class StateBackendResponseMapper
         return string.IsNullOrEmpty(value) ? null : value;
     }
 
-    // Packs the named routing fields off the record — plus any context-sourced fields off the
-    // lookup's caller context — into an opaque caseId token. A routing field absent from the
-    // record (or an unset context value) packs as empty; a later write that needs it fails loud.
+    // Packs record + context routing fields into an opaque caseId token. A missing value packs
+    // empty; a later write that needs it fails loud.
     private static string ComposeCaseId(JsonElement record, CaseIdComposition composition, CaseIdContext context)
     {
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -285,8 +271,7 @@ internal static class StateBackendResponseMapper
             {
                 if (!ContextSources.TryGetValue(contextName, out Func<CaseIdContext, string?>? source))
                 {
-                    // Unreachable for loaded configs — the validator rejects unknown names — but
-                    // hand-built configs fail loud here too.
+                    // Unreachable for validated configs; hand-built configs fail loud here too.
                     throw new InvalidOperationException(
                         $"caseId fromContext references unknown context name '{contextName}'.");
                 }
@@ -424,8 +409,7 @@ internal static class StateBackendResponseMapper
         return resolvers;
     }
 
-    // Validates a keywordRules brick against its enum-typed target (fail-loud), returning the enum
-    // type, ordered (value, keywords) pairs, and parsed default.
+    // Validates a keywordRules primitive against its enum-typed target, fail-loud.
     private static (Type EnumType, List<(object Value, List<string> Keywords)> Ordered, object Default)
         ValidateKeywordRules(string canonicalField, KeywordRules keywordRules)
     {
@@ -461,8 +445,7 @@ internal static class StateBackendResponseMapper
         return (enumType, ordered, defaultValue);
     }
 
-    // Inverts a table (our value → tokens) into a token → our-value lookup, validating each our-value
-    // is a real enum member and no token is ambiguous.
+    // Inverts a table into a token → our-value lookup, rejecting non-member values and ambiguous tokens.
     private static (Dictionary<string, object> TokenLookup, object? Default) BuildTokenLookup(
         string tableName,
         StateBackendEnumTable table,
@@ -534,10 +517,7 @@ internal static class StateBackendResponseMapper
         }
     }
 
-    /// <summary>
-    /// A canonical field target: its coercion kind, typed setter, and (for enums) the target enum
-    /// type.
-    /// </summary>
+    /// <summary>A canonical field target: coercion kind, typed setter, and enum type for enum targets.</summary>
     private sealed class FieldTarget
     {
         private FieldTarget(FieldKind kind)
@@ -571,7 +551,7 @@ internal static class StateBackendResponseMapper
 
     /// <summary>
     /// Scans a record's source values for the ordered keyword sets (first-match-wins,
-    /// case-insensitive substring-contains), returning the matched canonical enum value or default.
+    /// case-insensitive contains); returns the match or the default.
     /// </summary>
     private sealed class KeywordRuleResolver
     {

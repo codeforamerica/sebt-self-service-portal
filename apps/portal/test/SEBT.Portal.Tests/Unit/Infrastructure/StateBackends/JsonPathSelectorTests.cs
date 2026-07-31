@@ -11,35 +11,18 @@ public class JsonPathSelectorTests
         return document.RootElement.Clone();
     }
 
-    [Fact]
-    public void Select_ResolvesNestedDottedPath()
+    // Supported grammar: dotted segments, [index] element access, optional $ root.
+    [Theory]
+    [InlineData("""{ "outer": { "inner": "value" } }""", "outer.inner", "\"value\"")]
+    [InlineData("""{ "rows": [ { "id": "a" }, { "id": "b" } ] }""", "rows[1].id", "\"b\"")]
+    [InlineData("""{ "data": { "count": 3 } }""", "$.data.count", "3")]
+    public void Select_ResolvesSupportedPathGrammar(string json, string path, string expectedRawText)
     {
-        JsonElement root = Parse("""{ "outer": { "inner": "value" } }""");
+        JsonElement root = Parse(json);
 
-        JsonElement result = JsonPathSelector.Select(root, "outer.inner");
+        JsonElement result = JsonPathSelector.Select(root, path);
 
-        Assert.Equal(JsonValueKind.String, result.ValueKind);
-        Assert.Equal("value", result.GetString());
-    }
-
-    [Fact]
-    public void Select_ResolvesArrayIndexSelector()
-    {
-        JsonElement root = Parse("""{ "rows": [ { "id": "a" }, { "id": "b" } ] }""");
-
-        JsonElement result = JsonPathSelector.Select(root, "rows[1].id");
-
-        Assert.Equal("b", result.GetString());
-    }
-
-    [Fact]
-    public void Select_ResolvesDollarRootedPath()
-    {
-        JsonElement root = Parse("""{ "data": { "count": 3 } }""");
-
-        JsonElement result = JsonPathSelector.Select(root, "$.data.count");
-
-        Assert.Equal(3, result.GetInt32());
+        Assert.Equal(expectedRawText, result.GetRawText());
     }
 
     [Fact]

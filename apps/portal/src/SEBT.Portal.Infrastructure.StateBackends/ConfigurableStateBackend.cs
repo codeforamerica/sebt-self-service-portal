@@ -236,9 +236,8 @@ public class ConfigurableStateBackend :
             throw new ArgumentException("CaseIds must contain at least one case token.", nameof(request));
         }
 
-        // One call per decoded caseId, each built exactly like the single-case path (a batch write
-        // brick is deferred until a state needs one). Fail fast on the first non-success, mirroring
-        // the DC connector's per-case dispatch loop.
+        // One call per decoded caseId, fail-fast on the first non-success — mirrors the DC
+        // connector's per-case dispatch loop.
         foreach (string caseId in request.CaseIds)
         {
             // Decode the opaque caseId into its routing fields, exposed to the binding.
@@ -310,9 +309,8 @@ public class ConfigurableStateBackend :
             classifier,
             binding =>
             {
-                // Decode the batch of opaque caseIds into their routing fields for the request binding.
-                // Token-carried shared fields stay the binding source; the envelope's
-                // HouseholdIdentifier is available for a future binding brick.
+                // Decode the opaque caseIds into routing fields; token-carried fields stay the
+                // binding source.
                 IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
                     .Select(OpaqueCaseId.Decode)
                     .ToList();

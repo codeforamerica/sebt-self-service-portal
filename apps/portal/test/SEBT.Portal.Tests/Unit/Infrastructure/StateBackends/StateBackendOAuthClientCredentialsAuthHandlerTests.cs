@@ -89,11 +89,6 @@ public class StateBackendOAuthClientCredentialsAuthHandlerTests
         Assert.Equal(1, tokenFetches);
     }
 
-    // The handler refreshes ExpiryLeeway (30s) BEFORE the token's actual expiry, so with
-    // expires_in=3600 the cached token is reused until +3570s and refetched after.
-    private static readonly TimeSpan JustBeforeRefreshPoint = TimeSpan.FromSeconds(3569);
-    private static readonly TimeSpan JustPastRefreshPoint = TimeSpan.FromSeconds(3571);
-
     // Wires a counting token endpoint + data endpoint behind a handler driven by the fake clock.
     private static (HttpClient Client, Func<int> TokenFetches) BuildClientWithCountingTokenEndpoint(
         FakeTimeProvider timeProvider)
@@ -128,8 +123,13 @@ public class StateBackendOAuthClientCredentialsAuthHandlerTests
         return (new HttpClient(handler), () => tokenFetches);
     }
 
-    [Fact]
-    public async Task RefetchesToken_WhenClockPassesExpiryMinusLeeway()
+    // The handler refreshes ExpiryLeeway (30s) BEFORE the token's actual expiry, so with
+    // expires_in=3600 the cached token is reused until +3570s and refetched after.
+    [Theory]
+    [InlineData(3569, 1)] // just before the refresh point: cached token reused
+    [InlineData(3571, 2)] // just past the refresh point: token refetched
+    public async Task RefetchesToken_OnlyWhenClockPassesExpiryMinusLeeway(
+        int advanceSeconds, int expectedTokenFetches)
     {
         // Arrange
         var timeProvider = new FakeTimeProvider();
@@ -138,28 +138,11 @@ public class StateBackendOAuthClientCredentialsAuthHandlerTests
 
         // Act
         await client.GetAsync("http://backend.test/data");
-        timeProvider.Advance(JustPastRefreshPoint);
+        timeProvider.Advance(TimeSpan.FromSeconds(advanceSeconds));
         await client.GetAsync("http://backend.test/data");
 
         // Assert
-        Assert.Equal(2, tokenFetches());
-    }
-
-    [Fact]
-    public async Task ReusesCachedToken_UntilExpiryMinusLeeway()
-    {
-        // Arrange
-        var timeProvider = new FakeTimeProvider();
-        (HttpClient client, Func<int> tokenFetches) =
-            BuildClientWithCountingTokenEndpoint(timeProvider);
-
-        // Act
-        await client.GetAsync("http://backend.test/data");
-        timeProvider.Advance(JustBeforeRefreshPoint);
-        await client.GetAsync("http://backend.test/data");
-
-        // Assert
-        Assert.Equal(1, tokenFetches());
+        Assert.Equal(expectedTokenFetches, tokenFetches());
     }
 
     [Fact]
