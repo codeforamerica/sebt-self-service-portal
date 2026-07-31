@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { DataLayer } from './data-layer'
+import { DataLayer, subscribeToPageViews } from './data-layer'
 
 describe('DataLayer', () => {
   beforeEach(() => {
@@ -582,5 +582,102 @@ describe('DataLayer', () => {
       document.removeEventListener('myData:EventTracked', handler)
       delete (window as unknown as Record<string, unknown>).myData
     })
+  })
+})
+
+describe('subscribeToPageViews', () => {
+  let onPageView: ReturnType<typeof vi.fn>
+  let teardown: (() => void) | undefined
+
+  beforeEach(() => {
+    delete (window as unknown as Record<string, unknown>).digitalData
+    onPageView = vi.fn()
+    teardown = undefined
+  })
+
+  afterEach(() => {
+    teardown?.()
+    delete (window as unknown as Record<string, unknown>).digitalData
+  })
+
+  it('invokes the callback for a page_load that fires after subscribing', () => {
+    new DataLayer('digitalData')
+    teardown = subscribeToPageViews(window.digitalData!, onPageView)
+
+    window.digitalData!.page.set('flow', 'dashboard')
+    window.digitalData!.pageLoad({ step: 'dashboard' })
+
+    expect(onPageView).toHaveBeenCalledTimes(1)
+    expect(onPageView).toHaveBeenCalledWith(
+      'page_load',
+      expect.objectContaining({ flow: 'dashboard', step: 'dashboard' })
+    )
+  })
+
+  it('replays the current page_load when subscribing after it already fired', () => {
+    new DataLayer('digitalData')
+    window.digitalData!.page.set('flow', 'auth')
+    window.digitalData!.pageLoad({ step: 'callback' })
+
+    teardown = subscribeToPageViews(window.digitalData!, onPageView)
+
+    expect(onPageView).toHaveBeenCalledTimes(1)
+    expect(onPageView).toHaveBeenCalledWith(
+      'page_load',
+      expect.objectContaining({ flow: 'auth', step: 'callback' })
+    )
+  })
+
+  it('does not double-invoke when subscribed before the page_load fires', () => {
+    new DataLayer('digitalData')
+    teardown = subscribeToPageViews(window.digitalData!, onPageView)
+
+    window.digitalData!.pageLoad({ step: 'dashboard' })
+
+    expect(onPageView).toHaveBeenCalledTimes(1)
+  })
+
+  it('replays only the most recent page_load after multiple navigations', () => {
+    new DataLayer('digitalData')
+    window.digitalData!.page.set('flow', 'auth')
+    window.digitalData!.pageLoad({ step: 'callback' })
+    window.digitalData!.page.set('flow', 'dashboard')
+    window.digitalData!.pageLoad({ step: 'dashboard' })
+
+    teardown = subscribeToPageViews(window.digitalData!, onPageView)
+
+    expect(onPageView).toHaveBeenCalledTimes(1)
+    expect(onPageView).toHaveBeenCalledWith(
+      'page_load',
+      expect.objectContaining({ flow: 'dashboard', step: 'dashboard' })
+    )
+  })
+
+  it('does not invoke when no page_load has fired', () => {
+    new DataLayer('digitalData')
+    teardown = subscribeToPageViews(window.digitalData!, onPageView)
+
+    expect(onPageView).not.toHaveBeenCalled()
+  })
+
+  it('ignores PageViewed events without an eventName', () => {
+    new DataLayer('digitalData')
+    teardown = subscribeToPageViews(window.digitalData!, onPageView)
+
+    document.dispatchEvent(
+      new CustomEvent(window.digitalData!.eventTypes.PAGE_VIEWED!, { detail: {} })
+    )
+
+    expect(onPageView).not.toHaveBeenCalled()
+  })
+
+  it('returns a teardown that stops future page_load delivery', () => {
+    new DataLayer('digitalData')
+    const localTeardown = subscribeToPageViews(window.digitalData!, onPageView)
+
+    localTeardown()
+    window.digitalData!.pageLoad({ step: 'dashboard' })
+
+    expect(onPageView).not.toHaveBeenCalled()
   })
 })
