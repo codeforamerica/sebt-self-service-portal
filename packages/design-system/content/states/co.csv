@@ -151,14 +151,14 @@ Al crear una cuenta segura, el padre, madre o tutor principal registrado puede:"
 
 Al crear una cuenta segura, el padre, madre o tutor principal registrado puede:",Ready to Publish,"Figma, Code",
 S2 - Log In Disclaimer - Card Body 2,,"Request a new Summer EBT card if their child’s is lost, stolen, or damaged.
-Update your mailing address so you don’t miss important mail.
-Check benefits and card status for all enrolled children in your household.
-See the application status for any applications that you submitted.
-Opt-in to email communications about your benefits.","Request a new Summer EBT card if their child’s is lost, stolen, or damaged.
-Update your mailing address so you don’t miss important mail.
-Check benefits and card status for all enrolled children in your household.
-See the application status for any applications that you submitted.
-Opt-in to email communications about your benefits.","Pedir una nueva Tarjeta Summer EBT si la de tu niño/a se perdió, fue robada o está dañada.
+Update their mailing address so they don’t miss important mail.
+Check benefits and card status for all enrolled children in their household.
+See the application status for any applications that they've submitted.
+Opt-in to email communications about their benefits.","Request a new Summer EBT card if their child’s is lost, stolen, or damaged.
+Update your mailing address so they don’t miss important mail.
+Check benefits and card status for all enrolled children in their household.
+See the application status for any applications that they've submitted.
+Opt-in to email communications about their benefits.","Pedir una nueva Tarjeta Summer EBT si la de tu niño/a se perdió, fue robada o está dañada.
 
 Actualizar tu dirección de correspondencia para no perderte correo importante.
 
@@ -167,13 +167,9 @@ Revisar los beneficios y el estado de la tarjeta de todos los niños inscritos e
 Ver el estado de cualquier solicitud que hayas enviado.
 
 Inscribirte para recibir comunicaciones por correo electrónico sobre tus beneficios.","Pedir una nueva Tarjeta Summer EBT si la de tu niño/a se perdió, fue robada o está dañada.
-
 Actualizar tu dirección de correspondencia para no perderte correo importante.
-
 Revisar los beneficios y el estado de la tarjeta de todos los niños inscritos en tu hogar.
-
 Ver el estado de cualquier solicitud que hayas enviado.
-
 Inscribirte para recibir comunicaciones por correo electrónico sobre tus beneficios.",Ready to Publish,"Figma, Code",
 S2 - Portal Dashboard - Alert Address Updated,https://www.figma.com/design/32kDQ73MSbUNdAsVi8fQzF/CO-11-3-25-%F0%9F%9F%A2-Enrollment-Checker---Self-service-Portal--WORKING-?node-id=2035-1105&t=YXMlziLO2efq09F2-4,Your mailing address has been updated,Your mailing address has been updated,Tu dirección ha sido actualizada,Tu dirección ha sido actualizada,Ready to Publish,"Figma, Code",
 S2 - Portal Dashboard - Alert Address Title,,"A replacement for the card[s] ending in [[9999], [9999], and [9999],] will be sent to the following address","A replacement for the card[s] ending in [[9999], [9999], and [9999],] will be sent to the following address","Las tarjeta terminadas en [[9999], [9999], y [9999], van a ser remplazadas y enviadas a la siguiente dirección","Las tarjeta terminadas en [[9999], [9999], y [9999], van a ser remplazadas y enviadas a la siguiente dirección",Ready to Publish,"Figma, Code",
@@ -454,7 +450,7 @@ S8 - OTP Email Message - Body 3,,!N/A!,The code will expire in 10 minutes. Do no
 S8 - ID Proofing Optional ID Info - Title,,!N/A!,"Thank you for confirming your email. To keep your account safe, we need to check your identity",!N/A!,"Gracias por confirmar tu correo electrónico. Para mantener tu cuenta segura, necesitamos verificar tu identidad",!N/A!,!N/A!,
 S8 - ID Proofing Optional ID Info - Body,,!N/A!,"By providing your date of birth and one ID number, you consent to sharing this information with our third-party vendor. We will only use these once and not share or save them without your permission.  ",!N/A!,"Al proporcionar tu fecha de nacimiento y un número de identificación, das tu consentimiento para compartir esta información con nuestro proveedor externo. Solo utilizaremos estos datos una vez y no los compartiremos ni los guardaremos sin tu permiso.",!N/A!,!N/A!,
 S8 - ID Proofing Optional ID Info - Label DOB,,!N/A!,What's your date of birth?,!N/A!,¿Cuál es tu fecha de nacimiento?,!N/A!,!N/A!,
-S8 - ID Proofing Optional ID Info - Helper DOB,,!N/A!,"Enter your date of birth, not your student’s.",!N/A!,"Introduce tu fecha de nacimiento, no la de tu alumno.",!N/A!,!N/A!,
+S8 - ID Proofing Optional ID Info - Helper DOB,,!N/A!,"Enter your date of birth, not your student’s. If you’re under 18, contact us to get help managing your family’s DC SUN Bucks benefits.",!N/A!,"Ingresa tu fecha de nacimiento, no la de tu estudiante. Si eres menor de 18 años, contáctanos para obtener ayuda para administrar los beneficios de DC SUN Bucks de tu familia.",!N/A!,!N/A!,
 S8 - ID Proofing Optional ID Info - Label SNAP or TANF,,!N/A!,Do you receive SNAP or TANF?,!N/A!,¿Recibes SNAP o TANF?,!N/A!,!N/A!,
 S8 - ID Proofing Optional ID Info - Label ID,,!N/A!,Which ID number can you provide?,!N/A!,¿Qué número de identificación puedes proporcionar?,!N/A!,!N/A!,
 S8 - ID Proofing Optional ID Info - Helper ID,,!N/A!,!!!,!N/A!,!!!,!N/A!,!N/A!,
@@ -489,8 +485,6 @@ pasaporte extranjero
 u otra identificación con foto",!N/A!,!N/A!,
 S8 - Off-boarding - Body 3,,!N/A!,You may be able to skip this step by going back and typing in an ID number instead.,!N/A!,Es posible que puedas saltarte este paso si regresas a la página anterior y escribes un número de identificación en su lugar.,!N/A!,!N/A!,
 S8 - Off-boarding - Action,,!N/A!,Enter an ID number,!N/A!,Ingresa un número de identificación ,!N/A!,!N/A!,
-S8 - Off-boarding - Doc Verification Failed Title,,We couldn't verify your identity,We couldn't verify your identity,No pudimos verificar tu identidad,No pudimos verificar tu identidad,,,
-S8 - Off-boarding - Doc Verification Failed Body,,"Your document couldn't be verified. You can try again with a different ID, or contact us if you need help.","Your document couldn't be verified. You can try again with a different ID, or contact us if you need help.","No se pudo verificar tu documento. Puedes intentarlo de nuevo con una identificación diferente, o contactarnos si necesitas ayuda.","No se pudo verificar tu documento. Puedes intentarlo de nuevo con una identificación diferente, o contactarnos si necesitas ayuda.",,,
 S8 - Co-loaded Off-boarding - Title,https://www.figma.com/design/32kDQ73MSbUNdAsVi8fQzF/CO-11-3-25-%F0%9F%9F%A2-Enrollment-Checker---Self-service-Portal--WORKING-?node-id=9022-17492&t=YXMlziLO2efq09F2-4,"We're sorry, we aren't able to show your Summer EBT information ","We're sorry, we aren't able to show your DC SUN Bucks information ","Lo sentimos, no podemos mostrar tu información de Summer EBT","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks",Ready to Publish,"Figma, Code",
 S8 - Co-loaded Off-boarding - Body 1,,You can contact us if you need more help.,"You can go back to enter an ID number, or contact us if you need more help.",Puedes contactarnos si necesitas más ayuda.,Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,Ready to Publish,"Figma, Code",
 S8 - Co-loaded Off-boarding - Action 1,,Contact us,Contact us,Contáctanos,Contáctanos,Ready to Publish,"Figma, Code",
@@ -543,7 +537,7 @@ S11 - Maintenance Portal - Body 1,,"If you’re not sure what to do, you may ret
 S11 - Maintenance Portal - Action 1,,Go to cdhs.colorado.gov/summer-ebt,Go to sunbucks.dc.gov,Visita cdhs.colorado.gov/summer-ebt,Visita sunbucks.dc.gov,Ready to Publish,Figma,
 S11 - Maintenance Portal - Action 2,,Contact us,Contact us,Contáctanos,Contáctanos,Ready to Publish,,
 GLOBAL - Program Name,,Summer EBT,Summer EBT,Summer EBT,Summer EBT,Ready to Publish,"Figma, Code",
-GLOBAL - Banner Image Alt Text,,Logo: Colorado Deptartment of Human Services,Logo: Agency Name,Logo: Departamento de Servicios Humanos de Colorado,Logo: Nombre de la agencia,Ready to Publish,"Figma, Code",
+GLOBAL - Banner Image Alt Text,,Logo: Colorado Department of Human Services,Logo: Agency Name,Logo: Departamento de Servicios Humanos de Colorado,Logo: Nombre de la agencia,Ready to Publish,"Figma, Code",
 GLOBAL - Language,,!N/A!,Language,!N/A!,Idioma,!N/A!,!N/A!,
 GLOBAL - Label - Languages,,!N/A!,Languages,!N/A!,Idiomas,!N/A!,!N/A!,
 GLOBAL - Label - Translate,,Translate,Translate,Traducir,Traducir ,Ready to Publish,"Figma, Code",
@@ -739,6 +733,7 @@ VALIDATION - Required,,This is required,This is required,Esto es requerido,Esto 
 VALIDATION - Select Option,,Select an option,Select an option,Selecciona una opción,Selecciona una opción,Ready to Publish,"Figma, Code",
 VALIDATION - Enter Phone,,"Provide a valid phone number, including the area code","Provide a valid phone number, including the area code","Ingresa un número de teléfono válido, incluyendo el código de área","Ingresa un número de teléfono válido, incluyendo el código de área",Ready to Publish,"Figma, Code",
 VALIDATION - Enter ZIP,,Provide a valid ZIP Code with at least five numbers,Provide a valid ZIP Code with at least five numbers,Ingresa un código de área válido con por lo menos cinco números,Ingresa un código de área válido con por lo menos cinco números,Ready to Publish,"Figma, Code",
+VALIDATION - Valid Date,,Enter a valid date,Enter a valid date,Introduzca una fecha válida,Introduzca una fecha válida,Needs Translation,Figma,
 VALIDATION - Select Month,,Select a month,Select a month,Selecciona un mes,Selecciona un mes,Ready to Publish,"Figma, Code",
 VALIDATION - Enter Day,,Provide a day using one or two numbers,Provide a day using one or two numbers,Escribe un día usando uno o dos números,Escribe un día usando uno o dos números,Ready to Publish,"Figma, Code",
 VALIDATION - Enter Year,,Provide a year using four numbers,Provide a year using four numbers,Escribe un año usando cuatro números.,Escribe un año usando cuatro números.,Ready to Publish,"Figma, Code",
@@ -800,9 +795,40 @@ DEV - Alert Check Verification,,Checking verification status,Checking verificati
 DEV - Alert Verification Delay,,Verification is taking longer than expected. You can check the status or try again later.,Verification is taking longer than expected. You can check the status or try again later.,La verificación está tardando más de lo esperado. Puedes verificar el estado o intentarlo de nuevo más tarde.,La verificación está tardando más de lo esperado. Puedes verificar el estado o intentarlo de nuevo más tarde.,Ready to Publish,Code,
 DEV - Alert Still Checking,,We're still checking your document,We're still checking your document,Todavía estamos revisando tu documento.,Todavía estamos revisando tu documento,Ready to Publish,Code,
 DEV - Alert Verification Retry,,Unable to start document verification. Please try again.,Unable to start document verification. Please try again.,"No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.","No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.",Ready to Publish,Code,
-DEV - Enrollment Checker Error Response,,"We’re sorry, we can’t check if you need to apply right now. Try again later","We’re sorry, we can’t check if you need to apply right now. Try again later","Lo sentimos, por ahora no podemos revisar si necesitas aplicar. Vuelve a intentarlo más tarde","Lo sentimos, por ahora no podemos revisar si necesitas aplicar. Vuelve a intentarlo más tarde",Ready to Publish,Code,
+DEV - Enrollment Checker Error Response,,"We’re sorry, we can’t check if you need to apply right now. Try again later.","We’re sorry, we can’t check if you need to apply right now. Try again later.","Lo sentimos, por ahora no podemos revisar si necesitas aplicar. Vuelve a intentarlo más tarde.","Lo sentimos, por ahora no podemos revisar si necesitas aplicar. Vuelve a intentarlo más tarde.",Ready to Publish,Code,
 ,,,,,,,,
 ,,,,,,,,
 ,,,,,,,,
 ,,,,,,,,
 ,,,,,,,,
+New CO Footer Strings,,,,,,,,
+GLOBAL - Title FAQs,,,,,Frequently asked questions about Summer EBT,,,
+GLOBAL - Link FAQs,,,,,Learn more about Summer EBT and how to use the Summer EBT Online Portal.,,,
+GLOBAL - Title Contact Us,,,,,!N/A!,,,
+GLOBAL - Link Contact Us,,,,,Summer EBT Help Desk,,,
+GLOBAL - Link Contact Us 2,,,,,!N/A!,,,
+GLOBAL - Link Public Notices,,,,,General Notices,,,
+GLOBAL - Title Accessibility,,,,,Accessibility at CDHS,,,
+GLOBAL - Body Accessibility,,,,,!N/A!,,,
+GLOBAL - Link Accessibility,,,,,Digital accessibility statement,,,
+GLOBAL - Link Privacy Policy,,,,,Transparency Online,,,
+GLOBAL - Link Google Translate,,,,,!N/A!,,,
+GLOBAL - Link About,,,,,!N/A!,,,
+GLOBAL - Link Terms,,,,,!N/A!,,,
+GLOBAL - Copyrite,,,,,© 2026 State of Colorado,,,
+,,,,,,,,
+,,,,,,,,
+,,,,,,,,
+GLOBAL - Link FAQs,,,,,!N/A!,,,
+GLOBAL - Title Contact Us,,,,,Summer EBT Help Desk,,,
+GLOBAL - Link Contact Us,,,,,Email the Summer EBT Help Desk at,,,
+GLOBAL - Link Contact Us 2,,,,,cdhs_sebt_supportcenter@state.co.us,,,
+GLOBAL - Link Public Notices,,,,,General Notices,,,
+GLOBAL - Title Accessibility,,,,,Accessibility at CDHS,,,
+GLOBAL - Body Accessibility,,,,,"CDHS is committed to meeting members of our community where they are, and strives to provide all Coloradans with access to our programs, services, resources, activities and communication regardless of ability.",,,
+GLOBAL - Link Accessibility,,,,,Digital accessibility statement,,,
+GLOBAL - Link Privacy Policy,,,,,Transparency Online,,,
+GLOBAL - Link Google Translate,,,,,!N/A!,,,
+GLOBAL - Link About,,,,,!N/A!,,,
+GLOBAL - Link Terms,,,,,!N/A!,,,
+GLOBAL - Copyrite,,,,,© 2026 State of Colorado,,,

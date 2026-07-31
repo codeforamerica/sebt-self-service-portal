@@ -36,16 +36,16 @@ vi.mock('next/image', () => ({
   )
 }))
 
-vi.mock('next/link', () => ({
-  default: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
-    <a {...props}>{children}</a>
-  )
-}))
-
 describe('Header', () => {
   it('renders the state logo with the bannerImageAltText key for its alt text', () => {
     render(<Header state="dc" />)
 
     expect(screen.getByRole('img')).toHaveAttribute('alt', 'bannerImageAltText')
+  })
+
+  it('does not wrap the logo in a link', () => {
+    render(<Header state="dc" />)
+
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 })
