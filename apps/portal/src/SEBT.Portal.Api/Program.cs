@@ -166,6 +166,7 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices(builder.Configuration);
 builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
+builder.Services.AddPortalDbHealthCheck(builder.Configuration);
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
