@@ -425,8 +425,11 @@ describe('VerifyOtpForm', () => {
       await user.type(otpInput, TEST_OTP.valid)
       await user.click(confirmButton)
 
-      // Button should show loading state
-      expect(screen.getByRole('button', { name: /confirm\.\.\./i })).toBeInTheDocument()
+      // The label stays plain "Confirm"; busy state is exposed via aria-busy
+      // and the polite live region, not by mutating the accessible name
+      expect(confirmButton).toHaveAttribute('aria-busy', 'true')
+      expect(screen.queryByText(/confirm\.\.\./i)).not.toBeInTheDocument()
+      expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
     })
 
     it('should disable input during submission', async () => {
@@ -665,6 +668,36 @@ describe('VerifyOtpForm', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/new code has been sent/i)).toBeInTheDocument()
+      })
+    })
+
+    it('keeps the page processing state off while resend is in flight', async () => {
+      // Resend's busy state is local to the Resend button (its own disabled +
+      // countdown handling). The page-level treatment (fieldset fade, spinner,
+      // "Processing" announcement) belongs to the Verify submit only.
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      const { container } = renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /resend code/i })).toBeInTheDocument()
+      })
+
+      const otpInput = screen.getByRole('textbox', { name: /enter.*confirmation code/i })
+      await user.click(screen.getByRole('button', { name: /resend code/i }))
+
+      expect(otpInput).not.toBeDisabled()
+      expect(container.querySelector('fieldset.usa-fieldset')).not.toHaveClass('opacity-50')
+      expect(container.querySelector('.usa-spinner')).toBeNull()
+      expect(screen.queryByText('Processing')).not.toBeInTheDocument()
+
+      // Countdown behavior is unaffected
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /resend code \(30s\)/i })).toBeInTheDocument()
       })
     })
 

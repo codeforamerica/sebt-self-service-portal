@@ -120,19 +120,23 @@ describe('LoginForm', () => {
       })
     })
 
-    it('should show loading state during submission', async () => {
+    it('should show the processing state during submission', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<LoginForm />)
+      const { container } = renderWithProviders(<LoginForm />)
 
       const emailInput = screen.getByRole('textbox', { name: /enter your email address/i })
-      const submitButton = screen.getByRole('button', { name: /continue/i })
+      const submitButton = screen.getByRole('button', { name: 'Continue' })
 
       await user.type(emailInput, TEST_EMAILS.success)
       await user.click(submitButton)
 
-      // Button should show loading state (Continue...)
-      // i18n key: common.continue → "Continue"
-      expect(screen.getByRole('button', { name: /continue\.\.\./i })).toBeInTheDocument()
+      // The label stays plain "Continue"; busy state is exposed via aria-busy
+      // and the polite live region, not by mutating the accessible name
+      expect(submitButton).toHaveAttribute('aria-busy', 'true')
+      expect(submitButton).toBeDisabled()
+      expect(screen.queryByText('Continue...')).not.toBeInTheDocument()
+      expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+      expect(container.querySelector('fieldset.usa-fieldset')).toHaveClass('opacity-50')
     })
 
     it('should disable input during submission', async () => {
@@ -145,7 +149,7 @@ describe('LoginForm', () => {
       await user.type(emailInput, TEST_EMAILS.success)
       await user.click(submitButton)
 
-      // Input should be disabled while loading
+      // Input should be disabled while loading (via the surrounding fieldset)
       expect(emailInput).toBeDisabled()
     })
   })

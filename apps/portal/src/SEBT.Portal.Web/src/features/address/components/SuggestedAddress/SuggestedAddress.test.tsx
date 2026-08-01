@@ -477,4 +477,39 @@ describe('SuggestedAddress', () => {
 
     expect(screen.getByText(/asterisks .* indicate a required field/i)).toBeInTheDocument()
   })
+
+  it('shows the processing state while the address update is in flight', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    server.use(
+      http.put('/api/household/address', async () => {
+        await gate
+        return HttpResponse.json({ status: 'valid' })
+      })
+    )
+
+    const { container, user } = renderSuggestedAddress()
+
+    const continueButton = screen.getByRole('button', { name: 'Continue' })
+    await user.click(continueButton)
+
+    await waitFor(() => expect(continueButton).toHaveAttribute('aria-busy', 'true'))
+
+    // The label stays "Continue"; no dev-namespace "Loading..." swap
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+    expect(continueButton).toBeDisabled()
+    expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
+
+    // Radios disable through the fieldset, which also fades
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toBeDisabled()
+    }
+    expect(container.querySelector('fieldset.usa-fieldset')).toHaveClass('opacity-50')
+    expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+
+    release()
+    await waitFor(() => expect(mockPush).toHaveBeenCalled())
+  })
 })

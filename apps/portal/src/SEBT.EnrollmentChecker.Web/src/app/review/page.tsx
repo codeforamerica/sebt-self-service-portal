@@ -54,6 +54,8 @@ export default function Page() {
     }
   }
 
+  // The interstitial IS this flow's processing treatment: the whole review page
+  // is replaced while the check runs, so ReviewPage carries no busy props.
   if (isSubmitting) {
     return (
       <div className="grid-container maxw-tablet">
@@ -77,7 +79,7 @@ export default function Page() {
             : tDev('enrollmentCheckerErrorResponse')}
         </Alert>
       )}
-      <ReviewPage onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <ReviewPage onSubmit={handleSubmit} />
     </>
   )
 }

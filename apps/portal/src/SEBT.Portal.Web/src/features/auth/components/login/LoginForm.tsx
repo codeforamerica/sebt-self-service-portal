@@ -5,7 +5,13 @@ import { useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField } from '@sebt/design-system'
+import {
+  Alert,
+  Button,
+  InputField,
+  ProcessingFieldset,
+  ProcessingIndicator
+} from '@sebt/design-system'
 
 import { RequestOtpRequestSchema, useRequestOtp } from '../../api'
 
@@ -74,29 +80,34 @@ export function LoginForm() {
         </Alert>
       )}
 
-      <InputField
-        label={tLogin('labelEmail')}
-        type="email"
-        name="email"
-        autoComplete="email"
-        isRequired
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        onBlur={() => setFieldErrorKey(validateEmail(email))}
-        disabled={requestOtp.isPending}
-        className="maxw-full"
-        {...(fieldErrorKey ? { error: tValidation(fieldErrorKey) } : {})}
-      />
+      <ProcessingFieldset isProcessing={requestOtp.isPending}>
+        <InputField
+          label={tLogin('labelEmail')}
+          type="email"
+          name="email"
+          autoComplete="email"
+          isRequired
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onBlur={() => setFieldErrorKey(validateEmail(email))}
+          className="maxw-full"
+          {...(fieldErrorKey ? { error: tValidation(fieldErrorKey) } : {})}
+        />
+      </ProcessingFieldset>
 
-      <Button
-        type="submit"
-        isLoading={requestOtp.isPending}
-        loadingText={`${t('continue')}...`}
-        className="margin-top-3"
-        data-analytics-cta="login_cta"
-      >
-        {t('continue')}
-      </Button>
+      <div className="margin-top-3 display-flex flex-row flex-align-center gap-2">
+        <Button
+          type="submit"
+          isLoading={requestOtp.isPending}
+          data-analytics-cta="login_cta"
+        >
+          {t('continue')}
+        </Button>
+        <ProcessingIndicator
+          isProcessing={requestOtp.isPending}
+          label={t('processing')}
+        />
+      </div>
     </form>
   )
 }
