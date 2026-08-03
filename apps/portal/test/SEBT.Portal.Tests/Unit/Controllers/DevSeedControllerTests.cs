@@ -56,7 +56,8 @@ public class DevSeedControllerTests
 
     private DevSeedController CreateController(bool enableDevEndpoints)
     {
-        var settings = Options.Create(new SeedingSettings { EnableDevEndpoints = enableDevEndpoints });
+        var settings = Substitute.For<IOptionsSnapshot<SeedingSettings>>();
+        settings.Value.Returns(new SeedingSettings { EnableDevEndpoints = enableDevEndpoints });
         return new DevSeedController(_databaseSeeder, settings, _configuration);
     }
 }

@@ -17,7 +17,7 @@ namespace SEBT.Portal.Api.Controllers.Diagnostics;
 [ApiExplorerSettings(IgnoreApi = true)]
 public class DevSeedController(
     IDatabaseSeeder databaseSeeder,
-    IOptions<SeedingSettings> seedingSettings,
+    IOptionsSnapshot<SeedingSettings> seedingSettings,
     IConfiguration configuration) : ControllerBase
 {
     /// <summary>
