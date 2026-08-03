@@ -2,7 +2,6 @@
 
 import { supportedLanguages } from '../../lib/i18n'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { LanguageSelector } from './LanguageSelector'
 import type { HeaderProps } from './types'
@@ -29,21 +28,14 @@ export function Header({ state = 'dc' }: HeaderProps) {
       <div className="display-flex flex-justify flex-align-center width-full padding-y-105 padding-x-2">
         <div className="usa-navbar border-0">
           <div className="usa-logo margin-left-0">
-            <Link
-              href="/"
-              title="Home"
-              aria-label="Home"
-              className="display-flex flex-align-center"
-            >
-              <Image
-                src={`/images/states/${state}/logo.svg`}
-                alt={t('bannerImageAltText')}
-                width={width}
-                height={height}
-                priority
-                className="maxw-full height-auto maxh-6"
-              />
-            </Link>
+            <Image
+              src={`/images/states/${state}/logo.svg`}
+              alt={t('bannerImageAltText')}
+              width={width}
+              height={height}
+              priority
+              className="maxw-full height-auto maxh-6"
+            />
           </div>
         </div>
 
