@@ -31,6 +31,14 @@ public class SeedingSettings
     public bool Enabled { get; set; }
 
     /// <summary>
+    /// When true, exposes local/CI-only diagnostic endpoints such as
+    /// <c>POST /api/dev/seed/reseed/{scenarioName}</c>.
+    /// Default: false. Enable only for localhost and CI; never on deployed hosts,
+    /// including public "dev" environments that still use ASPNETCORE_ENVIRONMENT=Development.
+    /// </summary>
+    public bool EnableDevEndpoints { get; set; }
+
+    /// <summary>
     /// The state code (e.g., "dc", "co") from the STATE environment variable.
     /// Used to conditionally seed state-specific scenarios.
     /// </summary>

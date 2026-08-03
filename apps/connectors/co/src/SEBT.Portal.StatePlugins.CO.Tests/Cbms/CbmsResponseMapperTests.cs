@@ -176,6 +176,7 @@ public class CbmsResponseMapperTests
 
     [Theory]
     [InlineData("AI", ApplicationStatus.Pending)]
+    [InlineData("AM", ApplicationStatus.Pending)]
     [InlineData("PD", ApplicationStatus.Pending)]
     [InlineData("PG", ApplicationStatus.Pending)]
     [InlineData("PI", ApplicationStatus.Pending)]
@@ -183,7 +184,6 @@ public class CbmsResponseMapperTests
     [InlineData("PS", ApplicationStatus.Pending)]
     [InlineData("PW", ApplicationStatus.Pending)]
     [InlineData("RC", ApplicationStatus.Pending)]
-    [InlineData("AM", ApplicationStatus.Unknown)]
     [InlineData("DU", ApplicationStatus.Unknown)]
     [InlineData("XYZZY", ApplicationStatus.Unknown)]
     [InlineData("", ApplicationStatus.Unknown)]
@@ -210,11 +210,11 @@ public class CbmsResponseMapperTests
     [InlineData("DE", ApplicationStatus.Denied)]
     [InlineData("OT", ApplicationStatus.Denied)]
     [InlineData("AI", ApplicationStatus.Pending)]
+    [InlineData("AM", ApplicationStatus.Pending)]
     [InlineData("PD", ApplicationStatus.Pending)]
     [InlineData("PE", ApplicationStatus.Pending)]
     [InlineData("PG", ApplicationStatus.Pending)]
     [InlineData("PS", ApplicationStatus.Pending)]
-    [InlineData("AM", ApplicationStatus.Unknown)]
     [InlineData("XYZZY", ApplicationStatus.Unknown)]
     [InlineData("", ApplicationStatus.Unknown)]
     [InlineData(null, ApplicationStatus.Unknown)]
@@ -561,7 +561,6 @@ public class CbmsResponseMapperTests
     }
 
     [Theory]
-    [InlineData("AM")]
     [InlineData("XYZZY")]
     public void MapToHouseholdData_logs_unmapped_case_status_tokens(string raw)
     {
@@ -587,7 +586,6 @@ public class CbmsResponseMapperTests
     }
 
     [Theory]
-    [InlineData("AM")]
     [InlineData("DU")]
     [InlineData("XYZZY")]
     public void MapToHouseholdData_logs_unmapped_application_status_tokens(string raw)

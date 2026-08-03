@@ -1,20 +1,23 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Api.Controllers.Diagnostics;
 
 /// <summary>
 /// Development helpers for restoring individual seed personas between mutable E2E suites.
-/// Available only when ASPNETCORE_ENVIRONMENT is Development.
+/// Available only when <see cref="SeedingSettings.EnableDevEndpoints"/> is true
+/// (local and CI; not deployed lower environments). Excluded from OpenAPI.
 /// </summary>
 [ApiController]
 [Route("api/dev/seed")]
 [AllowAnonymous]
-[Tags("Diagnostics")]
+[ApiExplorerSettings(IgnoreApi = true)]
 public class DevSeedController(
     IDatabaseSeeder databaseSeeder,
-    IWebHostEnvironment environment,
+    IOptionsSnapshot<SeedingSettings> seedingSettings,
     IConfiguration configuration) : ControllerBase
 {
     /// <summary>
@@ -28,7 +31,7 @@ public class DevSeedController(
         [FromRoute] string scenarioName,
         CancellationToken cancellationToken)
     {
-        if (!environment.IsDevelopment())
+        if (!seedingSettings.Value.EnableDevEndpoints)
         {
             return NotFound();
         }
