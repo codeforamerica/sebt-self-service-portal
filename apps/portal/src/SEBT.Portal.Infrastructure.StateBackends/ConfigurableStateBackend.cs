@@ -13,6 +13,7 @@ public class ConfigurableStateBackend :
     IHouseholdLookupBackend,
     ICardReplacementBackend,
     IAddressUpdateBackend,
+    IEnrollmentCheckBackend,
     IStateBackendHealth
 {
     private readonly StateBackendConfiguration _configuration;
@@ -41,6 +42,90 @@ public class ConfigurableStateBackend :
     // Capability guards derive from the loaded configuration; capabilities are not part of the ports.
     private StateBackendCapabilities Capabilities =>
         _configuration.Capabilities;
+
+    public async Task<EnrollmentCheckResult> CheckEnrollmentAsync(EnrollmentCheckRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Capabilities.EnrollmentCheck)
+        {
+            throw new NotSupportedException("Enrollment check is not supported by the state backend.");
+        }
+
+        EnrollmentCheckOperationConfig operation = _configuration.Operations.EnrollmentCheck
+            ?? throw new NotSupportedException("Enrollment check is not configured for the state backend.");
+
+        EnrollmentRequestBinding binding = operation.Request
+            ?? throw new NotSupportedException("Enrollment check has no request binding configured.");
+
+        EnrollmentResponseMapping mapping = operation.Response
+            ?? throw new NotSupportedException("Enrollment check has no response mapping configured.");
+
+        return operation.CallMode switch
+        {
+            EnrollmentCallMode.Batch =>
+                await CheckEnrollmentBatchAsync(operation, binding, mapping, request, cancellationToken)
+                    .ConfigureAwait(false),
+            EnrollmentCallMode.PerChild =>
+                await CheckEnrollmentPerChildAsync(operation, binding, mapping, request, cancellationToken)
+                    .ConfigureAwait(false),
+            _ => throw new NotSupportedException(
+                $"Unsupported enrollment callMode '{operation.CallMode}'."),
+        };
+    }
+
+    // Batch fan-out: one call carries every child as a correlated row; verdicts fan in by index.
+    private async Task<EnrollmentCheckResult> CheckEnrollmentBatchAsync(
+        EnrollmentCheckOperationConfig operation,
+        EnrollmentRequestBinding binding,
+        EnrollmentResponseMapping mapping,
+        EnrollmentCheckRequest request,
+        CancellationToken cancellationToken)
+    {
+        using HttpRequestMessage httpRequest = BuildRequest(operation);
+
+        JsonArray rows = EnrollmentRequestBuilder.BuildRows(binding, request);
+        httpRequest.Content = new StringContent(
+            rows.ToJsonString(), Encoding.UTF8, "application/json");
+
+        using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
+            .ConfigureAwait(false);
+
+        return EnrollmentResponseCorrelator.Correlate(mapping, document.RootElement, request);
+    }
+
+    // PerChild fan-out: one call per child reading a single result object, aggregated in request order.
+    private async Task<EnrollmentCheckResult> CheckEnrollmentPerChildAsync(
+        EnrollmentCheckOperationConfig operation,
+        EnrollmentRequestBinding binding,
+        EnrollmentResponseMapping mapping,
+        EnrollmentCheckRequest request,
+        CancellationToken cancellationToken)
+    {
+        var results = new List<EnrollmentChildResult>(request.Children.Count);
+        string? message = null;
+
+        foreach (EnrollmentChild child in request.Children)
+        {
+            using HttpRequestMessage httpRequest = BuildRequest(operation);
+
+            JsonObject body = EnrollmentRequestBuilder.BuildSingleChildBody(binding, child);
+            httpRequest.Content = new StringContent(
+                body.ToJsonString(), Encoding.UTF8, "application/json");
+
+            using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
+                .ConfigureAwait(false);
+
+            results.Add(EnrollmentResponseCorrelator.EvaluateSingleResult(
+                mapping, document.RootElement, child.CheckId));
+
+            // The result-level message is a single carrier over N per-child calls: the first
+            // non-null one wins (only batch backends configure a messageField today).
+            message ??= EnrollmentResponseCorrelator.ReadResultMessage(mapping, document.RootElement);
+        }
+
+        return new EnrollmentCheckResult(results, message);
+    }
 
     public async Task<StateBackendHealth> GetHealthAsync(CancellationToken cancellationToken = default)
     {
