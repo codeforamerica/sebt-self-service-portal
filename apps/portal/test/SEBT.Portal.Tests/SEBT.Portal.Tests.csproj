@@ -38,6 +38,7 @@
         <PackageReference Include="xunit" Version="2.9.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
         <PackageReference Include="Xunit.SkippableFact" Version="1.5.61" />
+        <PackageReference Include="YamlDotNet" Version="18.1.0" />
     </ItemGroup>
 
   <!-- State connector contract lives in-repo (apps/connectors/state). Reference the project
@@ -72,6 +73,7 @@
         <Content Include="Integration\Fixtures\*.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <EmbeddedResource Include="Unit/Infrastructure/StateBackends/ConfigSamples/*.yaml" />
     </ItemGroup>
 
     <ItemGroup>
