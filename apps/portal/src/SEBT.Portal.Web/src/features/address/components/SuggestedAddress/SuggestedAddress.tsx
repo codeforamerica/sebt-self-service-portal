@@ -179,12 +179,13 @@ export function SuggestedAddress() {
       <ProcessingFieldset
         isProcessing={updateAddress.isPending}
         className="margin-top-3"
+        legend={
+          <>
+            {t('suggestedLabelSelect')}
+            <span className="text-secondary-dark"> *</span>
+          </>
+        }
       >
-        <legend className="usa-legend">
-          {t('suggestedLabelSelect')}
-          <span className="text-secondary-dark"> *</span>
-        </legend>
-
         <div className="usa-radio margin-top-2">
           <input
             className="usa-radio__input"

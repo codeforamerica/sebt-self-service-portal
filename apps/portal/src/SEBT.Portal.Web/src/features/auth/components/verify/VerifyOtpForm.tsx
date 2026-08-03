@@ -169,7 +169,11 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
       {/* Only the Verify submit drives the page processing state. Resend keeps
           its busy state local (own disabled + countdown), so the fieldset wraps
           just the code input and both buttons stay outside it. */}
-      <ProcessingFieldset isProcessing={isSubmitting}>
+      <ProcessingFieldset
+        isProcessing={isSubmitting}
+        legend={tLogin('verifyLabelCode')}
+        legendHidden
+      >
         <InputField
           label={tLogin('verifyLabelCode')}
           type="text"

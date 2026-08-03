@@ -469,7 +469,10 @@ describe('SuggestedAddress', () => {
   it('renders the radio group legend with required indicator', () => {
     renderSuggestedAddress()
 
-    expect(screen.getByText(/select the address to use/i)).toBeInTheDocument()
+    const group = screen.getByRole('group', { name: /select the address to use/i })
+    const legend = group.querySelector('legend')
+    expect(legend).toHaveClass('usa-legend')
+    expect(legend).toHaveTextContent('*')
   })
 
   it('renders "Asterisks (*) indicate a required field" note', () => {

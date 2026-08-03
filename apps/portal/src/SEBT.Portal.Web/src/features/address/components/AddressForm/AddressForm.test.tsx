@@ -177,6 +177,13 @@ describe('AddressForm', () => {
     expect(line2).not.toHaveAttribute('aria-required', 'true')
   })
 
+  it('names the address fieldset group for assistive tech', () => {
+    renderForm()
+
+    const group = screen.getByRole('group', { name: 'Tell us where to safely send your mail' })
+    expect(group.querySelector('legend')).toHaveClass('usa-sr-only')
+  })
+
   // --- State-specific defaults ---
 
   it('shows quadrant hint for DC', () => {

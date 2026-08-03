@@ -101,6 +101,13 @@ describe('LoginForm', () => {
       const submitButton = screen.getByRole('button', { name: /continue/i })
       expect(submitButton).toHaveAttribute('data-analytics-cta', 'login_cta')
     })
+
+    it('names the fieldset group after the email label for assistive tech', () => {
+      renderWithProviders(<LoginForm />)
+
+      const group = screen.getByRole('group', { name: 'Enter your email address' })
+      expect(group.querySelector('legend')).toHaveClass('usa-sr-only')
+    })
   })
 
   describe('Form Submission', () => {

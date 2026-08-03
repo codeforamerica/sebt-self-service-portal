@@ -125,6 +125,20 @@ describe('VerifyOtpForm', () => {
         expect(resendButton).toHaveAttribute('type', 'button')
       })
     })
+
+    it('names the fieldset group after the code label for assistive tech', async () => {
+      renderWithProviders(
+        <VerifyOtpForm
+          email={TEST_EMAILS.success}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      await waitFor(() => {
+        const group = screen.getByRole('group', { name: 'Enter the 6 digit confirmation code' })
+        expect(group.querySelector('legend')).toHaveClass('usa-sr-only')
+      })
+    })
   })
 
   describe('Form Submission', () => {

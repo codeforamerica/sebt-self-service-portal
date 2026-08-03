@@ -335,7 +335,11 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
 
         {/* Error surfaces and the button row sit outside this wrapper: the 50%
             fade composites its whole subtree, and they must stay full-strength. */}
-        <ProcessingFieldset isProcessing={isSubmitting}>
+        <ProcessingFieldset
+          isProcessing={isSubmitting}
+          legend={t('titleYour')}
+          legendHidden
+        >
           <AddressAutocomplete
             label={tCommon('streetAddress')}
             {...(currentState === 'dc' ? { hint: tCommon('helperStreetAddress') } : {})}

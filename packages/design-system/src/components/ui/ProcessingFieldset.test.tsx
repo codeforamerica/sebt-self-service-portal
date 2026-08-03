@@ -6,7 +6,7 @@ import { ProcessingFieldset } from './ProcessingFieldset';
 describe('ProcessingFieldset', () => {
   it('renders children inside a usa-fieldset', () => {
     const { container } = render(
-      <ProcessingFieldset isProcessing={false}>
+      <ProcessingFieldset isProcessing={false} legend="Contact details">
         <input aria-label="Email" />
       </ProcessingFieldset>
     );
@@ -16,9 +16,62 @@ describe('ProcessingFieldset', () => {
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
   });
 
+  it('renders the legend as the first child of the fieldset', () => {
+    const { container } = render(
+      <ProcessingFieldset isProcessing={false} legend="Contact details">
+        <input aria-label="Email" />
+      </ProcessingFieldset>
+    );
+
+    const legend = container.querySelector('fieldset')?.firstElementChild;
+    expect(legend?.tagName).toBe('LEGEND');
+    expect(legend).toHaveClass('usa-legend');
+    expect(legend).toHaveTextContent('Contact details');
+  });
+
+  it('names the fieldset group via the legend', () => {
+    render(
+      <ProcessingFieldset isProcessing={false} legend="Contact details">
+        <input aria-label="Email" />
+      </ProcessingFieldset>
+    );
+
+    expect(screen.getByRole('group')).toHaveAccessibleName('Contact details');
+  });
+
+  it('visually hides the legend but keeps the accessible name when legendHidden', () => {
+    render(
+      <ProcessingFieldset isProcessing={false} legend="Contact details" legendHidden>
+        <input aria-label="Email" />
+      </ProcessingFieldset>
+    );
+
+    const legend = screen.getByText('Contact details');
+    expect(legend).toHaveClass('usa-sr-only');
+    expect(legend).not.toHaveClass('usa-legend');
+    expect(screen.getByRole('group')).toHaveAccessibleName('Contact details');
+  });
+
+  it('accepts rich legend content', () => {
+    render(
+      <ProcessingFieldset
+        isProcessing={false}
+        legend={
+          <>
+            Choose one<span> *</span>
+          </>
+        }
+      >
+        <input aria-label="Email" />
+      </ProcessingFieldset>
+    );
+
+    expect(screen.getByRole('group')).toHaveAccessibleName(/choose one/i);
+  });
+
   it('leaves descendant controls enabled and unfaded while idle', () => {
     const { container } = render(
-      <ProcessingFieldset isProcessing={false}>
+      <ProcessingFieldset isProcessing={false} legend="Contact details">
         <input aria-label="Email" />
       </ProcessingFieldset>
     );
@@ -30,7 +83,7 @@ describe('ProcessingFieldset', () => {
 
   it('disables descendant controls through the fieldset while processing', () => {
     render(
-      <ProcessingFieldset isProcessing>
+      <ProcessingFieldset isProcessing legend="Contact details">
         <input aria-label="Email" />
         <button type="submit">Continue</button>
       </ProcessingFieldset>
@@ -42,7 +95,7 @@ describe('ProcessingFieldset', () => {
 
   it('fades to 50% opacity while processing', () => {
     const { container } = render(
-      <ProcessingFieldset isProcessing>
+      <ProcessingFieldset isProcessing legend="Contact details">
         <input aria-label="Email" />
       </ProcessingFieldset>
     );
@@ -52,7 +105,7 @@ describe('ProcessingFieldset', () => {
 
   it('merges a custom className', () => {
     const { container } = render(
-      <ProcessingFieldset isProcessing={false} className="margin-top-3">
+      <ProcessingFieldset isProcessing={false} legend="Contact details" className="margin-top-3">
         <input aria-label="Email" />
       </ProcessingFieldset>
     );

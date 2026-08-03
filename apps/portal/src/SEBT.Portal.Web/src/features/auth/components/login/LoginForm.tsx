@@ -80,7 +80,11 @@ export function LoginForm() {
         </Alert>
       )}
 
-      <ProcessingFieldset isProcessing={requestOtp.isPending}>
+      <ProcessingFieldset
+        isProcessing={requestOtp.isPending}
+        legend={tLogin('labelEmail')}
+        legendHidden
+      >
         <InputField
           label={tLogin('labelEmail')}
           type="email"
