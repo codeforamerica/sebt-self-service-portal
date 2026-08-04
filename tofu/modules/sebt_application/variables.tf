@@ -110,6 +110,12 @@ variable "project" {
   default     = "sebt-portal"
 }
 
+variable "project_short" {
+  type        = string
+  description = "Abbreviated project name for resource naming."
+  default     = "sebt"
+}
+
 variable "public_subnets" {
   type        = list(string)
   description = "List of public subnet IDs."
