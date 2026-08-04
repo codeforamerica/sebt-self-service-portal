@@ -65,6 +65,15 @@ describe('MaintenancePageContent (DC portal)', () => {
     const row = screen.getByRole('link', { name: 'maintenancePortal:action1' }).parentElement
     expect(row?.className).not.toContain('flex-column')
   })
+
+  it('neutralizes the USWDS default trailing margin so the row fits at mobile width', () => {
+    // usa-button carries a default margin-right; combined with the gap between the
+    // buttons it pushed the row ~5px past a 375px viewport, wrapping the contact
+    // button onto a second line (the S.11 mockups show a single row on mobile).
+    renderDc()
+    const contact = screen.getByRole('link', { name: 'maintenancePortal:action2' })
+    expect(contact).toHaveClass('margin-right-0')
+  })
 })
 
 describe('MaintenancePageContent (CO checker)', () => {

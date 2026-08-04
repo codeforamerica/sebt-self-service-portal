@@ -47,7 +47,9 @@ export function MaintenancePageContent({ namespace, state }: MaintenancePageCont
           </Link>
           <Link
             href={links.help.contactUs}
-            className={`usa-button${stacked ? ' margin-top-2' : ''}`}
+            // margin-right-0 clears the usa-button default trailing margin, which
+            // otherwise pushes the row past a 375px viewport and wraps this button
+            className={`usa-button${stacked ? ' margin-top-2' : ' margin-right-0'}`}
           >
             {t('action2')}
           </Link>
