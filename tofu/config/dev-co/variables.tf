@@ -27,6 +27,18 @@ variable "oidc_authorization_endpoint" {
   default     = "https://auth.pingone.com/e8e64475-39e1-43de-964b-3bc2e835a2f5/as/authorize"
 }
 
+variable "enable_preview_keycloak" {
+  type        = bool
+  description = "Deploy the shared Keycloak IdP for non-production OIDC."
+  default     = true
+}
+
+variable "keycloak_image_tag" {
+  type        = string
+  description = "Image tag for the shared Keycloak service."
+  default     = "latest"
+}
+
 variable "private_subnets" {
   type        = list(string)
   description = "List of private subnet CIDR blocks."

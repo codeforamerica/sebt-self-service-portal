@@ -82,12 +82,15 @@ export function proxy(request: NextRequest) {
   const fontSrc = "'self' https://fonts.gstatic.com https://verify-v2.socure.com"
   const imgSrc = "'self' data: https: https://www.google-analytics.com"
 
+  const oidcIssuerOrigin = process.env.OIDC_ISSUER_ORIGIN
+
   const connectSrc = join([
     "'self'",
     'https://www.google-analytics.com',
     'https://*.google-analytics.com',
     'https://www.googletagmanager.com',
     'https://auth.pingone.com',
+    !!oidcIssuerOrigin && oidcIssuerOrigin,
     'https://*.socure.com',
     'https://*.socure.io',
     'https://browser-intake-datadoghq.com',
@@ -97,6 +100,8 @@ export function proxy(request: NextRequest) {
     hasSiteImprove && 'https://siteimproveanalytics.io',
     isDev && 'ws://localhost:* http://localhost:*'
   ])
+
+  const formAction = join(["'self'", !!oidcIssuerOrigin && oidcIssuerOrigin])
 
   const directives = [
     `default-src 'self'`,
@@ -110,7 +115,7 @@ export function proxy(request: NextRequest) {
     `worker-src 'self'`,
     `frame-ancestors 'none'`,
     `base-uri 'self'`,
-    `form-action 'self'`,
+    `form-action ${formAction}`,
     `object-src 'none'`,
     !isDev && isHttps && 'upgrade-insecure-requests'
   ].filter(Boolean)

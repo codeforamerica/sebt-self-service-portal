@@ -43,6 +43,20 @@ def merge_environment(
     return [{"name": key, "value": value} for key, value in sorted(merged.items())]
 
 
+def strip_secret_names(
+    secrets: list[dict] | None,
+    names_to_strip: set[str],
+) -> list[dict]:
+    """Remove secret entries by name so env overrides can replace them safely."""
+    if not names_to_strip:
+        return list(secrets or [])
+    return [
+        item
+        for item in (secrets or [])
+        if item.get("name") not in names_to_strip
+    ]
+
+
 def is_auxiliary_container(name: str) -> bool:
     lowered = name.lower()
     return any(marker in lowered for marker in AUXILIARY_CONTAINER_MARKERS)
@@ -76,27 +90,49 @@ def strip_auxiliary_containers(
     return kept
 
 
-def main() -> int:
-    if len(sys.argv) < 4:
-        print(
+def parse_args(argv: list[str]) -> tuple[dict[str, str], str, str, bool, str | None, set[str]]:
+    if len(argv) < 4:
+        raise ValueError(
             "Usage: merge_task_definition.py <env-overrides-json> <image> <family> "
-            "[--strip-sidecars] [container-name]",
-            file=sys.stderr,
+            "[--strip-sidecars] [--strip-secret-names <json-array>] [container-name]"
         )
-        return 1
 
-    overrides = json.loads(sys.argv[1])
-    image = sys.argv[2]
-    family = sys.argv[3]
-    remaining_args = sys.argv[4:]
+    overrides = json.loads(argv[1])
+    image = argv[2]
+    family = argv[3]
+    remaining = argv[4:]
 
     strip_sidecars = False
     container_name: str | None = None
-    for arg in remaining_args:
+    strip_names: set[str] = set()
+
+    i = 0
+    while i < len(remaining):
+        arg = remaining[i]
         if arg == "--strip-sidecars":
             strip_sidecars = True
+            i += 1
+        elif arg == "--strip-secret-names":
+            if i + 1 >= len(remaining):
+                raise ValueError("--strip-secret-names requires a JSON array argument")
+            parsed = json.loads(remaining[i + 1])
+            if not isinstance(parsed, list):
+                raise ValueError("--strip-secret-names must be a JSON array of strings")
+            strip_names = {str(name) for name in parsed}
+            i += 2
         else:
             container_name = arg
+            i += 1
+
+    return overrides, image, family, strip_sidecars, container_name, strip_names
+
+
+def main() -> int:
+    try:
+        overrides, image, family, strip_sidecars, container_name, strip_names = parse_args(sys.argv)
+    except (ValueError, json.JSONDecodeError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
     described = json.load(sys.stdin)
     task_definition = described.get("taskDefinition", described)
@@ -125,6 +161,8 @@ def main() -> int:
             container.get("environment"),
             overrides,
         )
+        if strip_names:
+            container["secrets"] = strip_secret_names(container.get("secrets"), strip_names)
         updated = True
         if container_name is not None:
             break
@@ -136,6 +174,8 @@ def main() -> int:
             container.get("environment"),
             overrides,
         )
+        if strip_names:
+            container["secrets"] = strip_secret_names(container.get("secrets"), strip_names)
 
     json.dump(cleaned, sys.stdout)
     return 0

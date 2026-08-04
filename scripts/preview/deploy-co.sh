@@ -23,11 +23,17 @@ Environment:
   ECR_API_REPOSITORY_URL           API image repository (required)
   ECR_WEB_REPOSITORY_URL           Web image repository (required)
   AWS_REGION                       AWS region (default: us-east-1)
+  PREVIEW_KEYCLOAK_HOSTNAME        Shared Keycloak base URL (default: https://auth.<DOMAIN>)
+  PREVIEW_OIDC_CLIENT_ID           Keycloak login client id (default: sebt-portal)
+  PREVIEW_OIDC_CLIENT_SECRET       Keycloak login client secret (default: realm preview secret)
+  PREVIEW_OIDC_STEP_UP_CLIENT_ID   Keycloak step-up client id (default: sebt-portal-stepup)
+  PREVIEW_OIDC_STEP_UP_CLIENT_SECRET Keycloak step-up secret (default: realm preview secret)
 
 Notes:
   Web preview hosts are aliased to the shared CloudFront distribution (which
   already reaches the internal web ALB). API preview hosts still alias to the
   API ALB; the Next.js server reaches them via BACKEND_URL.
+  Preview stacks use the shared Keycloak IdP for OIDC.
 EOF
 }
 
@@ -64,6 +70,13 @@ BASE_WEB_SERVICE="$(discover_base_service web "${WEB_CLUSTER}")"
 
 API_HOST="api-pr-${PR_NUMBER}.${DOMAIN}"
 WEB_HOST="pr-${PR_NUMBER}.${DOMAIN}"
+KEYCLOAK_HOSTNAME="${PREVIEW_KEYCLOAK_HOSTNAME:-https://auth.${DOMAIN}}"
+KEYCLOAK_DISCOVERY="${KEYCLOAK_HOSTNAME}/realms/sebt/.well-known/openid-configuration"
+KEYCLOAK_AUTHORIZE="${KEYCLOAK_HOSTNAME}/realms/sebt/protocol/openid-connect/auth"
+OIDC_CLIENT_ID="${PREVIEW_OIDC_CLIENT_ID:-sebt-portal}"
+OIDC_CLIENT_SECRET="${PREVIEW_OIDC_CLIENT_SECRET:-sebt-portal-dev-secret}"
+OIDC_STEP_UP_CLIENT_ID="${PREVIEW_OIDC_STEP_UP_CLIENT_ID:-sebt-portal-stepup}"
+OIDC_STEP_UP_CLIENT_SECRET="${PREVIEW_OIDC_STEP_UP_CLIENT_SECRET:-sebt-portal-stepup-dev-secret}"
 STACK_API_SERVICE="sebt-co-preview-pr-${PR_NUMBER}-api"
 STACK_WEB_SERVICE="sebt-co-preview-pr-${PR_NUMBER}-web"
 API_TASK_FAMILY="sebt-co-preview-pr-${PR_NUMBER}-api"
@@ -122,34 +135,60 @@ EXISTING_WEB_RULE="$(find_listener_rule_for_host "${WEB_LISTENER_ARN}" "${WEB_HO
 ensure_listener_rule "${API_LISTENER_ARN}" "${API_LISTENER_PRIORITY}" "${API_HOST}" "${API_TG_ARN}" "${EXISTING_API_RULE}" >/dev/null
 ensure_listener_rule "${WEB_LISTENER_ARN}" "${WEB_LISTENER_PRIORITY}" "${WEB_HOST}" "${WEB_TG_ARN}" "${EXISTING_WEB_RULE}" >/dev/null
 
-API_ENV_OVERRIDES="$(jq -n '{
-  "ASPNETCORE_ENVIRONMENT": "Staging",
-  "STATE": "co",
-  "UseMockHouseholdData": "true",
-  "Cbms__UseMockResponses": "true",
-  "Seeding__Enabled": "true",
-  "Seeding__EmailPattern": "sebt.co+{0}@codeforamerica.org",
-  "Seeding__State": "co",
-  "FeatureManagement__bypass_otp": "true",
-  "PluginAssemblyPaths__0": "plugins-co",
-  "Socure__Enabled": "false",
-  "Smarty__Enabled": "false"
-}')"
+API_ENV_OVERRIDES="$(jq -n \
+  --arg discovery "${KEYCLOAK_DISCOVERY}" \
+  --arg authorize "${KEYCLOAK_AUTHORIZE}" \
+  --arg callback "https://${WEB_HOST}/callback" \
+  --arg client_id "${OIDC_CLIENT_ID}" \
+  --arg client_secret "${OIDC_CLIENT_SECRET}" \
+  --arg step_up_client_id "${OIDC_STEP_UP_CLIENT_ID}" \
+  --arg step_up_client_secret "${OIDC_STEP_UP_CLIENT_SECRET}" \
+  '{
+    "ASPNETCORE_ENVIRONMENT": "Staging",
+    "STATE": "co",
+    "UseMockHouseholdData": "true",
+    "Cbms__UseMockResponses": "true",
+    "Seeding__Enabled": "true",
+    "Seeding__EmailPattern": "sebt.co+{0}@codeforamerica.org",
+    "Seeding__State": "co",
+    "FeatureManagement__bypass_otp": "true",
+    "PluginAssemblyPaths__0": "plugins-co",
+    "Socure__Enabled": "false",
+    "Smarty__Enabled": "false",
+    "Oidc__DiscoveryEndpoint": $discovery,
+    "Oidc__AuthorizationEndpoint": $authorize,
+    "Oidc__CallbackRedirectUri": $callback,
+    "Oidc__ClientId": $client_id,
+    "Oidc__ClientSecret": $client_secret,
+    "Oidc__StepUp__DiscoveryEndpoint": $discovery,
+    "Oidc__StepUp__AuthorizationEndpoint": $authorize,
+    "Oidc__StepUp__CallbackRedirectUri": $callback,
+    "Oidc__StepUp__ClientId": $step_up_client_id,
+    "Oidc__StepUp__ClientSecret": $step_up_client_secret
+  }')"
+
+# Drop production IdP client secrets from the cloned task so Keycloak env values can replace them.
+# Keep Oidc__CompleteLoginSigningKey from the base task (shared HMAC key is fine for previews).
+OIDC_STRIP_SECRETS='["Oidc__ClientId","Oidc__ClientSecret","Oidc__StepUp__ClientId","Oidc__StepUp__ClientSecret"]'
 
 WEB_ENV_OVERRIDES="$(jq -n \
   --arg backend_url "https://${API_HOST}" \
+  --arg keycloak_origin "${KEYCLOAK_HOSTNAME}" \
   '{
     "STATE": "co",
     "NEXT_PUBLIC_STATE": "co",
-    "BACKEND_URL": $backend_url
+    "BACKEND_URL": $backend_url,
+    "OIDC_ISSUER_ORIGIN": $keycloak_origin
   }')"
 
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
+log_info "Preview OIDC issuer: ${KEYCLOAK_HOSTNAME}"
+
 API_TD_ARN="$(register_preview_task_definition \
   "${API_BASE_TD}" "${API_IMAGE}" "${API_TASK_FAMILY}" "${API_ENV_OVERRIDES}" \
-  "${TMP_DIR}/api-task.json" "${API_CONTAINER_NAME}")"
+  "${TMP_DIR}/api-task.json" "${API_CONTAINER_NAME}" "${OIDC_STRIP_SECRETS}")"
 
 WEB_TD_ARN="$(register_preview_task_definition \
   "${WEB_BASE_TD}" "${WEB_IMAGE}" "${WEB_TASK_FAMILY}" "${WEB_ENV_OVERRIDES}" \

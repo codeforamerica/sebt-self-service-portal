@@ -51,6 +51,10 @@ data "aws_ecr_repository" "web" {
   name = "${var.project}-${var.state}-${var.environment}-web"
 }
 
+data "aws_ecr_repository" "keycloak" {
+  name = "${var.project}-${var.state}-${var.environment}-keycloak"
+}
+
 # Look up the hosted zone for DNS records.
 data "aws_route53_zone" "main" {
   name = "co.sebt-portal.codeforamerica.app"
@@ -188,4 +192,27 @@ module "enrollment_checker" {
   logging_bucket_domain_name = module.logging.bucket_domain_name
   logging_bucket_name        = module.logging.bucket
   force_delete               = true
+}
+
+# Shared Keycloak IdP.
+# Push an image before the first apply: ./scripts/preview/build-keycloak.sh
+module "preview_keycloak" {
+  count  = var.enable_preview_keycloak ? 1 : 0
+  source = "../../modules/sebt_keycloak"
+
+  project         = var.project
+  state           = var.state
+  environment     = var.environment
+  domain          = var.domain
+  hosted_zone_id  = data.aws_route53_zone.main.zone_id
+  vpc_id          = module.vpc.vpc_id
+  private_subnets = module.vpc.private_subnets
+  public_subnets  = module.vpc.public_subnets
+  vpc_cidr        = var.vpc_cidr
+  logging_key_id  = module.logging.kms_key_arn
+  image_url       = data.aws_ecr_repository.keycloak.repository_url
+  repository_arn  = data.aws_ecr_repository.keycloak.arn
+  image_tag       = var.keycloak_image_tag
+  force_delete    = true
+  skip_final_snapshot = true
 }

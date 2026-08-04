@@ -226,8 +226,12 @@ register_preview_task_definition() {
   local env_overrides_json="$4"
   local output_file="$5"
   local container_name="${6:-}"
+  local strip_secret_names_json="${7:-}"
 
   local merge_args=("${env_overrides_json}" "${image}" "${family}" "--strip-sidecars")
+  if [ -n "${strip_secret_names_json}" ]; then
+    merge_args+=("--strip-secret-names" "${strip_secret_names_json}")
+  fi
   if [ -n "${container_name}" ]; then
     merge_args+=("${container_name}")
   fi
