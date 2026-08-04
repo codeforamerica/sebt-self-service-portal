@@ -29,6 +29,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       AWS_REGION: us-east-1
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -84,4 +85,4 @@ jobs:
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
         working-directory: tofu/config/${{ inputs.config }}
-        run: tofu plan -no-color -input=false -var="image_tag=${IMAGE_TAG}"
+        run: tofu plan -concise -no-color -input=false -var="image_tag=${IMAGE_TAG}"

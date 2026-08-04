@@ -60,25 +60,68 @@ data "aws_route53_zone" "main" {
   name = "co.sebt-portal.codeforamerica.app"
 }
 
-# Store Colorado-specific secrets in Secrets Manager. Each block represents a
-# separate set of secrets for a specific service or integration.
+# Store Colorado-specific secrets in Secrets Manager. Each key represents a
+# separate secret for a specific service or integration.
 module "state_secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=1880642d0546106d0c1f568304c0326b32b8cdbb" # 2.1.1
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
   service     = "state-secrets"
 
   secrets = {
-    "cbms" = {
-      description     = "OAuth 2.0 client credentials for the Colorado CBMS SEBT API."
+    "jwt_secret_key" = {
+      description     = "JWT signing secret for the SEBT Portal API."
       recovery_window = 7
     }
-    "oidc" = {
-      description     = "MyColorado OIDC credentials for authentication."
+    "identifier_hasher_secret_key" = {
+      description     = "Identifier hashing secret for the SEBT Portal API."
+      recovery_window = 7
+    }
+    "cbms_client_id" = {
+      description     = "OAuth 2.0 client ID for the Colorado CBMS SEBT API."
+      recovery_window = 7
+    }
+    "cbms_client_secret" = {
+      description     = "OAuth 2.0 client secret for the Colorado CBMS SEBT API."
+      recovery_window = 7
+    }
+    "oidc_client_id" = {
+      description     = "MyColorado OIDC client ID for authentication."
+      recovery_window = 7
+    }
+    "oidc_client_secret" = {
+      description     = "MyColorado OIDC client secret for authentication."
+      recovery_window = 7
+    }
+    "oidc_step_up_client_id" = {
+      description     = "MyColorado OIDC step-up client ID for authentication."
+      recovery_window = 7
+    }
+    "oidc_step_up_client_secret" = {
+      description     = "MyColorado OIDC step-up client secret for authentication."
+      recovery_window = 7
+    }
+    "oidc_complete_login_signing_key" = {
+      description     = "Signing key for completing MyColorado OIDC login."
       recovery_window = 7
     }
   }
+}
+
+# Sync Colorado's state-specific secrets to Doppler.
+module "state_secrets_doppler" {
+  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=e8ba5edac1eaf156702c89e0c9cd84f86dcafbfc" # 1.1.0
+  depends_on = [module.state_secrets]
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+  service     = "state-secrets"
+
+  kms_key_arns             = [module.state_secrets.kms_key_arn]
+  doppler_project          = "safety-net-sebt-self-service-portal"
+  doppler_environment_slug = "dev_co_state_secrets"
+  doppler_workspace_id     = "08430c37e2a2889dc220"
 }
 
 # Look up the enrollment checker hosted zone (created by bootstrap).
@@ -125,32 +168,34 @@ module "app" {
   desired_containers     = 2
 
   state_api_environment_variables = {
-    "Oidc__DiscoveryEndpoint"                        = var.oidc_discovery_endpoint
-    "Oidc__AuthorizationEndpoint"                    = var.oidc_authorization_endpoint
-    "Oidc__CallbackRedirectUri"                      = "https://${var.domain}/callback"
-    "Oidc__StepUp__DiscoveryEndpoint"                = var.oidc_discovery_endpoint
-    "Oidc__StepUp__AuthorizationEndpoint"            = var.oidc_authorization_endpoint
-    "Oidc__StepUp__CallbackRedirectUri"              = "https://${var.domain}/callback"
-    "StateHouseholdId__PreferredHouseholdIdTypes__0" = "Phone"
-    "IdProofingRequirements__address+write"          = "IAL1plus"
-    "IdProofingRequirements__email+view"             = "IAL1plus"
-    "IdProofingRequirements__household+view"         = "IAL1plus"
-    "IdProofingRequirements__card+write"             = "IAL1plus"
-    "IdProofingValidity__ValidityDays"               = "1826"
-    "Oidc__VerificationClaims__LevelClaimName"       = "socureIdVerificationLevel"
-    "Oidc__VerificationClaims__DateClaimName"        = "socureIdVerificationDate"
+    "Oidc__DiscoveryEndpoint"                          = var.oidc_discovery_endpoint
+    "Oidc__AuthorizationEndpoint"                      = var.oidc_authorization_endpoint
+    "Oidc__CallbackRedirectUri"                        = "https://${var.domain}/callback"
+    "Oidc__StepUp__DiscoveryEndpoint"                  = var.oidc_discovery_endpoint
+    "Oidc__StepUp__AuthorizationEndpoint"              = var.oidc_authorization_endpoint
+    "Oidc__StepUp__CallbackRedirectUri"                = "https://${var.domain}/callback"
+    "StateHouseholdId__PreferredHouseholdIdTypes__0"   = "Phone"
+    "IdProofingRequirements__address+write"            = "IAL1plus"
+    "IdProofingRequirements__email+view"               = "IAL1plus"
+    "IdProofingRequirements__household+view"           = "IAL1plus"
+    "IdProofingRequirements__card+write"               = "IAL1plus"
+    "IdProofingValidity__ValidityDays"                 = "1826"
+    "Oidc__VerificationClaims__LevelClaimName"         = "socureIdVerificationLevel"
+    "Oidc__VerificationClaims__DateClaimName"          = "socureIdVerificationDate"
     "Oidc__VerificationClaims__FallbackLevelClaimName" = "myCoIdVerificationLevel"
     "Oidc__VerificationClaims__FallbackDateClaimName"  = "myCoIdVerificationDate"
   }
 
   state_api_environment_secrets = {
-    "Cbms__ClientId"                = "${module.state_secrets.secrets["cbms"].secret_arn}:client_id"
-    "Cbms__ClientSecret"            = "${module.state_secrets.secrets["cbms"].secret_arn}:client_secret"
-    "Oidc__ClientId"                = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
-    "Oidc__ClientSecret"            = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
-    "Oidc__StepUp__ClientId"        = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_id"
-    "Oidc__StepUp__ClientSecret"    = "${module.state_secrets.secrets["oidc"].secret_arn}:step_up_client_secret"
-    "Oidc__CompleteLoginSigningKey" = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
+    "JwtSettings__SecretKey"        = module.state_secrets.secrets["jwt_secret_key"].secret_arn
+    "IdentifierHasher__SecretKey"   = module.state_secrets.secrets["identifier_hasher_secret_key"].secret_arn
+    "Cbms__ClientId"                = module.state_secrets.secrets["cbms_client_id"].secret_arn
+    "Cbms__ClientSecret"            = module.state_secrets.secrets["cbms_client_secret"].secret_arn
+    "Oidc__ClientId"                = module.state_secrets.secrets["oidc_client_id"].secret_arn
+    "Oidc__ClientSecret"            = module.state_secrets.secrets["oidc_client_secret"].secret_arn
+    "Oidc__StepUp__ClientId"        = module.state_secrets.secrets["oidc_step_up_client_id"].secret_arn
+    "Oidc__StepUp__ClientSecret"    = module.state_secrets.secrets["oidc_step_up_client_secret"].secret_arn
+    "Oidc__CompleteLoginSigningKey" = module.state_secrets.secrets["oidc_complete_login_signing_key"].secret_arn
   }
 
   state_web_environment_variables = {
@@ -161,9 +206,9 @@ module "app" {
   }
 
   state_web_environment_secrets = {
-    OIDC_CLIENT_ID                  = "${module.state_secrets.secrets["oidc"].secret_arn}:client_id"
-    OIDC_CLIENT_SECRET              = "${module.state_secrets.secrets["oidc"].secret_arn}:client_secret"
-    OIDC_COMPLETE_LOGIN_SIGNING_KEY = "${module.state_secrets.secrets["oidc"].secret_arn}:complete_login_signing_key"
+    OIDC_CLIENT_ID                  = module.state_secrets.secrets["oidc_client_id"].secret_arn
+    OIDC_CLIENT_SECRET              = module.state_secrets.secrets["oidc_client_secret"].secret_arn
+    OIDC_COMPLETE_LOGIN_SIGNING_KEY = module.state_secrets.secrets["oidc_complete_login_signing_key"].secret_arn
   }
 }
 

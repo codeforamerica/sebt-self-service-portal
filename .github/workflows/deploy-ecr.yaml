@@ -65,45 +65,18 @@ jobs:
     if: always() && (needs.plan-dc.outputs.plan || needs.plan-co.outputs.plan)
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
       - name: Post plan to PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DC_PLAN: ${{ needs.plan-dc.outputs.plan }}
+          CO_PLAN: ${{ needs.plan-co.outputs.plan }}
         with:
           script: |
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && comment.body.includes('## Plan output');
-            });
-
-            let output = '';
-              const dcPlan = `${{ needs.plan-dc.outputs.plan }}`;
-              const coPlan = `${{ needs.plan-co.outputs.plan }}`;
-
-              if (dcPlan) {
-                output += `## Plan output — dev-dc\n\n\`\`\`\n${dcPlan}\n\`\`\`\n\n`;
-              }
-              if (coPlan) {
-                output += `## Plan output — dev-co\n\n\`\`\`\n${coPlan}\n\`\`\``;
-              }
-
-              if (botComment) {
-                github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: botComment.id,
-                  body: output,
-                });
-              } else {
-                github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: output,
-                });
-              }
+            const postPlanComment = require('./.github/workflows/scripts/post-plan-comment.js');
+            await postPlanComment({ github, context });
 
   # Build and deploy only on push to main or manual trigger, not on PRs
   build:
@@ -261,6 +234,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -360,6 +334,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
