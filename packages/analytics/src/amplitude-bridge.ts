@@ -42,7 +42,7 @@ function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
 
 export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): () => void {
   // Privacy posture:
-  // - identityStorage: 'none'       → no cross-session user identity persistence
+  // - identityStorage: 'session'       → session storage only
   // - trackingOptions.ipAddress: false → do not capture client IP
   //
   // Session Replay, Guides, and Surveys are separate Amplitude products that
@@ -51,7 +51,7 @@ export function initAmplitudeBridge(apiKey: string, amplitude: AmplitudeLike): (
     amplitude.init(apiKey, {
       defaultTracking: true,
       autocapture: true,
-      identityStorage: 'none',
+      identityStorage: 'session',
       trackingOptions: {
         ipAddress: false
       }
