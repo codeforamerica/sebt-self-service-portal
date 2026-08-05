@@ -22,6 +22,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   plan:
@@ -29,7 +30,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       AWS_REGION: us-east-1
-      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -74,6 +75,12 @@ jobs:
             echo "::error::Invalid image_tag: $IMAGE_TAG"
             exit 1
           fi
+
+      - name: Get an OIDC token for Doppler
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
 
       - name: OpenTofu Init
         working-directory: tofu/config/${{ inputs.config }}
