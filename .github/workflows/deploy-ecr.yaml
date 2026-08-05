@@ -16,6 +16,7 @@ permissions:
   contents: read
   deployments: write
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: deploy-${{ github.event.pull_request.number || github.ref }}
@@ -234,7 +235,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
-      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -311,11 +312,31 @@ jobs:
         working-directory: tofu/config/dev-dc
         run: tofu init -upgrade
 
-      - name: OpenTofu Apply
+      # Doppler OIDC tokens are single-use. Plan and apply each need their own
+      # provider authentication, so each gets its own freshly-fetched token —
+      # reusing one token for both fails with "This OIDC token was used
+      # previously".
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Plan
         working-directory: tofu/config/dev-dc
         run: |
-          tofu apply -auto-approve \
+          tofu plan -input=false -out=tfplan \
             -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-dc
+        run: tofu apply tfplan
 
       - name: Get deployment URL
         id: deploy-url
@@ -334,7 +355,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
-      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -408,11 +429,31 @@ jobs:
         working-directory: tofu/config/dev-co
         run: tofu init -upgrade
 
-      - name: OpenTofu Apply
+      # Doppler OIDC tokens are single-use. Plan and apply each need their own
+      # provider authentication, so each gets its own freshly-fetched token —
+      # reusing one token for both fails with "This OIDC token was used
+      # previously".
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Plan
         working-directory: tofu/config/dev-co
         run: |
-          tofu apply -auto-approve \
+          tofu plan -input=false -out=tfplan \
             -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-co
+        run: tofu apply tfplan
 
       - name: Get deployment URL
         id: deploy-url
