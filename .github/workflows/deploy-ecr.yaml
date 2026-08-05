@@ -16,6 +16,7 @@ permissions:
   contents: read
   deployments: write
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: deploy-${{ github.event.pull_request.number || github.ref }}
@@ -234,7 +235,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
-      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -294,6 +295,12 @@ jobs:
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
 
+      - name: Get an OIDC token for Doppler
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
@@ -334,7 +341,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
-      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -390,6 +397,12 @@ jobs:
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
+
+      - name: Get an OIDC token for Doppler
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
