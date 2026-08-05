@@ -79,7 +79,7 @@ Coercion is driven by the canonical field's known type — a string field copies
 
 ## Step 4: Enum translation tables
 
-Top-level `enums:` declares named translation tables that response fields reference by name via the field mapping's `enum` key. Each table is **domain-centered**: keyed by *our* canonical enum value, mapping to the one-or-more state tokens that mean it, plus an optional `default` for tokens the table does not list. Omitting `default` means an unlisted token fails loud at map time instead of falling through.
+Top-level `enums:` declares named translation tables that response fields reference by name via the field mapping's `enum` key. Each table is **domain-centered**: keyed by *our* canonical enum value, mapping to the one-or-more state tokens that mean it, plus an optional `default` for tokens the table does not list. Omitting `default` means an unlisted token fails fast at map time instead of falling through.
 
 ```yaml
 enums:
@@ -100,12 +100,12 @@ enums:
     default: Unknown
 ```
 
-The table is inverted to a token→our-value lookup at load. Two things fail loud at load:
+The table is inverted to a token→our-value lookup at load. Two things fail fast at load:
 
 - A canonical key that is not a real member of the target enum.
 - An ambiguous token — the same state token listed under two different canonical values.
 
-The `default` applies **only** to genuinely unlisted tokens. A token mapped to a mistyped canonical value fails loud; it does not silently fall through to `default`.
+The `default` applies **only** to genuinely unlisted tokens. A token mapped to a mistyped canonical value fails fast; it does not silently fall through to `default`.
 
 ## Step 5: keywordRules — inference from free text
 
@@ -115,7 +115,7 @@ When an enum-typed field can't be read from a single clean token but must be *in
         issuanceType:
           from: [HouseholdType, EligibilityType]
           keywordRules:
-            order: [SummerEbt, SnapEbtCard, TanfEbtCard]  # first-match-wins — order is load-bearing
+            order: [SummerEbt, SnapEbtCard, TanfEbtCard]  # first-match-wins — order matters
             map:
               SummerEbt:   [OSSE, NSLP]
               SnapEbtCard: [FOOD, SNAP]
@@ -123,7 +123,7 @@ When an enum-typed field can't be read from a single clean token but must be *in
             default: Unknown
 ```
 
-Semantics: evaluate the canonical values in `order`; the first whose *any* substring (from its `map` entry) is contained in *any* of the `from` sources wins. Matching is case-insensitive. Nothing matches → `default`. **Ordering is load-bearing** — `order` decides which rule wins when more than one could match. A field using `keywordRules` may list several sources in `from`; a keyword found in any counts.
+Semantics: evaluate the canonical values in `order`; the first whose *any* substring (from its `map` entry) is contained in *any* of the `from` sources wins. Matching is case-insensitive. Nothing matches → `default`. **Ordering matters** — `order` decides which rule wins when more than one could match. A field using `keywordRules` may list several sources in `from`; a keyword found in any counts.
 
 This primitive is capped at substring-contains, first-match-wins. No regex, no conditionals, no transforms.
 
@@ -173,12 +173,12 @@ A write (card replacement, address update) has to route its call, but the portal
           householdEmail: householdIdentifier
 ```
 
-On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8). The portal and UI treat the token as opaque throughout — a malformed token fails loud on decode.
+On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8). The portal and UI treat the token as opaque throughout — a malformed token fails fast on decode.
 
 - `fields` — token field → the response record property whose value it carries.
 - `fromContext` — token field → a **named caller-context value** from the lookup itself, for routing identifiers a write needs but the response never echoes (most lookups don't echo the identifier the portal searched with). Context names are a **closed vocabulary resolved in fixed code** — today only `householdIdentifier`, the identifier value the lookup searched by. No expressions, no fallbacks; a new context value means a new name in code.
 
-A token field may come from `fields` or `fromContext`, never both — the loader fails loud on a collision, and on an unknown context name. An unset context value packs as empty, exactly like an absent response column.
+A token field may come from `fields` or `fromContext`, never both — the loader fails fast on a collision, and on an unknown context name. An unset context value packs as empty, exactly like an absent response column.
 
 ## Step 8: Writes — request binding and result classification
 
@@ -189,8 +189,8 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 The binding vocabulary:
 
 - `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
-- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. An input that resolves to no value fails loud.
-- `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing loud. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
+- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. An input that resolves to no value fails fast.
+- `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing fast. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
 
 The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid`, plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
 
@@ -205,7 +205,7 @@ DC card replacement — a scalar `map` whose left-hand names are the decoded `ca
 
 Address update spans every case a household owns, so it adds two **batch shapes**:
 
-- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **fails loud if the decoded caseIds disagree** on the value. DC resolves one shared household identifier this way:
+- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **fails fast if the decoded caseIds disagree** on the value. DC resolves one shared household identifier this way:
 
 ```yaml
     request:
@@ -356,7 +356,7 @@ The worked precedent is `confidenceThreshold`. CO needed a match that couldn't b
 
 ## How config is validated
 
-Config validates at **load** via `StateBackendConfigurationValidator`, immediately after deserialization. Every check is a function of the config alone, so a bad config fails at **startup**, not on the first user request. What fails loud:
+Config validates at **load** via `StateBackendConfigurationValidator`, immediately after deserialization. Every check is a function of the config alone, so a bad config fails at **startup**, not on the first user request. What fails fast:
 
 - A response field mapping that targets an unknown canonical field, or a date-typed field without an exact `format`.
 - An enum table that doesn't exist, is referenced by a non-enum field, has a canonical key that isn't a real enum member, or lists an ambiguous state token under two canonical values.
