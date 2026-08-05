@@ -7,7 +7,14 @@ terraform {
   }
 }
 
-# Create an S3 bucket and KMS key for logging.                                                                                                    
+# Values (doppler_token, or oidc_identity + oidc_token) are read from the
+# environment (DOPPLER_TOKEN or DOPPLER_OIDC_IDENTITY/DOPPLER_OIDC_TOKEN) —
+# this block just declares the provider explicitly so it's authenticated
+# once and shared by every module below, rather than each module implicitly
+# configuring its own instance and re-using a single-use OIDC token.
+provider "doppler" {}
+
+# Create an S3 bucket and KMS key for logging.
 module "logging" {
   source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
 
@@ -127,7 +134,8 @@ data "aws_route53_zone" "enrollment_checker" {
 
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
-  source = "../../modules/sebt_application"
+  source    = "../../modules/sebt_application"
+  providers = { doppler = doppler }
 
   apply_immediately          = true
   domain                     = var.domain
