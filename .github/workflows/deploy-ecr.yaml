@@ -295,12 +295,6 @@ jobs:
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
 
-      - name: Get an OIDC token for Doppler
-        run: |
-          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
-          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
-
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
@@ -318,11 +312,31 @@ jobs:
         working-directory: tofu/config/dev-dc
         run: tofu init -upgrade
 
-      - name: OpenTofu Apply
+      # Doppler OIDC tokens are single-use. Plan and apply each need their own
+      # provider authentication, so each gets its own freshly-fetched token —
+      # reusing one token for both fails with "This OIDC token was used
+      # previously".
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Plan
         working-directory: tofu/config/dev-dc
         run: |
-          tofu apply -auto-approve \
+          tofu plan -input=false -out=tfplan \
             -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-dc
+        run: tofu apply tfplan
 
       - name: Get deployment URL
         id: deploy-url
@@ -398,12 +412,6 @@ jobs:
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
 
-      - name: Get an OIDC token for Doppler
-        run: |
-          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
-          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
-
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
@@ -421,11 +429,31 @@ jobs:
         working-directory: tofu/config/dev-co
         run: tofu init -upgrade
 
-      - name: OpenTofu Apply
+      # Doppler OIDC tokens are single-use. Plan and apply each need their own
+      # provider authentication, so each gets its own freshly-fetched token —
+      # reusing one token for both fails with "This OIDC token was used
+      # previously".
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Plan
         working-directory: tofu/config/dev-co
         run: |
-          tofu apply -auto-approve \
+          tofu plan -input=false -out=tfplan \
             -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-co
+        run: tofu apply tfplan
 
       - name: Get deployment URL
         id: deploy-url
