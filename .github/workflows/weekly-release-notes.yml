@@ -1,9 +1,10 @@
-name: Weekly Release Notes
+name: Release Notes Drafts
 
 on:
   schedule:
-    - cron: '0 9 * * 1'  # Every Monday at 9am UTC
-  workflow_dispatch:      # Also allow manual trigger
+    - cron: '0 9 * * 1'  # Weekly: every Monday at 9am UTC
+    - cron: '0 0 * * *'  # Nightly: every day at midnight UTC
+  workflow_dispatch:      # Also allow manual trigger (treated as nightly cadence)
 
 permissions:
   contents: write
@@ -17,11 +18,39 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
+      # ─── Determine cadence ─────────────────────────────────────────────────────
+      # github.event.schedule is the exact cron string that fired this run, so the
+      # weekly and nightly schedules share this one workflow/job instead of two
+      # near-identical copies. Manual (workflow_dispatch) runs have no schedule
+      # value and default to the nightly cadence.
+      - name: Determine cadence
+        id: cadence
+        run: |
+          if [ "${{ github.event.schedule }}" = "0 9 * * 1" ]; then
+            echo "days=7" >> "$GITHUB_OUTPUT"
+            echo "tag_prefix=weekly" >> "$GITHUB_OUTPUT"
+            echo "title=Weekly Update" >> "$GITHUB_OUTPUT"
+            echo "draft=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual runs share nightly's day-window/tag, but stay a draft --
+            # someone triggering this by hand is very likely testing/debugging,
+            # not looking to auto-publish a real release.
+            echo "days=1" >> "$GITHUB_OUTPUT"
+            echo "tag_prefix=nightly" >> "$GITHUB_OUTPUT"
+            echo "title=Nightly Update" >> "$GITHUB_OUTPUT"
+            echo "draft=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "days=1" >> "$GITHUB_OUTPUT"
+            echo "tag_prefix=nightly" >> "$GITHUB_OUTPUT"
+            echo "title=Nightly Update" >> "$GITHUB_OUTPUT"
+            echo "draft=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Compute date outputs
         id: date
         run: |
           echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
-          echo "tag=weekly-$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+          echo "tag=${{ steps.cadence.outputs.tag_prefix }}-$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -32,7 +61,7 @@ jobs:
       # Runs scripts/release-notes/generate.ts, which writes
       # docs/release-notes/YYYY-MM-DD.md using merged PRs fetched via gh CLI.
       - name: Generate release notes
-        run: npx --yes tsx@4 scripts/release-notes/generate.ts
+        run: npx --yes tsx@4 scripts/release-notes/generate.ts --days=${{ steps.cadence.outputs.days }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -41,9 +70,9 @@ jobs:
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
           tag_name: ${{ steps.date.outputs.tag }}
-          name: "Weekly Update – ${{ steps.date.outputs.today }}"
+          name: "${{ steps.cadence.outputs.title }} – ${{ steps.date.outputs.today }}"
           body_path: scripts/release-notes/output/${{ steps.date.outputs.today }}.md
-          draft: true
+          draft: ${{ steps.cadence.outputs.draft }}
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
