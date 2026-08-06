@@ -13,14 +13,31 @@
       NU1901 = low      NU1902 = moderate
       NU1903 = high     NU1904 = critical
 
-    Without lockfiles, this is our primary defense against silently picking up
-    a vulnerable transitive package on a fresh restore.
+    Lockfiles (below) pin the exact versions we restore; NuGetAudit complements
+    them by failing the build when a pinned direct or transitive package has a
+    known CVE.
   -->
   <PropertyGroup>
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>moderate</NuGetAuditLevel>
     <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    NuGet lockfiles: one packages.lock.json per project, checked into source. Each
+    records the exact resolved version and content hash of every direct and
+    transitive dependency, so all environments restore identical packages and a new
+    version cannot slip in without an explicit, reviewable change to the lockfile.
+
+    Generation is on everywhere; CI enforces it by running restore in NuGet's locked
+    mode (see scripts/ci/build-backend.sh), which fails the build if a lockfile is
+    missing or would change rather than silently regenerating it. Locked mode is
+    deliberately not set here so local dev can still add packages and refresh the
+    lockfile.
+  -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
 
   <PropertyGroup>
