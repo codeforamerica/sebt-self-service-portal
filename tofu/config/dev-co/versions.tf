@@ -6,5 +6,9 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
+    doppler = {
+      source  = "dopplerhq/doppler"
+      version = "~> 1.20"
+    }
   }
 }
