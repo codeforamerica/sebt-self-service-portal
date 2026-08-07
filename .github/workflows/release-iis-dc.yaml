@@ -195,6 +195,7 @@ jobs:
           NEXT_PUBLIC_MOCK_SOCURE: ${{ vars.MOCK_SOCURE }}
           NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_DC_CONNECTOR_SHA: ${{ steps.dc-connector-ref.outputs.ref }}
         run: |
           ./.github/workflows/scripts/build-frontend.sh --production
           ./scripts/ci/package-frontend.sh --skip-build --output output/sebt-web.zip
