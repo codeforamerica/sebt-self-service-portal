@@ -18,13 +18,17 @@ import { LanguageSelector } from './LanguageSelector'
 const mockChangeLanguage = vi.fn()
 vi.mock('../../../lib/i18n', () => ({
   changeLanguage: (lang: string) => mockChangeLanguage(lang),
-  supportedLanguages: ['en', 'es'] as const,
   languageNames: {
     en: 'English',
     es: 'Español',
     am: 'አማርኛ'
   }
 }))
+
+// The active language is mutable so a test can place the user in a language the
+// current state does not offer. Held via vi.hoisted so the mock factory can read
+// it without hitting a temporal-dead-zone error on import.
+const i18nState = vi.hoisted(() => ({ language: 'en' }))
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
@@ -40,9 +44,7 @@ vi.mock('react-i18next', () => ({
       // eslint-disable-next-line security/detect-object-injection -- key is typed, not user input
       return translations[key] ?? key
     },
-    i18n: {
-      language: 'en'
-    }
+    i18n: i18nState
   })
 }))
 
@@ -60,6 +62,105 @@ vi.mock('next/image', () => ({
 describe('LanguageSelector', () => {
   beforeEach(() => {
     mockChangeLanguage.mockClear()
+    i18nState.language = 'en'
+  })
+
+  /**
+   * The language list must come from the `state` prop, not from a deployment-wide
+   * default resolved at module import. Colorado offers English and Spanish only and
+   * has no Amharic content, so an Amharic option there renders as an extra focusable
+   * control with no accessible name that a screen reader announces as a third choice.
+   *
+   * These assertions target the rendered menu rather than the config behind it: the
+   * defect can be introduced by wiring alone, while every config-level assertion
+   * still passes.
+   */
+  describe('State-Driven Language Resolution', () => {
+    it('offers only English and Spanish for CO when no languages prop is given', () => {
+      render(<LanguageSelector state="co" />)
+
+      const nav = screen.getByRole('navigation', { name: 'Language selector' })
+      const buttons = nav.querySelectorAll('button')
+
+      expect(buttons).toHaveLength(2)
+      expect(buttons[0]).toHaveAttribute('lang', 'en')
+      expect(buttons[1]).toHaveAttribute('lang', 'es')
+      expect(nav.querySelector('[lang="am"]')).toBeNull()
+    })
+
+    it('offers only two menu items for CO in the mobile menu', async () => {
+      const user = userEvent.setup()
+      render(<LanguageSelector state="co" />)
+
+      await user.click(screen.getByRole('button', { name: /translate/i }))
+
+      const items = screen.getAllByRole('menuitem')
+
+      expect(items).toHaveLength(2)
+      items.forEach((item) => {
+        expect(item).not.toHaveAttribute('lang', 'am')
+      })
+    })
+
+    it('omits Amharic from the collapsed translate subtitle for CO', () => {
+      render(<LanguageSelector state="co" />)
+
+      // The subtitle is built from `languageCodes`, which is a separate prop from
+      // the menu's `languages`. Resolving one but not the other would leave this
+      // stale while the expanded menu looked correct.
+      const translateButton = screen.getByRole('button', { name: /translate/i })
+
+      expect(translateButton).toHaveTextContent('English')
+      expect(translateButton).toHaveTextContent('Español')
+      expect(translateButton.querySelector('[lang="am"]')).toBeNull()
+    })
+
+    it('gives every rendered language option a non-empty accessible name', async () => {
+      const user = userEvent.setup()
+      render(<LanguageSelector state="co" />)
+
+      await user.click(screen.getByRole('button', { name: /translate/i }))
+
+      const nav = screen.getByRole('navigation', { name: 'Language selector' })
+      const options = [...nav.querySelectorAll('button'), ...screen.getAllByRole('menuitem')]
+
+      expect(options.length).toBeGreaterThan(0)
+      options.forEach((option) => {
+        expect(option.textContent?.trim()).not.toBe('')
+      })
+    })
+
+    it('still offers all three languages for DC', async () => {
+      const user = userEvent.setup()
+      render(<LanguageSelector state="dc" />)
+
+      const nav = screen.getByRole('navigation', { name: 'Language selector' })
+      expect(nav.querySelectorAll('button')).toHaveLength(3)
+      expect(nav.querySelector('[lang="am"]')).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /translate/i }))
+      expect(screen.getAllByRole('menuitem')).toHaveLength(3)
+    })
+
+    it('offers no Amharic option for CO even when the active language is Amharic', async () => {
+      // Reachable before the per-state config landed, via a persisted
+      // `i18nextLng=am` value carried onto a CO origin.
+      i18nState.language = 'am'
+      const user = userEvent.setup()
+      render(<LanguageSelector state="co" />)
+
+      await user.click(screen.getByRole('button', { name: /translate/i }))
+
+      const items = screen.getAllByRole('menuitem')
+      expect(items).toHaveLength(2)
+      items.forEach((item) => {
+        expect(item.textContent?.trim()).not.toBe('')
+      })
+      // No option matches the active language, so none is marked current. This
+      // pins the current behavior; whether the selector should instead mark the
+      // resolved display language is an open design question.
+      expect(document.querySelector('[aria-current="true"]')).toBeNull()
+    })
   })
 
   describe('Rendering', () => {
@@ -99,7 +200,9 @@ describe('LanguageSelector', () => {
 
   describe('Desktop Language Switching', () => {
     it('should render all language buttons in desktop nav', () => {
-      render(<LanguageSelector />)
+      // Languages are passed explicitly so the expected count is stated here
+      // rather than inherited from whichever state the default resolves to.
+      render(<LanguageSelector languages={['en', 'es'] as const} />)
 
       const nav = screen.getByRole('navigation', { name: 'Language selector' })
       const buttons = nav.querySelectorAll('button')
@@ -331,7 +434,7 @@ describe('LanguageSelector', () => {
 
     it('should use menu and menuitem roles in mobile view', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector languages={['en', 'es'] as const} />)
 
       await user.click(screen.getByRole('button', { name: /translate/i }))
 

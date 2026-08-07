@@ -120,6 +120,17 @@ run_package_tests() {
   log_success "Package tests passed"
 }
 
+# Lint shared workspace packages (packages/*). `run_lint` only covers
+# $FRONTEND_DIR, so without this a package with its own lint script never gets
+# linted in CI. Packages without one are skipped by --if-present.
+run_package_lint() {
+  log_info "Running shared package lint (packages/*)..."
+  cd "$PROJECT_ROOT"
+
+  pnpm --filter "./packages/*" --if-present run lint
+  log_success "Package lint passed"
+}
+
 # Run type checking
 run_type_check() {
   log_info "Running TypeScript type checking..."
@@ -141,6 +152,7 @@ main() {
   install_dependencies
   run_type_check
   run_lint
+  run_package_lint
   run_tests
   run_package_tests
 

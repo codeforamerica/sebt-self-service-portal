@@ -1,6 +1,5 @@
 'use client'
 
-import { supportedLanguages } from '../../lib/i18n'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import { LanguageSelector } from './LanguageSelector'
@@ -39,10 +38,7 @@ export function Header({ state = 'dc' }: HeaderProps) {
           </div>
         </div>
 
-        <LanguageSelector
-          state={state}
-          languages={supportedLanguages}
-        />
+        <LanguageSelector state={state} />
       </div>
     </header>
   )
