@@ -79,11 +79,25 @@ function formatEntry(pr: PullRequest): string {
   return `* ${ticketPrefix}${cleanTitle} by @${pr.author.login} in ${pr.url}`
 }
 
-function getPreviousTag(tagPrefix: string): string | null {
+interface PreviousRelease {
+  tagName: string
+  createdAt: string
+}
+
+// Finds the most recent release tagged with this cadence's prefix, regardless of
+// draft status — weekly releases never get published (confirmed against real data:
+// every existing weekly-* release is still a draft, even ones from weeks ago), so
+// filtering to published-only would mean weekly never finds a previous run and never
+// benefits from "since last run" below. Returns null on the very first run of a given
+// cadence (e.g. nightly-* the day this ships), which callers treat as "no prior run
+// to diff against yet".
+function getPreviousRelease(tagPrefix: string): PreviousRelease | null {
   try {
-    const raw = execSync('gh release list --json tagName --limit 20', { encoding: 'utf8' })
-    const releases = JSON.parse(raw) as { tagName: string }[]
-    return releases.find((r) => r.tagName.startsWith(`${tagPrefix}-`))?.tagName ?? null
+    const raw = execSync('gh release list --json tagName,createdAt --limit 20', {
+      encoding: 'utf8',
+    })
+    const releases = JSON.parse(raw) as PreviousRelease[]
+    return releases.find((r) => r.tagName.startsWith(`${tagPrefix}-`)) ?? null
   } catch {
     return null
   }
@@ -172,7 +186,7 @@ async function main(): Promise<void> {
   const gitDir = parseFlag(argv, 'git-dir') ?? '.'
   const daysArgRaw = parseFlag(argv, 'days')
   const stateFilterArg = parseFlag(argv, 'state-filter')
-  // Only meaningful in date-window mode — weekly-release-notes.yml runs both the
+  // Only meaningful in date-window mode — generate-release-notes.yml runs both the
   // weekly and nightly cadence through this same script/job, and each cadence tags
   // its own release differently (weekly-YYYY-MM-DD vs nightly-YYYY-MM-DD). Without
   // this, the "Full Changelog" link would always reference a weekly-* tag even on a
@@ -222,14 +236,25 @@ async function main(): Promise<void> {
     rangeLabel = `since ${sinceSha}`
     compareUrl = `${repoUrl}/compare/${sinceSha}...${headSha}`
   } else {
+    // --days is now only the fallback window for a cadence's first-ever run (no
+    // previous release of this tag prefix to diff against yet) — otherwise this
+    // diffs against the last actual run, so a skipped/failed run doesn't silently
+    // drop whatever merged during the gap.
     const days = parseDaysArg(daysArgRaw)
-    const since = new Date()
-    since.setDate(since.getDate() - days)
-    const weekStart = since.toISOString().split('T')[0]
+    const fallbackSince = new Date()
+    fallbackSince.setDate(fallbackSince.getDate() - days)
+
+    const previousRelease = getPreviousRelease(tagPrefix)
+    const since = previousRelease ? new Date(previousRelease.createdAt) : fallbackSince
+    const rangeStart = since.toISOString().split('T')[0]
+
     mergedPRs = allPRs.filter((pr) => pr.mergedAt && new Date(pr.mergedAt) >= since)
-    rangeLabel = `between ${weekStart} and ${today}`
-    const prevTag = getPreviousTag(tagPrefix) ?? `${tagPrefix}-${weekStart}`
-    compareUrl = `${repoUrl}/compare/${prevTag}...${tagPrefix}-${today}`
+    rangeLabel = previousRelease
+      ? `since the last ${tagPrefix} release (${previousRelease.tagName})`
+      : `between ${rangeStart} and ${today}`
+
+    const prevTagName = previousRelease?.tagName ?? `${tagPrefix}-${rangeStart}`
+    compareUrl = `${repoUrl}/compare/${prevTagName}...${tagPrefix}-${today}`
   }
 
   const md = buildMarkdown(mergedPRs, rangeLabel, compareUrl, stateFilter)
