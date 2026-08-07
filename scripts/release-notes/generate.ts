@@ -9,7 +9,7 @@
 import { execSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 export interface PullRequest {
   number: number
@@ -270,7 +270,14 @@ async function main(): Promise<void> {
   console.log(`Covered ${mergedPRs.length} merged PR(s) ${rangeLabel}.`)
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+// Only run main() when this file is executed directly (npx tsx generate.ts), not
+// when its pure functions are imported elsewhere (e.g. generate.test.ts) — without
+// this guard, importing anything from this module also runs the full CLI, including
+// a live `gh pr list` call that fails outside an authenticated shell.
+const isMainModule = import.meta.url === pathToFileURL(process.argv[1] ?? '').href
+if (isMainModule) {
+  main().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}
