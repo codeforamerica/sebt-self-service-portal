@@ -11,7 +11,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-interface PullRequest {
+export interface PullRequest {
   number: number
   title: string
   labels: { name: string }[]
@@ -48,21 +48,21 @@ const CHORE_LABELS = new Set([
   'refactor',
 ])
 
-function isChore(pr: PullRequest): boolean {
+export function isChore(pr: PullRequest): boolean {
   return pr.labels.some((l) => CHORE_LABELS.has(l.name.toLowerCase()))
 }
 
 // Checks label which we enforce in a pre merge PR check
-function isColorado(pr: PullRequest): boolean {
+export function isColorado(pr: PullRequest): boolean {
   return pr.labels.some((l) => l.name.toLowerCase() === 'co')
 }
 
 // Checks label which we enforce in a pre merge PR check
-function isDC(pr: PullRequest): boolean {
+export function isDC(pr: PullRequest): boolean {
   return pr.labels.some((l) => l.name.toLowerCase() === 'dc')
 }
 
-function extractTicketRef(title: string): TicketRef | null {
+export function extractTicketRef(title: string): TicketRef | null {
   const match = title.match(/DC-\d+/)
   if (!match) return null
   return {
@@ -71,7 +71,7 @@ function extractTicketRef(title: string): TicketRef | null {
   }
 }
 
-function formatEntry(pr: PullRequest): string {
+export function formatEntry(pr: PullRequest): string {
   const ticket = extractTicketRef(pr.title)
   // Strip the raw ticket reference from the title so it isn't shown twice.
   const cleanTitle = ticket ? pr.title.replace(/\[?DC-\d+\]?:?[-\s]*/i, '').trim() : pr.title
@@ -125,7 +125,7 @@ function getCommitsSince(gitDir: string, sinceSha: string): Set<string> {
   return new Set(raw.split('\n').filter(Boolean))
 }
 
-function buildMarkdown(
+export function buildMarkdown(
   mergedPRs: PullRequest[],
   rangeLabel: string,
   compareUrl: string | null,
@@ -202,12 +202,11 @@ async function main(): Promise<void> {
   const stateFilter = (stateFilterArg as 'dc' | 'co' | undefined) ?? null
 
   const repoFlag = repoArg ? ` --repo ${repoArg}` : ''
-  // A limit of 100 (this script's original default) silently truncates once a range
-  // spans more than 100 merged PRs — a near-certainty for --since-sha given DC/CO's
-  // irregular, sometimes months-long gaps between deploys (confirmed while testing:
-  // a 112-commit range needed --limit 500 to avoid dropping 12 real PRs). 1000 is a
-  // generous ceiling for a still-fast query; the warning below catches anything that
-  // still hits it, rather than silently under-reporting.
+  // A low limit would silently truncate once a range spans more merged PRs than the
+  // limit — a real risk for --since-sha given DC/CO's irregular, sometimes
+  // months-long gaps between deploys. 1000 is a generous ceiling for a still-fast
+  // query; the warning below catches anything that still hits it, rather than
+  // silently under-reporting.
   const PR_FETCH_LIMIT = 1000
   // gh resolves owner/repo from the current git remote when --repo isn't given.
   const raw = execSync(
