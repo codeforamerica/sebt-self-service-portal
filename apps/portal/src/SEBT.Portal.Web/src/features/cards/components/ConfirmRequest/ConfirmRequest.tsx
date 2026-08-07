@@ -8,7 +8,14 @@ import { setReplacementFlash } from '@/features/cards/utils/replacementFlash'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { trackCardReplacementSubmit } from '@/lib/analytics-helpers'
 import { useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState, RichText, SummaryBox } from '@sebt/design-system'
+import {
+  Alert,
+  Button,
+  getState,
+  ProcessingIndicator,
+  RichText,
+  SummaryBox
+} from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
 
@@ -37,7 +44,6 @@ function fillCardPlaceholders(template: string, ebtCase: SummerEbtCase): string 
 export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) {
   const { t } = useTranslation('result')
   const { t: tOptional } = useTranslation('optionalId')
-  const { t: tDev } = useTranslation('dev')
   const { t: tCommon } = useTranslation('common')
   const { t: tDashboard } = useTranslation('dashboard')
 
@@ -153,7 +159,9 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
         </Alert>
       )}
 
-      <div className="margin-top-3 display-flex flex-row gap-2">
+      {/* No inputs on this screen, so no fieldset; just the button-row half
+          of the processing pattern. */}
+      <div className="margin-top-3 display-flex flex-row flex-align-center gap-2">
         <Button
           variant="outline"
           type="button"
@@ -165,10 +173,14 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
         <Button
           type="button"
           onClick={handleSubmit}
-          disabled={mutation.isPending}
+          isLoading={mutation.isPending}
         >
-          {mutation.isPending ? tDev('loading') : tOrder('action')}
+          {tOrder('action')}
         </Button>
+        <ProcessingIndicator
+          isProcessing={mutation.isPending}
+          label={tCommon('processing')}
+        />
       </div>
     </div>
   )
