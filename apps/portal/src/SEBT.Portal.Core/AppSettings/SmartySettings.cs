@@ -20,8 +20,8 @@ public sealed class SmartySettings
     /// <summary>Smarty embedded key auth-token (secret).</summary>
     public string? AuthToken { get; set; }
 
-    /// <summary>API host without trailing slash (e.g. https://us-street.api.smartystreets.com).</summary>
-    public string BaseUrl { get; set; } = "https://us-street.api.smartystreets.com";
+    /// <summary>API host without trailing slash (e.g. https://us-street.api.smarty.com).</summary>
+    public string BaseUrl { get; set; } = "https://us-street.api.smarty.com";
 
     /// <summary>HTTP timeout for Smarty requests.</summary>
     [Range(1, 120)]
