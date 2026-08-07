@@ -61,7 +61,10 @@ jobs:
       # Runs scripts/release-notes/generate.ts, which writes
       # docs/release-notes/YYYY-MM-DD.md using merged PRs fetched via gh CLI.
       - name: Generate release notes
-        run: npx --yes tsx@4 scripts/release-notes/generate.ts --days=${{ steps.cadence.outputs.days }}
+        run: |
+          npx --yes tsx@4 scripts/release-notes/generate.ts \
+            --days=${{ steps.cadence.outputs.days }} \
+            --tag-prefix=${{ steps.cadence.outputs.tag_prefix }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

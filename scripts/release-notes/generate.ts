@@ -79,11 +79,11 @@ function formatEntry(pr: PullRequest): string {
   return `* ${ticketPrefix}${cleanTitle} by @${pr.author.login} in ${pr.url}`
 }
 
-function getPreviousWeeklyTag(): string | null {
+function getPreviousTag(tagPrefix: string): string | null {
   try {
     const raw = execSync('gh release list --json tagName --limit 20', { encoding: 'utf8' })
     const releases = JSON.parse(raw) as { tagName: string }[]
-    return releases.find((r) => r.tagName.startsWith('weekly-'))?.tagName ?? null
+    return releases.find((r) => r.tagName.startsWith(`${tagPrefix}-`))?.tagName ?? null
   } catch {
     return null
   }
@@ -172,6 +172,12 @@ async function main(): Promise<void> {
   const gitDir = parseFlag(argv, 'git-dir') ?? '.'
   const daysArgRaw = parseFlag(argv, 'days')
   const stateFilterArg = parseFlag(argv, 'state-filter')
+  // Only meaningful in date-window mode — weekly-release-notes.yml runs both the
+  // weekly and nightly cadence through this same script/job, and each cadence tags
+  // its own release differently (weekly-YYYY-MM-DD vs nightly-YYYY-MM-DD). Without
+  // this, the "Full Changelog" link would always reference a weekly-* tag even on a
+  // nightly run, pointing at a tag that was never created.
+  const tagPrefix = parseFlag(argv, 'tag-prefix') ?? 'weekly'
 
   if (sinceSha && daysArgRaw) {
     throw new Error('--since-sha and --days are mutually exclusive')
@@ -222,8 +228,8 @@ async function main(): Promise<void> {
     const weekStart = since.toISOString().split('T')[0]
     mergedPRs = allPRs.filter((pr) => pr.mergedAt && new Date(pr.mergedAt) >= since)
     rangeLabel = `between ${weekStart} and ${today}`
-    const prevTag = getPreviousWeeklyTag() ?? `weekly-${weekStart}`
-    compareUrl = `${repoUrl}/compare/${prevTag}...weekly-${today}`
+    const prevTag = getPreviousTag(tagPrefix) ?? `${tagPrefix}-${weekStart}`
+    compareUrl = `${repoUrl}/compare/${prevTag}...${tagPrefix}-${today}`
   }
 
   const md = buildMarkdown(mergedPRs, rangeLabel, compareUrl, stateFilter)
