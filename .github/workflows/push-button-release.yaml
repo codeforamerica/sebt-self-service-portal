@@ -127,10 +127,10 @@ jobs:
         if: inputs.state == 'dc'
         run: |
           # --state-filter=dc excludes Chores here the same as it does for the portal
-          # section above. This depends on the dc-connector repo having its own
-          # branch-prefix labeler (mirroring .github/labeler.yml) so its dependabot
-          # PRs actually carry a chore-matching label — see the companion PR on that
-          # repo.
+          # section above. Only works if dc-connector's own PRs carry a chore-matching
+          # label (chore/dependabot/etc) rather than just GitHub's native
+          # dependencies/github_actions labels — requires that repo to have its own
+          # branch-prefix labeler mirroring .github/labeler.yml.
           npx --yes tsx@4 scripts/release-notes/generate.ts \
             --repo=codeforamerica/sebt-self-service-portal-dc-connector \
             --git-dir=dc-connector \
