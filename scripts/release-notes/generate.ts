@@ -143,16 +143,16 @@ function buildMarkdown(
   }
 
   // A formal per-state release (--state-filter set) only shows that state's PRs plus
-  // generic/Both ones — the other state's PRs and Chores are deliberately left out.
+  // the portal-wide ones — the other state's PRs and Chores are deliberately left out.
   // Nightly/weekly (no --state-filter) keep showing every bucket, unchanged.
   if (stateFilter !== 'dc' && co.length > 0) {
-    md += `\n## CO\n${co.join('\n')}\n`
+    md += `\n## CO Specific\n${co.join('\n')}\n`
   }
   if (stateFilter !== 'co' && dc.length > 0) {
-    md += `\n## DC\n${dc.join('\n')}\n`
+    md += `\n## DC Specific\n${dc.join('\n')}\n`
   }
   if (both.length > 0) {
-    md += `\n## Both\n${both.join('\n')}\n`
+    md += `\n## Portal Wide Changes\n${both.join('\n')}\n`
   }
   if (!stateFilter && chores.length > 0) {
     md += `\n## Chores\n${chores.join('\n')}\n`
