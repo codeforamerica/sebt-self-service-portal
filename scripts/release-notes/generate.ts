@@ -46,14 +46,12 @@ function isChore(pr: PullRequest): boolean {
   return pr.labels.some((l) => CHORE_LABELS.has(l.name.toLowerCase()))
 }
 
-// Label-first; falls back to word-boundary title match.
-// \bCO\b matches standalone "CO" but not "Consolidate", "Connect", etc.
+// Checks label which we enforce in a pre merge PR check
 function isColorado(pr: PullRequest): boolean {
-  if (pr.labels.some((l) => l.name.toLowerCase() === 'co')) return true
-  return /\bCO\b/.test(pr.title) || /colorado/i.test(pr.title)
+  return pr.labels.some((l) => l.name.toLowerCase() === 'co')
 }
 
-// Label-only — "DC-NNN" ticket prefixes in titles don't mean DC-only.
+// Checks label which we enforce in a pre merge PR check
 function isDC(pr: PullRequest): boolean {
   return pr.labels.some((l) => l.name.toLowerCase() === 'dc')
 }
