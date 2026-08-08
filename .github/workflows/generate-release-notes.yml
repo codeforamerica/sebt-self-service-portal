@@ -6,13 +6,14 @@ on:
     - cron: '0 0 * * *'  # Nightly: every day at midnight UTC
   workflow_dispatch:      # Also allow manual trigger (treated as nightly cadence)
 
-permissions:
-  contents: write
-  pull-requests: read
+permissions: {}
 
 jobs:
   release-notes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
 
     steps:
       - name: Checkout

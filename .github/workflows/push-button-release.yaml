@@ -11,13 +11,14 @@ on:
           - dc
           - co
 
-permissions:
-  contents: write
-  pull-requests: read
+permissions: {}
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
     steps:
       - name: Checkout portal
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
