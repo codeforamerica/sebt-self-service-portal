@@ -31,11 +31,13 @@ jobs:
 
       - name: Resolve prod URL for state
         id: prod-url
+        env:
+          STATE: ${{ inputs.state }}
         run: |
-          case "${{ inputs.state }}" in
+          case "$STATE" in
             dc) echo "url=https://portal.sunbucks.dc.gov" >> "$GITHUB_OUTPUT" ;;
             co) echo "url=https://sebt.cbms.cdhs.state.co.us" >> "$GITHUB_OUTPUT" ;;
-            *) echo "::error::Unknown state: ${{ inputs.state }}"; exit 1 ;;
+            *) echo "::error::Unknown state: $STATE"; exit 1 ;;
           esac
 
       - name: Resolve live portal SHA
@@ -117,11 +119,13 @@ jobs:
       - name: Generate portal release notes
         run: |
           npx --yes tsx@4 scripts/release-notes/generate.ts \
-            --since-sha=${{ steps.old-portal-sha.outputs.sha }} \
-            --state-filter=${{ inputs.state }}
+            --since-sha="$SINCE_SHA" \
+            --state-filter="$STATE_FILTER"
           mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/portal-notes.md"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SINCE_SHA: ${{ steps.old-portal-sha.outputs.sha }}
+          STATE_FILTER: ${{ inputs.state }}
 
       - name: Generate dc-connector release notes
         if: inputs.state == 'dc'
@@ -134,15 +138,18 @@ jobs:
           npx --yes tsx@4 scripts/release-notes/generate.ts \
             --repo=codeforamerica/sebt-self-service-portal-dc-connector \
             --git-dir=dc-connector \
-            --since-sha=${{ steps.old-connector-sha.outputs.sha }} \
+            --since-sha="$SINCE_SHA" \
             --state-filter=dc
           mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/connector-notes.md"
         env:
           GH_TOKEN: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          SINCE_SHA: ${{ steps.old-connector-sha.outputs.sha }}
 
       # ─── Compose and publish ─────────────────────────────────────────────────────
       - name: Compose release body
         id: compose
+        env:
+          STATE: ${{ inputs.state }}
         run: |
           {
             echo "## Summary"
@@ -150,7 +157,7 @@ jobs:
             echo "_Fill in a plain-language summary before publishing — the lists below are the raw material, not the final thing the state partner sees._"
             echo ""
             tail -n +2 "$RUNNER_TEMP/portal-notes.md"
-            if [ "${{ inputs.state }}" = "dc" ]; then
+            if [ "$STATE" = "dc" ]; then
               echo ""
               echo "## Changes in dc-connector"
               # With --state-filter=dc set above, "Portal Wide Changes" is the only
@@ -164,7 +171,7 @@ jobs:
             fi
           } > "$RUNNER_TEMP/release-body.md"
 
-          case "${{ inputs.state }}" in
+          case "$STATE" in
             dc) echo "tag_suffix=dc" >> "$GITHUB_OUTPUT"; echo "state_name=DC" >> "$GITHUB_OUTPUT" ;;
             co) echo "tag_suffix=colorado" >> "$GITHUB_OUTPUT"; echo "state_name=Colorado" >> "$GITHUB_OUTPUT" ;;
           esac
