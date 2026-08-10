@@ -1,6 +1,6 @@
 using SEBT.Portal.Core.AppSettings;
 
-namespace SEBT.Portal.Api.Startup;
+namespace SEBT.Portal.Api.Startup.Guards;
 
 /// <summary>
 /// Validates that PII encryption keys are not default or placeholder values in production.

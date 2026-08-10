@@ -131,6 +131,8 @@
   <ItemGroup>
     <Folder Include="plugins-dc\" />
     <Folder Include="plugins-co\" />
+    <Folder Include="Startup\Services\" />
+    <Folder Include="Startup\Setup\" />
   </ItemGroup>
 
 </Project>

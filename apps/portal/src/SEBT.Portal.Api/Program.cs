@@ -26,6 +26,7 @@ using SEBT.Portal.UseCases;
 using SEBT.Portal.UseCases.Auth.SessionLifetime;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
+using SEBT.Portal.Api.Startup.Guards;
 
 var builder = WebApplication.CreateBuilder(args);
 

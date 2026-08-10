@@ -1,6 +1,6 @@
-using SEBT.Portal.Api.Startup;
+using SEBT.Portal.Api.Startup.Guards;
 
-namespace SEBT.Portal.Tests.Unit.Startup;
+namespace SEBT.Portal.Tests.Unit.Startup.Guards;
 
 public class IdentifierHasherGuardTests
 {

@@ -1,8 +1,8 @@
-using SEBT.Portal.Api.Startup;
+using SEBT.Portal.Api.Startup.Guards;
 using SEBT.Portal.Core.AppSettings;
 using Xunit;
 
-namespace SEBT.Portal.Tests.Unit.Startup;
+namespace SEBT.Portal.Tests.Unit.Startup.Guards;
 
 public class PiiEncryptionGuardTests
 {
