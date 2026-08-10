@@ -1,6 +1,6 @@
 # Authoring a state backend config
 
-A state config bundle is a single YAML file that tells the portal how to talk to one state's household backend: its base URL, how to authenticate, which operations it supports, and how to translate each request and response between the portal's canonical vocabulary and the state's flavor. One rule governs everything in this guide: **you configure within a closed catalog of named primitives, and you never invent operators.** There is no expression language — nothing in the config lets you write your own logic. When you need behavior no primitive provides, you stop and ask for a new named primitive to be added in code (see [When you hit the cap](#when-you-hit-the-cap)).
+A state config bundle is a single YAML file. It tells the portal how to talk to one state's household backend: its base URL, how to authenticate, which operations it supports, and how to translate each request and response between the portal's canonical vocabulary and the state's flavor. One rule governs everything in this guide: **you configure within a closed catalog of named primitives, and you never invent operators.** There is no expression language — nothing in the config lets you write your own logic. When you need behavior no primitive provides, you stop and ask for a new named primitive to be added in code (see [When you hit the cap](#when-you-hit-the-cap)).
 
 The two worked examples throughout are [`dc.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml) (District of Columbia, API-key auth) and [`co.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml) (Colorado, OAuth client-credentials auth). Every YAML fragment below is copied from one of those files.
 
@@ -189,7 +189,7 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 The binding vocabulary:
 
 - `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
-- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. An input that resolves to no value fails fast.
+- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. The binder rejects an input that resolves to no value.
 - `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing fast. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
 
 The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid`, plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
@@ -205,7 +205,7 @@ DC card replacement — a scalar `map` whose left-hand names are the decoded `ca
 
 Address update spans every case a household owns, so it adds two **batch shapes**:
 
-- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **fails fast if the decoded caseIds disagree** on the value. DC resolves one shared household identifier this way:
+- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **refuses the request if the decoded caseIds disagree** on the value. DC resolves one shared household identifier this way:
 
 ```yaml
     request:
