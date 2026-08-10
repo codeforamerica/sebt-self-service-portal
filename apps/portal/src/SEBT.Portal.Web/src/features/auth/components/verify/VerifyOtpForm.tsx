@@ -7,7 +7,14 @@ import { useCountdown } from 'usehooks-ts'
 
 import { ApiError } from '@/api/client'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField, TextLink } from '@sebt/design-system'
+import {
+  Alert,
+  Button,
+  InputField,
+  ProcessingFieldset,
+  ProcessingIndicator,
+  TextLink
+} from '@sebt/design-system'
 
 import { needsIdProofingFlowAfterOtp } from '@/lib/idProofingStatus'
 
@@ -26,6 +33,7 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
   const { login } = useAuth()
   const { t: tLogin, i18n } = useTranslation('login')
   const { t: tValidation } = useTranslation('validation')
+  const { t: tCommon } = useTranslation('common')
 
   const [otp, setOtp] = useState('')
   // Error/status state holds `validation` namespace keys (not resolved strings) so the
@@ -158,27 +166,34 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
         </Alert>
       )}
 
-      <InputField
-        label={tLogin('verifyLabelCode')}
-        type="text"
-        inputMode="numeric"
-        name="otp"
-        autoComplete="one-time-code"
-        isRequired
-        maxLength={6}
-        value={otp}
-        onChange={(e) => setOtp(e.target.value)}
-        onBlur={() => setFieldErrorKey(validateCode(otp))}
-        disabled={isSubmitting}
-        className="maxw-full"
-        {...(fieldErrorKey ? { error: tValidation(fieldErrorKey) } : {})}
-      />
+      {/* Only the Verify submit drives the page processing state. Resend keeps
+          its busy state local (own disabled + countdown), so the fieldset wraps
+          just the code input and both buttons stay outside it. */}
+      <ProcessingFieldset
+        isProcessing={isSubmitting}
+        legend={tLogin('verifyLabelCode')}
+        legendHidden
+      >
+        <InputField
+          label={tLogin('verifyLabelCode')}
+          type="text"
+          inputMode="numeric"
+          name="otp"
+          autoComplete="one-time-code"
+          isRequired
+          maxLength={6}
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          onBlur={() => setFieldErrorKey(validateCode(otp))}
+          className="maxw-full"
+          {...(fieldErrorKey ? { error: tValidation(fieldErrorKey) } : {})}
+        />
+      </ProcessingFieldset>
 
       {/* Confirm button */}
       <Button
         type="submit"
         isLoading={isSubmitting}
-        loadingText={`${tLogin('verifyActionConfirm')}...`}
         className="margin-top-3 display-block"
       >
         {tLogin('verifyActionConfirm')}
@@ -197,6 +212,12 @@ export function VerifyOtpForm({ email, contactLink }: VerifyOtpFormProps) {
           ? `${tLogin('verifyActionResend')} (${count}s)`
           : tLogin('verifyActionResend')}
       </Button>
+
+      <ProcessingIndicator
+        isProcessing={isSubmitting}
+        label={tCommon('processing')}
+        className="margin-top-3"
+      />
 
       <p className="margin-top-4 font-sans-sm">
         <TextLink

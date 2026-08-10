@@ -25,6 +25,12 @@ export { SummaryBox } from './components/ui/SummaryBox'
 export type { SummaryBoxProps } from './components/ui/SummaryBox'
 export { LoadingInterstitial } from './components/ui/LoadingInterstitial'
 export type { LoadingInterstitialProps } from './components/ui/LoadingInterstitial'
+export { Spinner } from './components/ui/Spinner'
+export type { SpinnerProps } from './components/ui/Spinner'
+export { ProcessingFieldset } from './components/ui/ProcessingFieldset'
+export type { ProcessingFieldsetProps } from './components/ui/ProcessingFieldset'
+export { ProcessingIndicator } from './components/ui/ProcessingIndicator'
+export type { ProcessingIndicatorProps } from './components/ui/ProcessingIndicator'
 
 // Rich text rendering (markdown-to-jsx)
 export { RichText } from './components/RichText/RichText'

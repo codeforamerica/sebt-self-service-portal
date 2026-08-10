@@ -91,8 +91,8 @@ module "api" {
     "Redis__Password"              = "${module.redis.auth_token_secret_arn}:auth_token"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
-    "Smarty__AuthId"               = module.secrets.secrets["smarty_auth_id"].secret_arn
-    "Smarty__AuthToken"            = module.secrets.secrets["smarty_auth_token"].secret_arn
+    "Smarty__AuthId"               = module.secrets.secrets["SMARTY_AUTH_ID"].secret_arn
+    "Smarty__AuthToken"            = module.secrets.secrets["SMARTY_AUTH_TOKEN"].secret_arn
   }, var.state_api_environment_secrets)
 
   # Forward application traces to Datadog APM when the integration API key is
@@ -176,12 +176,19 @@ module "secrets" {
   environment = var.environment
   service     = "api"
 
+  # Doppler's AWS Secrets Manager sync creates its own target secret named
+  # "{path}/{DOPPLER_KEY}" (uppercase, exact match) rather than writing into
+  # a pre-existing ARN — so these keys and add_suffix=false must make our
+  # secret's name match exactly what Doppler will create, or Doppler ends up
+  # populating an entirely separate, unreferenced secret.
+  add_suffix = false
+
   secrets = {
-    "smarty_auth_id" = {
+    "SMARTY_AUTH_ID" = {
       description     = "Smarty address validation API auth ID."
       recovery_window = var.secret_recovery_period
     }
-    "smarty_auth_token" = {
+    "SMARTY_AUTH_TOKEN" = {
       description     = "Smarty address validation API auth token."
       recovery_window = var.secret_recovery_period
     }
@@ -189,8 +196,7 @@ module "secrets" {
 }
 
 # Sync the API's secrets to Doppler so they can be managed from a single
-# place instead of the AWS console. Doppler pushes to this existing secret's
-# ARN; it doesn't create its own. Smarty's credentials are a single shared
+# place instead of the AWS console. Smarty's credentials are a single shared
 # vendor account used by every state, so both DC and CO read from the same
 # root "dev" config instead of a per-state branch.
 module "doppler" {
