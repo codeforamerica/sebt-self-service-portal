@@ -5,7 +5,15 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, InputField, getState, getStateLinks } from '@sebt/design-system'
+import {
+  Alert,
+  Button,
+  InputField,
+  ProcessingFieldset,
+  ProcessingIndicator,
+  getState,
+  getStateLinks
+} from '@sebt/design-system'
 
 import type { Address } from '@/features/household/api'
 import {
@@ -325,113 +333,128 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
           </div>
         )}
 
-        <AddressAutocomplete
-          label={tCommon('streetAddress')}
-          {...(currentState === 'dc' ? { hint: tCommon('helperStreetAddress') } : {})}
-          name="streetAddress1"
-          value={streetAddress1}
-          onChange={(e) => setStreetAddress1(e.target.value)}
-          onSuggestionSelected={(address: SelectedAddress) => {
-            setStreetAddress1(address.streetLine1)
-            setStreetAddress2(address.streetLine2)
-            setCity(address.city)
-            setStateValue(address.state)
-            setPostalCode(address.zipcode)
-          }}
-          autoComplete="address-line1"
-          isRequired
-          {...(fieldErrors.streetAddress1
-            ? { error: resolveFieldError(fieldErrors.streetAddress1) }
-            : {})}
-        />
-
-        <InputField
-          label={tCommon('streetAddress2')}
-          hint={tCommon('helperStreetAddress2')}
-          name="streetAddress2"
-          value={streetAddress2}
-          onChange={(e) => setStreetAddress2(e.target.value)}
-          autoComplete="address-line2"
-        />
-
-        <InputField
-          label={tCommon('city')}
-          name="city"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          autoComplete="address-level2"
-          isRequired
-          {...(fieldErrors.city ? { error: resolveFieldError(fieldErrors.city) } : {})}
-        />
-
-        <div
-          className={fieldErrors.state ? 'usa-form-group usa-form-group--error' : 'usa-form-group'}
+        {/* Error surfaces and the button row sit outside this wrapper: the 50%
+            fade composites its whole subtree, and they must stay full-strength. */}
+        <ProcessingFieldset
+          isProcessing={isSubmitting}
+          legend={t('titleYour')}
+          legendHidden
         >
-          <label
-            className="usa-label"
-            htmlFor="address-state"
+          <AddressAutocomplete
+            label={tCommon('streetAddress')}
+            {...(currentState === 'dc' ? { hint: tCommon('helperStreetAddress') } : {})}
+            name="streetAddress1"
+            value={streetAddress1}
+            onChange={(e) => setStreetAddress1(e.target.value)}
+            onSuggestionSelected={(address: SelectedAddress) => {
+              setStreetAddress1(address.streetLine1)
+              setStreetAddress2(address.streetLine2)
+              setCity(address.city)
+              setStateValue(address.state)
+              setPostalCode(address.zipcode)
+            }}
+            autoComplete="address-line1"
+            isRequired
+            {...(fieldErrors.streetAddress1
+              ? { error: resolveFieldError(fieldErrors.streetAddress1) }
+              : {})}
+          />
+
+          <InputField
+            label={tCommon('streetAddress2')}
+            hint={tCommon('helperStreetAddress2')}
+            name="streetAddress2"
+            value={streetAddress2}
+            onChange={(e) => setStreetAddress2(e.target.value)}
+            autoComplete="address-line2"
+          />
+
+          <InputField
+            label={tCommon('city')}
+            name="city"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            autoComplete="address-level2"
+            isRequired
+            {...(fieldErrors.city ? { error: resolveFieldError(fieldErrors.city) } : {})}
+          />
+
+          <div
+            className={
+              fieldErrors.state ? 'usa-form-group usa-form-group--error' : 'usa-form-group'
+            }
           >
-            {tCommon('stateOrTerritory')}
-            <span className="text-secondary-dark"> *</span>
-          </label>
-          {fieldErrors.state && (
-            <span
-              className="usa-error-message"
-              id="address-state-error"
-              role="alert"
+            <label
+              className="usa-label"
+              htmlFor="address-state"
             >
-              {resolveFieldError(fieldErrors.state)}
-            </span>
-          )}
-          <select
-            id="address-state"
-            className={`usa-select${fieldErrors.state ? ' usa-input--error' : ''}`}
-            name="state"
-            value={stateValue}
-            onChange={(e) => setStateValue(e.target.value)}
-            autoComplete="address-level1"
-            aria-required="true"
-            aria-invalid={!!fieldErrors.state}
-            aria-describedby={fieldErrors.state ? 'address-state-error' : undefined}
-          >
-            <option value="">{`- ${tCommon('selectOne')} -`}</option>
-            {US_STATE_OPTIONS.map(({ code, name }) => (
-              <option
-                key={code}
-                value={code}
+              {tCommon('stateOrTerritory')}
+              <span className="text-secondary-dark"> *</span>
+            </label>
+            {fieldErrors.state && (
+              <span
+                className="usa-error-message"
+                id="address-state-error"
+                role="alert"
               >
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
+                {resolveFieldError(fieldErrors.state)}
+              </span>
+            )}
+            <select
+              id="address-state"
+              className={`usa-select${fieldErrors.state ? ' usa-input--error' : ''}`}
+              name="state"
+              value={stateValue}
+              onChange={(e) => setStateValue(e.target.value)}
+              autoComplete="address-level1"
+              aria-required="true"
+              aria-invalid={!!fieldErrors.state}
+              aria-describedby={fieldErrors.state ? 'address-state-error' : undefined}
+            >
+              <option value="">{`- ${tCommon('selectOne')} -`}</option>
+              {US_STATE_OPTIONS.map(({ code, name }) => (
+                <option
+                  key={code}
+                  value={code}
+                >
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-        <InputField
-          label={tCommon('zipCode')}
-          name="postalCode"
-          value={postalCode}
-          onChange={(e) => setPostalCode(e.target.value)}
-          autoComplete="postal-code"
-          isRequired
-          {...(fieldErrors.postalCode ? { error: resolveFieldError(fieldErrors.postalCode) } : {})}
-        />
+          <InputField
+            label={tCommon('zipCode')}
+            name="postalCode"
+            value={postalCode}
+            onChange={(e) => setPostalCode(e.target.value)}
+            autoComplete="postal-code"
+            isRequired
+            {...(fieldErrors.postalCode
+              ? { error: resolveFieldError(fieldErrors.postalCode) }
+              : {})}
+          />
+        </ProcessingFieldset>
 
-        <div className="margin-top-3 display-flex flex-row gap-2">
+        <div className="margin-top-3 display-flex flex-row flex-align-center gap-2">
           <Button
             variant="outline"
             type="button"
             onClick={() => router.push('/dashboard')}
+            disabled={isSubmitting}
           >
             {tCommon('back')}
           </Button>
           <Button
             type="submit"
             isLoading={isSubmitting}
-            loadingText={`${tCommon('continue')}...`}
-            disabled={isSubmitting}
           >
             {tCommon('continue')}
           </Button>
+          <ProcessingIndicator
+            isProcessing={isSubmitting}
+            label={tCommon('processing')}
+          />
         </div>
       </form>
     </>

@@ -30,6 +30,19 @@ Typography: 16px, Bold (700), Line height 24px
     border-color: color('secondary-darker');
   }
 
+  // USWDS's button-disabled mixin sets background and text but never
+  // border-color (its buttons draw no border), so our real border above would
+  // otherwise keep its full-strength brand color while disabled. Must stay the
+  // :disabled pseudo-class, not [disabled]: controls inside <fieldset disabled>
+  // are disabled per spec and match :disabled, but carry no disabled attribute.
+  &:disabled,
+  &:disabled:hover,
+  &:disabled:active {
+    background-color: color('disabled-lighter');
+    border-color: color('disabled-lighter');
+    color: color('disabled-dark');
+  }
+
   &--unstyled {
     background-color: transparent;
     border: 0;
@@ -66,6 +79,19 @@ Typography: 16px, Bold (700), Line height 24px
       border-color: color('secondary-darker');
       box-shadow: none;
     }
+
+    // Border recolored, not removed: removing the 2px border would shrink the
+    // button by 4px per axis at the moment of disabling. box-shadow: none
+    // suppresses USWDS's inset disabled stroke, which would double-stroke with
+    // our real border.
+    &:disabled,
+    &:disabled:hover,
+    &:disabled:active {
+      background-color: color('white');
+      border-color: color('disabled-lighter');
+      box-shadow: none;
+      color: color('disabled');
+    }
   }
 }
 
@@ -89,6 +115,17 @@ html[data-state='co'] {
       background-color: color('primary-darker');
       border-color: color('primary-darker');
     }
+
+    // This chain's specificity buries USWDS's .usa-button:disabled rule, so
+    // without an explicit disabled branch a disabled CO button keeps its full
+    // teal fill. Mirrors the base .usa-button:disabled treatment above.
+    &:disabled,
+    &:disabled:hover,
+    &:disabled:active {
+      background-color: color('disabled-lighter');
+      border-color: color('disabled-lighter');
+      color: color('disabled-dark');
+    }
   }
 
   .usa-button--outline:not(.usa-language__link):not(.usa-button--mycolorado) {
@@ -106,6 +143,17 @@ html[data-state='co'] {
       background-color: color('primary-lighter');
       border-color: color('primary-darker');
       color: color('primary-darker');
+    }
+
+    // Same reason as the filled chain above; mirrors the base outline
+    // disabled treatment.
+    &:disabled,
+    &:disabled:hover,
+    &:disabled:active {
+      background-color: color('white');
+      border-color: color('disabled-lighter');
+      box-shadow: none;
+      color: color('disabled');
     }
   }
 }
