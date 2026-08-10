@@ -8,7 +8,7 @@ Proposed — the adapter is dark behind `FeatureManagement:use_configurable_stat
 
 ## Context
 
-Each new state today costs a bespoke MEF connector — roughly 9k LOC of transport, mapping, and matching code, a paired cross-repo CI build, and its own deploy (see [0007-multi-state-plugin-approach.md](./0007-multi-state-plugin-approach.md)). To find out how much of that is real variation, we diffed the two existing connectors — Colorado CBMS over REST, DC stored procedures over ADO.NET — concern by concern; bespoke code dominated the cost, front-loaded on transport and matching. The table below condenses that taxonomy (source anchors were `file:line` references valid as of the spike). Classification: **(a)** shared plumbing, **(b)** config over a shared primitive, **(c)** bespoke.
+Each new state today costs a bespoke MEF connector — roughly 9k LOC of transport, mapping, and matching code, a paired cross-repo CI build, and its own deploy (see [0007-multi-state-plugin-approach.md](./0007-multi-state-plugin-approach.md)). To find out how much of that is real variation, we diffed the two existing connectors — Colorado CBMS over REST, DC stored procedures over ADO.NET — concern by concern. Bespoke code dominated the cost, front-loaded on transport and matching. The table below condenses that taxonomy (source anchors were `file:line` references valid as of the spike). Classification: **(a)** shared plumbing, **(b)** config over a shared primitive, **(c)** bespoke.
 
 | # | Concern | CO | DC | Class |
 |---|---|---|---|---|
