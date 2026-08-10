@@ -24,17 +24,9 @@
     <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
 
-  <!--
-    NuGet lockfiles: one packages.lock.json per project, checked into source. Each
-    records the exact resolved version and content hash of every direct and
-    transitive dependency, so all environments restore identical packages and a new
-    version cannot slip in without an explicit, reviewable change to the lockfile.
-
-    Generation is on everywhere; CI enforces it by running restore in NuGet's locked
-    mode (see scripts/ci/build-backend.sh), which fails the build if a lockfile is
-    missing or would change rather than silently regenerating it. Locked mode is
-    deliberately not set here so local dev can still add packages and refresh the
-    lockfile.
+  <!-- 
+    Triggers generation of NuGet package lock files (packages.lock.json) for 
+    all projects in the directory or subdirectories.
   -->
   <PropertyGroup>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
