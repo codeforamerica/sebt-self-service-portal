@@ -1,6 +1,6 @@
 # Authoring a state backend config
 
-A state config bundle is a single YAML file. It tells the portal how to talk to one state's household backend: its base URL, how to authenticate, which operations it supports, and how to translate each request and response between the portal's canonical vocabulary and the state's flavor. One rule governs everything in this guide: **you configure within a closed catalog of named primitives, and you never invent operators.** There is no expression language — nothing in the config lets you write your own logic. When you need behavior no primitive provides, you stop and ask for a new named primitive to be added in code (see [When you hit the cap](#when-you-hit-the-cap)).
+A state config bundle is a single YAML file. It tells the portal how to talk to one state's household backend: its base URL, how to authenticate, which operations it supports, and how to translate each request and response between the portal's canonical vocabulary[^canonical] and the state's flavor. One rule governs everything in this guide: **you configure within a closed catalog of named primitives[^primitive], and you never invent operators.** There is no expression language — nothing in the config lets you write your own logic. When you need behavior no primitive provides, you stop and ask for a new named primitive to be added in code (see [When you hit the cap](#when-you-hit-the-cap)).
 
 The two worked examples throughout are [`dc.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml) (District of Columbia, API-key auth) and [`co.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml) (Colorado, OAuth client-credentials auth). Every YAML fragment below is copied from one of those files.
 
@@ -129,7 +129,7 @@ This primitive is capped at substring-contains, first-match-wins. No regex, no c
 
 ## Step 6: Disaggregation — records into cases and applications
 
-A single flat backend response often mixes application-based and auto-issued records. `disaggregation` (under `response:`) declares how to group records into applications and which to include as cases, using a closed vocabulary — not an expression DSL.
+A single flat backend response often mixes application-based and auto-issued records. `disaggregation` (under `response:`) declares how to group records into applications and which to include as cases, using a closed vocabulary — not an expression DSL (domain-specific language).
 
 DC — a record is application-based when its discriminator is *present*:
 
@@ -192,7 +192,7 @@ The binding vocabulary:
 - `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. The binder rejects an input that resolves to no value.
 - `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing fast. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
 
-The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid`, plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
+The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid` (`ic` is a case identifier used by D.C.), plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
 
 DC card replacement — a scalar `map` whose left-hand names are the decoded `caseId` fields:
 
@@ -286,7 +286,7 @@ The enrollment op turns a batch of children into backend calls, then decides a m
 **`match.strategy`** is one of two named strategies:
 
 - `anyRowValueIn` — needs `field` + `valueIn`. A row matches when `field`'s value is in `valueIn`. In batch mode a child matches if *any* of its rows match.
-- `confidenceThreshold` — needs `scoreField` + `threshold`. A child matches when its best candidate row's score (the argmax) is *strictly greater than* `threshold`; a missing or non-numeric score never matches. An optional eligibility check — `field` + `valueIn`, taken **together or not at all** (the validator rejects one alone) — requires that same argmax row to also carry an eligible value; a lower-scoring eligible row cannot rescue an ineligible best row. The argmax, the `>`, and the AND live in code; config only supplies the params.
+- `confidenceThreshold` — needs `scoreField` + `threshold`. A child matches when the single highest-scoring row (its *argmax*) is *strictly greater than* `threshold`; a missing or non-numeric score never matches. An optional eligibility check — `field` + `valueIn`, taken **together or not at all** (the validator rejects one alone) — requires that same argmax row to also carry an eligible value; a lower-scoring eligible row cannot rescue an ineligible best row. The argmax, the `>`, and the AND live in code; config only supplies the params.
 
 Two optional message carriers sit on the response mapping:
 
@@ -365,3 +365,6 @@ Config validates at **load** via `StateBackendConfigurationValidator`, immediate
 - A `caseId` composition whose `fromContext` names an unknown context name, or that sources one token field from both `fields` and `fromContext`.
 - A `mapOptional` on a write op (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so it's rejected rather than silently ignored.
 - An incoherent enrollment op: `batch` missing an `indexField` on either side, `perChild` that sets one, `perChild` combined with `expand`, a match strategy missing its required params (`anyRowValueIn` without `field` + `valueIn`, `confidenceThreshold` without `scoreField` + `threshold`), or a `confidenceThreshold` eligibility check with `field` or `valueIn` alone — they come together or not at all.
+
+[^canonical]: The portal's own field and enum names, identical across every state — as opposed to each state's own names for the same things.
+[^primitive]: A fixed operation built in code. Config picks one by name and fills in its parameters; it never writes the operation's logic.
