@@ -1,14 +1,10 @@
-using Microsoft.Extensions.Options;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
 using Serilog;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Options;
-using SEBT.Portal.Api.Services;
 using SEBT.Portal.Api.Telemetry;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Core.Services;
-using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
@@ -59,39 +55,14 @@ builder.Services.AddPortalDbHealthCheck(builder.Configuration);
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
-// Action filters
 builder.Services.AddScoped<ResolveUserFilter>();
 
 builder.Services.AddOidcServices();
-
-// Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
-builder.Services.AddScoped<IDatabaseSeeder>(sp =>
-{
-    var dataSeeder = sp.GetRequiredService<IDataSeeder>();
-    var logger = sp.GetService<ILogger<DatabaseSeeder>>();
-    var timeProvider = sp.GetRequiredService<TimeProvider>();
-    var seedingSettings = sp.GetService<IOptions<SeedingSettings>>()?.Value ?? new SeedingSettings();
-    return new DatabaseSeeder(dataSeeder, seedingSettings, logger, timeProvider);
-});
-
 builder.Services.AddPortalAuthentication(builder.Configuration);
-
-// Development-only phone override: when set, overrides JWT phone for household lookup
-builder.Services.AddOptions<DevelopmentPhoneOverrideOptions>()
-    .BindConfiguration(DevelopmentPhoneOverrideOptions.SectionName);
-builder.Services.AddSingleton<IPhoneOverrideProvider>(sp =>
-{
-    var env = sp.GetRequiredService<IWebHostEnvironment>();
-    var options = sp.GetRequiredService<IOptions<DevelopmentPhoneOverrideOptions>>().Value;
-    if (env.IsDevelopment() && !string.IsNullOrWhiteSpace(options.Phone))
-    {
-        return sp.GetRequiredService<DevelopmentPhoneOverrideProvider>();
-    }
-    return NullPhoneOverrideProvider.Instance;
-});
-builder.Services.AddSingleton<DevelopmentPhoneOverrideProvider>();
-
 builder.Services.AddPortalRateLimiting();
+
+builder.Services.AddDatabaseSeeder();
+builder.Services.AddDevelopmentOverrides();
 
 var app = builder.Build();
 
