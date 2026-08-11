@@ -11,10 +11,10 @@ module "appconfig" {
 # within the VPC. It runs the .NET backend API on Fargate behind an internal
 # Application Load Balancer.
 module "api" {
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.13.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=10d4c56eb6c156c7a670ee19e40caad476c81a1b" # 1.14.0
 
   project       = "${var.project}-${var.state}"
-  project_short = "sebt"
+  project_short = var.project_short
   environment   = var.environment
   service       = "api"
   service_short = "api"
@@ -86,15 +86,13 @@ module "api" {
   } : {}, var.state_api_environment_variables)
 
   environment_secrets = merge({
-    DB_USER                        = "${module.database.secret_arn}:username"
-    DB_PASSWORD                    = "${module.database.secret_arn}:password"
+    DB_USER                        = "${module.database.app_user_secret_arn}:username"
+    DB_PASSWORD                    = "${module.database.app_user_secret_arn}:password"
     "Redis__Password"              = "${module.redis.auth_token_secret_arn}:auth_token"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
-    "JwtSettings__SecretKey"       = "${module.secrets.secrets["auth"].secret_arn}:jwt_secret_key"
-    "IdentifierHasher__SecretKey"  = "${module.secrets.secrets["auth"].secret_arn}:identifier_hasher_secret_key"
-    "Smarty__AuthId"               = "${module.secrets.secrets["smarty"].secret_arn}:auth_id"
-    "Smarty__AuthToken"            = "${module.secrets.secrets["smarty"].secret_arn}:auth_token"
+    "Smarty__AuthId"               = module.secrets.secrets["SMARTY_AUTH_ID"].secret_arn
+    "Smarty__AuthToken"            = module.secrets.secrets["SMARTY_AUTH_TOKEN"].secret_arn
   }, var.state_api_environment_secrets)
 
   # Forward application traces to Datadog APM when the integration API key is
@@ -111,10 +109,9 @@ module "api" {
 # via an internet facing Application Load Balancer. It communicates with the                                                                      
 # API service internally through the VPC.                                                                                                         
 module "web" {
-  source  = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=1.10.0"
-  project = "${var.project}-${var.state}"
-  # TODO Make project_short a variable
-  project_short = "sebt"
+  source        = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=10d4c56eb6c156c7a670ee19e40caad476c81a1b" # 1.14.0
+  project       = "${var.project}-${var.state}"
+  project_short = var.project_short
   environment   = var.environment
   service       = "web"
   service_short = "web"
@@ -153,29 +150,67 @@ module "web" {
     STATE             = lower(var.state)
     NEXT_PUBLIC_STATE = lower(var.state)
     BACKEND_URL       = "https://${module.api.endpoint_url}"
+    # Emit OTLP to the collector sidecar (declared below); mirrors the API.
+    OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4317"
+    OTEL_SERVICE_NAME           = "sebt-portal-web"
+    OTEL_DEPLOYMENT_ENVIRONMENT = var.environment
   }, var.state_web_environment_variables)
 
   environment_secrets = var.state_web_environment_secrets
+
+  # ADOT collector sidecar, mirroring module.api (forwards traces to Datadog APM
+  # when the integration key is present).
+  otel_collector_version = "v0.47.0"
+  otel_config = local.otel_override_config ? templatefile("${path.module}/templates/otel-config.yaml.tftpl", {
+    app_namespace = "${var.project}-${var.state}/web"
+    environment   = var.environment
+  }) : null
+  otel_secrets = local.otel_secrets
 }
 
 # Store application secrets in Secrets Manager.
 module "secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=2.0.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=1880642d0546106d0c1f568304c0326b32b8cdbb" # 2.1.1
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
   service     = "api"
 
+  # Doppler's AWS Secrets Manager sync creates its own target secret named
+  # "{path}/{DOPPLER_KEY}" (uppercase, exact match) rather than writing into
+  # a pre-existing ARN — so these keys and add_suffix=false must make our
+  # secret's name match exactly what Doppler will create, or Doppler ends up
+  # populating an entirely separate, unreferenced secret.
+  add_suffix = false
+
   secrets = {
-    "auth" = {
-      description     = "JWT and identifier hashing secrets for the SEBT Portal API."
+    "SMARTY_AUTH_ID" = {
+      description     = "Smarty address validation API auth ID."
       recovery_window = var.secret_recovery_period
     }
-    "smarty" = {
-      description     = "Smarty address validation API credentials."
+    "SMARTY_AUTH_TOKEN" = {
+      description     = "Smarty address validation API auth token."
       recovery_window = var.secret_recovery_period
     }
   }
+}
+
+# Sync the API's secrets to Doppler so they can be managed from a single
+# place instead of the AWS console. Smarty's credentials are a single shared
+# vendor account used by every state, so both DC and CO read from the same
+# root "dev" config instead of a per-state branch.
+module "doppler" {
+  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=e8ba5edac1eaf156702c89e0c9cd84f86dcafbfc" # 1.1.0
+  depends_on = [module.secrets]
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+  service     = "api"
+
+  kms_key_arns             = [module.secrets.kms_key_arn]
+  doppler_project          = "safety-net-sebt-self-service-portal"
+  doppler_environment_slug = "dev"
+  doppler_workspace_id     = "08430c37e2a2889dc220"
 }
 
 # Create the RDS SQL Server database.
@@ -183,7 +218,7 @@ module "database" {
   source = "../sebt_database"
 
   project         = "${var.project}-${var.state}"
-  project_short   = "sebt"
+  project_short   = var.project_short
   environment     = var.environment
   vpc_id          = var.vpc_id
   subnets         = var.private_subnets
@@ -191,6 +226,11 @@ module "database" {
 
   ingress_security_groups = [module.api.security_group_id]
   ingress_cidrs           = var.db_ingress_cidrs
+
+  db_name             = "SebtPortal"
+  additional_db_names = var.dc_source_db_name != "" ? [var.dc_source_db_name] : []
+  ecs_cluster_name    = module.api.cluster_name
+  ecs_service_name    = local.api_ecs_service_name
 
   skip_final_snapshot = var.skip_final_snapshot
   apply_immediately   = var.apply_immediately
@@ -203,7 +243,7 @@ module "redis" {
   source = "../sebt_redis"
 
   project       = "${var.project}-${var.state}"
-  project_short = "sebt"
+  project_short = var.project_short
   environment   = var.environment
   vpc_id        = var.vpc_id
   subnets       = var.private_subnets

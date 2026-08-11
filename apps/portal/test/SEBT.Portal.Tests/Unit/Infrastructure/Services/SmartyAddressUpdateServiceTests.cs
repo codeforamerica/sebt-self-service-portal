@@ -17,7 +17,7 @@ public class SmartyAddressUpdateServiceTests
         Enabled = true,
         AuthId = "test-auth-id",
         AuthToken = "test-token",
-        BaseUrl = "https://us-street.api.smartystreets.com"
+        BaseUrl = "https://us-street.api.smarty.com"
     };
 
     private static AddressValidationPolicySettings AllowGeneralDelivery { get; } = new()

@@ -36,7 +36,7 @@ jobs:
       - name: Filter changed paths (PRs only)
         id: filter
         if: github.event_name == 'pull_request'
-        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
         with:
           filters: |
             # Changes to CI or shared build infrastructure invalidate everything.
@@ -95,7 +95,7 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Discover state configurations
         id: set-matrix
@@ -142,7 +142,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Install yq (YAML parser)
         run: |
@@ -223,19 +223,19 @@ jobs:
       # Native Build Path
       - name: Setup .NET (Native)
         if: steps.config.outputs.use_docker != 'true'
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ steps.config.outputs.dotnet_version }}
 
       - name: Setup pnpm (Native)
         if: steps.config.outputs.use_docker != 'true'
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           version: ${{ steps.config.outputs.pnpm_version }}
 
       - name: Setup Node.js (Native)
         if: steps.config.outputs.use_docker != 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ steps.config.outputs.node_version }}
           cache: "pnpm"
@@ -267,7 +267,7 @@ jobs:
       # portal consumes connector plugins via the staged plugins-{state}/ dirs
       # under the API project, and those live inside apps/portal/src already.
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.state }}-build-artifacts
           path: |
@@ -287,15 +287,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
         with:
           version: 10
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: "pnpm"
@@ -338,7 +338,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Run scripts/ci/tests/run-all.sh
         run: bash scripts/ci/tests/run-all.sh

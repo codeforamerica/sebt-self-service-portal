@@ -1,3 +1,4 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Threading.RateLimiting;
 using System.Data.Common;
@@ -11,7 +12,6 @@ using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Api.Filters;
 using SEBT.Portal.Api.Telemetry;
 using Serilog;
-using Serilog.Templates;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Middleware;
 using SEBT.Portal.Api.Options;
@@ -43,29 +43,29 @@ var builder = WebApplication.CreateBuilder(args);
 var useJsonLogs = string.Equals(
     Environment.GetEnvironmentVariable("LOG_FORMAT"), "json", StringComparison.OrdinalIgnoreCase);
 
-var logConfig = new LoggerConfiguration()
-    .ReadFrom.Configuration(builder.Configuration)
-    .Enrich.FromLogContext()
-    .Enrich.WithOtelTracingSpanId()
-    .Enrich.WithPortalUserInfo();
+var bootstrapConfig = new LoggerConfiguration();
+SerilogSetup.Configure(bootstrapConfig, builder.Configuration, useJsonLogs);
 
-if (useJsonLogs)
+// CreateLogger (not CreateBootstrapLogger): WebApplicationFactory builds multiple hosts in
+// one process; a bootstrap/reloadable logger freezes on the first host and throws
+// "The logger is already frozen" on the next. UseSerilog below replaces Log.Logger with a
+// fresh config from SerilogSetup, so Console / LOG_FORMAT stay identical.
+Log.Logger = bootstrapConfig.CreateLogger();
+
+// writeToProviders forwards events to MEL providers (including OTLP). Enable only when OTLP
+// log export is on; otherwise behavior matches a plain UseSerilog(). Clear default MEL
+// providers *before* UseSerilog so we do not strip SerilogLoggerProvider (needed for
+// ILogger<T> → Serilog → Console), while still avoiding duplicate stdout from the
+// framework Console logger when writeToProviders is on.
+var otlpLogExportEnabled = OpenTelemetrySetup.IsOtlpLogExportEnabled(builder.Configuration);
+if (otlpLogExportEnabled)
 {
-    logConfig.WriteTo.Console(new ExpressionTemplate(
-        "{ {date: @t, timestamp: @t, status: @l, level: @l, message: @m, exception: @x, ..@p} }\n"));
-}
-else
-{
-    logConfig.WriteTo.Console(
-        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+    OpenTelemetrySetup.ClearDefaultLoggerProvidersForOtlp(builder);
 }
 
-Log.Logger = logConfig.CreateLogger();
-builder.Host.UseSerilog((cntx, lc) =>
-    lc.ReadFrom.Configuration(cntx.Configuration)
-        .Enrich.FromLogContext()
-        .Enrich.WithOtelTracingSpanId()
-        .Enrich.WithPortalUserInfo(), writeToProviders: true);
+builder.Host.UseSerilog(
+    (context, configuration) => SerilogSetup.Configure(configuration, context.Configuration, useJsonLogs),
+    writeToProviders: otlpLogExportEnabled);
 builder.SetupOpenTelemetry();
 
 builder.Services.AddHttpContextAccessor();
@@ -166,6 +166,7 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 builder.Services.AddUseCases();
 builder.Services.AddPortalInfrastructureServices(builder.Configuration);
 builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
+builder.Services.AddPortalDbHealthCheck(builder.Configuration);
 builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
 builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
@@ -177,6 +178,7 @@ builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
 builder.Services.AddScoped<IOidcCallbackFailureLogger, OidcCallbackFailureLogger>();
 // pre-auth session store (HybridCache-backed, 15 min TTL)
 builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
+builder.Services.AddSingleton<ITokenDenylist, TokenDenylist>();
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
@@ -226,7 +228,7 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             ValidIssuer = jwtSettings.Issuer,
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-            ClockSkew = TimeSpan.FromMinutes(2),
+            ClockSkew = TokenDenylist.ClockSkewPadding,
             NameClaimType = "sub"
         };
         // Preserve JWT claim names (sub, email) so we can read them regardless of handler mapping.
@@ -249,14 +251,14 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                 }
                 return Task.CompletedTask;
             },
-            OnTokenValidated = context =>
+            OnTokenValidated = async context =>
             {
                 // Enforce the absolute session lifetime cap on every authenticated request.
                 // Tokens missing auth_time (e.g., minted before the cap was introduced) or
                 // older than the cap are rejected here so the SPA's 401 handler kicks in.
                 if (context.Principal is null)
                 {
-                    return Task.CompletedTask;
+                    return;
                 }
 
                 var policy = context.HttpContext.RequestServices
@@ -271,8 +273,27 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
                     logger.LogInformation(
                         "JWT rejected by absolute session lifetime policy: {Outcome}", outcome);
                     context.Fail($"Absolute session lifetime: {outcome}");
+                    return;
                 }
-                return Task.CompletedTask;
+
+                // Reject tokens revoked by logout. Tokens without a jti cannot have been
+                // denylisted; the lookup fails open so a cache outage never locks users out.
+                var jti = context.Principal.FindFirst(JwtRegisteredClaimNames.Jti)?.Value;
+                if (string.IsNullOrEmpty(jti))
+                {
+                    return;
+                }
+
+                var denylist = context.HttpContext.RequestServices
+                    .GetRequiredService<ITokenDenylist>();
+                if (await denylist.IsDeniedAsync(jti, context.HttpContext.RequestAborted))
+                {
+                    AuthCookies.ClearAuthCookie(context.Response);
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILogger<JwtBearerEvents>>();
+                    logger.LogInformation("JWT rejected: token revoked at logout");
+                    context.Fail("Token has been revoked");
+                }
             }
         };
     });

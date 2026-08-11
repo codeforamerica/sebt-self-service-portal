@@ -1,8 +1,17 @@
 import { env } from '@/env'
+import { resolveApiProxyUrl } from '@/lib/apiProxyPath'
+import { context as otelContext, SpanKind, SpanStatusCode, trace } from '@opentelemetry/api'
 import { NextRequest, NextResponse } from 'next/server'
 
 const BACKEND_URL = env.BACKEND_URL
 const REQUEST_TIMEOUT_MS = 30000
+
+// Manual span around the backend proxy — the single server-side choke point for
+// all API traffic. UndiciInstrumentation already traces the raw fetch and
+// propagates trace context to the backend; this span adds proxy-level semantics
+// (timeout -> 504, backend unreachable -> 502) as span status and recorded
+// exceptions, so those failures are visible in traces.
+const tracer = trace.getTracer('sebt-portal-web')
 
 type RouteContext = {
   params: Promise<{ path?: string[] }>
@@ -15,61 +24,80 @@ type RouteContext = {
 async function proxyRequest(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { path } = await context.params
 
-  // Reject path segments that could escape /api/ (e.g., ".." → /api/../internal/metrics)
-  if (path?.some((segment) => segment === '..' || segment === '.')) {
+  // Guard against path traversal — literal or URL-encoded — smuggling the request
+  // out of /api/ (e.g. /api/x%2f..%2f..%2fhealth resolving to the backend's /health
+  // or /swagger). Returns null when the request must be rejected. See @/lib/apiProxyPath.
+  const url = resolveApiProxyUrl(path, BACKEND_URL, request.nextUrl.search)
+  if (url === null) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 })
   }
-
-  const pathname = path ? `/api/${path.join('/')}` : '/api'
-  const url = new URL(pathname, BACKEND_URL)
-  url.search = request.nextUrl.search
 
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
-  try {
-    const headers = new Headers(request.headers)
-    // Remove Next.js specific headers
-    headers.delete('host')
-    headers.delete('connection')
-
-    // Forward the request to the backend
-    const response = await fetch(url.toString(), {
-      method: request.method,
-      headers,
-      body: request.body,
-      signal: controller.signal,
-      // Pass backend redirects (e.g., OIDC authorize 302) through to the browser
-      // instead of following them within the proxy.
-      redirect: 'manual',
-      // @ts-expect-error - duplex is required for streaming request bodies
-      duplex: 'half'
-    })
-
-    // Create response with backend headers
-    const responseHeaders = new Headers(response.headers)
-    // Remove hop-by-hop headers
-    responseHeaders.delete('transfer-encoding')
-    responseHeaders.delete('connection')
-
-    return new NextResponse(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders
-    })
-  } catch (error) {
-    if (error instanceof Error && error.name === 'AbortError') {
-      return NextResponse.json({ error: 'Request timeout' }, { status: 504 })
+  const span = tracer.startSpan('http.proxy', {
+    kind: SpanKind.CLIENT,
+    attributes: {
+      'http.request.method': request.method,
+      'url.path': url.pathname
     }
+  })
 
-    // Only log detailed errors in development to avoid exposing sensitive information
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Proxy error:', error)
+  return otelContext.with(trace.setSpan(otelContext.active(), span), async () => {
+    try {
+      const headers = new Headers(request.headers)
+      // Remove Next.js specific headers
+      headers.delete('host')
+      headers.delete('connection')
+
+      // Forward the request to the backend
+      const response = await fetch(url.toString(), {
+        method: request.method,
+        headers,
+        body: request.body,
+        signal: controller.signal,
+        // Pass backend redirects (e.g., OIDC authorize 302) through to the browser
+        // instead of following them within the proxy.
+        redirect: 'manual',
+        // @ts-expect-error - duplex is required for streaming request bodies
+        duplex: 'half'
+      })
+
+      span.setAttribute('http.response.status_code', response.status)
+      if (response.status >= 400) {
+        span.setStatus({ code: SpanStatusCode.ERROR })
+      }
+
+      // Create response with backend headers
+      const responseHeaders = new Headers(response.headers)
+      // Remove hop-by-hop headers
+      responseHeaders.delete('transfer-encoding')
+      responseHeaders.delete('connection')
+
+      return new NextResponse(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders
+      })
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        span.setStatus({ code: SpanStatusCode.ERROR, message: 'Request timeout' })
+        span.recordException(error)
+        return NextResponse.json({ error: 'Request timeout' }, { status: 504 })
+      }
+
+      // Only log detailed errors in development to avoid exposing sensitive information
+      if (process.env.NODE_ENV === 'development') {
+        console.error('Proxy error:', error)
+      }
+      span.setStatus({ code: SpanStatusCode.ERROR, message: 'Backend unavailable' })
+      span.recordException(error instanceof Error ? error : new Error(String(error)))
+      return NextResponse.json({ error: 'Backend unavailable' }, { status: 502 })
+    } finally {
+      clearTimeout(timeoutId)
+      span.end()
     }
-    return NextResponse.json({ error: 'Backend unavailable' }, { status: 502 })
-  } finally {
-    clearTimeout(timeoutId)
-  }
+  })
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {

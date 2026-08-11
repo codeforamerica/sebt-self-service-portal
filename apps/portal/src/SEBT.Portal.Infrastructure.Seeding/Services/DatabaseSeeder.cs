@@ -84,6 +84,7 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
 
         if (IsDc)
         {
+            // Digit-only SNAP/TANF IDs: id-proofing UI strips non-digits and requires 7–8 digits.
             users.Add(UserFactory.CreateNonCoLoadedUser(u =>
             {
                 u.Email = _settings.BuildEmail(SeedScenarios.CoLoadedPendingIdProofing.Name);
@@ -91,8 +92,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                 u.IalLevel = UserIalLevel.None;
                 u.IdProofingCompletedAt = null;
                 u.Phone = "8185558438";
-                u.SnapId = "SNAP-CO-001";
-                u.TanfId = "TANF-CO-001";
+                u.SnapId = "87654321";
+                u.TanfId = "87654322";
                 u.Ssn = "123456789";
             }));
         }
@@ -212,8 +213,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
                             u.Phone = "8185558438";
-                            u.SnapId = "SNAP-CO-001";
-                            u.TanfId = "TANF-CO-001";
+                            u.SnapId = "87654321";
+                            u.TanfId = "87654322";
                             u.Ssn = "123456789";
                         });
                     }
@@ -413,8 +414,8 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
                             u.IalLevel = UserIalLevel.None;
                             u.IdProofingCompletedAt = null;
                             u.Phone = "8185558438";
-                            u.SnapId = "SNAP-CO-001";
-                            u.TanfId = "TANF-CO-001";
+                            u.SnapId = "87654321";
+                            u.TanfId = "87654322";
                             u.Ssn = "123456789";
                         });
                     }
@@ -558,5 +559,36 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
             await _dataSeeder.RemoveUsersByEmailAsync(existingSeededEmails, cancellationToken);
             await _dataSeeder.SaveChangesAsync(cancellationToken);
         }
+    }
+
+    /// <inheritdoc />
+    public async Task ReseedUserScenarioAsync(
+        string scenarioName,
+        bool useMockHouseholdData,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(scenarioName);
+
+        var scenario = SeedScenarios.UserScenarios
+            .FirstOrDefault(s => string.Equals(s.Name, scenarioName, StringComparison.Ordinal));
+        if (scenario is null)
+        {
+            throw new ArgumentException(
+                $"Unknown seed scenario '{scenarioName}'.",
+                nameof(scenarioName));
+        }
+
+        if (!IsDc && SeedScenarios.DcOnlyScenarios.Contains(scenario))
+        {
+            throw new InvalidOperationException(
+                $"Seed scenario '{scenarioName}' is DC-only and cannot be reseeded when Seeding:State is '{_settings.State}'.");
+        }
+
+        var normalizedEmail = EmailNormalizer.Normalize(_settings.BuildEmail(scenario.Name));
+        await _dataSeeder.RemoveUserOptInsByEmailAsync([normalizedEmail], cancellationToken);
+        await _dataSeeder.RemoveUsersByEmailAsync([normalizedEmail], cancellationToken);
+        await _dataSeeder.SaveChangesAsync(cancellationToken);
+
+        await SeedTestUsersAsync(useMockHouseholdData, cancellationToken);
     }
 }

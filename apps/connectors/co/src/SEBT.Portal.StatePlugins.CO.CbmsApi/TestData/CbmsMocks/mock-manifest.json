@@ -5,6 +5,7 @@
         "7207073837": "get-account-details-cancelled.jsonc",
         "7209289672": "get-account-details-pending.jsonc",
         "7198004382": "get-account-details-largefamily2.jsonc",
-        "7193564665": "get-account-details-expired.jsonc"
+        "7193564665": "get-account-details-expired.jsonc",
+        "7196281381": "get-account-details-all-the-card-statuses.jsonc"
     }
 }

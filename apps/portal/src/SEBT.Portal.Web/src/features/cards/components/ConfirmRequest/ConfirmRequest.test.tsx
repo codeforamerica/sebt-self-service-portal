@@ -12,6 +12,7 @@ import enDcDashboard from '@/content/locales/en/dc/dashboard.json'
 import enDcOptionalId from '@/content/locales/en/dc/optionalId.json'
 import enDcResult from '@/content/locales/en/dc/result.json'
 import esDcDashboard from '@/content/locales/es/dc/dashboard.json'
+import { clearReplacementFlash, getReplacementFlash } from '@/features/cards/utils/replacementFlash'
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
 import { AnalyticsEvents } from '@sebt/analytics'
@@ -146,6 +147,7 @@ describe('ConfirmRequest', () => {
     mockSetPageData.mockClear()
     mockTrackEvent.mockClear()
     mockState = 'dc'
+    clearReplacementFlash()
     // Restore pristine DC bundles in case a prior test swapped to CO or overrode keys.
     loadStateBundles('dc')
   })
@@ -327,6 +329,25 @@ describe('ConfirmRequest', () => {
     expect(mockTrackEvent).not.toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
   })
 
+  it('hands the replaced cards off in memory for the dashboard flash banner', async () => {
+    server.use(
+      http.post('/api/household/cards/replace', () => {
+        return new HttpResponse(null, { status: 204 })
+      })
+    )
+
+    const { user } = renderConfirmRequest()
+    await user.click(screen.getByRole('button', { name: /order card/i }))
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/dashboard?flash=card_replaced')
+    })
+    expect(getReplacementFlash()).toEqual([
+      { childFirstName: 'Sophia', childLastName: 'Martinez', ebtCardLastFour: '1234' },
+      { childFirstName: 'James', childLastName: 'Martinez', ebtCardLastFour: '1234' }
+    ])
+  })
+
   it('shows error message when submission fails', async () => {
     server.use(
       http.post('/api/household/cards/replace', () => {
@@ -432,6 +453,11 @@ describe('ConfirmRequest', () => {
     await user.click(orderButton)
 
     expect(orderButton).toBeDisabled()
+    expect(orderButton).toHaveAttribute('aria-busy', 'true')
+    // The label stays "Order card"; no dev-namespace "Loading..." swap
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
+    expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
 
     resolveRequest!()
     await waitFor(() => {

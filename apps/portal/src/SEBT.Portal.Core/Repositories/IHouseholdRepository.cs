@@ -68,6 +68,7 @@ public interface IHouseholdRepository
     /// Sets envelope email to <paramref name="guardianLoginEmail"/>; non-DC plugins return <c>null</c>.
     /// </summary>
     /// <param name="portalUserId">Portal <c>User.Id</c>. DC merges this into the warehouse GuardianIdentifiers JSON as <c>PortalUUID</c> for cross-system correlation.</param>
+    /// <param name="socureReferenceId">Socure reference ID (UUID) from the guardian's identity verification, when one exists. DC merges this into the warehouse GuardianIdentifiers JSON as <c>SocureUUID</c>.</param>
     Task<HouseholdData?> GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
         string guardianLoginEmail,
         string benefitIdentifierIc,
@@ -75,6 +76,7 @@ public interface IHouseholdRepository
         PiiVisibility piiVisibility,
         UserIalLevel userIalLevel,
         Guid portalUserId,
+        string? socureReferenceId = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

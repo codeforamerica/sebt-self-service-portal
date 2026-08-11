@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, Button, InputField, LoadingInterstitial } from '@sebt/design-system'
+import { Alert, Button, InputField, LoadingInterstitial, Spinner } from '@sebt/design-system'
 
 import { useAuth } from '@/features/auth'
 import {
@@ -124,7 +124,6 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
   const submitIdProofing = useSubmitIdProofing()
   const refreshToken = useRefreshToken()
-  const isSubmitting = submitIdProofing.isPending
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
   const isCoLoaded = session?.isCoLoaded === true
@@ -341,10 +340,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         aria-busy="true"
         aria-live="polite"
       >
-        <span
-          className="usa-spinner"
-          aria-hidden="true"
-        />
+        <Spinner />
       </div>
     )
   }
@@ -365,11 +361,21 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       )}
 
       {/* Date of birth */}
-      <fieldset className={`usa-fieldset${dobFieldsetError ? ' usa-form-group--error' : ''}`}>
+      <fieldset
+        className={`usa-fieldset${dobFieldsetError ? ' usa-form-group--error' : ''}`}
+        aria-describedby={`${formId}-dob-hint`}
+      >
         <legend className="usa-legend">
           {t('labelDob')}
           <span className="text-secondary-dark"> *</span>
         </legend>
+
+        <span
+          className="usa-hint"
+          id={`${formId}-dob-hint`}
+        >
+          {t('helperDob')}
+        </span>
 
         {dobFieldsetError && (
           <span
@@ -544,12 +550,11 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         </div>
       )}
 
+      {/* No button-level busy state: the whole form unmounts into the
+          processing interstitial above before this could ever render busy. */}
       <Button
         type="submit"
-        isLoading={isSubmitting}
-        loadingText={`${tCommon('continue')}...`}
         className="margin-top-3 display-block"
-        disabled={isSubmitting}
       >
         {tCommon('continue')}
       </Button>
