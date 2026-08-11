@@ -366,6 +366,7 @@ public static class Dependencies
         services.AddOptions<StateHouseholdIdSettings>()
             .BindConfiguration(StateHouseholdIdSettings.SectionName);
         services.AddSingleton<IValidateOptions<PiiEncryptionSettings>, PiiEncryptionSettingsValidator>();
+        services.AddSingleton<IValidateOptions<PiiEncryptionSettings>, PiiEncryptionProductionSecretsValidator>();
         services.AddOptionsWithValidateOnStart<PiiEncryptionSettings>()
             .BindConfiguration(PiiEncryptionSettings.SectionName);
         services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
