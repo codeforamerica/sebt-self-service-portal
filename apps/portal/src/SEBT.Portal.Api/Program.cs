@@ -5,6 +5,7 @@ using Serilog;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Api.Services;
+using SEBT.Portal.Api.Telemetry;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Seeding.Services;
