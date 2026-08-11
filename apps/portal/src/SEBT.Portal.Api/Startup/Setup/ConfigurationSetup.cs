@@ -56,4 +56,30 @@ internal static class ConfigurationSetup
 
         return builder;
     }
+
+    public static IHostApplicationBuilder AddDatabaseConnectionStringsFromEnvironment(
+        this IHostApplicationBuilder builder)
+    {
+        // Build database connection string from environment variables when deployed
+        // to ECS. Credentials are injected from Secrets Manager at container startup.
+        var dbHost = Environment.GetEnvironmentVariable("DB_HOST");
+        var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+        if (!string.IsNullOrEmpty(dbHost) && !string.IsNullOrEmpty(dbPassword))
+        {
+            var dbPort = Environment.GetEnvironmentVariable("DB_PORT") ?? "1433";
+            var dbName = Environment.GetEnvironmentVariable("DB_NAME") ?? "SebtPortal";
+            var dbUser = Environment.GetEnvironmentVariable("DB_USER") ?? "admin";
+            builder.Configuration["ConnectionStrings:DefaultConnection"] =
+                $"Server={dbHost},{dbPort};Database={dbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+
+            var dcSourceDbName = Environment.GetEnvironmentVariable("DC_SOURCE_DB_NAME");
+            if (!string.IsNullOrEmpty(dcSourceDbName))
+            {
+                builder.Configuration["DCConnector:ConnectionString"] =
+                    $"Server={dbHost},{dbPort};Database={dcSourceDbName};User Id={dbUser};Password={dbPassword};Encrypt=True;TrustServerCertificate=True;";
+            }
+        }
+
+        return builder;
+    }
 }
