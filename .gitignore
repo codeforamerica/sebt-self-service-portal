@@ -466,6 +466,7 @@ output
 **/*.tfstate
 **/*.tfstate.*
 **/*.tfplan
+**/tfplan
 **/crash.log
 **/crash.*.log
 # Lambda zip artifacts created by the archive_file data source during tofu plan/apply

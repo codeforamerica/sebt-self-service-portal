@@ -194,6 +194,7 @@ internal static class CbmsResponseMapper
             "DE" => ApplicationStatus.Denied,
             "OT" => ApplicationStatus.Denied,
             "AI" => ApplicationStatus.Pending,
+            "AM" => ApplicationStatus.Pending,
             "PD" => ApplicationStatus.Pending,
             "PE" => ApplicationStatus.Pending,
             "PG" => ApplicationStatus.Pending,
@@ -215,6 +216,7 @@ internal static class CbmsResponseMapper
         return sebtAppSts.ToUpperInvariant() switch
         {
             "AI" => ApplicationStatus.Pending,
+            "AM" => ApplicationStatus.Pending,
             "PD" => ApplicationStatus.Pending,
             "PG" => ApplicationStatus.Pending,
             "PI" => ApplicationStatus.Pending,

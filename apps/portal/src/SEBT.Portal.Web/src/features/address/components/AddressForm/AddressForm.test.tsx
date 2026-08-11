@@ -177,6 +177,13 @@ describe('AddressForm', () => {
     expect(line2).not.toHaveAttribute('aria-required', 'true')
   })
 
+  it('names the address fieldset group for assistive tech', () => {
+    renderForm()
+
+    const group = screen.getByRole('group', { name: 'Tell us where to safely send your mail' })
+    expect(group.querySelector('legend')).toHaveClass('usa-sr-only')
+  })
+
   // --- State-specific defaults ---
 
   it('shows quadrant hint for DC', () => {
@@ -683,5 +690,89 @@ describe('AddressForm', () => {
       screen.queryByRole('combobox', { name: /^street address(?! line)/i })
     ).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /^street address(?! line)/i })).toBeInTheDocument()
+  })
+
+  // --- Processing state (DC-594) ---
+
+  describe('Processing state', () => {
+    /** Holds the address update in flight until released, so isPending is observable. */
+    function deferAddressResponse() {
+      let release!: () => void
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      server.use(
+        http.put('/api/household/address', async () => {
+          await gate
+          return HttpResponse.json({ status: 'valid' }, { status: 200 })
+        })
+      )
+      return () => release()
+    }
+
+    async function submitValidForm(user: ReturnType<typeof userEvent.setup>) {
+      await user.type(getStreetInput(), '123 Main St NW')
+      await user.type(getPostalInput(), '20001')
+      await user.click(screen.getByRole('button', { name: 'Continue' }))
+    }
+
+    it('disables and fades the fields, disables both buttons, and announces while in flight', async () => {
+      const release = deferAddressResponse()
+      const { container, user } = renderForm()
+
+      await submitValidForm(user)
+
+      const submit = screen.getByRole('button', { name: 'Continue' })
+      await waitFor(() => expect(submit).toHaveAttribute('aria-busy', 'true'))
+
+      // The label stays plain "Continue"; no ellipsis mutation of the accessible name
+      expect(screen.queryByText('Continue...')).not.toBeInTheDocument()
+      expect(submit).toBeDisabled()
+      expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
+
+      expect(getStreetInput()).toBeDisabled()
+      expect(getLine2Input()).toBeDisabled()
+      expect(getCityInput()).toBeDisabled()
+      expect(getStateSelect()).toBeDisabled()
+      expect(getPostalInput()).toBeDisabled()
+
+      const fieldset = container.querySelector('fieldset.usa-fieldset')
+      expect(fieldset).toHaveClass('opacity-50')
+
+      // One polite live region announces; the spinner itself is decorative
+      const label = screen.getByText('Processing')
+      expect(label).toHaveClass('usa-sr-only')
+      expect(label.closest('[role="status"]')).toHaveAttribute('aria-live', 'polite')
+      const spinner = container.querySelector('.usa-spinner')
+      expect(spinner).not.toBeNull()
+      expect(spinner).toHaveAttribute('aria-hidden', 'true')
+
+      release()
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+      })
+    })
+
+    it('re-enables the form and clears the indicator when the update fails', async () => {
+      server.use(
+        http.put('/api/household/address', () =>
+          HttpResponse.json({ error: 'Bad request' }, { status: 400 })
+        )
+      )
+      const { container, user } = renderForm()
+
+      await submitValidForm(user)
+
+      await waitFor(() => {
+        expect(screen.getByText(/an error occurred on our end/i)).toBeInTheDocument()
+      })
+
+      expect(getStreetInput()).not.toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Continue' })).not.toBeDisabled()
+      expect(screen.getByRole('button', { name: /back/i })).not.toBeDisabled()
+      expect(container.querySelector('fieldset.usa-fieldset')).not.toHaveClass('opacity-50')
+      expect(screen.queryByText('Processing')).not.toBeInTheDocument()
+      expect(container.querySelector('.usa-spinner')).toBeNull()
+    })
   })
 })
