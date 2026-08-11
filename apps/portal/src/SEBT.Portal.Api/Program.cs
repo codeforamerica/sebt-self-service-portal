@@ -81,12 +81,7 @@ builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 // Action filters
 builder.Services.AddScoped<ResolveUserFilter>();
 
-// OIDC token exchange (replaces the Next.js /api/auth/oidc/callback route)
-builder.Services.AddScoped<IOidcExchangeService, OidcExchangeService>();
-builder.Services.AddScoped<IOidcCallbackFailureLogger, OidcCallbackFailureLogger>();
-// pre-auth session store (HybridCache-backed, 15 min TTL)
-builder.Services.AddSingleton<IPreAuthSessionStore, PreAuthSessionStore>();
-builder.Services.AddSingleton<ITokenDenylist, TokenDenylist>();
+builder.Services.AddOidcServices();
 
 // Register IDatabaseSeeder for development utilities (e.g., ClearSeededData script)
 builder.Services.AddScoped<IDatabaseSeeder>(sp =>
