@@ -12,6 +12,7 @@ using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel.Services;
 using SEBT.Portal.Infrastructure.Configuration;
+using SEBT.Portal.Infrastructure.Configuration.Validators;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
@@ -370,6 +371,7 @@ public static class Dependencies
         services.AddOptionsWithValidateOnStart<IdentifierHasherSettings>()
             .BindConfiguration(IdentifierHasherSettings.SectionName)
             .ValidateDataAnnotations();
+        services.AddSingleton<IValidateOptions<IdentifierHasherSettings>, IdentifierHasherSettingsValidator>();
         services.ConfigureOptions<ConfigureIdProofingRequirements>();
         services.AddSingleton<IOptionsChangeTokenSource<IdProofingRequirementsSettings>>(
             new ConfigurationChangeTokenSource<IdProofingRequirementsSettings>(

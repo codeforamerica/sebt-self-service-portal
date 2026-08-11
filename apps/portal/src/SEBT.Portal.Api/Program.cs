@@ -66,16 +66,6 @@ builder.Services.AddDevelopmentOverrides();
 
 var app = builder.Build();
 
-// Guard against default/placeholder IdentifierHasher key in production
-if (app.Environment.IsProduction())
-{
-    IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
-
-    var piiEncryptionSettings = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
-        .Get<PiiEncryptionSettings>();
-    PiiEncryptionGuard.ValidateForProduction(piiEncryptionSettings);
-}
-
 // HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
 var oidcSigningKey = app.Configuration["Oidc:CompleteLoginSigningKey"];
 if (!string.IsNullOrEmpty(oidcSigningKey) && oidcSigningKey.Length < 32)
