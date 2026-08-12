@@ -225,6 +225,32 @@ public class HouseholdControllerUpdateAddressTests
     }
 
     [Fact]
+    public async Task UpdateAddress_ReturnsForbiddenWithRequiredIal_WhenIdentityAssuranceInsufficient()
+    {
+        // Arrange — distinct from the Unauthorized 403 above: a ForbiddenResult carries
+        // structured extensions, and the mapping that merges them into ProblemDetails is
+        // only reachable through a controller action.
+        var controller = CreateController();
+        _commandHandler.Handle(Arg.Any<UpdateAddressCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result<AddressValidationResult>.Forbidden(
+                "This household requires IAL1plus. Complete identity verification to update your address.",
+                new Dictionary<string, object?> { ["requiredIal"] = "IAL1plus" }));
+
+        // Act
+        var result = await controller.UpdateAddress(CreateRequest(), _commandHandler, CancellationToken.None);
+
+        // Assert
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status403Forbidden, objectResult.StatusCode);
+        var problemDetails = Assert.IsType<ProblemDetails>(objectResult.Value);
+        Assert.Equal("Insufficient identity assurance level", problemDetails.Title);
+        Assert.Equal(
+            "This household requires IAL1plus. Complete identity verification to update your address.",
+            problemDetails.Detail);
+        Assert.Equal("IAL1plus", problemDetails.Extensions["requiredIal"]);
+    }
+
+    [Fact]
     public async Task UpdateAddress_ReturnsBadGateway_WhenVerificationProviderFails()
     {
         // Arrange
