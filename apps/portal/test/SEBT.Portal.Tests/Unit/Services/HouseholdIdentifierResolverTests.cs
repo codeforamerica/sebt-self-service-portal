@@ -144,7 +144,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("8185558439", result.Value);
+        Assert.Equal("+18185558439", result.Value);
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("8185558437", result.Value);
+        Assert.Equal("+18185558437", result.Value);
     }
 
     /// <summary>
@@ -215,7 +215,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("8185558437", result.Value);
+        Assert.Equal("+18185558437", result.Value);
     }
 
     /// <summary>
@@ -241,7 +241,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("8185558439", result.Value);
+        Assert.Equal("+18185558439", result.Value);
     }
 
     [Fact]
@@ -262,7 +262,7 @@ public class HouseholdIdentifierResolverTests
 
         Assert.NotNull(result);
         Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
-        Assert.Equal("8185558440", result.Value);
+        Assert.Equal("+18185558440", result.Value);
     }
 
     [Fact]
@@ -456,5 +456,145 @@ public class HouseholdIdentifierResolverTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(
             () => resolver.ResolveAsync(principal, cts.Token));
+    }
+
+    // DC-600: Phone identifiers must canonicalize to E.164 (+1NNNNNNNNNN) before
+    // they are returned (and later hashed as HouseholdIdentifierHash). Without this,
+    // the same number arriving in different formats hashes differently, so caching,
+    // analytics, and the card-replacement cooldown see one person as several.
+    // E.164 (rather than 10-digit national) is chosen to keep parity with the
+    // format already persisted for existing Colorado card-replacement records.
+
+    [Theory]
+    [InlineData("8185558439")]           // bare 10 digits
+    [InlineData("818-555-8439")]         // dashes
+    [InlineData("(818) 555-8439")]       // US formatted
+    [InlineData("818.555.8439")]         // dots
+    [InlineData("  818 555 8439  ")]     // spaces with padding
+    [InlineData("18185558439")]          // leading country code
+    [InlineData("+18185558439")]         // already E.164
+    [InlineData("+1 (818) 555-8439")]    // E.164 with formatting
+    public async Task ResolveAsync_NormalizesUserPhoneToE164_RegardlessOfArrivalFormat(string arrivalFormat)
+    {
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = arrivalFormat);
+        var settings = new StateHouseholdIdSettings
+        {
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone]
+        };
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(user);
+        var resolver = CreateResolver(_userRepository, settings);
+
+        var principal = CreatePrincipalForUser(user);
+
+        var result = await resolver.ResolveAsync(principal);
+
+        Assert.NotNull(result);
+        Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
+        // Every arrival format collapses to the same canonical value, so the hash
+        // that keys the cooldown is stable across requests and sources.
+        Assert.Equal("+18185558439", result.Value);
+    }
+
+    [Theory]
+    [InlineData("818-555-8440")]
+    [InlineData("(818) 555-8440")]
+    [InlineData("+18185558440")]
+    public async Task ResolveAsync_NormalizesPhoneFromJwtClaimToE164(string claimValue)
+    {
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = null);
+        var settings = new StateHouseholdIdSettings
+        {
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
+        };
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(user);
+        var resolver = CreateResolver(_userRepository, settings);
+
+        var principal = CreatePrincipalForUser(user, new Claim("phone", claimValue));
+
+        var result = await resolver.ResolveAsync(principal);
+
+        Assert.NotNull(result);
+        Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
+        Assert.Equal("+18185558440", result.Value);
+    }
+
+    [Fact]
+    public async Task ResolveAsync_NormalizesDevelopmentOverridePhoneToE164()
+    {
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "8185558439");
+        var settings = new StateHouseholdIdSettings
+        {
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
+        };
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(user);
+        var overrideProvider = Substitute.For<IPhoneOverrideProvider>();
+        overrideProvider.GetOverridePhone().Returns("(818) 555-8437");
+        var resolver = CreateResolver(_userRepository, settings, overrideProvider);
+
+        var principal = CreatePrincipalForUser(user);
+
+        var result = await resolver.ResolveAsync(principal);
+
+        Assert.NotNull(result);
+        Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
+        Assert.Equal("+18185558437", result.Value);
+    }
+
+    /// <summary>
+    /// A phone that libphonenumber cannot validate as a US number must not be
+    /// hashed in a non-canonical form. With Phone the only preferred type, an
+    /// unresolvable number yields null (the caller returns Unauthorized) rather
+    /// than silently storing a value that can never match a future lookup.
+    /// </summary>
+    [Theory]
+    [InlineData("not-a-phone")]
+    [InlineData("+447700900000")]   // valid, but non-US
+    [InlineData("123")]             // too short
+    public async Task ResolveAsync_WhenPhoneOnlyAndPhoneNotValidUsNumber_ReturnsNull(string invalidPhone)
+    {
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = invalidPhone);
+        var settings = new StateHouseholdIdSettings
+        {
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone]
+        };
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(user);
+        var resolver = CreateResolver(_userRepository, settings);
+
+        var principal = CreatePrincipalForUser(user);
+
+        var result = await resolver.ResolveAsync(principal);
+
+        Assert.Null(result);
+    }
+
+    /// <summary>
+    /// When a JWT phone claim is present but not a valid US number, resolution
+    /// falls through to the user's stored phone (a genuinely valid alternative)
+    /// rather than hashing the malformed claim. This keeps the resolved value
+    /// deterministic instead of depending on which source happened to be malformed.
+    /// </summary>
+    [Fact]
+    public async Task ResolveAsync_WhenJwtClaimPhoneInvalid_FallsThroughToValidUserPhone()
+    {
+        var user = CreateUser(Guid.NewGuid(), "user@example.com", u => u.Phone = "818-555-8439");
+        var settings = new StateHouseholdIdSettings
+        {
+            PreferredHouseholdIdTypes = [PreferredHouseholdIdType.Phone, PreferredHouseholdIdType.Email]
+        };
+        _userRepository.GetUserByIdAsync(user.Id, Arg.Any<CancellationToken>())
+            .Returns(user);
+        var resolver = CreateResolver(_userRepository, settings);
+
+        var principal = CreatePrincipalForUser(user, new Claim("phone", "not-a-phone"));
+
+        var result = await resolver.ResolveAsync(principal);
+
+        Assert.NotNull(result);
+        Assert.Equal(PreferredHouseholdIdType.Phone, result!.Type);
+        Assert.Equal("+18185558439", result.Value);
     }
 }

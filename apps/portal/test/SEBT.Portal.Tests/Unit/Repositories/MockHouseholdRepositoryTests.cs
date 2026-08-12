@@ -93,6 +93,20 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task GetHouseholdByIdentifierAsync_WhenPhoneIdentifierIsE164_StripsCountryCodeAndFindsHousehold()
+    {
+        // HouseholdIdentifierResolver now canonicalizes phone identifiers to E.164
+        // (+1NNNNNNNNNN), so mock lookup must tolerate the leading US country code
+        // and still match the 10-digit seeded key (8185558437).
+        var identifier = HouseholdIdentifier.Phone("+18185558437");
+
+        var result = await _repository.GetHouseholdByIdentifierAsync(identifier, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal("co-loaded@example.com", result.Email);
+    }
+
+    [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenUnsupportedIdentifierType_ReturnsNull()
     {
         // SNAP ID, TANF ID, SSN, etc. are not keyed in mock data
