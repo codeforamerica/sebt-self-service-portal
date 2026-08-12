@@ -130,6 +130,7 @@ export function buildMarkdown(
   rangeLabel: string,
   compareUrl: string | null,
   stateFilter: 'dc' | 'co' | null,
+  includeChores: boolean = false,
 ): string {
   const co: string[] = []
   const dc: string[] = []
@@ -157,7 +158,8 @@ export function buildMarkdown(
   }
 
   // A formal per-state release (--state-filter set) only shows that state's PRs plus
-  // the portal-wide ones — the other state's PRs and Chores are deliberately left out.
+  // the portal-wide ones — the other state's PRs and Chores are deliberately left out,
+  // unless includeChores opts back in for this specific run (--include-chores).
   // Nightly/weekly (no --state-filter) keep showing every bucket, unchanged.
   if (stateFilter !== 'dc' && co.length > 0) {
     md += `\n## CO Specific\n${co.join('\n')}\n`
@@ -168,7 +170,7 @@ export function buildMarkdown(
   if (both.length > 0) {
     md += `\n## Portal Wide Changes\n${both.join('\n')}\n`
   }
-  if (!stateFilter && chores.length > 0) {
+  if ((!stateFilter || includeChores) && chores.length > 0) {
     md += `\n## Chores\n${chores.join('\n')}\n`
   }
 
@@ -200,6 +202,11 @@ async function main(): Promise<void> {
     throw new Error(`Invalid --state-filter value: ${stateFilterArg} (expected "dc" or "co")`)
   }
   const stateFilter = (stateFilterArg as 'dc' | 'co' | undefined) ?? null
+  // Opt-in escape hatch for a --state-filter run that would otherwise exclude
+  // Chores — e.g. a one-off push-button release where the operator wants to see
+  // everything. No effect outside --state-filter mode (Chores are never excluded
+  // there to begin with).
+  const includeChores = parseFlag(argv, 'include-chores') === 'true'
 
   const repoFlag = repoArg ? ` --repo ${repoArg}` : ''
   // A low limit would silently truncate once a range spans more merged PRs than the
@@ -256,7 +263,7 @@ async function main(): Promise<void> {
     compareUrl = `${repoUrl}/compare/${prevTagName}...${tagPrefix}-${today}`
   }
 
-  const md = buildMarkdown(mergedPRs, rangeLabel, compareUrl, stateFilter)
+  const md = buildMarkdown(mergedPRs, rangeLabel, compareUrl, stateFilter, includeChores)
 
   // scripts/release-notes/generate.ts → up 3 levels → repo root
   const repoRoot = resolve(fileURLToPath(import.meta.url), '../../..')

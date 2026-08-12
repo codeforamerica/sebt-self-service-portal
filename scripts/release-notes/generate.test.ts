@@ -169,6 +169,29 @@ describe('buildMarkdown', () => {
     assert.match(md, /## CO Specific/)
   })
 
+  it('includeChores opts Chores back in even with --state-filter set', () => {
+    const md = buildMarkdown(
+      [pr({ number: 1, labels: [label('dc')] }), pr({ number: 2, labels: [label('chore')] })],
+      'since x',
+      null,
+      'dc',
+      true,
+    )
+    assert.match(md, /## DC Specific/)
+    assert.match(md, /## Chores/)
+  })
+
+  it('includeChores has no effect without --state-filter (Chores already shown)', () => {
+    const md = buildMarkdown(
+      [pr({ number: 1, labels: [label('chore')] })],
+      'since x',
+      null,
+      null,
+      true,
+    )
+    assert.match(md, /## Chores/)
+  })
+
   it('includes the compare link only when one is given', () => {
     const withLink = buildMarkdown([pr()], 'since x', 'https://example.com/compare/a...b', null)
     assert.match(withLink, /\*\*Full Changelog\*\*: https:\/\/example\.com\/compare\/a\.\.\.b/)

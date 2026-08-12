@@ -10,6 +10,11 @@ on:
         options:
           - dc
           - co
+      include_chores:
+        description: 'Include Chores in this release (normally excluded)'
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -121,30 +126,35 @@ jobs:
         run: |
           npx --yes tsx@4 scripts/release-notes/generate.ts \
             --since-sha="$SINCE_SHA" \
-            --state-filter="$STATE_FILTER"
+            --state-filter="$STATE_FILTER" \
+            --include-chores="$INCLUDE_CHORES"
           mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/portal-notes.md"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SINCE_SHA: ${{ steps.old-portal-sha.outputs.sha }}
           STATE_FILTER: ${{ inputs.state }}
+          INCLUDE_CHORES: ${{ inputs.include_chores }}
 
       - name: Generate dc-connector release notes
         if: inputs.state == 'dc'
         run: |
           # --state-filter=dc excludes Chores here the same as it does for the portal
-          # section above. Only works if dc-connector's own PRs carry a chore-matching
-          # label (chore/dependabot/etc) rather than just GitHub's native
+          # section above (unless include_chores opted back in). Chore exclusion only
+          # works if dc-connector's own PRs carry a chore-matching label
+          # (chore/dependabot/etc) rather than just GitHub's native
           # dependencies/github_actions labels — requires that repo to have its own
           # branch-prefix labeler mirroring .github/labeler.yml.
           npx --yes tsx@4 scripts/release-notes/generate.ts \
             --repo=codeforamerica/sebt-self-service-portal-dc-connector \
             --git-dir=dc-connector \
             --since-sha="$SINCE_SHA" \
-            --state-filter=dc
+            --state-filter=dc \
+            --include-chores="$INCLUDE_CHORES"
           mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/connector-notes.md"
         env:
           GH_TOKEN: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
           SINCE_SHA: ${{ steps.old-connector-sha.outputs.sha }}
+          INCLUDE_CHORES: ${{ inputs.include_chores }}
 
       # ─── Compose and publish ─────────────────────────────────────────────────────
       - name: Compose release body
@@ -161,9 +171,10 @@ jobs:
             if [ "$STATE" = "dc" ]; then
               echo ""
               echo "## Changes in dc-connector"
-              # With --state-filter=dc set above, "Portal Wide Changes" is the only
-              # bucket header connector PRs can ever land under (they never carry a
-              # dc label, and Chores/CO are already excluded) — strip it so it
+              # Connector PRs never carry a dc label and CO is always excluded, so
+              # "Portal Wide Changes" (a meaningless label for a single, entirely-DC
+              # repo) is the only header besides Chores (shown only if include_chores
+              # opted in) that can appear here — strip Portal Wide Changes so it
               # doesn't appear as a redundant nested heading. Left untouched if this
               # run had zero connector PRs (that message doesn't match the pattern).
               tail -n +2 "$RUNNER_TEMP/connector-notes.md" \
