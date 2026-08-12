@@ -27,8 +27,6 @@ const rel = p => relative(rootDir, p)
 // Map of Google Fonts available via next/font/google
 // Key: lowercase font name, Value: import name from next/font/google
 const GOOGLE_FONTS_MAP = {
-  urbanist: 'Urbanist',
-  'atkinson hyperlegible': 'Atkinson_Hyperlegible_Next',
   'public sans': 'Public_Sans',
   roboto: 'Roboto',
   'open sans': 'Open_Sans',
@@ -58,6 +56,29 @@ const LOCAL_FONTS_MAP = {
         // file matches what's downloaded from the legitimate redistributor.
         path: '../public/fonts/museo-slab/Museo_Slab_500_2-webfont.woff2',
         weight: '500',
+        style: 'normal'
+      }
+    ]
+  },
+  // Vendored from Google Fonts (OFL) to avoid a next/font/google build-time
+  // fetch to fonts.gstatic.com, which is unreliable in CI. Both are variable
+  // fonts, so one file covers the full weight range.
+  urbanist: {
+    variable: 'urbanist',
+    src: [
+      {
+        path: '../public/fonts/urbanist/Urbanist-Variable-latin.woff2',
+        weight: '400 700',
+        style: 'normal'
+      }
+    ]
+  },
+  'atkinson hyperlegible': {
+    variable: 'atkinsonHyperlegibleNext',
+    src: [
+      {
+        path: '../public/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Variable-latin.woff2',
+        weight: '400 700',
         style: 'normal'
       }
     ]

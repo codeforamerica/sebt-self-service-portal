@@ -31,11 +31,13 @@ describe('extractFonts', () => {
 })
 
 describe('generateFontsTs', () => {
-  it('emits next/font/google for a known Google body font bound to --font-primary', () => {
+  it('emits next/font/local for the vendored Urbanist body font bound to --font-primary', () => {
     const out = generateFontsTs({ body: 'urbanist', heading: 'urbanist' }, 'dc')
 
-    expect(out).toContain("from 'next/font/google'")
-    expect(out).toContain('Urbanist')
+    // Vendored locally (see LOCAL_FONTS_MAP) rather than fetched via next/font/google,
+    // since the build-time fetch to fonts.gstatic.com is unreliable in CI.
+    expect(out).toContain("from 'next/font/local'")
+    expect(out).toContain('Urbanist-Variable-latin.woff2')
     expect(out).toContain("variable: '--font-primary'")
     expect(out).toContain('export const primaryFont')
   })
@@ -50,25 +52,24 @@ describe('generateFontsTs', () => {
   it('emits a separate heading loader bound to --font-heading when body and heading differ', () => {
     const out = generateFontsTs({ body: 'atkinson hyperlegible', heading: 'museo slab' }, 'co')
 
-    // Body: Atkinson via next/font/google bound to --font-primary
-    expect(out).toContain("from 'next/font/google'")
-    expect(out).toContain('Atkinson_Hyperlegible_Next')
+    // Body: Atkinson Hyperlegible Next via vendored next/font/local, bound to --font-primary
+    expect(out).toContain("from 'next/font/local'")
+    expect(out).toContain('AtkinsonHyperlegibleNext-Variable-latin.woff2')
     expect(out).toContain("variable: '--font-primary'")
     expect(out).toContain('export const primaryFont')
 
     // Heading: Museo Slab via next/font/local bound to --font-heading
-    expect(out).toContain("from 'next/font/local'")
     expect(out).toContain('Museo_Slab_500_2-webfont.woff2')
     expect(out).toContain("variable: '--font-heading'")
     expect(out).toContain('export const headingFont')
     expect(out).not.toContain('export const headingFont = primaryFont')
   })
 
-  it('imports each next/font loader exactly once when mixing google body + local heading', () => {
+  it('imports next/font/local exactly once when both body and heading resolve to local fonts', () => {
     const out = generateFontsTs({ body: 'atkinson hyperlegible', heading: 'museo slab' }, 'co')
 
     expect(out.match(/from 'next\/font\/local'/g)).toHaveLength(1)
-    expect(out.match(/from 'next\/font\/google'/g)).toHaveLength(1)
+    expect(out).not.toContain("from 'next/font/google'")
   })
 
   it('falls back to system fonts but still exports both fonts for an unknown typeface', () => {
