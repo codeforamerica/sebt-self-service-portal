@@ -368,5 +368,6 @@ public class OidcControllerCallbackTests
             TestSessionId,
             IPreAuthSessionStore.HashCallbackToken("signed-callback-token"),
             Arg.Any<CancellationToken>());
+        _callbackFailureLogger.DidNotReceiveWithAnyArgs().Log(default!);
     }
 }

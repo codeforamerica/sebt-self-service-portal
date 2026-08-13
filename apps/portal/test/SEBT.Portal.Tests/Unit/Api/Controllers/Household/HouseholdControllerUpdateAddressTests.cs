@@ -218,10 +218,12 @@ public class HouseholdControllerUpdateAddressTests
         // Act
         var result = await controller.UpdateAddress(CreateRequest(), _commandHandler, CancellationToken.None);
 
-        // Assert
+        // Assert — the title pins this as the unresolved-household 403, not the
+        // insufficient-IAL 403 covered below, which shares the status code.
         var objectResult = Assert.IsType<ObjectResult>(result);
         Assert.Equal(StatusCodes.Status403Forbidden, objectResult.StatusCode);
-        Assert.IsType<ProblemDetails>(objectResult.Value);
+        var problemDetails = Assert.IsType<ProblemDetails>(objectResult.Value);
+        Assert.Equal("No household identifier could be resolved.", problemDetails.Title);
     }
 
     [Fact]
