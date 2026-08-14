@@ -35,13 +35,19 @@ public static class StateOverlayConfiguration
         var environmentVariablesIndex = configuration.Sources.ToList().FindIndex(
             source => source is EnvironmentVariablesConfigurationSource { Prefix: null or "" });
 
-        if (environmentVariablesIndex >= 0)
+        if (environmentVariablesIndex < 0)
         {
-            configuration.Sources.Insert(environmentVariablesIndex, overlaySource);
+            // Unreachable under WebApplication.CreateBuilder. Fail fast rather than
+            // silently appending, which would restore the old precedence where state
+            // JSON overrides env vars — the exact misconfiguration this insertion
+            // exists to prevent.
+            throw new InvalidOperationException(
+                "No application-level environment variable configuration source found. " +
+                $"The state overlay ({overlaySource.Path}) must be inserted below that source " +
+                "so environment variables keep precedence over state JSON. Did the host's " +
+                "default configuration chain change?");
         }
-        else
-        {
-            configuration.Sources.Add(overlaySource);
-        }
+
+        configuration.Sources.Insert(environmentVariablesIndex, overlaySource);
     }
 }

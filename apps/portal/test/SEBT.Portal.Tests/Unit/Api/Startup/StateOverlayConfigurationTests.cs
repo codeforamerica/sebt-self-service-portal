@@ -106,6 +106,20 @@ public class StateOverlayConfigurationTests : IDisposable
     }
 
     [Fact]
+    public void AddStateOverlay_ThrowsWhenNoEnvironmentVariableSourceExists()
+    {
+        // A chain without the app-level environment variable source has no safe
+        // insertion point: appending would silently restore the old precedence
+        // where state JSON overrides env vars. Fail fast instead.
+        var configuration = new ConfigurationManager();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => configuration.AddStateOverlay(StateCode));
+
+        Assert.Contains("environment variable", ex.Message);
+    }
+
+    [Fact]
     public void AddStateOverlay_NormalizesStateCodeToLowercase()
     {
         WriteStateOverlayFile("StateOverlayTest:CaseKey", "from-state-overlay");
