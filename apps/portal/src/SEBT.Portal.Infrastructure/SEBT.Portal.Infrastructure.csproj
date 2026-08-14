@@ -37,7 +37,7 @@
       <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.10" />
       <PackageReference Include="Bogus" Version="35.6.5" />
       <PackageReference Include="libphonenumber-csharp" Version="9.0.35" />
-      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.10" />
       <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
       <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.10" />
       <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.10" />
