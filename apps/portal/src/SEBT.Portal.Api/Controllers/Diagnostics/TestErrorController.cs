@@ -113,7 +113,7 @@ public class TestErrorController : ControllerBase
     {
         var client = new HttpClient(handler)
         {
-            BaseAddress = new Uri("https://us-street.api.smartystreets.com/")
+            BaseAddress = new Uri("https://us-street.api.smarty.com/")
         };
         var factory = new SingleClientFactory(client);
         var service = new SmartyAddressUpdateService(factory, smartySettings, policySettings, logger);
