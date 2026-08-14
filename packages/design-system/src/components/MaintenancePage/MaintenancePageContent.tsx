@@ -6,6 +6,18 @@ import { useTranslation } from 'react-i18next'
 import { getStateLinks } from '../../lib/links'
 import type { StateCode } from '../../lib/state'
 
+/**
+ * How each state's S.11 mockups arrange the two action buttons: 'stacked' puts
+ * them in a column with a full-width outline button (capped at desktop widths,
+ * where the mockups don't reach); 'row' keeps both at content width side by
+ * side. The exhaustive Record makes adding a StateCode a compile error until
+ * the new state declares its layout.
+ */
+const actionLayoutByState: Record<StateCode, 'stacked' | 'row'> = {
+  co: 'stacked',
+  dc: 'row',
+}
+
 export interface MaintenancePageContentProps {
   /**
    * Locale namespace carrying this app's S11 maintenance copy. The portal and
@@ -24,8 +36,7 @@ export interface MaintenancePageContentProps {
 export function MaintenancePageContent({ namespace, state }: MaintenancePageContentProps) {
   const { t } = useTranslation(namespace)
   const links = getStateLinks(state)
-  // CO's design stacks the actions with a full-width outline button; DC keeps them in a row.
-  const stacked = state === 'co'
+  const stacked = actionLayoutByState[state] === 'stacked'
 
   return (
     <section className="usa-section">
@@ -41,7 +52,7 @@ export function MaintenancePageContent({ namespace, state }: MaintenancePageCont
         >
           <Link
             href={links.help.sebtMainSite}
-            className={`usa-button usa-button--outline${stacked ? ' width-full' : ' margin-right-2'}`}
+            className={`usa-button usa-button--outline${stacked ? ' width-full desktop:width-auto' : ' margin-right-2'}`}
           >
             {t('action1')}
           </Link>

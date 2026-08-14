@@ -107,4 +107,12 @@ describe('MaintenancePageContent (CO checker)', () => {
     expect(stateSite.parentElement?.className).toContain('flex-column')
     expect(stateSite).toHaveClass('width-full')
   })
+
+  it('caps the outline button at content width on desktop viewports', () => {
+    // The S.11 mockups only spec the narrow layout; stretching width-full across
+    // a desktop grid-container produces a viewport-wide button.
+    renderCo()
+    const stateSite = screen.getByRole('link', { name: 'maintenanceEnrollmentChecker:action1' })
+    expect(stateSite).toHaveClass('desktop:width-auto')
+  })
 })
