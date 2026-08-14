@@ -4,25 +4,23 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using PluginAddress = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Address;
-using PluginAddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
-using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
-using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
+using Address = SEBT.Portal.Core.Models.Household.Address;
+using ConnectorAddress = SEBT.Portal.Core.StateConnector.Address;
 
 namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles mailing address updates for an authenticated user's household.
-/// Validates input, normalizes the address via <see cref="ICoreAddressUpdateService"/>,
+/// Validates input, normalizes the address via <see cref="IAddressVerificationService"/>,
 /// enforces self-service rules and benefit-type policy, and persists via state connector.
 /// </summary>
 public class UpdateAddressCommandHandler(
     IValidator<UpdateAddressCommand> validator,
-    ICoreAddressUpdateService addressUpdateService,
+    IAddressVerificationService addressVerificationService,
     IAddressValidationService addressValidationService,
     IHouseholdIdentifierResolver resolver,
     IHouseholdRepository householdRepository,
@@ -52,7 +50,7 @@ public class UpdateAddressCommandHandler(
             PostalCode = command.PostalCode
         };
 
-        var addressOutcome = await addressUpdateService.ValidateAndNormalizeAsync(addressRequest, cancellationToken);
+        var addressOutcome = await addressVerificationService.ValidateAndNormalizeAsync(addressRequest, cancellationToken);
         Address? normalizedAddress = null;
         var normalizationCorrectedAddress = false;
         switch (addressOutcome)
@@ -230,7 +228,7 @@ public class UpdateAddressCommandHandler(
         }
 
         // Use the persisted address (normalized or user-entered when opted in) for the state connector call.
-        var pluginAddress = new PluginAddress
+        var connectorAddress = new ConnectorAddress
         {
             StreetAddress1 = persistAddress.StreetAddress1,
             StreetAddress2 = persistAddress.StreetAddress2,
@@ -239,10 +237,10 @@ public class UpdateAddressCommandHandler(
             PostalCode = persistAddress.PostalCode
         };
 
-        var updateRequest = new PluginAddressUpdateRequest
+        var updateRequest = new AddressUpdateRequest
         {
             HouseholdIdentifierValue = identifier.Value,
-            Address = pluginAddress
+            Address = connectorAddress
         };
 
         try

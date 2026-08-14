@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using SEBT.Portal.Api.Models.IdProofing;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Infrastructure.Services.Socure;
+using SEBT.Portal.Core.Services.Socure;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.UseCases.IdProofing;
