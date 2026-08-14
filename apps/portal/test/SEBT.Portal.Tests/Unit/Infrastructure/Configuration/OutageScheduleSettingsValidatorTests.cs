@@ -1,5 +1,6 @@
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Configuration;
+using SEBT.Portal.Infrastructure.Configuration.Validators;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Configuration;
 

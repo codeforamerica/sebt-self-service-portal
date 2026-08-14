@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 
-namespace SEBT.Portal.Infrastructure.Configuration;
+namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 
 /// <summary>
 /// When Smarty is enabled, embedded keys are required at startup.
