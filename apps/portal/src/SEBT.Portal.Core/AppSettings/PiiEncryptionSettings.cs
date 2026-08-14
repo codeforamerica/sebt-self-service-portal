@@ -3,9 +3,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// <summary>
 /// AES-256-GCM key material configuration for reversible PII column encryption (see ADR).
 /// </summary>
-public class PiiEncryptionSettings
+public class PiiEncryptionSettings : IHaveConfigSectionName
 {
-    public const string SectionName = "PiiEncryption";
+    public static string SectionName => "PiiEncryption";
 
     /// <summary>Decoded key material must be exactly this many bytes (256-bit AES only).</summary>
     public const int RequiredKeyMaterialLengthBytes = 32;

@@ -23,9 +23,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// </code>
 /// </example>
 /// </summary>
-public class SelfServiceRulesSettings
+public class SelfServiceRulesSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "SelfServiceRules";
+    public static string SectionName => "SelfServiceRules";
 
     /// <summary>
     /// Rules for portal address update actions.

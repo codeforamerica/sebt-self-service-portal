@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// <summary>
 /// Configuration for Smarty US Street Address API.
 /// </summary>
-public sealed class SmartySettings
+public sealed class SmartySettings : IHaveConfigSectionName
 {
-    public const string SectionName = "Smarty";
+    public static string SectionName => "Smarty";
 
     /// <summary>
     /// When false, the portal uses pass-through normalization only (no HTTP calls to Smarty).

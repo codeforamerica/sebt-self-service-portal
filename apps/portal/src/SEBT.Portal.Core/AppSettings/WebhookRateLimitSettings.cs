@@ -7,9 +7,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// Uses IP-based partitioning with a fixed window.
 /// TODO: Confirm appropriate thresholds with Socure and the team.
 /// </summary>
-public class WebhookRateLimitSettings
+public class WebhookRateLimitSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "WebhookRateLimitSettings";
+    public static string SectionName => "WebhookRateLimitSettings";
 
     /// <summary>
     /// Maximum number of webhook requests allowed per window per IP address.

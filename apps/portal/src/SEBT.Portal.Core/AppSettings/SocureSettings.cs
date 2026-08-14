@@ -7,9 +7,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// Configuration for the Socure identity verification integration.
 /// In non-Development environments, WebhookSecret is required at startup.
 /// </summary>
-public class SocureSettings
+public class SocureSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "Socure";
+    public static string SectionName => "Socure";
 
     /// <summary>
     /// When false, Socure integration is disabled entirely — validation is skipped
