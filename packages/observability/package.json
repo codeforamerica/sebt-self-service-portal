@@ -24,7 +24,7 @@
     "@opentelemetry/exporter-logs-otlp-proto": "^0.220.0",
     "@opentelemetry/exporter-metrics-otlp-grpc": "^0.220.0",
     "@opentelemetry/exporter-metrics-otlp-proto": "^0.220.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.220.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.221.0",
     "@opentelemetry/exporter-trace-otlp-proto": "^0.220.0",
     "@opentelemetry/instrumentation-undici": "^0.30.0",
     "@opentelemetry/resources": "^2.9.0",
