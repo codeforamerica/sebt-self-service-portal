@@ -22,6 +22,7 @@ internal static class Dependencies
         services.AddPortalOptions<IdProofingRequirementsSettings, ConfigureIdProofingRequirements>(configuration);
         services.AddPortalOptions<IdProofingValiditySettings>();
         services.AddPortalOptions<JwtSettings>();
+        services.AddPortalOptions<OidcSettings>();
         services.AddPortalOptions<OidcStepUpSettings>();
         services.AddPortalOptions<OidcVerificationClaimSettings>();
         services.AddPortalOptions<OtpRateLimitSettings>();

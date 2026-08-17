@@ -27,9 +27,7 @@ builder.Services.AddCaching(builder.Configuration, builder.Environment);
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
 builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);
 
-// Add services to the container.
 builder.Services.AddControllers();
-
 builder.Services.Configure<RouteOptions>(options =>
 {
     options.LowercaseUrls = true;
@@ -59,15 +57,6 @@ builder.Services.AddDatabaseSeeder();
 builder.Services.AddDevelopmentOverrides();
 
 var app = builder.Build();
-
-// HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
-var oidcSigningKey = app.Configuration["Oidc:CompleteLoginSigningKey"];
-if (!string.IsNullOrEmpty(oidcSigningKey) && oidcSigningKey.Length < 32)
-{
-    throw new InvalidOperationException(
-        $"Oidc:CompleteLoginSigningKey must be at least 32 characters (got {oidcSigningKey.Length}). " +
-        "HMAC-SHA256 requires a 256-bit key for full security.");
-}
 
 await app.MigrateAndSeedDatabaseAsync();
 
