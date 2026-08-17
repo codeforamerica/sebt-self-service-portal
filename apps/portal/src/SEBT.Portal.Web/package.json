@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.42.3",
-    "@next/third-parties": "^16.2.6",
+    "@next/third-parties": "^16.3.1",
     "@opentelemetry/api": "^1.9.1",
     "@sebt/analytics": "workspace:*",
     "@sebt/design-system": "workspace:*",
@@ -44,7 +44,7 @@
     "@uswds/uswds": "^3.13.0",
     "i18next": "^26.3.4",
     "jose": "^6.2.3",
-    "next": "16.2.11",
+    "next": "16.3.1",
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "react-i18next": "^17.0.7",
@@ -54,7 +54,7 @@
   "devDependencies": {
     "@axe-core/react": "^4.11.3",
     "@lhci/cli": "^0.15.1",
-    "@next/bundle-analyzer": "^16.2.6",
+    "@next/bundle-analyzer": "^16.3.1",
     "@opentelemetry/sdk-trace-base": "^2.9.0",
     "@playwright/test": "^1.60.0",
     "@size-limit/file": "^12.1.0",
@@ -69,7 +69,7 @@
     "babel-plugin-react-compiler": "1.0.0",
     "baseline-browser-mapping": "^2.10.34",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.2.6",
+    "eslint-config-next": "16.3.1",
     "eslint-plugin-security": "^4.0.1",
     "jsdom": "^29.1.1",
     "msw": "^2.14.6",
@@ -81,7 +81,8 @@
     "sass-embedded": "^1.99.0",
     "sass-loader": "^17.0.0",
     "size-limit": "^12.1.0",
-    "typescript": "^6.0.3",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.16",
     "vitest": "^4.1.6"
   }
