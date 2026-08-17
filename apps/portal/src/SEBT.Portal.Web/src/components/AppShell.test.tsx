@@ -61,7 +61,7 @@ describe('AppShell', () => {
     expect(main?.parentElement).toHaveClass('display-flex', 'flex-column', 'minh-viewport')
   })
 
-  it('renders a minimal shell on the outage route', () => {
+  it('keeps full chrome on the outage route but drops the beta banner', () => {
     mockPathname.mockReturnValue('/outage')
 
     render(
@@ -70,10 +70,10 @@ describe('AppShell', () => {
       </AppShell>
     )
 
-    expect(screen.queryByTestId('site-header')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('help-section')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('site-footer')).not.toBeInTheDocument()
+    expect(screen.getByTestId('site-header')).toBeInTheDocument()
+    expect(screen.getByTestId('help-section')).toBeInTheDocument()
+    expect(screen.getByTestId('site-footer')).toBeInTheDocument()
+    expect(screen.queryByTestId('beta-banner')).not.toBeInTheDocument()
     expect(screen.getByText('Outage page')).toBeInTheDocument()
-    expect(document.getElementById('main-content')).toHaveClass('bg-base-lightest')
   })
 })

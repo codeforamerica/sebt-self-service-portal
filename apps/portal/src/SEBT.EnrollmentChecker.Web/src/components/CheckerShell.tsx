@@ -17,28 +17,18 @@ interface CheckerShellProps {
 
 /**
  * Renders the standard checker chrome (skip nav, maintenance banner, header, help,
- * footer) for normal routes. The outage page uses a minimal full-viewport layout
- * without site navigation, matching the portal's outage presentation.
+ * footer) on every route, including the outage page. The maintenance banner is
+ * withheld on the outage route; announcing upcoming maintenance is redundant on
+ * the maintenance page itself.
  */
 export function CheckerShell({ children, state }: CheckerShellProps) {
   const pathname = usePathname()
   const isOutagePage = pathname === OUTAGE_PATH
 
-  if (isOutagePage) {
-    return (
-      <main
-        id="main-content"
-        className="minh-viewport bg-base-lightest"
-      >
-        <OutageGuard>{children}</OutageGuard>
-      </main>
-    )
-  }
-
   return (
     <>
       <SkipNav />
-      <MaintenanceBanner />
+      {!isOutagePage && <MaintenanceBanner />}
       <Header state={state} />
       <main id="main-content">
         <OutageGuard>{children}</OutageGuard>
