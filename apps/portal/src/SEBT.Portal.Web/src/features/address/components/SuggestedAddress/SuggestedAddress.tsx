@@ -6,7 +6,13 @@ import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
 import { useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState } from '@sebt/design-system'
+import {
+  Alert,
+  Button,
+  getState,
+  ProcessingFieldset,
+  ProcessingIndicator
+} from '@sebt/design-system'
 
 import { classifyAddressState, trackAddressUpdateSubmit } from '@/lib/analytics-helpers'
 
@@ -33,7 +39,6 @@ function toUpdateAddressRequestOrNull(
 export function SuggestedAddress() {
   const { t } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
-  const { t: tDev } = useTranslation('dev')
   const router = useRouter()
   const currentState = getState()
   const updateAddress = useUpdateAddress()
@@ -171,12 +176,16 @@ export function SuggestedAddress() {
 
       <p className="font-sans-3xs text-base margin-bottom-0">{tCommon('requiredFields')}</p>
 
-      <fieldset className="usa-fieldset margin-top-3">
-        <legend className="usa-legend">
-          {t('suggestedLabelSelect')}
-          <span className="text-secondary-dark"> *</span>
-        </legend>
-
+      <ProcessingFieldset
+        isProcessing={updateAddress.isPending}
+        className="margin-top-3"
+        legend={
+          <>
+            {t('suggestedLabelSelect')}
+            <span className="text-secondary-dark"> *</span>
+          </>
+        }
+      >
         <div className="usa-radio margin-top-2">
           <input
             className="usa-radio__input"
@@ -214,23 +223,28 @@ export function SuggestedAddress() {
             {formatAddress(enteredAddress)}
           </label>
         </div>
-      </fieldset>
+      </ProcessingFieldset>
 
-      <div className="margin-top-3 display-flex flex-row gap-2">
+      <div className="margin-top-3 display-flex flex-row flex-align-center gap-2">
         <Button
           variant="outline"
           type="button"
           onClick={handleBack}
+          disabled={updateAddress.isPending}
         >
           {tCommon('back')}
         </Button>
         <Button
           type="button"
           onClick={handleContinue}
-          disabled={updateAddress.isPending}
+          isLoading={updateAddress.isPending}
         >
-          {updateAddress.isPending ? tDev('loading') : tCommon('continue')}
+          {tCommon('continue')}
         </Button>
+        <ProcessingIndicator
+          isProcessing={updateAddress.isPending}
+          label={tCommon('processing')}
+        />
       </div>
     </div>
   )

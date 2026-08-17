@@ -9,10 +9,12 @@ import { ChildReviewCard } from './ChildReviewCard'
 
 interface ReviewPageProps {
   onSubmit: () => void
-  isSubmitting?: boolean
 }
 
-export function ReviewPage({ onSubmit, isSubmitting = false }: ReviewPageProps) {
+// This page carries no busy state of its own: while the enrollment check is in
+// flight, the review/page.tsx container replaces it wholesale with the
+// LoadingInterstitial, so button-level loading props here would never render.
+export function ReviewPage({ onSubmit }: ReviewPageProps) {
   // confirmInfo title/body exist only in the CO sheet (DC marks them !N/A!);
   // a DC build renders raw key names on this screen.
   const { t } = useTranslation('confirmInfo')
@@ -54,15 +56,12 @@ export function ReviewPage({ onSubmit, isSubmitting = false }: ReviewPageProps) 
             variant="outline"
             className="margin-right-1"
             onClick={() => router.push('/check')}
-            disabled={isSubmitting}
           >
             {tCommon('back')}
           </Button>
           <Button
             onClick={onSubmit}
             disabled={state.children.length === 0}
-            isLoading={isSubmitting}
-            loadingText={`${tCommon('submit')}...`}
           >
             {tCommon('submit')}
           </Button>

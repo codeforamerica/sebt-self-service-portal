@@ -453,6 +453,11 @@ describe('ConfirmRequest', () => {
     await user.click(orderButton)
 
     expect(orderButton).toBeDisabled()
+    expect(orderButton).toHaveAttribute('aria-busy', 'true')
+    // The label stays "Order card"; no dev-namespace "Loading..." swap
+    expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
+    expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
 
     resolveRequest!()
     await waitFor(() => {

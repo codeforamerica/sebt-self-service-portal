@@ -77,7 +77,7 @@ public static class Dependencies
             // services cannot be resolved here.
             var smarty = sp.GetRequiredService<IOptionsMonitor<SmartySettings>>().CurrentValue;
             var baseUrl = string.IsNullOrWhiteSpace(smarty.BaseUrl)
-                ? "https://us-street.api.smartystreets.com"
+                ? "https://us-street.api.smarty.com"
                 : smarty.BaseUrl.TrimEnd('/');
             client.BaseAddress = new Uri(baseUrl + "/");
             client.Timeout = TimeSpan.FromSeconds(Math.Clamp(smarty.TimeoutSeconds, 1, 120));
