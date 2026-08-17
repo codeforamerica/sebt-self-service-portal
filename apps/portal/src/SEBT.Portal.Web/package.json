@@ -56,7 +56,7 @@
     "@lhci/cli": "^0.15.1",
     "@next/bundle-analyzer": "^16.2.6",
     "@opentelemetry/sdk-trace-base": "^2.9.0",
-    "@playwright/test": "^1.60.0",
+    "@playwright/test": "^1.62.1",
     "@size-limit/file": "^12.1.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
