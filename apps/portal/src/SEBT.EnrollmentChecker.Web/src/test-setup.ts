@@ -5,7 +5,8 @@ import { afterAll, afterEach, beforeAll } from 'vitest'
 import '@/lib/i18n-init'
 import { server } from './mocks/server'
 
-process.env.NEXT_PUBLIC_STATE ??= 'dc'
+// NEXT_PUBLIC_STATE is set in vitest.config.ts (test.env) so it's available
+// when i18n-init runs at import time above
 process.env.NEXT_PUBLIC_PORTAL_URL ??= 'https://portal.example.gov'
 process.env.NEXT_PUBLIC_APPLICATION_URL ??= 'https://portalapp.example.gov'
 
