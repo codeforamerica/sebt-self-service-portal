@@ -71,7 +71,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "16.3.0",
     "eslint-plugin-security": "^4.0.1",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "msw": "^2.15.0",
     "pa11y-ci": "^4.1.1",
     "prettier": "^3.9.6",
