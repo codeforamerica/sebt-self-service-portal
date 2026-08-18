@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Diagnostics;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.UseCases.Diagnostics;
 
@@ -17,26 +15,6 @@ public class TestErrorControllerTests
 
     private static TestErrorCommandHandler CreateRealHandler() =>
         new(NullLogger<TestErrorCommandHandler>.Instance);
-
-    private static IOptionsSnapshot<SmartySettings> SmartySnapshot()
-    {
-        var snapshot = Substitute.For<IOptionsSnapshot<SmartySettings>>();
-        snapshot.Value.Returns(new SmartySettings
-        {
-            Enabled = true,
-            AuthId = "test-auth-id",
-            AuthToken = "test-token",
-            BaseUrl = "https://us-street.api.smarty.com"
-        });
-        return snapshot;
-    }
-
-    private static IOptionsSnapshot<AddressValidationPolicySettings> PolicySnapshot()
-    {
-        var snapshot = Substitute.For<IOptionsSnapshot<AddressValidationPolicySettings>>();
-        snapshot.Value.Returns(new AddressValidationPolicySettings());
-        return snapshot;
-    }
 
     [Theory]
     [InlineData(StatusCodes.Status400BadRequest)]
@@ -71,28 +49,28 @@ public class TestErrorControllerTests
     [Fact]
     public async Task SimulateSmartyHttpError_ReturnsAccepted()
     {
+        var diagnostics = Substitute.For<IAddressVerificationDiagnostics>();
         var controller = CreateController();
 
         var result = await controller.SimulateSmartyHttpError(
-            SmartySnapshot(),
-            PolicySnapshot(),
-            NullLogger<SmartyAddressUpdateService>.Instance,
+            diagnostics,
             CancellationToken.None);
 
         Assert.IsType<AcceptedResult>(result);
+        await diagnostics.Received(1).ValidateAgainstCannedServerErrorAsync(CancellationToken.None);
     }
 
     [Fact]
     public async Task SimulateSmartyTransportFailure_ReturnsAccepted()
     {
+        var diagnostics = Substitute.For<IAddressVerificationDiagnostics>();
         var controller = CreateController();
 
         var result = await controller.SimulateSmartyTransportFailure(
-            SmartySnapshot(),
-            PolicySnapshot(),
-            NullLogger<SmartyAddressUpdateService>.Instance,
+            diagnostics,
             CancellationToken.None);
 
         Assert.IsType<AcceptedResult>(result);
+        await diagnostics.Received(1).ValidateAgainstTransportFailureAsync(CancellationToken.None);
     }
 }
