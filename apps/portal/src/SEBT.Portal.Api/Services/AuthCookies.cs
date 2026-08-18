@@ -10,6 +10,20 @@ public static class AuthCookies
     /// <summary>Name of the HttpOnly cookie carrying the portal JWT.</summary>
     public const string AuthCookieName = "sebt_portal_session";
 
+    /// <summary>Path prefix of the public enrollment-checker API (EnrollmentCheckController).</summary>
+    private static readonly PathString EnrollmentApiPrefix = new("/api/enrollment");
+
+    /// <summary>
+    /// Whether the session cookie may be used to authenticate a request to the
+    /// given path. The enrollment-checker API is anonymous by contract and is
+    /// excluded: deployments can serve the checker from the portal's origin
+    /// (CO production does), so a logged-in household's session cookie rides
+    /// along on checker requests and would otherwise attach portal identity to
+    /// anonymous enrollment-check logs.
+    /// </summary>
+    public static bool AllowsCookieAuthentication(PathString requestPath) =>
+        !requestPath.StartsWithSegments(EnrollmentApiPrefix);
+
     /// <summary>Writes the portal JWT to the HttpOnly session cookie; expires with the token.</summary>
     public static void SetAuthCookie(HttpResponse response, string token, DateTimeOffset expiresAt)
     {
