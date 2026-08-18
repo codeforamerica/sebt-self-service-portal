@@ -3,94 +3,20 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Models.Auth;
 
 namespace SEBT.Portal.Api.Services;
-
-/// <summary>
-/// performs the OIDC token exchange and id_token verification entirely server-side.
-/// Replaces the Next.js <c>/api/auth/oidc/callback/route.ts</c> — the client secret, JWKS
-/// validation, and callback-token signing all happen in .NET now.
-///
-/// The service is stateless between requests (all flow state lives in the pre-auth session
-/// store). Inject as scoped or transient.
-/// </summary>
-public interface IOidcExchangeService
-{
-    /// <summary>
-    /// Exchanges an authorization code for an id_token, verifies it, and signs a short-lived
-    /// callback token containing the IdP claims. Returns the callback token on success.
-    /// </summary>
-    /// <param name="code">Authorization code from PingOne redirect.</param>
-    /// <param name="codeVerifier">PKCE code_verifier (from the pre-auth session, never from the browser).</param>
-    /// <param name="redirectUri">redirect_uri that was sent in the authorization request.</param>
-    /// <param name="isStepUp">True when this is a step-up (IAL1+) flow.</param>
-    /// <param name="sessionId">Pre-auth session id for correlated off-boarding logs.</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    /// <returns>Signed callback token (short-lived JWT) on success.</returns>
-    Task<OidcExchangeResult> ExchangeCodeAsync(
-        string code,
-        string codeVerifier,
-        string redirectUri,
-        bool isStepUp,
-        string? sessionId = null,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Fetches the cached OIDC discovery document for the configured IdP. Returns the
-    /// <see cref="OpenIdConnectConfiguration"/> containing endpoint URLs (authorization,
-    /// token, userinfo), signing keys, and issuer metadata.
-    /// </summary>
-    /// <param name="isStepUp">True to use the step-up IdP configuration.</param>
-    /// <param name="cancellationToken">Cancellation.</param>
-    Task<OpenIdConnectConfiguration> GetDiscoveryConfigAsync(
-        bool isStepUp,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>Result of the OIDC code exchange.</summary>
-public sealed record OidcExchangeResult
-{
-    /// <summary>True when exchange + verification succeeded.</summary>
-    public bool Success { get; init; }
-
-    /// <summary>Signed callback token (short-lived JWT containing IdP claims). Null on failure.</summary>
-    public string? CallbackToken { get; init; }
-
-    /// <summary>Phone claim value extracted during the exchange (for diagnostic logging). Null when absent or on failure.</summary>
-    public string? PhoneClaim { get; init; }
-
-    /// <summary>Human-readable error message for the client. Null on success.</summary>
-    public string? Error { get; init; }
-
-    /// <summary>HTTP status code to return to the client. 200 on success.</summary>
-    public int StatusCode { get; init; } = 200;
-
-    /// <summary>Creates a successful result with the given callback token.</summary>
-    public static OidcExchangeResult Ok(string callbackToken, string? phoneClaim = null) => new()
-    {
-        Success = true,
-        CallbackToken = callbackToken,
-        PhoneClaim = phoneClaim,
-        StatusCode = 200
-    };
-
-    /// <summary>Creates a failed result with the given error message and HTTP status code.</summary>
-    public static OidcExchangeResult Fail(string error, int statusCode = 400) => new()
-    {
-        Success = false,
-        Error = error,
-        StatusCode = statusCode
-    };
-}
 
 /// <inheritdoc cref="IOidcExchangeService"/>
 public sealed class OidcExchangeService : IOidcExchangeService
 {
-    private readonly IConfiguration _config;
+    private readonly IOptionsSnapshot<OidcSettings> _oidcSettings;
+    private readonly IOptionsSnapshot<OidcStepUpSettings> _oidcStepUpSettings;
     private readonly IHttpClientFactory _httpFactory;
     private readonly ILogger<OidcExchangeService> _logger;
     private readonly IOidcCallbackFailureLogger _callbackFailureLogger;
@@ -105,7 +31,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
     /// claims into the callback token or portal JWT. Single source of truth — the
     /// controller's <c>CompleteLogin</c> references this same set.
     /// </summary>
-    public static readonly HashSet<string> CommonOidcInfrastructureClaims = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly HashSet<string> CommonOidcInfrastructureClaims = new(StringComparer.OrdinalIgnoreCase)
     {
         "iss", "aud", "iat", "exp", "nbf", "nonce", "at_hash", "c_hash",
         "auth_time", "acr", "amr", "azp", "sid", "jti",
@@ -130,12 +56,14 @@ public sealed class OidcExchangeService : IOidcExchangeService
 
     /// <inheritdoc cref="OidcExchangeService"/>
     public OidcExchangeService(
-        IConfiguration config,
+        IOptionsSnapshot<OidcSettings> oidcSettings,
+        IOptionsSnapshot<OidcStepUpSettings> oidcStepUpSettings,
         IHttpClientFactory httpFactory,
         ILogger<OidcExchangeService> logger,
         IOidcCallbackFailureLogger callbackFailureLogger)
     {
-        _config = config;
+        _oidcSettings = oidcSettings;
+        _oidcStepUpSettings = oidcStepUpSettings;
         _httpFactory = httpFactory;
         _logger = logger;
         _callbackFailureLogger = callbackFailureLogger;
@@ -146,9 +74,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
         bool isStepUp,
         CancellationToken cancellationToken = default)
     {
-        var discoveryEndpoint = isStepUp
-            ? _config["Oidc:StepUp:DiscoveryEndpoint"]
-            : _config["Oidc:DiscoveryEndpoint"];
+        var discoveryEndpoint = GetSettings(isStepUp).DiscoveryEndpoint;
 
         if (string.IsNullOrEmpty(discoveryEndpoint))
         {
@@ -192,9 +118,12 @@ public sealed class OidcExchangeService : IOidcExchangeService
         CancellationToken cancellationToken = default)
     {
         // --- Resolve per-flow config ---
-        var clientId = isStepUp ? _config["Oidc:StepUp:ClientId"] : _config["Oidc:ClientId"];
-        var clientSecret = isStepUp ? _config["Oidc:StepUp:ClientSecret"] : _config["Oidc:ClientSecret"];
-        var signingKey = _config["Oidc:CompleteLoginSigningKey"];
+        var settings = GetSettings(isStepUp);
+        var clientId = settings.ClientId;
+        var clientSecret = settings.ClientSecret;
+
+        // Signing key is portal-level (not IdP-per-flow) — always read from the base Oidc section.
+        var signingKey = _oidcSettings.Value.CompleteLoginSigningKey;
 
         if (string.IsNullOrEmpty(clientId)
             || string.IsNullOrEmpty(clientSecret) || string.IsNullOrEmpty(signingKey))
@@ -348,10 +277,10 @@ public sealed class OidcExchangeService : IOidcExchangeService
             ValidateIssuer = true,
             ValidIssuer = oidcConfig.Issuer,
             ValidateAudience = true,
-            ValidAudiences = new[] { clientId },
+            ValidAudiences = [clientId],
             ValidateLifetime = true,
             ClockSkew = IdTokenClockSkew,
-            ValidAlgorithms = new[] { SecurityAlgorithms.RsaSha256 },
+            ValidAlgorithms = [SecurityAlgorithms.RsaSha256],
             RequireExpirationTime = true,
             RequireSignedTokens = true
         };
@@ -451,7 +380,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
 
         // --- Sign the callback token with deployment-specific issuer/audience ---
         // Prevents cross-environment token confusion if the signing key were shared.
-        var portalOrigin = _config["Oidc:CallbackRedirectUri"]?.TrimEnd('/') ?? "sebt-portal";
+        var portalOrigin = _oidcSettings.Value.PortalOrigin;
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var jwtClaims = claims.Select(c => new Claim(c.Key, c.Value)).ToList();
@@ -542,4 +471,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
             _logger.LogInformation(ex, "OIDC exchange: userinfo fetch failed (non-fatal)");
         }
     }
+    
+    private IOidcCoreSettings GetSettings(bool isStepUp) =>
+        isStepUp ? _oidcStepUpSettings.Value : _oidcSettings.Value;
 }

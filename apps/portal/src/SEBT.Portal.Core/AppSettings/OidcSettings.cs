@@ -1,6 +1,6 @@
 namespace SEBT.Portal.Core.AppSettings;
 
-public class OidcSettings : IHaveConfigSectionName
+public class OidcSettings : IOidcCoreSettings, IHaveConfigSectionName
 {
     public static string SectionName => "Oidc";
     
