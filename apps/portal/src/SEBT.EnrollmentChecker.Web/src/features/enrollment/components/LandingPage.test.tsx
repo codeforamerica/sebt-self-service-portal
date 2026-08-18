@@ -58,4 +58,13 @@ describe('LandingPage', () => {
     renderLandingPage()
     expect(sessionStorage.getItem('enrollmentState')).toBeNull()
   })
+
+  it('does not render an empty list when an accordion list key resolves to no items', () => {
+    const { container } = renderLandingPage()
+    const lists = container.querySelectorAll('.usa-accordion__content ul')
+    expect(lists.length).toBeGreaterThan(0)
+    lists.forEach((list) => {
+      expect(list.querySelectorAll('li').length).toBeGreaterThan(0)
+    })
+  })
 })
