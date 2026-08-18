@@ -128,7 +128,7 @@ describe('OffBoardingPage', () => {
     mockApplyOpen = true
     mockGetState.mockReturnValue('dc')
     mockGetStateLinks.mockReturnValue({
-      help: { contactUs: 'https://sunbucks.dc.gov/page/contact-us', faqs: '' },
+      help: { contactUs: 'https://sunbucks.dc.gov/page/contact-us', faqs: '', sebtMainSite: '' },
       footer: {
         publicNotifications: '',
         accessibility: '',
@@ -195,6 +195,7 @@ describe('OffBoardingPage', () => {
         help: {
           contactUs: '#',
           faqs: '#',
+          sebtMainSite: '',
           helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
         },
         footer: {

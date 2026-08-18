@@ -16,11 +16,11 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// <summary>
 /// Calls Smarty US Street Address API to validate and normalize US mailing addresses.
 /// </summary>
-public sealed class SmartyAddressUpdateService(
+public sealed class SmartyAddressVerificationService(
     IHttpClientFactory httpClientFactory,
     IOptionsSnapshot<SmartySettings> smartySettingsSnapshot,
     IOptionsSnapshot<AddressValidationPolicySettings> policySettingsSnapshot,
-    ILogger<SmartyAddressUpdateService> logger) : IAddressUpdateService
+    ILogger<SmartyAddressVerificationService> logger) : IAddressVerificationService
 {
     private static readonly JsonSerializerOptions SmartyRequestJsonOptions = new()
     {

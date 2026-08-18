@@ -13,7 +13,7 @@ public interface IFeatureFlagQueryService
     /// 3. State-specific JSON files (appsettings.{State}.json) - highest priority
     /// FeatureManager provides any additional flags not defined in the above sources
     /// Only flags that are explicitly configured (enabled or disabled) are returned.
-    /// Unknown flags are not included in the response.
+    /// Unknown flags and internal-only flags are not included in the response.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A dictionary of feature flag names to their enabled state.</returns>
