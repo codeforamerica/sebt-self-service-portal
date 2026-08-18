@@ -1,4 +1,5 @@
 using Microsoft.Data.SqlClient;
+using SEBT.Portal.Tests.Helpers;
 using Testcontainers.MsSql;
 
 namespace SEBT.Portal.Tests.Integration.PluginIntegration;
@@ -27,7 +28,7 @@ public class DcSourceDatabaseFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        await _container.StartAsync();
+        await _container.StartWithRetryAsync();
         await CreateSchemaAndSeedData();
     }
 
