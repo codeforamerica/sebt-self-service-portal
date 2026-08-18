@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Kernel;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.Auth;
 using SEBT.Portal.UseCases.Auth.SessionLifetime;
 using SEBT.Portal.UseCases.Diagnostics;
