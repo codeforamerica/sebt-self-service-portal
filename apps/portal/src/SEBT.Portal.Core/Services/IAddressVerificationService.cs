@@ -8,7 +8,7 @@ namespace SEBT.Portal.Core.Services;
 /// Validates and normalizes mailing addresses using Smarty (when enabled) and state policy from configuration.
 /// Intended for use by portal use cases and state connectors so validation rules stay consistent.
 /// </summary>
-public interface IAddressUpdateService
+public interface IAddressVerificationService
 {
     /// <summary>
     /// Validates the address with Smarty (or pass-through when disabled), applies per-state policy

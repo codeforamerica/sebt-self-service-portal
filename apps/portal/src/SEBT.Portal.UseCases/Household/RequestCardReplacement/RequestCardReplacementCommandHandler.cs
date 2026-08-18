@@ -4,13 +4,10 @@ using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using IStateCardReplacementService = SEBT.Portal.StatesPlugins.Interfaces.ICardReplacementService;
-using PluginCardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
-using PluginCaseRef = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CaseRef;
-using CardReplacementResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementResult;
 
 namespace SEBT.Portal.UseCases.Household;
 
@@ -173,8 +170,8 @@ public class RequestCardReplacementCommandHandler(
                 identifierKind,
                 command.CaseRefs.Count);
 
-            var pluginCaseRefs = command.CaseRefs
-                .Select(r => new PluginCaseRef
+            var connectorCaseRefs = command.CaseRefs
+                .Select(r => new CaseRef
                 {
                     SummerEbtCaseId = r.SummerEbtCaseId,
                     ApplicationId = r.ApplicationId,
@@ -182,18 +179,18 @@ public class RequestCardReplacementCommandHandler(
                 })
                 .ToList();
 
-            var pluginRequest = new PluginCardReplacementRequest
+            var connectorRequest = new CardReplacementRequest
             {
                 HouseholdIdentifierValue = identifier.Value,
-                CaseRefs = pluginCaseRefs,
-                Reason = StatesPlugins.Interfaces.Models.Household.CardReplacementReason.Unspecified,
+                CaseRefs = connectorCaseRefs,
+                Reason = CardReplacementReason.Unspecified,
             };
 
             CardReplacementResult connectorResult;
             try
             {
                 connectorResult = await cardReplacementService.RequestCardReplacementAsync(
-                    pluginRequest,
+                    connectorRequest,
                     cancellationToken);
             }
             catch (Exception ex)
