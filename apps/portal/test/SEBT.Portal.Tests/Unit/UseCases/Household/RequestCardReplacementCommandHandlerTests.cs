@@ -12,10 +12,10 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases.Household;
-using CardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
-using CardReplacementResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementResult;
+using IStateCardReplacementService = SEBT.Portal.Core.StateConnector.IStateCardReplacementService;
+using CardReplacementRequest = SEBT.Portal.Core.StateConnector.CardReplacementRequest;
+using CardReplacementResult = SEBT.Portal.Core.StateConnector.CardReplacementResult;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Household;
 
@@ -33,8 +33,8 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _evaluator =
         Substitute.For<ISelfServiceEvaluator>();
-    private readonly ICardReplacementService _cardReplacementService =
-        Substitute.For<ICardReplacementService>();
+    private readonly IStateCardReplacementService _cardReplacementService =
+        Substitute.For<IStateCardReplacementService>();
     private readonly ICardReplacementRequestRepository _cardReplacementRepo =
         Substitute.For<ICardReplacementRequestRepository>();
     private readonly IIdentifierHasher _identifierHasher =
