@@ -8,7 +8,7 @@ using SEBT.Portal.Api;
 using SEBT.Portal.Api.Controllers.EnrollmentCheck;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Tests.Unit.Api.Controllers.EnrollmentCheck;
 

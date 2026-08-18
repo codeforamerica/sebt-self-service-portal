@@ -10,7 +10,7 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
-public class SmartyAddressUpdateServiceTests
+public class SmartyAddressVerificationServiceTests
 {
     private static readonly SmartySettings SmartySettings = new()
     {
@@ -30,7 +30,7 @@ public class SmartyAddressUpdateServiceTests
         AllowGeneralDelivery = false
     };
 
-    private static SmartyAddressUpdateService CreateService(
+    private static SmartyAddressVerificationService CreateService(
         HttpMessageHandler handler,
         AddressValidationPolicySettings? policy = null)
     {
@@ -46,11 +46,11 @@ public class SmartyAddressUpdateServiceTests
         var policySnapshot = Substitute.For<IOptionsSnapshot<AddressValidationPolicySettings>>();
         policySnapshot.Value.Returns(policy ?? AllowGeneralDelivery);
 
-        return new SmartyAddressUpdateService(
+        return new SmartyAddressVerificationService(
             factory,
             smartySnapshot,
             policySnapshot,
-            NullLogger<SmartyAddressUpdateService>.Instance);
+            NullLogger<SmartyAddressVerificationService>.Instance);
     }
 
     private static AddressUpdateOperationRequest BaseRequest() =>
