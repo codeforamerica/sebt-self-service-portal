@@ -8,8 +8,6 @@ using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using Address = SEBT.Portal.Core.Models.Household.Address;
-using ConnectorAddress = SEBT.Portal.Core.StateConnector.Address;
 
 namespace SEBT.Portal.UseCases.Household;
 
@@ -228,19 +226,10 @@ public class UpdateAddressCommandHandler(
         }
 
         // Use the persisted address (normalized or user-entered when opted in) for the state connector call.
-        var connectorAddress = new ConnectorAddress
-        {
-            StreetAddress1 = persistAddress.StreetAddress1,
-            StreetAddress2 = persistAddress.StreetAddress2,
-            City = persistAddress.City,
-            State = persistAddress.State,
-            PostalCode = persistAddress.PostalCode
-        };
-
         var updateRequest = new AddressUpdateRequest
         {
             HouseholdIdentifierValue = identifier.Value,
-            Address = connectorAddress
+            Address = persistAddress
         };
 
         try

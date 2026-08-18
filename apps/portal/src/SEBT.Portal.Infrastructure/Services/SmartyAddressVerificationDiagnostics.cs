@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.AddressUpdate;
-using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 

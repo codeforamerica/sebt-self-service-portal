@@ -46,7 +46,7 @@ public class PluginEnrollmentCheckService(
             DateOfBirth = child.DateOfBirth,
             SchoolName = child.SchoolName,
             SchoolCode = child.SchoolCode,
-            AdditionalFields = new Dictionary<string, string>(child.AdditionalFields)
+            AdditionalFields = CopyOrEmpty(child.AdditionalFields)
         };
 
     private static ChildCheckResult MapToCoreChildResult(PluginChildCheckResult result) =>
@@ -63,8 +63,15 @@ public class PluginEnrollmentCheckService(
                 ? null
                 : MapEligibilityType(result.EligibilityType.Value),
             SchoolName = result.SchoolName,
-            Details = new Dictionary<string, object>(result.Details)
+            Details = CopyOrEmpty(result.Details)
         };
+
+    // The dictionary properties default to non-null, but init assignment or
+    // deserialization can still leave them null; copy null as empty rather than
+    // letting the Dictionary copy constructor throw.
+    private static Dictionary<TKey, TValue> CopyOrEmpty<TKey, TValue>(IDictionary<TKey, TValue>? source)
+        where TKey : notnull =>
+        source is null ? [] : new Dictionary<TKey, TValue>(source);
 
     // Explicit switches (not casts) so a contract enum change fails loudly at compile
     // or run time instead of silently mapping to the wrong Core value.

@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.FeatureManagement.Mvc;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.UseCases.Diagnostics;
 

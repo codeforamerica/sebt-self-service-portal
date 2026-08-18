@@ -2,7 +2,7 @@ using SEBT.Portal.Core.Models.AddressUpdate;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
 
-namespace SEBT.Portal.Core.Services;
+namespace SEBT.Portal.Infrastructure.Services;
 
 /// <summary>
 /// Runs address verification against simulated Smarty outcomes so diagnostic endpoints can

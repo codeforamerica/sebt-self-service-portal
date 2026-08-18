@@ -27,3 +27,4 @@ plus the boundary models they exchange (requests, results, and enums). Infrastru
 - UseCases no longer references the plugin contract assembly at all.
 - Inner layers stay free of vendor and transport concepts, consistent with the existing `IHouseholdRepository` pattern.
 - Adding a state connector operation now requires touching three places: the Core port, the plugin contract, and the adapter. This is accepted as the cost of the boundary.
+- The Smarty address-verification diagnostics harness (`IAddressVerificationDiagnostics`) is not a Core port: it exists only to replay canned vendor responses, so it stays in Infrastructure and the feature-gated diagnostics controller resolves it from there directly.

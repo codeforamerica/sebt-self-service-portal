@@ -1,4 +1,5 @@
 using NSubstitute;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Infrastructure.StateConnector;
 using IPluginAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;

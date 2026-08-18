@@ -8,7 +8,8 @@ namespace SEBT.Portal.Infrastructure.StateConnector;
 /// <summary>
 /// Adapter that fulfills the Core <see cref="IStateAddressUpdateService"/> port by
 /// delegating to the loaded state plugin's address update service. Maps Core models
-/// to plugin contract models (and back) at the boundary.
+/// (including the household <c>Address</c>) to plugin contract models (and back) at
+/// the boundary.
 /// </summary>
 public class PluginAddressUpdateService(
     IPluginAddressUpdateService pluginAddressUpdateService) : IStateAddressUpdateService

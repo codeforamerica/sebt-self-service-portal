@@ -212,6 +212,67 @@ public class PluginEnrollmentCheckServiceTests
         Assert.Empty(child.Details);
     }
 
+    [Fact]
+    public async Task CheckEnrollmentAsync_TreatsNullAdditionalFieldsAsEmpty()
+    {
+        var request = new EnrollmentCheckRequest
+        {
+            Children =
+            [
+                new ChildCheckRequest
+                {
+                    CheckId = Guid.NewGuid(),
+                    FirstName = "Sam",
+                    LastName = "Lee",
+                    DateOfBirth = new DateOnly(2016, 7, 2),
+                    AdditionalFields = null!
+                }
+            ]
+        };
+
+        PluginEnrollmentCheckRequest? captured = null;
+        _plugin.CheckEnrollmentAsync(
+                Arg.Do<PluginEnrollmentCheckRequest>(r => captured = r),
+                Arg.Any<CancellationToken>())
+            .Returns(EmptyPluginResult());
+
+        await _sut.CheckEnrollmentAsync(request);
+
+        Assert.NotNull(captured);
+        var child = Assert.Single(captured.Children);
+        Assert.NotNull(child.AdditionalFields);
+        Assert.Empty(child.AdditionalFields);
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_TreatsNullDetailsAsEmpty()
+    {
+        _plugin.CheckEnrollmentAsync(
+                Arg.Any<PluginEnrollmentCheckRequest>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new PluginEnrollmentCheckResult
+            {
+                Results =
+                [
+                    new PluginChildCheckResult
+                    {
+                        CheckId = Guid.NewGuid(),
+                        FirstName = "Sam",
+                        LastName = "Lee",
+                        DateOfBirth = new DateOnly(2016, 7, 2),
+                        Status = PluginEnrollmentStatus.Match,
+                        Details = null!
+                    }
+                ]
+            });
+
+        var result = await _sut.CheckEnrollmentAsync(MinimalRequest());
+
+        var child = Assert.Single(result.Results);
+        Assert.NotNull(child.Details);
+        Assert.Empty(child.Details);
+    }
+
     [Theory]
     [MemberData(nameof(AllPluginEnrollmentStatuses))]
     public async Task CheckEnrollmentAsync_MapsEveryEnrollmentStatusByName(

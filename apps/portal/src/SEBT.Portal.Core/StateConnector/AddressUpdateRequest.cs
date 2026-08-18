@@ -1,3 +1,5 @@
+using SEBT.Portal.Core.Models.Household;
+
 namespace SEBT.Portal.Core.StateConnector;
 
 /// <summary>
