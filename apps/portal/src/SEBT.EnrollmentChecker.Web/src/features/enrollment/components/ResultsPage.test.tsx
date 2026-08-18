@@ -6,18 +6,19 @@ import { ResultsPage } from './ResultsPage'
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
-const mockApplyHref = 'https://apply.example.gov/?language=en_US'
+let mockApplyHref: string | null = 'https://apply.example.gov/?language=en_US'
 vi.mock('@/lib/applyHref', () => ({
   getApplyHref: () => mockApplyHref
 }))
 
 const mixedEnrolled: ChildCheckApiResponse[] = [
-  { 
-    checkId: '1', 
-    firstName: 'Jane', 
-    lastName: 'Doe', 
-    dateOfBirth: '2015-04-12', 
-    status: 'Match' },
+  {
+    checkId: '1',
+    firstName: 'Jane',
+    lastName: 'Doe',
+    dateOfBirth: '2015-04-12',
+    status: 'Match'
+  },
   {
     checkId: '2',
     firstName: 'John',
@@ -43,13 +44,14 @@ const mixedEnrolled: ChildCheckApiResponse[] = [
 ]
 
 const allEnrolled: ChildCheckApiResponse[] = [
-  { checkId: '1',
+  {
+    checkId: '1',
     firstName: 'Jane',
     lastName: 'Doe',
     dateOfBirth: '2015-04-12',
-    status: 'Match' 
-    },
-    {
+    status: 'Match'
+  },
+  {
     checkId: '2',
     firstName: 'Sally',
     lastName: 'Smith',
@@ -78,21 +80,27 @@ const noneEnrolled: ChildCheckApiResponse[] = [
 const errorResponse: ChildCheckApiResponse[] = [
   {
     checkId: '3',
-    firstName: '',
-    lastName: '',
+    firstName: 'Alex',
+    lastName: 'Lee',
     dateOfBirth: '2014-05-05',
     status: 'Error',
     statusMessage: 'Service error'
   }
 ]
 
-const eligibilityAccordionText = 'How do I know if'
-const enrolledSectionText = 'already enrolled'
-const notEnrolledSectionText = 'NOT enrolled'
+// Copy anchors from the CO 2026-closed content (DC-701 designs).
+const enrolledBoxTitle = 'were enrolled in Summer EBT for 2026'
+const notEnrolledTitle = 'were NOT enrolled'
+const closedLine = 'Enrollment in Summer EBT for 2026 is now closed.'
+const apply2027LinkText = /considered for benefits for summer 2027/
 const nextStepsSectionText = 'Next steps'
 const portalUrl = 'https://portal.example.gov'
 
 describe('ResultsPage', () => {
+  beforeEach(() => {
+    mockApplyHref = 'https://apply.example.gov/?language=en_US'
+  })
+
   describe('Mixed enrollment household', () => {
     beforeEach(() => {
       render(
@@ -103,41 +111,52 @@ describe('ResultsPage', () => {
       )
     })
 
-    it('shows enrolled children only in enrolled section', () => {
+    it('shows enrolled children in the summary box', () => {
       const enrolledBox = screen.getByTestId('enrolled-summary-box')
-      expect(enrolledBox).toHaveTextContent(enrolledSectionText)
+      expect(enrolledBox).toHaveTextContent(enrolledBoxTitle)
       expect(enrolledBox).toHaveTextContent('Jane Doe')
       expect(enrolledBox).not.toHaveTextContent('John Smith')
       expect(enrolledBox).not.toHaveTextContent('Jimbo Smith')
     })
 
-    it('shows not-enrolled children only in not-enrolled section', () => {
-      const notEnrolledBox = screen.getByTestId('not-enrolled-summary-box')
-      expect(notEnrolledBox).toHaveTextContent(notEnrolledSectionText)
-      expect(notEnrolledBox).toHaveTextContent('John Smith')
-      expect(notEnrolledBox).toHaveTextContent('Jimbo Smith')
-      expect(notEnrolledBox).not.toHaveTextContent('Jane Doe')
+    it('lists not-enrolled children below the box, outside any summary box', () => {
+      const inline = screen.getByTestId('not-enrolled-inline')
+      expect(inline).toHaveTextContent(notEnrolledTitle)
+      expect(inline).toHaveTextContent('John Smith')
+      expect(inline).toHaveTextContent('Jimbo Smith')
+      expect(inline).not.toHaveTextContent('Jane Doe')
+      expect(screen.queryByTestId('not-enrolled-summary-box')).toBeNull()
     })
 
-    it('shows next steps list', () => {
+    it('orders next steps portal-first, then the 2027 application step', () => {
       expect(screen.getByText(nextStepsSectionText)).toBeVisible()
+      const steps = screen.getAllByTestId(/next-step-/)
+      expect(steps[0]).toHaveAttribute('data-testid', 'next-step-portal')
+      expect(steps[1]).toHaveAttribute('data-testid', 'next-step-apply-2027')
     })
 
-    it('shows link to apply for sebt', () => {
-      const applyLink = screen.getByTestId('apply-for-sebt-link')
-      expect(applyLink).toBeVisible()
-      expect(applyLink).toHaveAttribute('href', mockApplyHref)
-    })
-
-    it('shows link to log into sebt portal', () => {
+    it('shows the portal step with the expiration-aware heading and portal link', () => {
+      const portalStep = screen.getByTestId('next-step-portal')
+      expect(portalStep).toHaveTextContent('received their benefits and when they expire')
       const portalLink = screen.getByTestId('portal-link')
-      expect(portalLink).toHaveTextContent('Summer EBT Portal')
       expect(portalLink).toHaveAttribute('href', portalUrl)
     })
 
-    it('shows eligibility accordion', () => {
-      const accordion = screen.getByTestId('eligibility-accordion')
-      expect(accordion).toHaveTextContent(eligibilityAccordionText)
+    it('shows the 2027 application step with closure copy, link, and wait note', () => {
+      const applyStep = screen.getByTestId('next-step-apply-2027')
+      expect(applyStep).toHaveTextContent('Submit a 2027 Summer EBT application')
+      expect(applyStep).toHaveTextContent(
+        "didn't have enough information to determine their eligibility"
+      )
+      expect(applyStep).toHaveTextContent(closedLine)
+      const applyLink = screen.getByTestId('apply-2027-link')
+      expect(applyLink).toHaveAttribute('href', mockApplyHref)
+      expect(applyStep).toHaveTextContent('You will not hear back about your application')
+    })
+
+    it('renders no eligibility accordion and no income calculator', () => {
+      expect(screen.queryByTestId('eligibility-accordion')).toBeNull()
+      expect(screen.queryByTestId('income-calculator')).toBeNull()
     })
   })
 
@@ -151,34 +170,28 @@ describe('ResultsPage', () => {
       )
     })
 
-    it('shows all children in enrolled section', () => {
+    it('shows all children in the enrolled summary box', () => {
       const enrolledBox = screen.getByTestId('enrolled-summary-box')
-      expect(enrolledBox).toHaveTextContent(enrolledSectionText)
-
+      expect(enrolledBox).toHaveTextContent(enrolledBoxTitle)
       expect(enrolledBox).toHaveTextContent('Jane Doe')
       expect(enrolledBox).toHaveTextContent('Sally Smith')
     })
 
-    it('does not render non-enrolled section', () => {
+    it('does not render a not-enrolled section', () => {
       expect(screen.queryByTestId('not-enrolled-summary-box')).toBeNull()
+      expect(screen.queryByTestId('not-enrolled-inline')).toBeNull()
     })
 
-    it('shows link to log into sebt portal', () => {
+    it('shows the portal link and no apply link', () => {
       const portalLink = screen.getByTestId('portal-link')
-      expect(portalLink).toHaveTextContent('Summer EBT Portal')
       expect(portalLink).toHaveAttribute('href', portalUrl)
+      expect(screen.queryByTestId('apply-2027-link')).toBeNull()
     })
 
-    it('does not show link to apply', () => {
-      expect(screen.queryByTestId('apply-for-sebt-link')).toBeNull()
-    })
-
-    it('does not show eligibility accordion', () => {
-      expect(screen).not.toContain(eligibilityAccordionText)
-    })
-
-    it('does not contain next steps', () => {
-      expect(screen).not.toContain(nextStepsSectionText)
+    it('renders no accordion, calculator, or numbered next steps', () => {
+      expect(screen.queryByTestId('eligibility-accordion')).toBeNull()
+      expect(screen.queryByTestId('income-calculator')).toBeNull()
+      expect(screen.queryByText(nextStepsSectionText)).toBeNull()
     })
   })
 
@@ -191,35 +204,54 @@ describe('ResultsPage', () => {
         />
       )
     })
-    it('shows all children in non-enrolled section', () => {
-      const notEnrolledBox = screen.getByTestId('not-enrolled-summary-box')
-      expect(notEnrolledBox).toHaveTextContent(notEnrolledSectionText)
 
+    it('shows all children in the not-enrolled summary box', () => {
+      const notEnrolledBox = screen.getByTestId('not-enrolled-summary-box')
+      expect(notEnrolledBox).toHaveTextContent(notEnrolledTitle)
       expect(notEnrolledBox).toHaveTextContent('Jane Doe')
       expect(notEnrolledBox).toHaveTextContent('Sally Wetherbee')
     })
 
-    it('does not render enrolled section', () => {
+    it('does not render an enrolled section', () => {
       expect(screen.queryByTestId('enrolled-summary-box')).toBeNull()
     })
 
-    it('shows link to apply for sebt', () => {
-      const applyLink = screen.getByTestId('apply-for-sebt-link')
-      expect(applyLink).toBeVisible()
+    it('shows the closure line and the 2027 application link with wait note', () => {
+      expect(screen.getByText(closedLine)).toBeVisible()
+      const applyLink = screen.getByTestId('apply-2027-link')
+      expect(applyLink).toHaveTextContent(apply2027LinkText)
       expect(applyLink).toHaveAttribute('href', mockApplyHref)
+      expect(screen.getByText(/hear back about your application in summer 2027/)).toBeVisible()
     })
 
-    it('does not link to portal', () => {
+    it('does not link to the portal', () => {
       expect(screen.queryByTestId('portal-link')).toBeNull()
     })
 
-    it('shows eligibility accordion', () => {
-      const accordion = screen.getByTestId('eligibility-accordion')
-      expect(accordion).toHaveTextContent(eligibilityAccordionText)
+    it('renders no accordion, calculator, or apply-online button', () => {
+      expect(screen.queryByTestId('eligibility-accordion')).toBeNull()
+      expect(screen.queryByTestId('income-calculator')).toBeNull()
+      expect(screen.queryByTestId('apply-for-sebt-link')).toBeNull()
     })
   })
 
-  describe('Error or indeterminate state', () => {
+  describe('Graceful degradation without an application URL', () => {
+    it('keeps the closure line but hides the 2027 link and wait note', () => {
+      mockApplyHref = null
+      render(
+        <ResultsPage
+          results={noneEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      expect(screen.getByText(closedLine)).toBeVisible()
+      expect(screen.queryByTestId('apply-2027-link')).toBeNull()
+      expect(screen.queryByText(/hear back about your application in summer 2027/)).toBeNull()
+    })
+  })
+
+  describe('Indeterminate results (No Results shape)', () => {
     beforeEach(() => {
       render(
         <ResultsPage
@@ -228,54 +260,27 @@ describe('ResultsPage', () => {
         />
       )
     })
-    it('shows error child with error message', () => {
-      expect(screen.getByText(/Service error/i)).toBeInTheDocument()
-    })
-    it('shows next steps list', () => {
-      expect(screen.getByText(nextStepsSectionText)).toBeVisible()
-    })
-  })
 
-  describe('IncomeCalculator rendering', () => {
-    it('renders IncomeCalculator on mixedEnrolled branch', () => {
-      render(
-        <ResultsPage
-          results={mixedEnrolled}
-          portalUrl={portalUrl}
-        />
+    it('lists the children in the not-enough-information summary box', () => {
+      const noInfoBox = screen.getByTestId('no-info-summary-box')
+      expect(noInfoBox).toHaveTextContent(
+        "We don't have enough information for the following children."
       )
-      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
+      expect(noInfoBox).toHaveTextContent('Alex Lee')
     })
 
-    it('renders IncomeCalculator on noneEnrolled branch', () => {
-      render(
-        <ResultsPage
-          results={noneEnrolled}
-          portalUrl={portalUrl}
-        />
-      )
-      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
+    it('explains the no-info outcome and offers the 2027 application link', () => {
+      expect(
+        screen.getByText(/didn't have enough information to determine their eligibility/)
+      ).toBeVisible()
+      expect(screen.getByText(closedLine)).toBeVisible()
+      expect(screen.getByTestId('apply-2027-link')).toHaveAttribute('href', mockApplyHref)
     })
 
-    it('does NOT render IncomeCalculator on allEnrolled branch', () => {
-      render(
-        <ResultsPage
-          results={allEnrolled}
-          portalUrl={portalUrl}
-        />
-      )
+    it('renders no numbered next steps, accordion, or calculator', () => {
+      expect(screen.queryByText(nextStepsSectionText)).toBeNull()
+      expect(screen.queryByTestId('eligibility-accordion')).toBeNull()
       expect(screen.queryByTestId('income-calculator')).toBeNull()
-    })
-
-    it('renders IncomeCalculator on indeterminate branch (inherited behavior)', () => {
-      // indeterminate: no enrolled, no notEnrolled — all results are error
-      render(
-        <ResultsPage
-          results={errorResponse}
-          portalUrl={portalUrl}
-        />
-      )
-      expect(screen.getByTestId('income-calculator')).toBeInTheDocument()
     })
   })
 })

@@ -23,23 +23,23 @@ describe('LandingPage', () => {
     renderLandingPage()
     // Heading should be present (translation key resolves in test env)
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-    // Primary action button uses the 'action' i18n key (e.g. "Apply now" for CO)
-    expect(screen.getByRole('button', { name: /apply now/i })).toBeInTheDocument()
+    // Primary action button uses the 'action' i18n key (e.g. "Check enrollment" for CO)
+    expect(screen.getByRole('button', { name: /check enrollment/i })).toBeInTheDocument()
   })
 
   it('navigates to /disclaimer on primary action button click', async () => {
     renderLandingPage()
-    await userEvent.click(screen.getByRole('button', { name: /apply now/i }))
+    await userEvent.click(screen.getByRole('button', { name: /check enrollment/i }))
     expect(mockPush).toHaveBeenCalledWith('/disclaimer')
   })
 
   it('exposes data-analytics-cta on the primary and Spanish action buttons', () => {
     renderLandingPage()
-    expect(screen.getByRole('button', { name: /apply now/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /check enrollment/i })).toHaveAttribute(
       'data-analytics-cta',
       'start_enrollment_check_cta'
     )
-    expect(screen.getByRole('button', { name: /aplica/i })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /verificar/i })).toHaveAttribute(
       'data-analytics-cta',
       'start_enrollment_check_cta_es'
     )
