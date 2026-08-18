@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace SEBT.Portal.Infrastructure.Services.Socure;
+namespace SEBT.Portal.Core.Services.Socure;
 
 /// <summary>
 /// Parses Socure DocV fields from evaluation/webhook enrichment responses.

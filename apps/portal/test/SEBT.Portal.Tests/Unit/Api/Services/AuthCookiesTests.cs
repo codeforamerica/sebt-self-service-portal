@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using SEBT.Portal.Api.Services;
 
-namespace SEBT.Portal.Tests.Unit.Services;
+namespace SEBT.Portal.Tests.Unit.Api.Services;
 
 /// <summary>
 /// Unit tests for the AuthCookies helper — ensures the session JWT cookie is always
@@ -50,5 +50,25 @@ public class AuthCookiesTests
         // The frontend MSW handlers and any infra tooling depend on this exact name.
         // Changing it is a breaking protocol change.
         Assert.Equal("sebt_portal_session", AuthCookies.AuthCookieName);
+    }
+
+    [Theory]
+    [InlineData("/api/enrollment")]
+    [InlineData("/api/enrollment/check")]
+    [InlineData("/api/enrollment/schools")]
+    [InlineData("/api/enrollment/features")]
+    [InlineData("/API/Enrollment/Check")]
+    public void AllowsCookieAuthentication_IsFalseForEnrollmentCheckerApi(string path)
+    {
+        Assert.False(AuthCookies.AllowsCookieAuthentication(new PathString(path)));
+    }
+
+    [Theory]
+    [InlineData("/api/auth/status")]
+    [InlineData("/api/households")]
+    [InlineData("/api/enrollments/other")]
+    public void AllowsCookieAuthentication_IsTrueForPortalApi(string path)
+    {
+        Assert.True(AuthCookies.AllowsCookieAuthentication(new PathString(path)));
     }
 }

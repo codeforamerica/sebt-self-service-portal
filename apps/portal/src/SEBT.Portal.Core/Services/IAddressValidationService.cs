@@ -3,8 +3,8 @@ using SEBT.Portal.Core.Models.Household;
 namespace SEBT.Portal.Core.Services;
 
 /// <summary>
-/// Legacy façade over <see cref="IAddressUpdateService"/> for simple valid/invalid checks.
-/// Prefer <see cref="IAddressUpdateService"/> for structured errors, identifiers, and metadata.
+/// Legacy façade over <see cref="IAddressVerificationService"/> for simple valid/invalid checks.
+/// Prefer <see cref="IAddressVerificationService"/> for structured errors, identifiers, and metadata.
 /// </summary>
 public interface IAddressValidationService
 {

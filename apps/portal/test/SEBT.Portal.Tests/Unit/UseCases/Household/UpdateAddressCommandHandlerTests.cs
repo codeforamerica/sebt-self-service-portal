@@ -11,12 +11,10 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.UseCases.Household;
-using ICoreAddressUpdateService = SEBT.Portal.Core.Services.IAddressUpdateService;
-using IStateAddressUpdateService = SEBT.Portal.StatesPlugins.Interfaces.IAddressUpdateService;
-using AddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
-using AddressUpdateResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateResult;
+using IStateAddressUpdateService = SEBT.Portal.Core.StateConnector.IStateAddressUpdateService;
+using AddressUpdateRequest = SEBT.Portal.Core.StateConnector.AddressUpdateRequest;
+using AddressUpdateResult = SEBT.Portal.Core.StateConnector.AddressUpdateResult;
 using HouseholdData = SEBT.Portal.Core.Models.Household.HouseholdData;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.Household;
@@ -27,7 +25,7 @@ public class UpdateAddressCommandHandlerTests
         new DataAnnotationsValidator<UpdateAddressCommand>(null!);
     private readonly IHouseholdIdentifierResolver _resolver =
         Substitute.For<IHouseholdIdentifierResolver>();
-    private readonly ICoreAddressUpdateService _addressUpdateService = Substitute.For<ICoreAddressUpdateService>();
+    private readonly IAddressVerificationService _addressVerificationService = Substitute.For<IAddressVerificationService>();
     private readonly IAddressValidationService _addressValidationService = Substitute.For<IAddressValidationService>();
     private readonly IHouseholdRepository _householdRepository =
         Substitute.For<IHouseholdRepository>();
@@ -45,7 +43,7 @@ public class UpdateAddressCommandHandlerTests
     public UpdateAddressCommandHandlerTests()
     {
         // Default: address validation passes, state connector succeeds, PII visibility minimal
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -78,7 +76,7 @@ public class UpdateAddressCommandHandlerTests
     }
 
     private UpdateAddressCommandHandler CreateHandler() =>
-        new(_validator, _addressUpdateService, _addressValidationService, _resolver, _householdRepository,
+        new(_validator, _addressVerificationService, _addressValidationService, _resolver, _householdRepository,
             _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _stateAddressUpdateService, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
@@ -437,7 +435,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_ReturnsNotFoundResult_WhenAddressServiceReturnsValidationFailed()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.ValidationFailed("address", "Could not verify address.")));
@@ -460,7 +458,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_ReturnsDependencyFailed_WhenAddressServiceReturnsDependencyFailed()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.DependencyFailed(
@@ -493,7 +491,7 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _addressUpdateService.DidNotReceive()
+        await _addressVerificationService.DidNotReceive()
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -610,7 +608,7 @@ public class UpdateAddressCommandHandlerTests
         var handler = CreateHandler();
         var command = CreateValidCommand();
 
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.ValidationFailed("address", "Bad address")));
@@ -650,7 +648,7 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, token);
 
-        await _addressUpdateService.Received(1).ValidateAndNormalizeAsync(
+        await _addressVerificationService.Received(1).ValidateAndNormalizeAsync(
             Arg.Any<AddressUpdateOperationRequest>(), token);
     }
 
@@ -705,7 +703,7 @@ public class UpdateAddressCommandHandlerTests
 
         await handler.Handle(command, CancellationToken.None);
 
-        await _addressUpdateService.DidNotReceive()
+        await _addressVerificationService.DidNotReceive()
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>());
     }
 
@@ -742,7 +740,7 @@ public class UpdateAddressCommandHandlerTests
             PostalCode = "20001-0001"
         };
 
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -773,7 +771,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_ReturnsSuggestion_WhenSmartyNormalizedAddressDiffersFromInput()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -814,7 +812,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_PersistsEnteredAddress_WhenAcceptEnteredAddressAndSmartySuggestedCorrection()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -861,7 +859,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_PersistsEnteredStreet_WithDrive_WhenAcceptEnteredAddressTrue_AndSmartyCorrectedToDr()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -904,7 +902,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_PersistsNormalizedStreet_WithDr_WhenAcceptEnteredAddressFalse_AndSmartyWasCorrectedFalse()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -949,7 +947,7 @@ public class UpdateAddressCommandHandlerTests
     {
         // USPS-normalized street exceeds DC connector width → abbreviated 422 on first submit.
         // Second submit with AcceptEnteredAddress must not re-return that suggestion; persist typed street.
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -1018,7 +1016,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_ReturnsInvalid_WhenAcceptEnteredAddressButEnteredFailsStateValidation()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
@@ -1076,7 +1074,7 @@ public class UpdateAddressCommandHandlerTests
     [Fact]
     public async Task Handle_DoesNotReturnSuggestion_WhenDifferenceIsOnlyCase()
     {
-        _addressUpdateService
+        _addressVerificationService
             .ValidateAndNormalizeAsync(Arg.Any<AddressUpdateOperationRequest>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(
                 Result<AddressUpdateSuccess>.Success(
