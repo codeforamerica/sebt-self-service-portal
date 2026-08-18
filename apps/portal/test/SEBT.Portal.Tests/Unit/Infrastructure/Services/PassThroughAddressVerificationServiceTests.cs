@@ -7,13 +7,13 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
-public class PassThroughAddressUpdateServiceTests
+public class PassThroughAddressVerificationServiceTests
 {
-    private static PassThroughAddressUpdateService CreateService(AddressValidationPolicySettings policy)
+    private static PassThroughAddressVerificationService CreateService(AddressValidationPolicySettings policy)
     {
         var snapshot = Substitute.For<IOptionsSnapshot<AddressValidationPolicySettings>>();
         snapshot.Value.Returns(policy);
-        return new PassThroughAddressUpdateService(snapshot);
+        return new PassThroughAddressVerificationService(snapshot);
     }
 
     [Fact]

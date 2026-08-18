@@ -5,15 +5,14 @@ using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.EnrollmentCheck;
 using SEBT.Portal.Core.Services;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.UseCases.EnrollmentCheck;
 
 namespace SEBT.Portal.Tests.Unit.UseCases.EnrollmentCheck;
 
 public class CheckEnrollmentCommandHandlerTests
 {
-    private readonly IEnrollmentCheckService _enrollmentCheckService = Substitute.For<IEnrollmentCheckService>();
+    private readonly IStateEnrollmentCheckService _enrollmentCheckService = Substitute.For<IStateEnrollmentCheckService>();
     private readonly IEnrollmentCheckSubmissionLogger _submissionLogger = Substitute.For<IEnrollmentCheckSubmissionLogger>();
     private readonly ILogger<CheckEnrollmentCommandHandler> _logger = Substitute.For<ILogger<CheckEnrollmentCommandHandler>>();
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();

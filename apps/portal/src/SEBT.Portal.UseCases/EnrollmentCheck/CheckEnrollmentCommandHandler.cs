@@ -5,15 +5,14 @@ using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.EnrollmentCheck;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 
 namespace SEBT.Portal.UseCases.EnrollmentCheck;
 
 public class CheckEnrollmentCommandHandler(
-    IEnrollmentCheckService enrollmentCheckService,
+    IStateEnrollmentCheckService enrollmentCheckService,
     IEnrollmentCheckSubmissionLogger submissionLogger,
     ILogger<CheckEnrollmentCommandHandler> logger,
     IFeatureManager featureManager)

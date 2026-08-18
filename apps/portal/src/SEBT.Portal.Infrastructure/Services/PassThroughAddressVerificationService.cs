@@ -11,8 +11,8 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// When Smarty is disabled, performs trimming/ZIP formatting and enforces <see cref="AddressValidationPolicySettings"/>
 /// (e.g. General Delivery) without calling an external API.
 /// </summary>
-public sealed class PassThroughAddressUpdateService(IOptionsSnapshot<AddressValidationPolicySettings> policySettingsSnapshot)
-    : IAddressUpdateService
+public sealed class PassThroughAddressVerificationService(IOptionsSnapshot<AddressValidationPolicySettings> policySettingsSnapshot)
+    : IAddressVerificationService
 {
     public Task<Result<AddressUpdateSuccess>> ValidateAndNormalizeAsync(
         AddressUpdateOperationRequest request,
