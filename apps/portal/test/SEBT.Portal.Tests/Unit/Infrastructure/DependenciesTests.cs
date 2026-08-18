@@ -212,7 +212,7 @@ public class DependenciesTests
                 ["Smarty:Enabled"] = "true",
                 ["Smarty:AuthId"] = "test-id",
                 ["Smarty:AuthToken"] = "test-token",
-                ["Smarty:BaseUrl"] = "https://us-street.api.smartystreets.com",
+                ["Smarty:BaseUrl"] = "https://us-street.api.smarty.com",
             })
             .Build();
 
@@ -234,6 +234,6 @@ public class DependenciesTests
 
         // Assert
         Assert.NotNull(client);
-        Assert.Equal(new Uri("https://us-street.api.smartystreets.com/"), client.BaseAddress);
+        Assert.Equal(new Uri("https://us-street.api.smarty.com/"), client.BaseAddress);
     }
 }

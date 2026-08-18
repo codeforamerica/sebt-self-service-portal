@@ -1,7 +1,11 @@
-import { stateResources } from '@/lib/generated-locale-resources'
-import type { StateResources } from '@sebt/design-system'
-import { OutagePageContent } from '@sebt/design-system/src/components/OutagePage/OutagePageContent'
+import { MaintenancePageContent } from '@sebt/design-system/src/components/MaintenancePage/MaintenancePageContent'
+import { getState } from '@sebt/design-system/src/lib/state'
 
 export default function OutagePage() {
-  return <OutagePageContent resources={stateResources as StateResources} />
+  return (
+    <MaintenancePageContent
+      namespace="maintenanceEnrollmentChecker"
+      state={getState()}
+    />
+  )
 }

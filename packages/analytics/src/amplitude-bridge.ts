@@ -6,7 +6,7 @@
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
 
-import type { DataLayerRoot } from './data-layer'
+import { type DataLayerRoot, subscribeToPageViews } from './data-layer'
 
 /** Subset of the Amplitude Browser SDK API used by the bridge. */
 export interface AmplitudeLike {
@@ -15,7 +15,7 @@ export interface AmplitudeLike {
 }
 
 function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
-  function forward(event: Event) {
+  function forwardEvent(event: Event) {
     const detail = (event as CustomEvent).detail as
       | {
           eventName?: string
@@ -28,15 +28,20 @@ function attachBridge(dl: DataLayerRoot, amplitude: AmplitudeLike): () => void {
     amplitude.track(detail.eventName, detail.eventData)
   }
 
-  const pageViewedEvent = dl.eventTypes.PAGE_VIEWED!
   const eventTrackedEvent = dl.eventTypes.EVENT_TRACKED!
+  document.addEventListener(eventTrackedEvent, forwardEvent)
 
-  document.addEventListener(pageViewedEvent, forward)
-  document.addEventListener(eventTrackedEvent, forward)
+  // Page views go through the shared subscription, which also replays the
+  // page_load that may have fired before this bridge attached (e.g. the OIDC
+  // callback or dashboard landing on a fresh page load) — so Amplitude can't
+  // silently miss the current page view.
+  const detachPageViews = subscribeToPageViews(dl, (eventName, eventData) =>
+    amplitude.track(eventName, eventData)
+  )
 
   return () => {
-    document.removeEventListener(pageViewedEvent, forward)
-    document.removeEventListener(eventTrackedEvent, forward)
+    document.removeEventListener(eventTrackedEvent, forwardEvent)
+    detachPageViews()
   }
 }
 
