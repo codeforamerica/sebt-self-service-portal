@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Testcontainers;
 using Testcontainers.MsSql;
 using SEBT.Portal.Infrastructure.Data;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
@@ -26,7 +27,7 @@ public class SqlServerTestFixture : IAsyncLifetime
     {
         try
         {
-            await _container.StartAsync();
+            await _container.StartWithRetryAsync();
 
             // Apply migrations to create the schema. Using MigrateAsync instead of
             // EnsureCreatedAsync so that raw SQL migrations (e.g., filtered indexes) are applied.
