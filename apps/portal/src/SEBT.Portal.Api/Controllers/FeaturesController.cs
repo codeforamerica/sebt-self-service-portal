@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Kernel.Services;
@@ -8,6 +9,7 @@ namespace SEBT.Portal.Api.Controllers;
 /// Controller for handling feature flag queries.
 /// </summary>
 [ApiController]
+[AllowAnonymous]
 [Route("api/features")]
 public class FeaturesController : ControllerBase
 {
@@ -27,7 +29,8 @@ public class FeaturesController : ControllerBase
     /// Returns flags from state-specific JSON files (appsettings.{State}.json), AWS AppConfig (if configured), or defaults.
     /// Flags are merged in priority order with state-specific JSON having the highest priority.
     /// State-specific configuration is loaded from appsettings.{State}.json files based on the STATE environment variable.
-    /// Unknown flags are not included in the response.
+    /// Unknown flags and internal-only flags (OTP bypass, diagnostic endpoints) are
+    /// not included in the response.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with feature flag states as JSON.</returns>
