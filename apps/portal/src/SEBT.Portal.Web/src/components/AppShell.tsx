@@ -13,27 +13,17 @@ interface AppShellProps {
 }
 
 /**
- * Renders the standard portal chrome (header, help, footer) for normal routes.
- * The outage page uses a minimal full-viewport layout without site navigation.
+ * Renders the standard portal chrome (header, help, footer) on every route,
+ * including the outage page. The beta banner is withheld on the outage route
+ * to keep the maintenance presentation minimal.
  */
 export function AppShell({ children, state }: AppShellProps) {
   const pathname = usePathname()
   const isOutagePage = pathname === OUTAGE_PATH
 
-  if (isOutagePage) {
-    return (
-      <main
-        id="main-content"
-        className="minh-viewport bg-base-lightest"
-      >
-        <OutageGuard>{children}</OutageGuard>
-      </main>
-    )
-  }
-
   return (
     <div className="display-flex flex-column minh-viewport">
-      <BetaBanner />
+      {!isOutagePage && <BetaBanner />}
       <Header state={state} />
       <main
         id="main-content"

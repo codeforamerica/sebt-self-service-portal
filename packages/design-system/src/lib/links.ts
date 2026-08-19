@@ -34,7 +34,8 @@ export interface StateLinks {
   help: {
     faqs: string
     contactUs: string
-    sebtMainSite?: string
+    /** State's main SEBT website; shown verbatim in maintenance-page button labels */
+    sebtMainSite: string
     /** CO-specific: Help desk email (mailto: link) */
     helpDeskEmail?: string
   }
@@ -59,7 +60,8 @@ const stateLinks: Record<string, StateLinks> = {
     },
     help: {
       faqs: 'https://sunbucks.dc.gov/page/sun-bucks-frequently-asked-questions',
-      contactUs: 'https://sunbucks.dc.gov/page/contact-us'
+      contactUs: 'https://sunbucks.dc.gov/page/contact-us',
+      sebtMainSite: 'https://sunbucks.dc.gov'
     },
     external: {
       contactUsAssistance: 'https://sunbucks.dc.gov/page/contact-us'
@@ -79,8 +81,8 @@ const stateLinks: Record<string, StateLinks> = {
     },
     help: {
       faqs: 'https://cdhs.colorado.gov/summer-ebt-faq',
-      contactUs: '',
-      sebtMainSite: 'https://co.gov/sebt',
+      contactUs: 'mailto:cdhs_sebt_supportcenter@state.co.us',
+      sebtMainSite: 'https://cdhs.colorado.gov/summer-ebt',
       helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
     },
     external: {
