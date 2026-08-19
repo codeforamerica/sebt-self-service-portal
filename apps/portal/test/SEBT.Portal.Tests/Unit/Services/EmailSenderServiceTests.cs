@@ -8,6 +8,11 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
+// Shares the "Integration" collection so this class — which mutates the process-global
+// STATE env var — never runs in parallel with WebApplicationFactory tests that read STATE
+// at host build (otherwise they intermittently load the wrong appsettings.{state}.json).
+// Root cause (EmailOtpSenderService reading STATE from the environment) is tracked separately.
+[Collection("Integration")]
 public class EmailSenderServiceTests : IDisposable
 {
     private readonly string? _previousState;
