@@ -16,4 +16,6 @@ public class OidcSettings : IOidcCoreSettings, IHaveConfigSectionName
     
     // Deployment-specific JWT issuer/audience; symmetric on sign + validate.
     public string PortalOrigin => CallbackRedirectUri?.TrimEnd('/') ?? "sebt-portal";
+
+    string? IOidcCoreSettings.RedirectUri => CallbackRedirectUri;
 }

@@ -4,7 +4,6 @@ using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
@@ -18,6 +17,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
@@ -25,7 +25,8 @@ public class OidcControllerTests
 {
     private const string CoStateKey = "co";
     private const string TestSessionId = "test-session-id";
-    private readonly IConfiguration _config;
+    private readonly IOptionsSnapshot<OidcSettings> _oidcSettings;
+    private readonly IOptionsSnapshot<OidcStepUpSettings> _oidcStepUpSettings;
     private readonly IUserRepository _userRepository;
     private readonly IOidcTokenService _oidcTokenService;
     private readonly IPreAuthSessionStore _sessionStore;
@@ -34,8 +35,9 @@ public class OidcControllerTests
 
     public OidcControllerTests()
     {
-        _config = Substitute.For<IConfiguration>();
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings =
+            TestOptions.Snapshot(new OidcSettings { CallbackRedirectUri = "http://localhost:3000/callback" });
+        _oidcStepUpSettings = TestOptions.Snapshot(new OidcStepUpSettings());
         _userRepository = Substitute.For<IUserRepository>();
         _oidcTokenService = Substitute.For<IOidcTokenService>();
         var jwtSettings = Options.Create(new JwtSettings
@@ -72,7 +74,8 @@ public class OidcControllerTests
             new HttpContextAccessor());
 
         _controller = new OidcController(
-            _config,
+            _oidcSettings,
+            _oidcStepUpSettings,
             NullLogger<OidcController>.Instance,
             _callbackFailureLogger,
             _userRepository,
@@ -119,8 +122,7 @@ public class OidcControllerTests
     [Fact]
     public async Task GetConfig_WhenClientIdMissing_Returns503()
     {
-        _config["Oidc:ClientId"].Returns((string?)null);
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = null;
 
         var result = await _controller.GetConfig(CoStateKey);
 
@@ -136,8 +138,7 @@ public class OidcControllerTests
     [Fact]
     public async Task GetConfig_WhenConfigSet_ReturnsSessionStateWithoutAuthorizationEndpoint()
     {
-        _config["Oidc:ClientId"].Returns("client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = "client-id";
 
         var result = await _controller.GetConfig(CoStateKey);
 
@@ -174,7 +175,8 @@ public class OidcControllerTests
         var testEnv = Substitute.For<IWebHostEnvironment>();
         testEnv.EnvironmentName.Returns("Development");
         var controller = new OidcController(
-            _config,
+            _oidcSettings,
+            _oidcStepUpSettings,
             NullLogger<OidcController>.Instance,
             _callbackFailureLogger,
             _userRepository,
@@ -200,7 +202,7 @@ public class OidcControllerTests
     {
         // No config mocked — we only care that we get past the allowlist into the
         // "no config" 503 path, which proves the check itself accepted the input.
-        _config["Oidc:ClientId"].Returns((string?)null);
+        _oidcSettings.Value.ClientId = null;
 
         var result = await _controller.GetConfig("CO");
 
@@ -223,7 +225,7 @@ public class OidcControllerTests
     public async Task CompleteLogin_WhenSigningKeyNotConfigured_Returns503()
     {
         SetupPreAuthSession();
-        _config["Oidc:CompleteLoginSigningKey"].Returns((string?)null);
+        _oidcSettings.Value.CompleteLoginSigningKey = null;
         var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
         var result = await _controller.CompleteLogin(body, CancellationToken.None);
@@ -237,7 +239,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession();
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateCallbackTokenWithClaims(signingKey, new Claim("given_name", "Pat"));
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
@@ -254,7 +256,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession();
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
@@ -289,7 +291,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession(isStepUp: true);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "new-user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
@@ -317,7 +319,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession(isStepUp: true, returnUrl: "/profile/address?q=1");
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         // Step-up requires verification claims from the IdP — step-up exists to obtain them
         var verificationDate = DateTime.UtcNow.AddDays(-1).ToString("o");
@@ -355,7 +357,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession(isStepUp: true, returnUrl: null);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var verificationDate = DateTime.UtcNow.AddDays(-1).ToString("o");
         var callbackToken = CreateCallbackTokenWithClaims(signingKey,
@@ -388,7 +390,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession(isStepUp: true);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
@@ -414,7 +416,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession(isStepUp: true);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
@@ -462,7 +464,7 @@ public class OidcControllerTests
             .Returns(true);
 
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
 
         // Body lies: says IsStepUp=true, but session says false
@@ -498,7 +500,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession();
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
@@ -523,7 +525,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession(isStepUp: true);
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
@@ -548,7 +550,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession();
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateCallbackTokenWithClaims(signingKey,
             new Claim("email", "user@example.com"),
@@ -586,7 +588,7 @@ public class OidcControllerTests
     {
         SetupPreAuthSession();
         const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        _oidcSettings.Value.CompleteLoginSigningKey = signingKey;
 
         var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
         var body = new CompleteLoginRequest(CoStateKey, callbackToken);
@@ -680,8 +682,7 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenClientIdMissing_RedirectsToLogin()
     {
-        _config["Oidc:ClientId"].Returns((string?)null);
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = null;
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
 
         var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
@@ -693,8 +694,7 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenDiscoveryFails_RedirectsToLogin()
     {
-        _config["Oidc:ClientId"].Returns("client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = "client-id";
         var exchangeService = Substitute.For<IOidcExchangeService>();
         exchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns<OpenIdConnectConfiguration>(_ => throw new InvalidOperationException("discovery endpoint not configured"));
@@ -708,8 +708,7 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenDiscoveryMissingAuthorizationEndpoint_RedirectsToLogin()
     {
-        _config["Oidc:ClientId"].Returns("client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = "client-id";
         var exchangeService = MockExchangeServiceWithDiscovery(authorizationEndpoint: "");
 
         var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
@@ -722,9 +721,7 @@ public class OidcControllerTests
     public async Task Authorize_WhenConfigured_Returns302WithCorrectUrlAndSetsCookie()
     {
         const string authEndpoint = "https://auth.pingone.com/env-id/as/authorize";
-        _config["Oidc:ClientId"].Returns("test-client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
-        _config["Oidc:LanguageParam"].Returns("en");
+        _oidcSettings.Value.ClientId = "test-client-id";
         var exchangeService = MockExchangeServiceWithDiscovery(authEndpoint);
 
         var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
@@ -756,8 +753,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenConfigured_CreatesPreAuthSessionWithCorrectValues()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
 
         await _controller.Authorize(CoStateKey, stepUp: true, returnUrl: "/profile/address",
@@ -776,8 +773,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpWithUnsafeReturnUrl_StoresNullReturnUrl()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
 
         await _controller.Authorize(CoStateKey, stepUp: true, returnUrl: "https://evil.example/phish",
@@ -796,8 +793,7 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenNotStepUp_IgnoresReturnUrl()
     {
-        _config["Oidc:ClientId"].Returns("test-client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = "test-client-id";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
 
         await _controller.Authorize(CoStateKey, stepUp: false, returnUrl: "/profile/address",
@@ -820,8 +816,7 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_RedirectUrl_NeverContainsCodeVerifier()
     {
-        _config["Oidc:ClientId"].Returns("test-client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = "test-client-id";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
 
         var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
@@ -838,8 +833,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpAndUserAlreadyIal1Plus_ShortCircuitsToReturnUrl()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
 
@@ -861,8 +856,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpAndUserAlreadyIal2_ShortCircuits()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         SetUser(_controller, ial: "2", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
 
@@ -877,8 +872,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpAndIal1Plus_WithNoReturnUrl_ShortCircuitsToDashboard()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
 
@@ -896,8 +891,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpAndIal1Plus_WithUnsafeReturnUrl_ShortCircuitsToDashboard()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
 
@@ -912,8 +907,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpAndIal1PlusButExpired_ProceedsToIdp()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddSeconds(-60));
 
@@ -928,8 +923,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpAndIal1_ProceedsToIdp()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         SetUser(_controller, ial: "1", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
 
@@ -944,8 +939,8 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenStepUpAndNoJwt_ProceedsToIdp()
     {
-        _config["Oidc:StepUp:ClientId"].Returns("step-up-client-id");
-        _config["Oidc:StepUp:RedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcStepUpSettings.Value.ClientId = "step-up-client-id";
+        _oidcStepUpSettings.Value.RedirectUri = "http://localhost:3000/callback";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         // HttpContext.User is a default unauthenticated principal — no claims set.
 
@@ -964,8 +959,7 @@ public class OidcControllerTests
     [Fact]
     public async Task Authorize_WhenNotStepUpAndUserAlreadyIal1Plus_StillProceedsToIdp()
     {
-        _config["Oidc:ClientId"].Returns("test-client-id");
-        _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
+        _oidcSettings.Value.ClientId = "test-client-id";
         var exchangeService = MockExchangeServiceWithDiscovery("https://auth.example.com/authorize");
         SetUser(_controller, ial: "1plus", idProofingExpiresAt: DateTimeOffset.UtcNow.AddDays(30));
 

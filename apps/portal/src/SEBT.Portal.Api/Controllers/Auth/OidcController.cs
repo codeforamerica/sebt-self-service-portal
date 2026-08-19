@@ -10,9 +10,6 @@ using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
-using SEBT.Portal.Core.Utilities;
-using SEBT.Portal.Kernel;
-
 using static SEBT.Portal.Core.Utilities.PiiMasker;
 
 namespace SEBT.Portal.Api.Controllers.Auth;
@@ -25,7 +22,8 @@ namespace SEBT.Portal.Api.Controllers.Auth;
 [ApiController]
 [Route("api/auth/oidc")]
 public class OidcController(
-    IConfiguration config,
+    IOptionsSnapshot<OidcSettings> oidcSettings,
+    IOptionsSnapshot<OidcStepUpSettings> oidcStepUpSettings,
     ILogger<OidcController> logger,
     IOidcCallbackFailureLogger callbackFailureLogger,
     IUserRepository userRepository,
@@ -64,10 +62,10 @@ public class OidcController(
             return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
         }
 
-        var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
+        var clientId = GetOidcSettings(stepUp).ClientId;
         var redirectUri = stepUp
-            ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
-            : config["Oidc:CallbackRedirectUri"];
+            ? GetOidcSettings(stepUp).RedirectUri ?? oidcSettings.Value.CallbackRedirectUri
+            : oidcSettings.Value.CallbackRedirectUri;
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
             logger.LogError(
@@ -151,10 +149,9 @@ public class OidcController(
             return LocalRedirect(safeReturnUrl ?? "/dashboard");
         }
 
-        var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
-        var redirectUri = stepUp
-            ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
-            : config["Oidc:CallbackRedirectUri"];
+        var clientId = GetOidcSettings(stepUp).ClientId;
+        var redirectUri = GetOidcSettings(stepUp).RedirectUri ?? oidcSettings.Value.CallbackRedirectUri;
+        
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
             logger.LogError(
@@ -194,8 +191,8 @@ public class OidcController(
 
         // Build the authorization URL server-side (mirrors the frontend's buildAuthorizationUrl).
         // Use the language from the query param (set by the frontend based on user choice),
-        // falling back to the configured default.
-        var languageParam = language ?? config["Oidc:LanguageParam"] ?? "en";
+        // falling back to the default.
+        var languageParam = language ?? "en";
         var authUrl = BuildAuthorizationUrl(
             oidcConfig.AuthorizationEndpoint, clientId, redirectUri,
             state, codeChallenge, languageParam);
@@ -469,8 +466,7 @@ public class OidcController(
         OidcSessionCookie.Clear(Response);
         await sessionStore.RemoveAsync(sessionId, cancellationToken);
 
-        var stateKey = session.StateCode.ToLowerInvariant();
-        var signingKey = config["Oidc:CompleteLoginSigningKey"];
+        var signingKey = oidcSettings.Value.CompleteLoginSigningKey;
         if (string.IsNullOrEmpty(signingKey))
         {
             callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
@@ -485,7 +481,7 @@ public class OidcController(
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
         }
 
-        var portalOrigin = config["Oidc:CallbackRedirectUri"]?.TrimEnd('/') ?? "sebt-portal";
+        var portalOrigin = oidcSettings.Value.PortalOrigin;
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var validationParams = new TokenValidationParameters
         {
@@ -499,10 +495,12 @@ public class OidcController(
             // Use resolver instead of IssuerSigningKey to bypass kid-matching;
             // the callback token is signed without a kid header, which causes IDX10517
             // when JwtSecurityTokenHandler tries to match by kid.
-            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) => [key]
+            IssuerSigningKeyResolver = (_, _, _, _) => [key]
         };
-        var handler = new JwtSecurityTokenHandler();
-        handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email)
+        var handler = new JwtSecurityTokenHandler 
+        { 
+            MapInboundClaims = false // Preserve original JWT claim names (sub, email)
+        };
         ClaimsPrincipal principal;
         try
         {
@@ -683,18 +681,6 @@ public class OidcController(
     }
 
     /// <summary>
-    /// Removes newline/control-friendly breaks from values logged from user input.
-    /// </summary>
-    private static string SanitizeForLog(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-        return value
-            .Replace("\r", string.Empty, StringComparison.Ordinal)
-            .Replace("\n", string.Empty, StringComparison.Ordinal);
-    }
-
-    /// <summary>
     /// Gets the email (or subject) from the callback token claims for portal user lookup.
     /// </summary>
     private static string? GetEmailFromClaims(ClaimsPrincipal principal)
@@ -706,4 +692,6 @@ public class OidcController(
         return subClaim?.Value;
     }
 
+    private IOidcCoreSettings GetOidcSettings(bool stepUp) => 
+        stepUp ? oidcStepUpSettings.Value : oidcSettings.Value;
 }
