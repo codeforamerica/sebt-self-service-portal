@@ -146,7 +146,7 @@ describe('ResultsPage', () => {
       const applyStep = screen.getByTestId('next-step-apply-2027')
       expect(applyStep).toHaveTextContent('Submit a 2027 Summer EBT application')
       expect(applyStep).toHaveTextContent(
-        "didn't have enough information to determine their eligibility"
+        'didn’t have enough information to determine their eligibility'
       )
       expect(applyStep).toHaveTextContent(closedLine)
       const applyLink = screen.getByTestId('apply-2027-link')
@@ -271,7 +271,7 @@ describe('ResultsPage', () => {
 
     it('explains the no-info outcome and offers the 2027 application link', () => {
       expect(
-        screen.getByText(/didn't have enough information to determine their eligibility/)
+        screen.getByText(/didn’t have enough information to determine their eligibility/)
       ).toBeVisible()
       expect(screen.getByText(closedLine)).toBeVisible()
       expect(screen.getByTestId('apply-2027-link')).toHaveAttribute('href', mockApplyHref)
