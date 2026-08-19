@@ -2,8 +2,9 @@
 /**
  * Generate State-Specific Font Configuration for Next.js
  *
- * Reads font families from design tokens and generates fonts.ts
- * that uses next/font/google for optimized font loading.
+ * Reads font families from design tokens and generates fonts.ts, loading each
+ * one via next/font/local (vendored files, see LOCAL_FONTS_MAP) or next/font/google
+ * (GOOGLE_FONTS_MAP) depending on which map it's found in.
  *
  * Usage:
  *   node scripts/generate-fonts.js           # Defaults to DC
@@ -12,7 +13,7 @@
  * Workflow:
  * 1. Read design/states/{state}.json
  * 2. Extract font families from theme-font-type-sans and theme-font-type-serif
- * 3. Generate design/fonts.ts with proper next/font/google imports
+ * 3. Generate design/fonts.ts with the matching next/font/local or next/font/google imports
  */
 
 import './load-env.js'
@@ -41,15 +42,18 @@ const GOOGLE_FONTS_MAP = {
   merriweather: 'Merriweather'
 }
 
-// Map of locally-hosted typefaces loaded via next/font/local.
-// Used for fonts that aren't on Google Fonts (e.g. exljbris's Museo Slab).
-// Key: lowercase font name. Value: { variable, src } where src paths are
-// relative to the generated design/fonts.ts so next/font/local can resolve them.
-// Files live at <app>/public/fonts/{name}/ and must be supplied alongside this
-// map entry — the generator does not bundle fonts.
+// Map of locally-hosted typefaces loaded via next/font/local — either because
+// they aren't on Google Fonts (e.g. exljbris's Museo Slab) or because they're
+// vendored from Google Fonts to avoid next/font/google's build-time fetch to
+// fonts.gstatic.com, which is unreliable in CI (see urbanist / atkinson hyperlegible).
+// Key: lowercase font name. Value: { src } where src paths are relative to the
+// generated design/fonts.ts so next/font/local can resolve them. Files live at
+// <app>/public/fonts/{name}/ and must be supplied alongside this map entry —
+// the generator does not bundle fonts. Each font dir should carry its license
+// (OFL.txt) and a SOURCE.md noting where the file came from and what, if any,
+// subsetting was done.
 const LOCAL_FONTS_MAP = {
   'museo slab': {
-    variable: 'museoSlab',
     src: [
       {
         // Font Squirrel's distributed filename — preserved verbatim so the
@@ -60,25 +64,22 @@ const LOCAL_FONTS_MAP = {
       }
     ]
   },
-  // Vendored from Google Fonts (OFL) to avoid a next/font/google build-time
-  // fetch to fonts.gstatic.com, which is unreliable in CI. Both are variable
-  // fonts, so one file covers the full weight range.
+  // Full upstream variable fonts (unsubsetted — see SOURCE.md in each font dir),
+  // so glyph coverage matches what next/font/google would have self-hosted.
   urbanist: {
-    variable: 'urbanist',
     src: [
       {
-        path: '../public/fonts/urbanist/Urbanist-Variable-latin.woff2',
-        weight: '400 700',
+        path: '../public/fonts/urbanist/Urbanist-Variable.woff2',
+        weight: '100 900',
         style: 'normal'
       }
     ]
   },
   'atkinson hyperlegible': {
-    variable: 'atkinsonHyperlegibleNext',
     src: [
       {
-        path: '../public/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Variable-latin.woff2',
-        weight: '400 700',
+        path: '../public/fonts/atkinson-hyperlegible-next/AtkinsonHyperlegibleNext-Variable.woff2',
+        weight: '200 800',
         style: 'normal'
       }
     ]
@@ -87,6 +88,30 @@ const LOCAL_FONTS_MAP = {
 
 // Default font weights to load
 const DEFAULT_WEIGHTS = ['400', '600', '700']
+
+/**
+ * Verify that every LOCAL_FONTS_MAP src file a state actually references exists
+ * on disk, relative to the generated design/fonts.ts. A missing vendored font
+ * binary would otherwise only surface later as a confusing Turbopack
+ * module-not-found inside the gitignored generated file.
+ *
+ * @param {Array<string|null>} fontNames
+ * @param {string} designDir absolute path to the app's design/ directory
+ */
+export function assertLocalFontFilesExist(fontNames, designDir) {
+  for (const fontName of fontNames) {
+    const localConfig = fontName && LOCAL_FONTS_MAP[fontName]
+    if (!localConfig) {
+      continue
+    }
+    for (const { path } of localConfig.src) {
+      const absolutePath = join(designDir, path)
+      if (!existsSync(absolutePath)) {
+        throw new Error(`Local font "${fontName}" is missing its vendored file: ${absolutePath}`)
+      }
+    }
+  }
+}
 
 /**
  * Read the body and heading typefaces from design tokens.
@@ -265,6 +290,8 @@ function main() {
     const fonts = extractFonts(tokensJson)
 
     console.log(`✅ Body font: ${fonts.body ?? 'system'}; heading font: ${fonts.heading ?? 'system'}`)
+
+    assertLocalFontFilesExist([fonts.body, fonts.heading], dirname(outputPath))
 
     const fontsTs = generateFontsTs(fonts, state)
     mkdirSync(dirname(outputPath), { recursive: true })

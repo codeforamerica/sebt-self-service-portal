@@ -1,5 +1,8 @@
+import { mkdtempSync, mkdirSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
+import { join } from 'path'
 import { describe, expect, it } from 'vitest'
-import { extractFonts, generateFontsTs } from './generate-fonts.js'
+import { assertLocalFontFilesExist, extractFonts, generateFontsTs } from './generate-fonts.js'
 
 describe('extractFonts', () => {
   it('maps the sans typeface to body and the serif typeface to heading', () => {
@@ -37,7 +40,7 @@ describe('generateFontsTs', () => {
     // Vendored locally (see LOCAL_FONTS_MAP) rather than fetched via next/font/google,
     // since the build-time fetch to fonts.gstatic.com is unreliable in CI.
     expect(out).toContain("from 'next/font/local'")
-    expect(out).toContain('Urbanist-Variable-latin.woff2')
+    expect(out).toContain('Urbanist-Variable.woff2')
     expect(out).toContain("variable: '--font-primary'")
     expect(out).toContain('export const primaryFont')
   })
@@ -54,7 +57,7 @@ describe('generateFontsTs', () => {
 
     // Body: Atkinson Hyperlegible Next via vendored next/font/local, bound to --font-primary
     expect(out).toContain("from 'next/font/local'")
-    expect(out).toContain('AtkinsonHyperlegibleNext-Variable-latin.woff2')
+    expect(out).toContain('AtkinsonHyperlegibleNext-Variable.woff2')
     expect(out).toContain("variable: '--font-primary'")
     expect(out).toContain('export const primaryFont')
 
@@ -88,5 +91,29 @@ describe('generateFontsTs', () => {
     expect(out).toContain('export const headingFont')
     expect(out).not.toContain("from 'next/font/google'")
     expect(out).not.toContain("from 'next/font/local'")
+  })
+})
+
+describe('assertLocalFontFilesExist', () => {
+  it('does not throw when the referenced local font file exists', () => {
+    const root = mkdtempSync(join(tmpdir(), 'generate-fonts-test-'))
+    mkdirSync(join(root, 'public', 'fonts', 'urbanist'), { recursive: true })
+    writeFileSync(join(root, 'public', 'fonts', 'urbanist', 'Urbanist-Variable.woff2'), '')
+
+    expect(() => assertLocalFontFilesExist(['urbanist'], join(root, 'design'))).not.toThrow()
+  })
+
+  it('throws a clear error when a local font file is missing', () => {
+    const root = mkdtempSync(join(tmpdir(), 'generate-fonts-test-'))
+
+    expect(() => assertLocalFontFilesExist(['urbanist'], join(root, 'design'))).toThrow(
+      /Urbanist-Variable\.woff2/
+    )
+  })
+
+  it('ignores null/unmapped font names', () => {
+    const root = mkdtempSync(join(tmpdir(), 'generate-fonts-test-'))
+
+    expect(() => assertLocalFontFilesExist([null, 'some unknown font'], join(root, 'design'))).not.toThrow()
   })
 })
