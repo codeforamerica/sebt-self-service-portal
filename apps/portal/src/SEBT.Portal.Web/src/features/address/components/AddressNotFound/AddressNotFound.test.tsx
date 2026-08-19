@@ -21,14 +21,15 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/profile/address/address-not-found'
 }))
 
-// The DataLayer PageTracker sets page.flow/step inside a requestAnimationFrame, which
-// jsdom does not flush synchronously. Flush it so the cta_click emission test sees a
-// deterministic address-update page context.
+// PageTracker sets page.flow/step inside requestAnimationFrame; stub rAF so jsdom flushes
+// synchronously when tests rely on PageTracker (see @sebt/analytics DataLayerProvider.test.tsx).
 vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
   cb(0)
   return 0
 })
 vi.stubGlobal('cancelAnimationFrame', vi.fn())
+
+const addressNotFoundPageContext = portalRoutes['/profile/address/address-not-found']!
 
 let mockState = 'dc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
@@ -210,6 +211,12 @@ describe('AddressNotFound', () => {
           </AddressFlowProvider>
         </DataLayerProvider>
       )
+
+      // Seed page context directly: this test asserts cta_click merges page.flow/step into
+      // the event payload. PageTracker route matching is covered in @sebt/analytics tests;
+      // vi.mock('next/navigation') here does not propagate into that package under Vitest 4.1.8+.
+      window.digitalData!.page.set('flow', addressNotFoundPageContext.flow)
+      window.digitalData!.page.set('step', addressNotFoundPageContext.step)
 
       await user.click(screen.getByRole('link', { name: /contact us/i }))
 

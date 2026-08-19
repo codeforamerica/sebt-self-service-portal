@@ -7,7 +7,14 @@ terraform {
   }
 }
 
-# Create an S3 bucket and KMS key for logging.                                                                                                    
+# Values (doppler_token, or oidc_identity + oidc_token) are read from the
+# environment (DOPPLER_TOKEN or DOPPLER_OIDC_IDENTITY/DOPPLER_OIDC_TOKEN) —
+# this block just declares the provider explicitly so it's authenticated
+# once and shared by every module below, rather than each module implicitly
+# configuring its own instance and re-using a single-use OIDC token.
+provider "doppler" {}
+
+# Create an S3 bucket and KMS key for logging.
 module "logging" {
   source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
 
@@ -69,40 +76,47 @@ module "state_secrets" {
   environment = var.environment
   service     = "state-secrets"
 
+  # Doppler's AWS Secrets Manager sync creates its own target secret named
+  # "{path}/{DOPPLER_KEY}" (uppercase, exact match) rather than writing into
+  # a pre-existing ARN — so these keys and add_suffix=false must make our
+  # secret's name match exactly what Doppler will create, or Doppler ends up
+  # populating an entirely separate, unreferenced secret.
+  add_suffix = false
+
   secrets = {
-    "jwt_secret_key" = {
+    "JWT_SECRET_KEY" = {
       description     = "JWT signing secret for the SEBT Portal API."
       recovery_window = 7
     }
-    "identifier_hasher_secret_key" = {
+    "IDENTIFIER_HASHER_SECRET_KEY" = {
       description     = "Identifier hashing secret for the SEBT Portal API."
       recovery_window = 7
     }
-    "cbms_client_id" = {
+    "CBMS_CLIENT_ID" = {
       description     = "OAuth 2.0 client ID for the Colorado CBMS SEBT API."
       recovery_window = 7
     }
-    "cbms_client_secret" = {
+    "CBMS_CLIENT_SECRET" = {
       description     = "OAuth 2.0 client secret for the Colorado CBMS SEBT API."
       recovery_window = 7
     }
-    "oidc_client_id" = {
+    "OIDC_CLIENT_ID" = {
       description     = "MyColorado OIDC client ID for authentication."
       recovery_window = 7
     }
-    "oidc_client_secret" = {
+    "OIDC_CLIENT_SECRET" = {
       description     = "MyColorado OIDC client secret for authentication."
       recovery_window = 7
     }
-    "oidc_step_up_client_id" = {
+    "OIDC_STEP_UP_CLIENT_ID" = {
       description     = "MyColorado OIDC step-up client ID for authentication."
       recovery_window = 7
     }
-    "oidc_step_up_client_secret" = {
+    "OIDC_STEP_UP_CLIENT_SECRET" = {
       description     = "MyColorado OIDC step-up client secret for authentication."
       recovery_window = 7
     }
-    "oidc_complete_login_signing_key" = {
+    "OIDC_COMPLETE_LOGIN_SIGNING_KEY" = {
       description     = "Signing key for completing MyColorado OIDC login."
       recovery_window = 7
     }
@@ -131,7 +145,8 @@ data "aws_route53_zone" "enrollment_checker" {
 
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
-  source = "../../modules/sebt_application"
+  source    = "../../modules/sebt_application"
+  providers = { doppler = doppler }
 
   apply_immediately          = true
   domain                     = var.domain
@@ -187,15 +202,15 @@ module "app" {
   }
 
   state_api_environment_secrets = {
-    "JwtSettings__SecretKey"        = module.state_secrets.secrets["jwt_secret_key"].secret_arn
-    "IdentifierHasher__SecretKey"   = module.state_secrets.secrets["identifier_hasher_secret_key"].secret_arn
-    "Cbms__ClientId"                = module.state_secrets.secrets["cbms_client_id"].secret_arn
-    "Cbms__ClientSecret"            = module.state_secrets.secrets["cbms_client_secret"].secret_arn
-    "Oidc__ClientId"                = module.state_secrets.secrets["oidc_client_id"].secret_arn
-    "Oidc__ClientSecret"            = module.state_secrets.secrets["oidc_client_secret"].secret_arn
-    "Oidc__StepUp__ClientId"        = module.state_secrets.secrets["oidc_step_up_client_id"].secret_arn
-    "Oidc__StepUp__ClientSecret"    = module.state_secrets.secrets["oidc_step_up_client_secret"].secret_arn
-    "Oidc__CompleteLoginSigningKey" = module.state_secrets.secrets["oidc_complete_login_signing_key"].secret_arn
+    "JwtSettings__SecretKey"        = module.state_secrets.secrets["JWT_SECRET_KEY"].secret_arn
+    "IdentifierHasher__SecretKey"   = module.state_secrets.secrets["IDENTIFIER_HASHER_SECRET_KEY"].secret_arn
+    "Cbms__ClientId"                = module.state_secrets.secrets["CBMS_CLIENT_ID"].secret_arn
+    "Cbms__ClientSecret"            = module.state_secrets.secrets["CBMS_CLIENT_SECRET"].secret_arn
+    "Oidc__ClientId"                = module.state_secrets.secrets["OIDC_CLIENT_ID"].secret_arn
+    "Oidc__ClientSecret"            = module.state_secrets.secrets["OIDC_CLIENT_SECRET"].secret_arn
+    "Oidc__StepUp__ClientId"        = module.state_secrets.secrets["OIDC_STEP_UP_CLIENT_ID"].secret_arn
+    "Oidc__StepUp__ClientSecret"    = module.state_secrets.secrets["OIDC_STEP_UP_CLIENT_SECRET"].secret_arn
+    "Oidc__CompleteLoginSigningKey" = module.state_secrets.secrets["OIDC_COMPLETE_LOGIN_SIGNING_KEY"].secret_arn
   }
 
   state_web_environment_variables = {
@@ -206,9 +221,9 @@ module "app" {
   }
 
   state_web_environment_secrets = {
-    OIDC_CLIENT_ID                  = module.state_secrets.secrets["oidc_client_id"].secret_arn
-    OIDC_CLIENT_SECRET              = module.state_secrets.secrets["oidc_client_secret"].secret_arn
-    OIDC_COMPLETE_LOGIN_SIGNING_KEY = module.state_secrets.secrets["oidc_complete_login_signing_key"].secret_arn
+    OIDC_CLIENT_ID                  = module.state_secrets.secrets["OIDC_CLIENT_ID"].secret_arn
+    OIDC_CLIENT_SECRET              = module.state_secrets.secrets["OIDC_CLIENT_SECRET"].secret_arn
+    OIDC_COMPLETE_LOGIN_SIGNING_KEY = module.state_secrets.secrets["OIDC_COMPLETE_LOGIN_SIGNING_KEY"].secret_arn
   }
 }
 

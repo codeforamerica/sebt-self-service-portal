@@ -7,7 +7,14 @@ terraform {
   }
 }
 
-# Create an S3 bucket and KMS key for logging.                                                                                                    
+# Values (doppler_token, or oidc_identity + oidc_token) are read from the
+# environment (DOPPLER_TOKEN or DOPPLER_OIDC_IDENTITY/DOPPLER_OIDC_TOKEN) —
+# this block just declares the provider explicitly so it's authenticated
+# once and shared by every module below, rather than each module implicitly
+# configuring its own instance and re-using a single-use OIDC token.
+provider "doppler" {}
+
+# Create an S3 bucket and KMS key for logging.
 module "logging" {
   source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
 
@@ -65,28 +72,35 @@ module "state_secrets" {
   environment = var.environment
   service     = "state-secrets"
 
+  # Doppler's AWS Secrets Manager sync creates its own target secret named
+  # "{path}/{DOPPLER_KEY}" (uppercase, exact match) rather than writing into
+  # a pre-existing ARN — so these keys and add_suffix=false must make our
+  # secret's name match exactly what Doppler will create, or Doppler ends up
+  # populating an entirely separate, unreferenced secret.
+  add_suffix = false
+
   secrets = {
-    "jwt_secret_key" = {
+    "JWT_SECRET_KEY" = {
       description     = "JWT signing secret for the SEBT Portal API."
       recovery_window = 7
     }
-    "identifier_hasher_secret_key" = {
+    "IDENTIFIER_HASHER_SECRET_KEY" = {
       description     = "Identifier hashing secret for the SEBT Portal API."
       recovery_window = 7
     }
-    "socure_api_key" = {
+    "SOCURE_API_KEY" = {
       description     = "Socure API key for identity verification."
       recovery_window = 7
     }
-    "socure_webhook_secret" = {
+    "SOCURE_WEBHOOK_SECRET" = {
       description     = "Socure webhook signing secret for identity verification."
       recovery_window = 7
     }
-    "pii_encryption_key_id" = {
+    "PII_ENCRYPTION_KEY_ID" = {
       description     = "Active PII encryption key ID for the SEBT Portal API (AES-256-GCM)."
       recovery_window = 7
     }
-    "pii_encryption_key_material_base64" = {
+    "PII_ENCRYPTION_KEY_MATERIAL_BASE64" = {
       description     = "Active PII encryption key material for the SEBT Portal API (AES-256-GCM)."
       recovery_window = 7
     }
@@ -110,7 +124,8 @@ module "state_secrets_doppler" {
 
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
-  source = "../../modules/sebt_application"
+  source    = "../../modules/sebt_application"
+  providers = { doppler = doppler }
 
   apply_immediately          = true
   domain                     = var.domain
@@ -153,12 +168,12 @@ module "app" {
   }
 
   state_api_environment_secrets = {
-    "JwtSettings__SecretKey"                    = module.state_secrets.secrets["jwt_secret_key"].secret_arn
-    "IdentifierHasher__SecretKey"               = module.state_secrets.secrets["identifier_hasher_secret_key"].secret_arn
-    "Socure__ApiKey"                            = module.state_secrets.secrets["socure_api_key"].secret_arn
-    "Socure__WebhookSecret"                     = module.state_secrets.secrets["socure_webhook_secret"].secret_arn
-    "PiiEncryption__Keys__0__KeyId"             = module.state_secrets.secrets["pii_encryption_key_id"].secret_arn
-    "PiiEncryption__Keys__0__KeyMaterialBase64" = module.state_secrets.secrets["pii_encryption_key_material_base64"].secret_arn
+    "JwtSettings__SecretKey"                    = module.state_secrets.secrets["JWT_SECRET_KEY"].secret_arn
+    "IdentifierHasher__SecretKey"               = module.state_secrets.secrets["IDENTIFIER_HASHER_SECRET_KEY"].secret_arn
+    "Socure__ApiKey"                            = module.state_secrets.secrets["SOCURE_API_KEY"].secret_arn
+    "Socure__WebhookSecret"                     = module.state_secrets.secrets["SOCURE_WEBHOOK_SECRET"].secret_arn
+    "PiiEncryption__Keys__0__KeyId"             = module.state_secrets.secrets["PII_ENCRYPTION_KEY_ID"].secret_arn
+    "PiiEncryption__Keys__0__KeyMaterialBase64" = module.state_secrets.secrets["PII_ENCRYPTION_KEY_MATERIAL_BASE64"].secret_arn
   }
 
   state_web_environment_variables = {}

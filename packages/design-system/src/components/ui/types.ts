@@ -6,6 +6,10 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   fullWidth?: boolean
   isLoading?: boolean
+  /**
+   * @deprecated The processing state keeps the button label unchanged; render a
+   * ProcessingIndicator beside the button instead of swapping the label.
+   */
   loadingText?: string
 }
 

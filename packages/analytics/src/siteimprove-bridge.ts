@@ -10,7 +10,7 @@
  * @see https://help.siteimprove.com/support/solutions/articles/80000863895
  */
 
-import type { DataLayerRoot } from './data-layer'
+import { type DataLayerRoot, subscribeToPageViews } from './data-layer'
 
 type SzCommand = ['trackdynamic', { url: string; ref: string; title: string }] | ['event', string, string, string?]
 
@@ -140,15 +140,19 @@ function attachBridge(dl: DataLayerRoot): () => void {
     )
   }
 
-  const pageViewedEvent = dl.eventTypes.PAGE_VIEWED!
   const eventTrackedEvent = dl.eventTypes.EVENT_TRACKED!
-
-  document.addEventListener(pageViewedEvent, handlePageViewed)
   document.addEventListener(eventTrackedEvent, handleEventTracked)
 
+  // Page views go through the shared subscription, which also replays the
+  // page_load that fired before this bridge attached — so SiteImprove records the
+  // current page (e.g. the OIDC callback or dashboard landing) even when it
+  // attaches late. handlePageViewed reads the live location/title, so the
+  // forwarded event payload is intentionally ignored.
+  const detachPageViews = subscribeToPageViews(dl, () => handlePageViewed())
+
   return () => {
-    document.removeEventListener(pageViewedEvent, handlePageViewed)
     document.removeEventListener(eventTrackedEvent, handleEventTracked)
+    detachPageViews()
   }
 }
 
