@@ -8,6 +8,10 @@ using SEBT.Portal.Kernel.Results;
 
 namespace SEBT.Portal.Tests.Unit.Services;
 
+// Shares the "Integration" collection so this test's STATE env var mutation can't
+// race with PortalWebApplicationFactory-based tests, which mutate the same
+// process-global var — see IntegrationTestCollection.cs.
+[Collection("Integration")]
 public class EmailSenderServiceTests : IDisposable
 {
     private readonly string? _previousState;
