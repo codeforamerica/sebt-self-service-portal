@@ -119,7 +119,7 @@ resource "aws_db_instance" "keycloak" {
 
 # Public Fargate service: browsers redirect here for OIDC.
 module "service" {
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=feat/certificate-sans"
+  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=10d4c56eb6c156c7a670ee19e40caad476c81a1b" # 1.14.0
 
   project       = "${var.project}-${var.state}"
   project_short = "sebt"
