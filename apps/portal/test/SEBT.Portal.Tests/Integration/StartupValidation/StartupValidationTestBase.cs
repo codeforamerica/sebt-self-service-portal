@@ -15,9 +15,9 @@ public abstract class StartupValidationTestBase : IDisposable
     protected StartupValidationTestBase(string? environmentName = null)
     {
         _environmentName = environmentName;
-        
+
         var isProduction = _environmentName == Environments.Production;
-        
+
         SetEnv("PluginAssemblyPaths__0", "plugins-none");
         SetEnv("PluginAssemblyPaths__1", "plugins-none");
         SetEnv("STATE", "co");
@@ -40,14 +40,14 @@ public abstract class StartupValidationTestBase : IDisposable
             SetEnv("IdentifierHasher__SecretKey", "integration-test-identifier-hasher-key-32chars!");
         }
     }
-    
+
     /// <summary>Sets an env var and remembers it, so Dispose clears it.</summary>
     protected void SetEnv(string key, string? value)
     {
         _touchedKeys.Add(key);
         Environment.SetEnvironmentVariable(key, value);
     }
-    
+
     protected WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
@@ -62,7 +62,7 @@ public abstract class StartupValidationTestBase : IDisposable
                 services.ReplaceWithMock<IDatabaseSeeder>();
             });
         });
-    
+
     public void Dispose()
     {
         foreach (var key in _touchedKeys)

@@ -4,7 +4,7 @@ using SEBT.Portal.Core.AppSettings;
 
 namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 
-public class PiiEncryptionProductionSecretsValidator(IHostEnvironment environment) 
+public class PiiEncryptionProductionSecretsValidator(IHostEnvironment environment)
     : IValidateOptions<PiiEncryptionSettings>
 {
     /// <summary>Matches <c>appsettings.json</c> sample ActiveKeyId — not safe for production.</summary>
@@ -12,14 +12,14 @@ public class PiiEncryptionProductionSecretsValidator(IHostEnvironment environmen
 
     /// <summary>32× ASCII 'a' (256-bit) — sample key in repo; must not be used in production.</summary>
     public const string ForbiddenPlaceholderKeyMaterialBase64 = "YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=";
-    
+
     public ValidateOptionsResult Validate(string? name, PiiEncryptionSettings options)
     {
         if (!environment.IsProduction())
         {
             return ValidateOptionsResult.Skip;
         }
-        
+
         if (!options.EncryptAtRest)
         {
             return ValidateOptionsResult.Skip;
@@ -36,7 +36,7 @@ public class PiiEncryptionProductionSecretsValidator(IHostEnvironment environmen
         foreach (var entry in options.Keys)
         {
             var material = entry.KeyMaterialBase64.Trim();
-            
+
             if (string.Equals(material, ForbiddenPlaceholderKeyMaterialBase64, StringComparison.OrdinalIgnoreCase))
             {
                 return ValidateOptionsResult.Fail(
@@ -44,7 +44,7 @@ public class PiiEncryptionProductionSecretsValidator(IHostEnvironment environmen
                     "Generate random 256-bit keys and store them in secrets (e.g. PIIENCRYPTION__KEYS__0__KEYMATERIALBASE64).");
             }
         }
-        
+
         return ValidateOptionsResult.Success;
     }
 }

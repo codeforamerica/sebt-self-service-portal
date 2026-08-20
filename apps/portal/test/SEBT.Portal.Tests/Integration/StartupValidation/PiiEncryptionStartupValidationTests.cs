@@ -11,7 +11,7 @@ namespace SEBT.Portal.Tests.Integration.StartupValidation;
 /// </summary>
 [Collection("Integration")]
 [Trait("Category", "Integration")]
-public class PiiEncryptionStartupValidationTests() 
+public class PiiEncryptionStartupValidationTests()
     : StartupValidationTestBase(Environments.Production)
 {
     [Fact]

@@ -23,14 +23,14 @@ public class IdentifierHasherSettingsValidatorTests
         {
             SecretKey = key!
         };
-          
+
         // Act
         var result = validator.Validate(name: null, options: options);
 
         // Assert
         Assert.True(result.Failed);
     }
-    
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -47,14 +47,14 @@ public class IdentifierHasherSettingsValidatorTests
         {
             SecretKey = key!
         };
-          
+
         // Act
         var result = validator.Validate(name: null, options: options);
 
         // Assert
         Assert.True(result.Skipped);
     }
-    
+
     [Fact]
     public void Validate_WhenKeyIsValid_Succeeds()
     {
@@ -66,7 +66,7 @@ public class IdentifierHasherSettingsValidatorTests
         {
             SecretKey = "SecureProductionKeyMustBeAtLeast32Characters"
         };
-          
+
         // Act
         var result = validator.Validate(name: null, options: options);
 

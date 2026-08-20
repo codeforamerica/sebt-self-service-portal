@@ -4,7 +4,7 @@ using SEBT.Portal.Core.AppSettings;
 
 namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 
-public class IdentifierHasherSettingsValidator(IHostEnvironment environment) 
+public class IdentifierHasherSettingsValidator(IHostEnvironment environment)
     : IValidateOptions<IdentifierHasherSettings>
 {
     private static readonly string[] ForbiddenKeys =
@@ -16,7 +16,7 @@ public class IdentifierHasherSettingsValidator(IHostEnvironment environment)
     private const string ValidationFailedMessage =
         "IdentifierHasher:SecretKey must be set to a secure value in production. " +
         "Set the IDENTIFIERHASHER__SECRETKEY environment variable.";
-    
+
     public ValidateOptionsResult Validate(string? name, IdentifierHasherSettings options)
     {
         if (!environment.IsProduction())
@@ -38,7 +38,7 @@ public class IdentifierHasherSettingsValidator(IHostEnvironment environment)
         {
             return ValidateOptionsResult.Fail(ValidationFailedMessage);
         }
-        
+
         return ValidateOptionsResult.Success;
     }
 }
