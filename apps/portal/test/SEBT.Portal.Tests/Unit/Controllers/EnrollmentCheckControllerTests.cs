@@ -5,7 +5,7 @@ using SEBT.Portal.Api.Controllers.EnrollmentCheck;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.UseCases.EnrollmentCheck;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;

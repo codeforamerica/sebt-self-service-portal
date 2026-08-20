@@ -67,6 +67,40 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task EnrollmentEndpoint_IgnoresSessionCookie()
+    {
+        // A token that authenticates but violates the absolute session lifetime
+        // policy (no auth_time). If the pipeline reads the session cookie, the
+        // bearer middleware's OnTokenValidated rejects the token and clears the
+        // cookie via Set-Cookie. The enrollment-checker API is anonymous by
+        // contract, so the cookie must be ignored entirely: no authentication,
+        // and therefore no Set-Cookie side effect.
+        var token = CreateValidJwt(email: "user@example.com", includeAuthTime: false);
+
+        var client = _factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/enrollment/features");
+        request.Headers.Add("Cookie", $"{AuthCookies.AuthCookieName}={token}");
+        using var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(response.Headers.Contains("Set-Cookie"));
+    }
+
+    [Fact]
+    public async Task GetStatus_WithSessionCookieMissingAuthTime_ClearsCookie()
+    {
+        // Control for EnrollmentEndpoint_IgnoresSessionCookie: on a portal
+        // endpoint the same policy-violating token IS read from the cookie and
+        // rejected, clearing it. Proves the Set-Cookie observable is real.
+        var token = CreateValidJwt(email: "user@example.com", includeAuthTime: false);
+
+        using var response = await GetStatusWithCookie(token);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.Contains("Set-Cookie"));
+    }
+
     private async Task<HttpResponseMessage> GetStatusWithCookie(string? token)
     {
         var client = _factory.CreateClient();
@@ -76,18 +110,22 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
         return await client.SendAsync(request);
     }
 
-    private static string CreateValidJwt(string email, int expiresInMinutes = 60)
+    private static string CreateValidJwt(string email, int expiresInMinutes = 60, bool includeAuthTime = true)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(PortalWebApplicationFactory.JwtSecretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var nowUnixSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim("email", email),
-            new Claim("sub", email),
-            // auth_time required by SessionLifetimePolicy in the bearer middleware.
-            new Claim("auth_time", nowUnixSeconds)
+            new("email", email),
+            new("sub", email)
         };
+        if (includeAuthTime)
+        {
+            // auth_time required by SessionLifetimePolicy in the bearer middleware;
+            // omitting it yields a token that authenticates but fails the policy.
+            claims.Add(new Claim("auth_time", nowUnixSeconds));
+        }
         var now = DateTime.UtcNow;
         // notBefore must precede expires; pad it well behind expires to cover negative
         // expiresInMinutes used by the expired-token test.
