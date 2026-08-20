@@ -1964,6 +1964,50 @@
       "$type": "color",
       "$value": "#950707"
     },
+    "theme-button-bg": {
+      "$type": "color",
+      "$value": "{theme-primary}"
+    },
+    "theme-button-bg-hover": {
+      "$type": "color",
+      "$value": "{theme-primary-dark}"
+    },
+    "theme-button-bg-active": {
+      "$type": "color",
+      "$value": "{theme-primary-darker}"
+    },
+    "theme-button-text": {
+      "$type": "color",
+      "$value": "{white}"
+    },
+    "theme-button-outline-bg": {
+      "$type": "color",
+      "$value": "{white}"
+    },
+    "theme-button-outline-border": {
+      "$type": "color",
+      "$value": "{theme-primary}"
+    },
+    "theme-button-outline-border-hover": {
+      "$type": "color",
+      "$value": "{theme-primary-dark}"
+    },
+    "theme-button-outline-border-active": {
+      "$type": "color",
+      "$value": "{theme-primary-darker}"
+    },
+    "theme-button-outline-text": {
+      "$type": "color",
+      "$value": "{theme-primary}"
+    },
+    "theme-button-outline-bg-hover": {
+      "$type": "color",
+      "$value": "{theme-primary-lightest}"
+    },
+    "theme-button-outline-bg-active": {
+      "$type": "color",
+      "$value": "{theme-primary-lighter}"
+    },
     "theme-button-border-radius": {
       "$type": "borderRadius",
       "$value": "{md}"

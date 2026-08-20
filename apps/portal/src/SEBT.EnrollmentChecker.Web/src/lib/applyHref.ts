@@ -9,9 +9,11 @@
 // env.ts, documented in .env.local.example) so it can change via config without
 // a code change — not from the CSV-driven translation, whose source-of-truth
 // Google Sheet still points at the legacy `/SEBT/s/?language=en_US` URL. Read
-// process.env directly (like getState) to keep this a small, stubbable helper;
-// fall back to the PEAK starting page when the var is unset (local/test runs).
-const DEFAULT_APPLICATION_URL = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
+// process.env directly (like getState) to keep this a small, stubbable helper.
+//
+// The var is optional: with applications closed (DC-701) a deployment may have
+// no application destination at all. Null means "no link" — callers hide their
+// apply link blocks rather than render a dead URL.
 
 // Map i18next locale codes to the language param PEAK expects on its URL.
 // Unknown locales fall back to en_US.
@@ -20,8 +22,11 @@ const PEAK_LANG_BY_LOCALE: Record<string, string> = {
   es: 'es'
 }
 
-export function getApplyHref(locale: string): string {
-  const base = process.env.NEXT_PUBLIC_APPLICATION_URL || DEFAULT_APPLICATION_URL
+export function getApplyHref(locale: string): string | null {
+  const base = process.env.NEXT_PUBLIC_APPLICATION_URL
+  if (!base) {
+    return null
+  }
   const lang = PEAK_LANG_BY_LOCALE[locale] ?? 'en_US'
 
   const url = new URL(base)
