@@ -38,7 +38,8 @@ internal static class RequestPipelineSetup
         // network, guarding against future topology changes that might expose the API.
         var forwardedHeadersOptions = new ForwardedHeadersOptions
         {
-            ForwardedHeaders = ForwardedHeaders.XForwardedFor, ForwardLimit = 1,
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor,
+            ForwardLimit = 1,
         };
 
         // Open trust: accept X-Forwarded-For from any source. Safe here because
