@@ -471,7 +471,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
             _logger.LogInformation(ex, "OIDC exchange: userinfo fetch failed (non-fatal)");
         }
     }
-    
+
     private IOidcCoreSettings GetSettings(bool isStepUp) =>
         isStepUp ? _oidcStepUpSettings.Value : _oidcSettings.Value;
 }

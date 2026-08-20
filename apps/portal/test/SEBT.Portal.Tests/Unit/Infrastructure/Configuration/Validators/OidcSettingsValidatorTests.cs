@@ -13,14 +13,14 @@ public class OidcSettingsValidatorTests
         // Arrange
         var validator = new OidcSettingsValidator();
         var settings = CreateTestSettings(value);
-        
+
         // Act
         var result = validator.Validate(name: null, options: settings);
-        
+
         // Assert
         Assert.True(result.Succeeded);
     }
-    
+
     [Theory]
     [InlineData(1)]
     [InlineData(31)]
@@ -47,10 +47,10 @@ public class OidcSettingsValidatorTests
         var validator = new OidcSettingsValidator();
         var key = new string('x', charCount);
         var settings = CreateTestSettings(key);
-        
+
         // Act
         var result = validator.Validate(name: null, options: settings);
-        
+
         // Assert
         Assert.True(result.Succeeded);
     }

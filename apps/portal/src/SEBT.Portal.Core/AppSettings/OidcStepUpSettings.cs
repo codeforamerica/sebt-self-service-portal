@@ -13,7 +13,7 @@ public class OidcStepUpSettings : IOidcCoreSettings, IHaveConfigSectionName
 
     /// <summary>OAuth2 client id registered with the IdP for step-up.</summary>
     public string? ClientId { get; set; }
-    
+
     /// <summary>OAuth2 client secret registered with the IdP for step-up</summary>
     public string? ClientSecret { get; set; }
 

@@ -151,7 +151,7 @@ public class OidcController(
 
         var clientId = GetOidcSettings(stepUp).ClientId;
         var redirectUri = GetOidcSettings(stepUp).RedirectUri ?? oidcSettings.Value.CallbackRedirectUri;
-        
+
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
             logger.LogError(
@@ -497,8 +497,8 @@ public class OidcController(
             // when JwtSecurityTokenHandler tries to match by kid.
             IssuerSigningKeyResolver = (_, _, _, _) => [key]
         };
-        var handler = new JwtSecurityTokenHandler 
-        { 
+        var handler = new JwtSecurityTokenHandler
+        {
             MapInboundClaims = false // Preserve original JWT claim names (sub, email)
         };
         ClaimsPrincipal principal;
@@ -692,6 +692,6 @@ public class OidcController(
         return subClaim?.Value;
     }
 
-    private IOidcCoreSettings GetOidcSettings(bool stepUp) => 
+    private IOidcCoreSettings GetOidcSettings(bool stepUp) =>
         stepUp ? oidcStepUpSettings.Value : oidcSettings.Value;
 }

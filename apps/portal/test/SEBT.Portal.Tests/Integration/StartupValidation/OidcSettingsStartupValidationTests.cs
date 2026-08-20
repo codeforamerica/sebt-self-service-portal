@@ -20,7 +20,7 @@ public class OidcSettingsStartupValidationTests : StartupValidationTestBase
         var ex = Assert.Throws<OptionsValidationException>(factory.CreateClient);
         Assert.Contains("CompleteLoginSigningKey", ex.Message);
     }
-    
+
     [Fact]
     public void Startup_WithEmptyOidcSigningKey_DoesNotThrow()
     {

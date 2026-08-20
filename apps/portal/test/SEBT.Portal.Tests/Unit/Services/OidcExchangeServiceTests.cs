@@ -27,7 +27,7 @@ public class OidcExchangeServiceTests
 
         var oidcSettings = TestOptions.Snapshot(new OidcSettings { DiscoveryEndpoint = idp.DiscoveryUrl });
         var oidcStepUpSettings = TestOptions.Snapshot(new OidcStepUpSettings());
-        
+
         var service = new OidcExchangeService(
             oidcSettings,
             oidcStepUpSettings,
@@ -46,7 +46,7 @@ public class OidcExchangeServiceTests
     {
         var oidcSettings = TestOptions.Snapshot(new OidcSettings());
         var oidcStepUpSettings = TestOptions.Snapshot(new OidcStepUpSettings());
-        
+
         var service = new OidcExchangeService(
             oidcSettings,
             oidcStepUpSettings,
