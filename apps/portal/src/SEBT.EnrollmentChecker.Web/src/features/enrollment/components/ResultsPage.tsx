@@ -38,7 +38,8 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
   // Null when no application destination is configured (applications closed,
   // DC-701): the 2027 application link and its wait note degrade away while the
-  // closure line stays.
+  // closure line stays. The mixed variant also drops its numbered next-steps
+  // list, since the portal step is then the only actionable one.
   const applyHref = getApplyHref(i18n.language)
 
   // Closure copy plus the optional summer-2027 application link. The wait-note
@@ -172,7 +173,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           </div>
         )}
 
-        {householdEnrollmentResult === 'mixedEnrolled' && (
+        {householdEnrollmentResult === 'mixedEnrolled' && applyHref && (
           <section data-testid="next-steps">
             <h1 className="font-family-sans margin-top-4">
               {t('streamlinedEnrolledStepsHeading')}
@@ -182,6 +183,20 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
               <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>
             </ol>
           </section>
+        )}
+
+        {/* Without an application destination the 2027 step would be an
+            instruction with nothing to act on, so the portal step stands alone
+            (as on the all-enrolled page) and the not-enrolled children get the
+            same explanation and closure line as the no-results page. */}
+        {householdEnrollmentResult === 'mixedEnrolled' && !applyHref && (
+          <>
+            <section>{portalNextStep}</section>
+            <section className="margin-top-3">
+              <p>{t('applyForSebtBody2')}</p>
+              {apply2027Block('apply2027Note')}
+            </section>
+          </>
         )}
 
         {householdEnrollmentResult === 'noneEnrolled' && (

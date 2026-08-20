@@ -249,6 +249,41 @@ describe('ResultsPage', () => {
       expect(screen.queryByTestId('apply-2027-link')).toBeNull()
       expect(screen.queryByText(/hear back about your application in summer 2027/)).toBeNull()
     })
+
+    it('mixed household: drops the numbered steps, keeps the portal section and the not-enrolled explanation', () => {
+      mockApplyHref = null
+      render(
+        <ResultsPage
+          results={mixedEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      // Only one actionable step remains, so the numbered list and the
+      // imperative "Submit a 2027 application" step go away together.
+      expect(screen.queryByText(nextStepsSectionText)).toBeNull()
+      expect(screen.queryByTestId('next-step-apply-2027')).toBeNull()
+      expect(screen.queryByText(/Submit a 2027 Summer EBT application/)).toBeNull()
+      expect(screen.queryByTestId('apply-2027-link')).toBeNull()
+      expect(screen.queryByText(/hear back about your application/)).toBeNull()
+
+      // The not-enrolled list and the portal step (as a plain section, like the
+      // all-enrolled page) both survive.
+      expect(screen.getByTestId('not-enrolled-inline')).toBeInTheDocument()
+      const portalLink = screen.getByTestId('portal-link')
+      expect(portalLink).toHaveAttribute('href', portalUrl)
+
+      // Not-enrolled children still get the explanation and the closure line,
+      // placed after the portal step to keep the designed portal-first order.
+      expect(
+        screen.getByText(/didn’t have enough information to determine their eligibility/)
+      ).toBeVisible()
+      const closure = screen.getByText(closedLine)
+      expect(closure).toBeVisible()
+      expect(
+        portalLink.compareDocumentPosition(closure) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy()
+    })
   })
 
   describe('Indeterminate results (No Results shape)', () => {
