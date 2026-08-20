@@ -49,7 +49,10 @@ export const TEST_FEATURE_FLAGS = {
   show_application_date: true,
   defer_ebt_card_data_loading: false,
   enable_beta_banner: false,
-  outage_page_enabled: false
+  outage_page_enabled: false,
+  // Applications are closed at launch (DC-701); tests exercising the open state
+  // provide their own FeatureFlagsContext with enable_apply: true.
+  enable_apply: false
 } as const
 
 // Test household data (mirrors MockHouseholdRepository seeded data)

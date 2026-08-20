@@ -77,9 +77,12 @@ export function proxy(request: NextRequest) {
     isDev && "'unsafe-eval'"
   ])
 
-  const styleSrc =
-    "'self' 'unsafe-inline' https://fonts.googleapis.com https://verify-v2.socure.com"
-  const fontSrc = "'self' https://fonts.gstatic.com https://verify-v2.socure.com"
+  // No Google Fonts entries: every font is vendored via next/font/local
+  // (see packages/design-system/design/scripts/generate-fonts.js) rather than
+  // fetched from fonts.googleapis.com/fonts.gstatic.com at build time. Adding
+  // a state or font back onto next/font/google should re-add those domains here.
+  const styleSrc = "'self' 'unsafe-inline' https://verify-v2.socure.com"
+  const fontSrc = "'self' https://verify-v2.socure.com"
   const imgSrc = "'self' data: https: https://www.google-analytics.com"
 
   const oidcIssuerOrigin = process.env.OIDC_ISSUER_ORIGIN

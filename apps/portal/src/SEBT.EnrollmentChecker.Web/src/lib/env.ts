@@ -22,7 +22,9 @@ export const env = createEnv({
     NEXT_PUBLIC_CHECKER_ENABLED: boolEnv(true),
     NEXT_PUBLIC_BOT_PROTECTION_ENABLED: boolEnv(false),
     NEXT_PUBLIC_PORTAL_URL: z.string().url(),
-    NEXT_PUBLIC_APPLICATION_URL: z.string().url(),
+    // Optional since DC-701: with applications closed a deployment may have no
+    // application destination; apply link blocks hide when it is unset.
+    NEXT_PUBLIC_APPLICATION_URL: z.string().url().optional(),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_META_PIXEL: z.string().min(1).optional(),
     NEXT_PUBLIC_META_PIXEL_ACTION: z.string().min(1).optional(),

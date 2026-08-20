@@ -133,8 +133,10 @@ jobs:
 
   build-and-test:
     name: ${{ matrix.state }} - Build & Test
+    # No job-level `if:` — "co"/"dc - Build & Test" are required checks by this
+    # matrix-expanded name; skipping the whole job means they never post. Gate
+    # individual steps below instead.
     needs: [discover-states, changes]
-    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix: ${{ fromJson(needs.discover-states.outputs.matrix) }}
@@ -222,19 +224,19 @@ jobs:
 
       # Native Build Path
       - name: Setup .NET (Native)
-        if: steps.config.outputs.use_docker != 'true'
+        if: steps.config.outputs.use_docker != 'true' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ steps.config.outputs.dotnet_version }}
 
       - name: Setup pnpm (Native)
-        if: steps.config.outputs.use_docker != 'true'
+        if: steps.config.outputs.use_docker != 'true' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: ${{ steps.config.outputs.pnpm_version }}
 
       - name: Setup Node.js (Native)
-        if: steps.config.outputs.use_docker != 'true'
+        if: steps.config.outputs.use_docker != 'true' && (needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true')
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: ${{ steps.config.outputs.node_version }}
