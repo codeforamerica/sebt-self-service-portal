@@ -12,6 +12,9 @@ const SSN_ITIN_DIGIT_COUNT = 9
 // Maximum plausible age. 120 years is the high end for a living person.
 // TODO(DC-296 follow-up): revisit with product if we want a tighter bound.
 const MAX_AGE_YEARS = 120
+// Identity proofing is for the adult applicant. Guardians sometimes enter their
+// student's birthdate by mistake, so anyone younger than 18 is rejected here.
+const MIN_AGE_YEARS = 18
 // Medicaid ID shape is intentionally NOT validated here. DC CSV advertises
 // "7 or 8 digits" but Socure expects "4 or 9" — this is a separate open
 // product/policy question tracked outside DC-296.
@@ -60,6 +63,15 @@ function validateDateOfBirth(
 
   const oldestAllowed = new Date(now.getFullYear() - MAX_AGE_YEARS, now.getMonth(), now.getDate())
   if (dobDate.getTime() < oldestAllowed.getTime()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['dateOfBirth']
+    })
+    return
+  }
+
+  const youngestAllowed = new Date(now.getFullYear() - MIN_AGE_YEARS, now.getMonth(), now.getDate())
+  if (dobDate.getTime() > youngestAllowed.getTime()) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['dateOfBirth']

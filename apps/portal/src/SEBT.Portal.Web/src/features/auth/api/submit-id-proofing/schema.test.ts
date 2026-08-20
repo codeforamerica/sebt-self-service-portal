@@ -152,7 +152,7 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       basePayload({
         idType: null,
         idValue: null,
-        dateOfBirth: { month: '02', day: '29', year: '2020' }
+        dateOfBirth: { month: '02', day: '29', year: '2000' }
       })
     )
     expect(result.success).toBe(true)
@@ -169,6 +169,31 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
     )
     expect(result.success).toBe(false)
     expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+  })
+
+  it('rejects a DOB younger than 18 years old', () => {
+    const childYear = new Date().getFullYear() - 10
+    const result = SubmitIdProofingRequestSchema.safeParse(
+      basePayload({
+        idType: null,
+        idValue: null,
+        dateOfBirth: { month: '06', day: '15', year: String(childYear) }
+      })
+    )
+    expect(result.success).toBe(false)
+    expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+  })
+
+  it('accepts a DOB of an adult who is 18 or older', () => {
+    const adultYear = new Date().getFullYear() - 18
+    const result = SubmitIdProofingRequestSchema.safeParse(
+      basePayload({
+        idType: null,
+        idValue: null,
+        dateOfBirth: { month: '01', day: '01', year: String(adultYear) }
+      })
+    )
+    expect(result.success).toBe(true)
   })
 
   it('rejects a month outside 1-12', () => {
