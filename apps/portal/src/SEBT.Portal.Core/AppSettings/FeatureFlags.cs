@@ -24,9 +24,16 @@ public static class FeatureFlags
     /// <summary>
     /// When enabled, the diagnostic test-error endpoints under /api/test-error are active.
     /// Disabled by default; enable in Development or staging via appsettings.Development.json
-    /// or AWS AppConfig. Never enable in production.
+    /// or AWS AppConfig. Never enable in production. Not included in the public feature-flag map.
     /// </summary>
     public const string TestErrorEndpointsEnabled = "test_error_endpoints_enabled";
+
+    /// <summary>
+    /// When enabled, OTP validation may be bypassed for the DAST scanner account in
+    /// non-production environments. See <see cref="OtpBypassSettings"/>. Never enable
+    /// in production. Not included in the public feature-flag map.
+    /// </summary>
+    public const string BypassOtp = "bypass_otp";
 
     /// <summary>
     /// When enabled, the portal shows a sitewide outage page instead of normal routes.

@@ -1,6 +1,13 @@
-import { stateResources } from '@/lib/generated-locale-resources'
-import { OutagePageContent } from '@sebt/design-system'
+'use client'
+
+import { getState } from '@sebt/design-system'
+import { MaintenancePageContent } from '@sebt/design-system/client'
 
 export default function OutagePage() {
-  return <OutagePageContent resources={stateResources} />
+  return (
+    <MaintenancePageContent
+      namespace="maintenancePortal"
+      state={getState()}
+    />
+  )
 }

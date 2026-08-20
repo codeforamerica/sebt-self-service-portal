@@ -72,17 +72,23 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 
 // Configuration provider priority order (later providers override earlier ones):
-// 1. appsettings.json (defaults)
-// 2. State-specific JSON (appsettings.{State}.json)
-// 3. AWS AppConfig Agent (if configured — highest priority, overrides all)
+// 1. appsettings.json / appsettings.{Environment}.json (defaults)
+// 2. User secrets (Development only)
+// 3. State-specific JSON (appsettings.{State}.json)
+// 4. Environment variables
+// 5. Command-line args
+// 6. AWS AppConfig Agent (if configured — highest priority, overrides all)
+//
+// WebApplication.CreateBuilder registers 1–2 and 4–5; AddStateOverlay inserts
+// the state JSON below the environment variable provider so env vars keep
+// their standard twelve-factor precedence over config files.
 
 // This loads appsettings.{State}.json files (e.g., appsettings.dc.json, appsettings.co.json)
 var state = Environment.GetEnvironmentVariable("STATE");
 if (!string.IsNullOrEmpty(state))
 {
     Log.Logger.Information("Loading state-specific config: {State}", state);
-    var stateConfigFile = $"appsettings.{state.ToLowerInvariant()}.json";
-    builder.Configuration.AddJsonFile(stateConfigFile, optional: true, reloadOnChange: true);
+    builder.Configuration.AddStateOverlay(state);
 }
 
 // Register AWS AppConfig Agent configuration providers if configured.
@@ -241,7 +247,10 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
         {
             OnMessageReceived = context =>
             {
-                if (string.IsNullOrEmpty(context.Token))
+                // The cookie fallback is skipped for the anonymous enrollment-checker
+                // API — see AuthCookies.AllowsCookieAuthentication for why.
+                if (string.IsNullOrEmpty(context.Token) &&
+                    AuthCookies.AllowsCookieAuthentication(context.Request.Path))
                 {
                     var cookieToken = context.Request.Cookies[AuthCookies.AuthCookieName];
                     if (!string.IsNullOrEmpty(cookieToken))
