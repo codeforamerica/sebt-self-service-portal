@@ -1,5 +1,6 @@
 'use client'
 
+import { ErrorResultPage } from '@/features/enrollment/components/ErrorResultPage'
 import { ReviewPage } from '@/features/enrollment/components/ReviewPage'
 import { checkEnrollment } from '@/features/enrollment/api/checkEnrollment'
 import { getRateLimitErrorMessage } from '@/features/enrollment/copy/submitErrorCopy'
@@ -15,7 +16,7 @@ import { getEnrollmentConfig } from '@/lib/stateConfig'
 type SubmitErrorKind = 'rateLimit' | 'generic'
 
 export default function Page() {
-  const { t: tDev, i18n } = useTranslation('dev')
+  const { i18n } = useTranslation('dev')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const router = useRouter()
   const { state } = useEnrollment()
@@ -70,14 +71,18 @@ export default function Page() {
     )
   }
 
+  // A whole-check failure replaces the review form with the full error page
+  // (portal next step, no application links — applications are closed, DC-701).
+  // Rate limiting keeps the inline alert: the fix is simply waiting and
+  // resubmitting the form that is already on screen.
+  if (errorKind === 'generic') {
+    return <ErrorResultPage portalUrl={config.portalUrl} />
+  }
+
   return (
     <>
-      {errorKind && (
-        <Alert variant="error">
-          {errorKind === 'rateLimit'
-            ? getRateLimitErrorMessage(i18n.language)
-            : tDev('enrollmentCheckerErrorResponse')}
-        </Alert>
+      {errorKind === 'rateLimit' && (
+        <Alert variant="error">{getRateLimitErrorMessage(i18n.language)}</Alert>
       )}
       <ReviewPage onSubmit={handleSubmit} />
     </>

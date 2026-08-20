@@ -11,7 +11,7 @@ const enrolled: ChildCheckApiResponse[] = [
 describe('EnrolledSection', () => {
   it('renders the header copy', () => {
     render(<EnrolledSection results={enrolled} />)
-    expect(screen.getByText(/already enrolled/i))
+    expect(screen.getByText(/were enrolled in Summer EBT for 2026/i)).toBeInTheDocument()
   })
 
   it('renders enrolled child names', () => {

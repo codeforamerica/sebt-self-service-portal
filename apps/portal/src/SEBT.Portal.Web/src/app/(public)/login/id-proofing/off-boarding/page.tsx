@@ -4,7 +4,7 @@ import { useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 
 import { OffBoardingContent, useAuth } from '@/features/auth'
-import { getApplyHref } from '@/lib/applyHref'
+import { useApplyHref } from '@/lib/useApplyHref'
 import { getState, getStateLinks } from '@sebt/design-system'
 
 export default function OffBoardingPage() {
@@ -16,13 +16,18 @@ export default function OffBoardingPage() {
   const isCoLoaded = session?.isCoLoaded === true
   const useCoLoadedOffboarding = isCoLoaded || reason === 'coLoadedOnly'
 
-  const { t, i18n } = useTranslation('offBoarding')
+  const { t } = useTranslation('offBoarding')
   const { t: tDashboard } = useTranslation('dashboard')
   const { t: tCommon } = useTranslation('common')
   const { t: tStepUpFailure } = useTranslation('stepUpFailure')
 
   const state = getState()
   const links = getStateLinks(state)
+
+  // Null when applications are closed (enable_apply flag off) or the state has
+  // no apply destination (DC since DC-701); that suppresses the apply section
+  // below regardless of the query param.
+  const applyHref = useApplyHref()
 
   // Prefer the web contact page; fall back to help desk email for states
   // where the contact URL is not yet available (e.g., CO uses a mailto link).
@@ -35,7 +40,7 @@ export default function OffBoardingPage() {
   let title: string
   let body: string
   let backHref = '/login/id-proofing'
-  let canApply = canApplyParam
+  let canApply = canApplyParam && applyHref !== null
   let contactLabel: string
   let applyBody: string | undefined
   let applySkipBody: string | undefined
@@ -120,7 +125,7 @@ export default function OffBoardingPage() {
             applyBody={applyBody}
             applySkipBody={applySkipBody}
             applyLabel={applyLabel}
-            applyHref={getApplyHref(i18n.language)}
+            applyHref={applyHref ?? undefined}
             bodyList={bodyList}
             bodyNote={bodyNote}
             continueHref={continueHref}

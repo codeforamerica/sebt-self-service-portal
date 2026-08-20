@@ -260,6 +260,7 @@ export function makeCoLoadedOnlyHousehold(overrides: HouseholdDataOptions = {}):
 }
 
 export const DEFAULT_FEATURE_FLAGS = {
+  enable_apply: false,
   enable_enrollment_status: true,
   enable_card_replacement: true,
   enable_spanish_support: true,

@@ -1,6 +1,6 @@
 using SEBT.Portal.Core.AppSettings;
 
-namespace SEBT.Portal.Infrastructure.Services;
+namespace SEBT.Portal.Core.Services;
 
 /// <summary>
 /// Whether a surface's outage page should currently be shown, and why.
