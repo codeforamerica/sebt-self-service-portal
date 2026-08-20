@@ -12,6 +12,10 @@ using SEBT.Portal.Tests.Unit.TestSupport;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
+/// <summary>
+/// SQL Server (Testcontainers) tests for DatabaseUserRepository.
+/// Tagged Category=SqlServer and excluded from unit-only runs. That is intentional.
+/// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
 public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
