@@ -21,8 +21,9 @@ Environment:
   PREVIEW_API_SERVICE              Alias for PREVIEW_BASE_API_SERVICE (optional)
   PREVIEW_WEB_SERVICE              Alias for PREVIEW_BASE_WEB_SERVICE (optional)
   PREVIEW_KEYCLOAK_HOSTNAME        Shared Keycloak base URL (default: https://auth.<DOMAIN>)
-  PREVIEW_KEYCLOAK_ADMIN_SECRET_ID Secrets Manager id or ARN for Keycloak bootstrap admin
-                                   (prefer tofu output preview_keycloak_admin_secret_arn)
+  PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID Keycloak Admin API client id (default: sebt-preview-deploy)
+  PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET Keycloak Admin API client secret
+  PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID Optional Secrets Manager id/ARN for deploy client JSON
   PREVIEW_OIDC_CLIENT_ID           Keycloak login client id (default: sebt-portal)
   PREVIEW_OIDC_STEP_UP_CLIENT_ID   Keycloak step-up client id (default: sebt-portal-stepup)
   AWS_REGION                       AWS region (default: us-east-1)

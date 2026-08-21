@@ -5,11 +5,110 @@
 # (https://host.example/*), not hostname wildcards (https://*.example/*).
 # Preview deploys therefore register each pr-N host explicitly on the shared
 # clients, and destroy removes them.
+#
+# Auth uses a dedicated confidential client (sebt-preview-deploy) with a
+# service account that has manage-clients in the sebt realm. Prefer that over
+# the bootstrap admin password grant, which drifts easily against Postgres.
 
-# Default Secrets Manager secret id from tofu/modules/sebt_keycloak
-# (prefix = ${project}-${state}-${environment}-keycloak-admin). Prefer setting
-# PREVIEW_KEYCLOAK_ADMIN_SECRET_ID to the tofu output ARN
-# (preview_keycloak_admin_secret_arn) in CI.
+KEYCLOAK_DEPLOY_CLIENT_ID_DEFAULT="sebt-preview-deploy"
+KEYCLOAK_DEPLOY_CLIENT_SECRET_DEFAULT="sebt-preview-deploy-secret"
+
+# Resolve deploy client id/secret once. Precedence per field:
+# explicit env → Secrets Manager JSON (PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID) → defaults.
+# SM JSON shape: { "clientId"|"client_id", "clientSecret"|"client_secret" }.
+keycloak_deploy_credentials() {
+  local client_id="" client_secret="" secret_json=""
+
+  if [ -n "${PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID:-}" ]; then
+    secret_json="$(aws secretsmanager get-secret-value \
+      --secret-id "${PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID}" \
+      --query SecretString \
+      --output text)"
+  fi
+
+  if [ -n "${PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID:-}" ]; then
+    client_id="${PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID}"
+  elif [ -n "${secret_json}" ]; then
+    client_id="$(echo "${secret_json}" | jq -r '.clientId // .client_id // empty')"
+  fi
+  if [ -z "${client_id}" ]; then
+    client_id="${KEYCLOAK_DEPLOY_CLIENT_ID_DEFAULT}"
+  fi
+
+  if [ -n "${PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET:-}" ]; then
+    client_secret="${PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET}"
+  elif [ -n "${secret_json}" ]; then
+    client_secret="$(echo "${secret_json}" | jq -r '.clientSecret // .client_secret // empty')"
+  fi
+  if [ -z "${client_secret}" ]; then
+    client_secret="${KEYCLOAK_DEPLOY_CLIENT_SECRET_DEFAULT}"
+  fi
+
+  if [ -z "${client_id}" ] || [ -z "${client_secret}" ]; then
+    log_error "Keycloak deploy client id/secret missing"
+    return 1
+  fi
+
+  printf '%s\t%s\n' "${client_id}" "${client_secret}"
+}
+
+keycloak_deploy_client_id() {
+  keycloak_deploy_credentials | cut -f1
+}
+
+keycloak_deploy_client_secret() {
+  keycloak_deploy_credentials | cut -f2
+}
+
+# Mint an access token via client_credentials in the sebt realm.
+# Client secret is written to a temp form body so it does not appear on argv.
+keycloak_deploy_token() {
+  local keycloak_hostname="$1"
+  local client_id client_secret token http_code body form error_hint error_body
+
+  IFS=$'\t' read -r client_id client_secret < <(keycloak_deploy_credentials)
+
+  body="$(mktemp)"
+  form="$(mktemp)"
+  jq -nr \
+    --arg client_id "${client_id}" \
+    --arg client_secret "${client_secret}" \
+    '"grant_type=client_credentials&client_id=\($client_id|@uri)&client_secret=\($client_secret|@uri)"' \
+    >"${form}"
+
+  http_code="$(curl -sS -o "${body}" -w "%{http_code}" \
+    -X POST "${keycloak_hostname}/realms/sebt/protocol/openid-connect/token" \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    --data-binary @"${form}")" || true
+  rm -f "${form}"
+
+  if [ "${http_code}" != "200" ]; then
+    error_body="$(head -c 300 "${body}")"
+    error_hint=""
+    if echo "${error_body}" | grep -Eqi 'unauthorized_client|invalid_client|Invalid client'; then
+      error_hint=" Client ${client_id} is missing or the secret does not match. On an existing live realm run ./scripts/preview/bootstrap-keycloak-deploy-client.sh (needs working bootstrap admin), or create the client manually (see docs/development/keycloak-preview.md). Check PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET / PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID if set."
+    elif [ "${http_code}" = "401" ] || [ "${http_code}" = "400" ]; then
+      error_hint=" Check deploy client credentials (defaults sebt-preview-deploy / sebt-preview-deploy-secret) or PREVIEW_KEYCLOAK_DEPLOY_* overrides. If the live realm predates this client, bootstrap or create it manually (see docs/development/keycloak-preview.md)."
+    fi
+    log_error "Failed to obtain Keycloak deploy token (HTTP ${http_code}): ${error_body}.${error_hint}"
+    rm -f "${body}"
+    return 1
+  fi
+
+  token="$(jq -r '.access_token // empty' "${body}")"
+  rm -f "${body}"
+
+  if [ -z "${token}" ]; then
+    log_error "Keycloak deploy token response missing access_token"
+    return 1
+  fi
+
+  echo "${token}"
+}
+
+# Bootstrap-admin helpers (master realm). Used only by
+# bootstrap-keycloak-deploy-client.sh when seeding the deploy client onto an
+# already-imported live realm.
 resolve_keycloak_admin_secret_id() {
   if [ -n "${PREVIEW_KEYCLOAK_ADMIN_SECRET_ID:-}" ]; then
     echo "${PREVIEW_KEYCLOAK_ADMIN_SECRET_ID}"
@@ -28,8 +127,6 @@ keycloak_admin_credentials() {
     --output text
 }
 
-# Mint an admin access token. Password is written to a temp form body so it
-# does not appear on the curl process argv.
 keycloak_admin_token() {
   local keycloak_hostname="$1"
   local credentials username password token http_code body form
@@ -59,7 +156,7 @@ keycloak_admin_token() {
   rm -f "${form}"
 
   if [ "${http_code}" != "200" ]; then
-    log_error "Failed to obtain Keycloak admin token (HTTP ${http_code})"
+    log_error "Failed to obtain Keycloak admin token (HTTP ${http_code}): $(head -c 300 "${body}")"
     rm -f "${body}"
     return 1
   fi
@@ -257,7 +354,7 @@ keycloak_client_has_preview_host() {
 }
 
 # Concurrent preview deploys share one client: retry read-modify-write on races.
-# Mints a fresh admin token (and refreshes on HTTP 401) so long retry loops do
+# Mints a fresh deploy token (and refreshes on HTTP 401) so long retry loops do
 # not fail mid-update when the access token expires.
 keycloak_update_client_preview_host() {
   local action="$1"
@@ -267,7 +364,7 @@ keycloak_update_client_preview_host() {
   local attempt max_attempts=6 token client_uuid current updated delay
   local uuid_rc get_rc put_rc
 
-  token="$(keycloak_admin_token "${keycloak_hostname}")"
+  token="$(keycloak_deploy_token "${keycloak_hostname}")"
 
   client_uuid=""
   for attempt in $(seq 1 "${max_attempts}"); do
@@ -275,8 +372,8 @@ keycloak_update_client_preview_host() {
       uuid_rc=0
       client_uuid="$(keycloak_client_uuid "${keycloak_hostname}" "${token}" "${client_id}")" || uuid_rc=$?
       if [ "${uuid_rc}" -eq 2 ]; then
-        log_info "Keycloak admin token expired looking up ${client_id}; refreshing"
-        token="$(keycloak_admin_token "${keycloak_hostname}")"
+        log_info "Keycloak deploy token expired looking up ${client_id}; refreshing"
+        token="$(keycloak_deploy_token "${keycloak_hostname}")"
         client_uuid=""
         continue
       fi
@@ -288,8 +385,8 @@ keycloak_update_client_preview_host() {
     get_rc=0
     current="$(keycloak_get_client "${keycloak_hostname}" "${token}" "${client_uuid}")" || get_rc=$?
     if [ "${get_rc}" -eq 2 ]; then
-      log_info "Keycloak admin token expired on GET ${client_id}; refreshing"
-      token="$(keycloak_admin_token "${keycloak_hostname}")"
+      log_info "Keycloak deploy token expired on GET ${client_id}; refreshing"
+      token="$(keycloak_deploy_token "${keycloak_hostname}")"
       continue
     fi
     if [ "${get_rc}" -ne 0 ]; then
@@ -310,8 +407,8 @@ keycloak_update_client_preview_host() {
     put_rc=0
     keycloak_put_client "${keycloak_hostname}" "${token}" "${client_uuid}" "${updated}" || put_rc=$?
     if [ "${put_rc}" -eq 2 ]; then
-      log_info "Keycloak admin token expired on PUT ${client_id}; refreshing"
-      token="$(keycloak_admin_token "${keycloak_hostname}")"
+      log_info "Keycloak deploy token expired on PUT ${client_id}; refreshing"
+      token="$(keycloak_deploy_token "${keycloak_hostname}")"
       continue
     fi
     if [ "${put_rc}" -ne 0 ]; then
@@ -320,8 +417,8 @@ keycloak_update_client_preview_host() {
       get_rc=0
       current="$(keycloak_get_client "${keycloak_hostname}" "${token}" "${client_uuid}")" || get_rc=$?
       if [ "${get_rc}" -eq 2 ]; then
-        log_info "Keycloak admin token expired verifying ${client_id}; refreshing"
-        token="$(keycloak_admin_token "${keycloak_hostname}")"
+        log_info "Keycloak deploy token expired verifying ${client_id}; refreshing"
+        token="$(keycloak_deploy_token "${keycloak_hostname}")"
         continue
       fi
       if [ "${get_rc}" -ne 0 ]; then

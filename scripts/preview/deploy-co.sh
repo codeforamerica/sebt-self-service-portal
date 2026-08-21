@@ -26,9 +26,11 @@ Environment:
   ECR_WEB_REPOSITORY_URL           Web image repository (required)
   AWS_REGION                       AWS region (default: us-east-1)
   PREVIEW_KEYCLOAK_HOSTNAME        Shared Keycloak base URL (default: https://auth.<DOMAIN>)
-  PREVIEW_KEYCLOAK_ADMIN_SECRET_ID Secrets Manager id or ARN for Keycloak bootstrap
-                                   admin (default: sebt-portal-co-development-keycloak-admin;
-                                   prefer tofu output preview_keycloak_admin_secret_arn)
+  PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID Keycloak Admin API client id (default: sebt-preview-deploy)
+  PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET Keycloak Admin API client secret
+                                   (default: sebt-preview-deploy-secret)
+  PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID Optional Secrets Manager id/ARN with JSON
+                                   {clientId, clientSecret}
   PREVIEW_OIDC_CLIENT_ID           Keycloak login client id (default: sebt-portal)
   PREVIEW_OIDC_CLIENT_SECRET       Keycloak login client secret (default: realm preview secret)
   PREVIEW_OIDC_STEP_UP_CLIENT_ID   Keycloak step-up client id (default: sebt-portal-stepup)
@@ -40,7 +42,8 @@ Notes:
   API ALB; the Next.js server reaches them via BACKEND_URL.
   Preview stacks use the shared Keycloak IdP for OIDC. After Route53 is created,
   deploy registers the pr-N host as a Valid Redirect URI on the Keycloak clients
-  (hostname wildcards are not supported on Keycloak 26).
+  using the sebt-preview-deploy service account (hostname wildcards are not
+  supported on Keycloak 26).
 EOF
 }
 

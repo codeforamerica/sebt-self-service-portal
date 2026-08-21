@@ -13,8 +13,11 @@
 #   - CloudFront distribution must include *.{DOMAIN} as an alternate domain name
 #   - Shared preview Keycloak at https://auth.{DOMAIN} (tofu module preview_keycloak); build/push
 #     image via ./scripts/preview/build-keycloak.sh before first apply. Deploy registers each
-#     pr-N host on the Keycloak clients (hostname wildcards are not supported on Keycloak 26).
-#   - Optional var PREVIEW_KEYCLOAK_ADMIN_SECRET_ID = tofu output preview_keycloak_admin_secret_arn
+#     pr-N host on the Keycloak clients via sebt-preview-deploy (client_credentials).
+#     For an existing live realm, run ./scripts/preview/bootstrap-keycloak-deploy-client.sh
+#     once (or create sebt-preview-deploy manually; see docs/development/keycloak-preview.md).
+#   - Optional vars: PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID / PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET
+#     or PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID (Secrets Manager JSON)
 #   - Create the "preview-co" label on this repository
 #   - Set PREVIEW_BASE_API_SERVICE and PREVIEW_BASE_WEB_SERVICE before first deploy
 #     (or rely on auto-discovery in per-role clusters: *-development-api / *-development-web)
@@ -220,7 +223,9 @@ jobs:
           PREVIEW_API_SERVICE: ${{ vars.PREVIEW_API_SERVICE }}
           PREVIEW_WEB_SERVICE: ${{ vars.PREVIEW_WEB_SERVICE }}
           PREVIEW_HOSTED_ZONE_ID: ${{ vars.PREVIEW_HOSTED_ZONE_ID }}
-          PREVIEW_KEYCLOAK_ADMIN_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_ADMIN_SECRET_ID }}
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID }}
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET: ${{ secrets.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET }}
+          PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID }}
           ECR_API_REPOSITORY_URL: ${{ secrets.ECR_API_REPOSITORY_URL }}
           ECR_WEB_REPOSITORY_URL: ${{ secrets.ECR_WEB_REPOSITORY_URL }}
           PR_NUMBER: ${{ needs.build.outputs.pr_number }}
@@ -332,7 +337,9 @@ jobs:
           PREVIEW_API_SERVICE: ${{ vars.PREVIEW_API_SERVICE }}
           PREVIEW_WEB_SERVICE: ${{ vars.PREVIEW_WEB_SERVICE }}
           PREVIEW_HOSTED_ZONE_ID: ${{ vars.PREVIEW_HOSTED_ZONE_ID }}
-          PREVIEW_KEYCLOAK_ADMIN_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_ADMIN_SECRET_ID }}
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID }}
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET: ${{ secrets.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET }}
+          PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID }}
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         run: |
