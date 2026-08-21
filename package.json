@@ -43,7 +43,10 @@
     "release-notes:generate": "tsx scripts/release-notes/generate.ts",
     "check:cooldown-exclusions": "tsx scripts/security/check-cooldown-exclusions.ts",
     "test:scripts": "tsx --test scripts/**/*.test.ts",
-    "prepare": "husky"
+    "prepare": "husky",
+    "aspire:start": "pnpm --dir aspire-apphost run aspire:start",
+    "aspire:build": "pnpm --dir aspire-apphost run aspire:build",
+    "aspire:dev": "pnpm --dir aspire-apphost run aspire:dev"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
