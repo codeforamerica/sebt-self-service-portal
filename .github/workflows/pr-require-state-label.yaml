@@ -1,0 +1,34 @@
+name: Require State Label
+
+# Kept separate from pr-labeler.yml on purpose: that workflow is passive,
+# always-green auto-labeling from branch names; this one is a merge-blocking
+# enforcement gate. Named to sort alphabetically next to pr-labeler.yml so
+# anything related to PR labels is easy to find, without coupling their risk.
+#
+# Not yet wired into branch protection as a required check -- GitHub can only
+# mark a check required once it has actually run at least once (it has to
+# exist as a selectable check name). Once this merges and runs on a real PR,
+# mark "Require State Label / check-state-label" required in branch protection
+# as a fast follow.
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize, reopened]
+
+permissions: {}
+
+jobs:
+  check-state-label:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Check for a state label
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const requireStateLabel = require('./.github/workflows/scripts/require-state-label.js');
+            await requireStateLabel({ github, context, core });
