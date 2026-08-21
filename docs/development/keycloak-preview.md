@@ -31,7 +31,7 @@ https://auth.<DOMAIN>/realms/sebt/.well-known/openid-configuration
 
 Preview deploy scripts point OIDC at this Keycloak automatically. OTP bypass remains enabled on previews as a fallback.
 
-Keycloak 26 only allows path-trailing wildcards in Valid Redirect URIs (`https://host.example/*`), not hostname wildcards (`https://*.example/*`). Because each preview uses a distinct `pr-N.<DOMAIN>` host, `deploy-co.sh` registers that host on the shared `sebt-portal` and `sebt-portal-stepup` clients via the Keycloak Admin API, and `destroy-co.sh` removes it. Helpers live in `scripts/preview/keycloak.sh`.
+Keycloak 26 only allows path-trailing wildcards in Valid Redirect URIs (`https://host.example/*`), not hostname wildcards (`https://*.example/*`). Because each preview uses a distinct `pr-N.<DOMAIN>` host, `deploy-co.sh` registers that host on the shared `sebt-portal` and `sebt-portal-stepup` clients via the Keycloak Admin API after Route53 aliases are created (so the preview URL still resolves if Keycloak is temporarily unreachable), and `destroy-co.sh` removes it. Helpers live in `scripts/preview/keycloak.sh`. Registration remains required for a successful deploy; without it, OIDC login will fail.
 
 Admin credentials come from Secrets Manager. Prefer setting `PREVIEW_KEYCLOAK_ADMIN_SECRET_ID` to the tofu output `preview_keycloak_admin_secret_arn` (the preview workflow reads `vars.PREVIEW_KEYCLOAK_ADMIN_SECRET_ID`). If unset, the scripts fall back to the secret name `sebt-portal-co-development-keycloak-admin`.
 

@@ -38,9 +38,9 @@ Notes:
   Web preview hosts are aliased to the shared CloudFront distribution (which
   already reaches the internal web ALB). API preview hosts still alias to the
   API ALB; the Next.js server reaches them via BACKEND_URL.
-  Preview stacks use the shared Keycloak IdP for OIDC. Deploy registers the
-  pr-N host as a Valid Redirect URI on the Keycloak clients (hostname wildcards
-  are not supported on Keycloak 26).
+  Preview stacks use the shared Keycloak IdP for OIDC. After Route53 is created,
+  deploy registers the pr-N host as a Valid Redirect URI on the Keycloak clients
+  (hostname wildcards are not supported on Keycloak 26).
 EOF
 }
 
@@ -97,13 +97,6 @@ API_IMAGE="${ECR_API_REPOSITORY_URL}:${IMAGE_TAG}"
 WEB_IMAGE="${ECR_WEB_REPOSITORY_URL}:${IMAGE_TAG}"
 
 log_info "Deploying preview for PR ${PR_NUMBER} (api_cluster=${API_CLUSTER}, web_cluster=${WEB_CLUSTER}, tag=${IMAGE_TAG})"
-
-# Register before the stack is reachable so login works as soon as DNS is live.
-ensure_keycloak_preview_host_redirects \
-  "${KEYCLOAK_HOSTNAME}" \
-  "${WEB_HOST}" \
-  "${OIDC_CLIENT_ID}" \
-  "${OIDC_STEP_UP_CLIENT_ID}"
 
 API_BASE_TD="$(get_service_task_definition "${API_CLUSTER}" "${BASE_API_SERVICE}")"
 WEB_BASE_TD="$(get_service_task_definition "${WEB_CLUSTER}" "${BASE_WEB_SERVICE}")"
@@ -237,6 +230,14 @@ ensure_route53_alias \
   "${CLOUDFRONT_DNS}" \
   "${CLOUDFRONT_ZONE:-${CLOUDFRONT_ROUTE53_ZONE_ID}}" \
   false
+
+# Register after DNS so a Keycloak outage still leaves the preview URL resolvable.
+# Still fail the deploy if registration fails; login will not work without it.
+ensure_keycloak_preview_host_redirects \
+  "${KEYCLOAK_HOSTNAME}" \
+  "${WEB_HOST}" \
+  "${OIDC_CLIENT_ID}" \
+  "${OIDC_STEP_UP_CLIENT_ID}"
 
 # Record deploy marker so PR-close destroy can skip PRs that never deployed a preview.
 write_preview_deploy_marker "${IMAGE_TAG}"
