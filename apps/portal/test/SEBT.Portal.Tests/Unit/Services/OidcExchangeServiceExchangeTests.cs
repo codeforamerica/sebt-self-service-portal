@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
@@ -59,6 +60,40 @@ public class OidcExchangeServiceExchangeTests
         Assert.Equal("Alex", claims["givenName"]);   // enriched from userinfo
         Assert.Equal("Rivera", claims["familyName"]);
         Assert.Equal("Alex Rivera", claims["name"]);
+    }
+
+    [Fact]
+    public async Task ExchangeCodeAsync_step_up_flow_resolves_step_up_configuration_and_succeeds()
+    {
+        // isStepUp=true routes clientId/secret/discovery through the Oidc:StepUp:* config section.
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var idToken = idp.SignIdToken(
+            new Claim("sub", "user-123"),
+            new Claim("email", "user@example.com"));
+        var handler = new RoutingHandler().Token(TokenOk(idToken, accessToken: null));
+        var service = CreateService(idp.DiscoveryUrl, handler, isStepUp: true);
+
+        var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: true);
+
+        Assert.True(result.Success);
+        Assert.Equal(200, result.StatusCode);
+        var claims = DecodeCallbackToken(result.CallbackToken!);
+        Assert.Equal("user-123", claims["sub"]);
+        Assert.Equal("user@example.com", claims["email"]);
+    }
+
+    [Fact]
+    public async Task ExchangeCodeAsync_returns_503_when_step_up_client_credentials_not_configured()
+    {
+        // Step-up flow with only the non-step-up credentials set → step-up clientId/secret resolve empty.
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var service = CreateService(idp.DiscoveryUrl, new RoutingHandler(), isStepUp: false);
+
+        var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: true);
+
+        Assert.False(result.Success);
+        Assert.Equal(503, result.StatusCode);
+        Assert.Contains("not configured", result.Error);
     }
 
     // ── Configuration / discovery failures ──
@@ -213,6 +248,62 @@ public class OidcExchangeServiceExchangeTests
         Assert.Contains("email or sub", result.Error);
     }
 
+    // ── auth_time diagnostics ──
+    // The service sends max_age=0, so auth_time is REQUIRED and should be fresh. Missing, stale,
+    // or non-numeric auth_time is logged as an error but never fails the exchange (observe-only).
+
+    [Fact]
+    public async Task ExchangeCodeAsync_succeeds_and_logs_error_when_auth_time_is_missing()
+    {
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var idToken = idp.SignIdToken(
+            new[] { new Claim("sub", "user-123"), new Claim("email", "user@example.com") },
+            includeAuthTime: false);
+        var handler = new RoutingHandler().Token(TokenOk(idToken, accessToken: null));
+        var logger = new CapturingLogger<OidcExchangeService>();
+        var service = CreateService(idp.DiscoveryUrl, handler, logger: logger);
+
+        var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
+
+        Assert.True(result.Success);
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("missing_auth_time"));
+    }
+
+    [Fact]
+    public async Task ExchangeCodeAsync_succeeds_and_logs_error_when_auth_time_is_stale()
+    {
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var staleAuthTime = DateTimeOffset.UtcNow.AddMinutes(-10).ToUnixTimeSeconds().ToString();
+        var idToken = idp.SignIdToken(
+            new[] { new Claim("sub", "user-123"), new Claim("email", "user@example.com") },
+            authTimeValue: staleAuthTime);
+        var handler = new RoutingHandler().Token(TokenOk(idToken, accessToken: null));
+        var logger = new CapturingLogger<OidcExchangeService>();
+        var service = CreateService(idp.DiscoveryUrl, handler, logger: logger);
+
+        var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
+
+        Assert.True(result.Success);
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("stale_auth_time"));
+    }
+
+    [Fact]
+    public async Task ExchangeCodeAsync_succeeds_and_logs_error_when_auth_time_is_not_a_valid_timestamp()
+    {
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var idToken = idp.SignIdToken(
+            new[] { new Claim("sub", "user-123"), new Claim("email", "user@example.com") },
+            authTimeValue: "not-a-timestamp");
+        var handler = new RoutingHandler().Token(TokenOk(idToken, accessToken: null));
+        var logger = new CapturingLogger<OidcExchangeService>();
+        var service = CreateService(idp.DiscoveryUrl, handler, logger: logger);
+
+        var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
+
+        Assert.True(result.Success);
+        Assert.Contains(logger.Entries, e => e.Level == LogLevel.Error && e.Message.Contains("invalid_auth_time"));
+    }
+
     // ── EnrichClaimsFromUserInfo ──
 
     [Fact]
@@ -288,17 +379,25 @@ public class OidcExchangeServiceExchangeTests
 
     // ── Test infrastructure ──
 
-    private static OidcExchangeService CreateService(string discoveryUrl, RoutingHandler handler, bool configured = true)
+    private static OidcExchangeService CreateService(
+        string discoveryUrl,
+        RoutingHandler handler,
+        bool configured = true,
+        bool isStepUp = false,
+        ILogger<OidcExchangeService>? logger = null)
     {
+        // The service resolves the discovery endpoint and client credentials from the step-up
+        // config section when isStepUp is true; the callback signing key is shared across flows.
+        var prefix = isStepUp ? "Oidc:StepUp:" : "Oidc:";
         var settings = new Dictionary<string, string?>
         {
-            ["Oidc:DiscoveryEndpoint"] = discoveryUrl,
+            [$"{prefix}DiscoveryEndpoint"] = discoveryUrl,
             ["Oidc:CallbackRedirectUri"] = "https://portal.example.com"
         };
         if (configured)
         {
-            settings["Oidc:ClientId"] = ClientId;
-            settings["Oidc:ClientSecret"] = ClientSecret;
+            settings[$"{prefix}ClientId"] = ClientId;
+            settings[$"{prefix}ClientSecret"] = ClientSecret;
             settings["Oidc:CompleteLoginSigningKey"] = CallbackSigningKey;
         }
 
@@ -312,7 +411,7 @@ public class OidcExchangeServiceExchangeTests
         return new OidcExchangeService(
             config,
             factory,
-            NullLogger<OidcExchangeService>.Instance,
+            logger ?? NullLogger<OidcExchangeService>.Instance,
             Substitute.For<IOidcCallbackFailureLogger>());
     }
 
@@ -340,6 +439,30 @@ public class OidcExchangeServiceExchangeTests
         }
 
         return claims;
+    }
+
+    /// <summary>
+    /// Minimal <see cref="ILogger{T}"/> that records each entry's level and rendered message, so the
+    /// auth_time diagnostics (pure logging, no effect on the result) can be asserted.
+    /// </summary>
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = new();
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception)));
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+            public void Dispose() { }
+        }
     }
 
     /// <summary>
@@ -466,14 +589,19 @@ public class OidcExchangeServiceExchangeTests
         public string SignIdToken(
             IEnumerable<Claim> claims,
             string? issuerOverride = null,
-            DateTime? expires = null)
+            DateTime? expires = null,
+            bool includeAuthTime = true,
+            string? authTimeValue = null)
         {
-            var payloadClaims = new List<Claim>(claims)
+            var payloadClaims = new List<Claim>(claims);
+            if (includeAuthTime)
             {
-                // auth_time is REQUIRED by the service when max_age is sent; keep it fresh so the
-                // happy path doesn't log a missing/stale-auth_time warning. Excluded from copied claims.
-                new("auth_time", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
-            };
+                // auth_time is REQUIRED by the service when max_age is sent; default to a fresh value so
+                // the happy path doesn't log a missing/stale-auth_time warning. Excluded from copied claims.
+                // authTimeValue overrides drive the auth_time diagnostics tests (stale / invalid).
+                payloadClaims.Add(new Claim(
+                    "auth_time", authTimeValue ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()));
+            }
 
             var key = new RsaSecurityKey(_rsa) { KeyId = Kid };
             var credentials = new SigningCredentials(key, SecurityAlgorithms.RsaSha256);
