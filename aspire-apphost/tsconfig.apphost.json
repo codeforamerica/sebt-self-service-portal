@@ -12,6 +12,7 @@
   },
   "include": [
     "apphost.mts",
+    "states/**/*.mts",
     ".aspire/modules/aspire.mts",
     ".aspire/modules/base.mts",
     ".aspire/modules/transport.mts"
