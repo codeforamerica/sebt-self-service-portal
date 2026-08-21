@@ -35,7 +35,13 @@ describe('getPortalMetadataDescription', () => {
     expect(getPortalMetadataDescription('co')).toBe('Manage your CO Summer EBT benefits online.')
   })
 
-  it('describes applying and managing benefits for DC', () => {
-    expect(getPortalMetadataDescription('dc')).toContain('Apply for Summer EBT (SUN Bucks) benefits')
+  it('describes benefit management for DC', () => {
+    expect(getPortalMetadataDescription('dc')).toBe(
+      'Manage your DC SUN Bucks (Summer EBT) benefits online. Check enrollment, benefit expiration, and EBT card status for your students.'
+    )
+  })
+
+  it.each(['dc', 'co'] as const)('keeps SEO copy free of application references for %s', (state) => {
+    expect(getPortalMetadataDescription(state).toLowerCase()).not.toMatch(/apply|application/)
   })
 })
