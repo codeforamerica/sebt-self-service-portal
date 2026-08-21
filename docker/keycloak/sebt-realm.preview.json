@@ -140,18 +140,16 @@
       "serviceAccountsEnabled": false,
       "frontchannelLogout": true,
       "redirectUris": [
-        "https://*.dev.co.sebt-portal.codeforamerica.app/*",
         "https://dev.co.sebt-portal.codeforamerica.app/*",
         "http://localhost:3000/*"
       ],
       "webOrigins": [
-        "https://*.dev.co.sebt-portal.codeforamerica.app",
         "https://dev.co.sebt-portal.codeforamerica.app",
         "http://localhost:3000"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "https://*.dev.co.sebt-portal.codeforamerica.app/*##http://localhost:3000/*"
+        "post.logout.redirect.uris": "https://dev.co.sebt-portal.codeforamerica.app/*##http://localhost:3000/*"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -209,18 +207,16 @@
       "serviceAccountsEnabled": false,
       "frontchannelLogout": true,
       "redirectUris": [
-        "https://*.dev.co.sebt-portal.codeforamerica.app/*",
         "https://dev.co.sebt-portal.codeforamerica.app/*",
         "http://localhost:3000/*"
       ],
       "webOrigins": [
-        "https://*.dev.co.sebt-portal.codeforamerica.app",
         "https://dev.co.sebt-portal.codeforamerica.app",
         "http://localhost:3000"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "https://*.dev.co.sebt-portal.codeforamerica.app/*##http://localhost:3000/*"
+        "post.logout.redirect.uris": "https://dev.co.sebt-portal.codeforamerica.app/*##http://localhost:3000/*"
       },
       "defaultClientScopes": [
         "web-origins",

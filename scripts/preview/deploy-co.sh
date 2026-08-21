@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
+# shellcheck source=keycloak.sh
+source "${SCRIPT_DIR}/keycloak.sh"
 
 usage() {
   cat <<'EOF'
@@ -24,6 +26,9 @@ Environment:
   ECR_WEB_REPOSITORY_URL           Web image repository (required)
   AWS_REGION                       AWS region (default: us-east-1)
   PREVIEW_KEYCLOAK_HOSTNAME        Shared Keycloak base URL (default: https://auth.<DOMAIN>)
+  PREVIEW_KEYCLOAK_ADMIN_SECRET_ID Secrets Manager id or ARN for Keycloak bootstrap
+                                   admin (default: sebt-portal-co-development-keycloak-admin;
+                                   prefer tofu output preview_keycloak_admin_secret_arn)
   PREVIEW_OIDC_CLIENT_ID           Keycloak login client id (default: sebt-portal)
   PREVIEW_OIDC_CLIENT_SECRET       Keycloak login client secret (default: realm preview secret)
   PREVIEW_OIDC_STEP_UP_CLIENT_ID   Keycloak step-up client id (default: sebt-portal-stepup)
@@ -33,7 +38,9 @@ Notes:
   Web preview hosts are aliased to the shared CloudFront distribution (which
   already reaches the internal web ALB). API preview hosts still alias to the
   API ALB; the Next.js server reaches them via BACKEND_URL.
-  Preview stacks use the shared Keycloak IdP for OIDC.
+  Preview stacks use the shared Keycloak IdP for OIDC. Deploy registers the
+  pr-N host as a Valid Redirect URI on the Keycloak clients (hostname wildcards
+  are not supported on Keycloak 26).
 EOF
 }
 
@@ -90,6 +97,13 @@ API_IMAGE="${ECR_API_REPOSITORY_URL}:${IMAGE_TAG}"
 WEB_IMAGE="${ECR_WEB_REPOSITORY_URL}:${IMAGE_TAG}"
 
 log_info "Deploying preview for PR ${PR_NUMBER} (api_cluster=${API_CLUSTER}, web_cluster=${WEB_CLUSTER}, tag=${IMAGE_TAG})"
+
+# Register before the stack is reachable so login works as soon as DNS is live.
+ensure_keycloak_preview_host_redirects \
+  "${KEYCLOAK_HOSTNAME}" \
+  "${WEB_HOST}" \
+  "${OIDC_CLIENT_ID}" \
+  "${OIDC_STEP_UP_CLIENT_ID}"
 
 API_BASE_TD="$(get_service_task_definition "${API_CLUSTER}" "${BASE_API_SERVICE}")"
 WEB_BASE_TD="$(get_service_task_definition "${WEB_CLUSTER}" "${BASE_WEB_SERVICE}")"

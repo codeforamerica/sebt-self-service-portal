@@ -24,6 +24,7 @@ preview_requirements() {
   require_command aws
   require_command jq
   require_command python3
+  require_command curl
 }
 
 resolve_preview_domain() {

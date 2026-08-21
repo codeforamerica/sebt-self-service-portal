@@ -63,6 +63,12 @@ output "preview_keycloak_discovery_endpoint" {
   value       = var.enable_preview_keycloak ? module.preview_keycloak[0].discovery_endpoint : null
 }
 
+output "preview_keycloak_admin_secret_arn" {
+  description = "Secrets Manager ARN for the shared Keycloak bootstrap admin credentials."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].admin_secret_arn : null
+  sensitive   = true
+}
+
 output "keycloak_repository_url" {
   description = "ECR repository URL for the shared Keycloak image."
   value       = data.aws_ecr_repository.keycloak.repository_url

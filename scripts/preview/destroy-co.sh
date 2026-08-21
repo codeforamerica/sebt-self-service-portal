@@ -5,6 +5,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=common.sh
 source "${SCRIPT_DIR}/common.sh"
+# shellcheck source=keycloak.sh
+source "${SCRIPT_DIR}/keycloak.sh"
 
 usage() {
   cat <<'EOF'
@@ -18,6 +20,11 @@ Environment:
   PREVIEW_BASE_WEB_SERVICE         Base dev-co Web ECS service name (optional)
   PREVIEW_API_SERVICE              Alias for PREVIEW_BASE_API_SERVICE (optional)
   PREVIEW_WEB_SERVICE              Alias for PREVIEW_BASE_WEB_SERVICE (optional)
+  PREVIEW_KEYCLOAK_HOSTNAME        Shared Keycloak base URL (default: https://auth.<DOMAIN>)
+  PREVIEW_KEYCLOAK_ADMIN_SECRET_ID Secrets Manager id or ARN for Keycloak bootstrap admin
+                                   (prefer tofu output preview_keycloak_admin_secret_arn)
+  PREVIEW_OIDC_CLIENT_ID           Keycloak login client id (default: sebt-portal)
+  PREVIEW_OIDC_STEP_UP_CLIENT_ID   Keycloak step-up client id (default: sebt-portal-stepup)
   AWS_REGION                       AWS region (default: us-east-1)
 
 Without --force, skips teardown when no deploy marker or preview resources exist.
@@ -71,6 +78,9 @@ BASE_WEB_SERVICE="$(discover_base_service web "${WEB_CLUSTER}")"
 
 API_HOST="api-pr-${PR_NUMBER}.${DOMAIN}"
 WEB_HOST="pr-${PR_NUMBER}.${DOMAIN}"
+KEYCLOAK_HOSTNAME="${PREVIEW_KEYCLOAK_HOSTNAME:-https://auth.${DOMAIN}}"
+OIDC_CLIENT_ID="${PREVIEW_OIDC_CLIENT_ID:-sebt-portal}"
+OIDC_STEP_UP_CLIENT_ID="${PREVIEW_OIDC_STEP_UP_CLIENT_ID:-sebt-portal-stepup}"
 
 # Delete an existing A alias record by reading the live RRSet first so we can
 # remove either legacy ALB targets or current CloudFront targets.
@@ -220,6 +230,22 @@ while IFS= read -r security_group_id; do
   revoke_preview_https_ingress "${security_group_id}"
 done < <(get_alb_security_groups "${WEB_ALB_ARN}" | jq -r '.[]')
 
-delete_preview_deploy_marker
+# Remove Keycloak redirects before deleting the deploy marker so a failed or
+# interrupted teardown can still retry cleanup on a later destroy.
+KEYCLOAK_CLEANUP_OK=true
+if ! remove_keycloak_preview_host_redirects \
+  "${KEYCLOAK_HOSTNAME}" \
+  "${WEB_HOST}" \
+  "${OIDC_CLIENT_ID}" \
+  "${OIDC_STEP_UP_CLIENT_ID}"; then
+  KEYCLOAK_CLEANUP_OK=false
+  log_info "Keycloak redirect cleanup failed for ${WEB_HOST}; continuing teardown"
+fi
+
+if [ "${KEYCLOAK_CLEANUP_OK}" = true ]; then
+  delete_preview_deploy_marker
+else
+  log_info "Retaining deploy marker for PR ${PR_NUMBER} so Keycloak cleanup can be retried"
+fi
 
 log_info "Preview teardown complete for PR ${PR_NUMBER}"
