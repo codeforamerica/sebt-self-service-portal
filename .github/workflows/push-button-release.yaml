@@ -56,6 +56,16 @@ jobs:
       # Same ref-resolution logic as release-iis-dc.yaml/deploy-ecr.yaml: paired
       # contract changes need the dc-connector branch of the same name, everything
       # else falls back to main. Resolves to a commit SHA so the checkout is pinned.
+      - name: Get dc-connector access token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: dc-connector-token
+        if: inputs.state == 'dc'
+        with:
+          app-id: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID }}
+          private-key: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal-dc-connector
+
       - name: Determine dc-connector ref
         id: dc-connector-ref
         if: inputs.state == 'dc'
@@ -63,7 +73,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
-          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          CONNECTOR_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
@@ -75,13 +85,14 @@ jobs:
             echo "::error::Invalid git ref: branch=$BRANCH"
             exit 1
           fi
-          # Secrets pasted with stray whitespace corrupt the URL-embedded credential.
-          CONNECTOR_PAT="${CONNECTOR_PAT//[$'\r\n\t ']/}"
-          if [ -z "$CONNECTOR_PAT" ]; then
-            echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
+          if [ -z "$CONNECTOR_TOKEN" ]; then
+            echo "::error::dc-connector app token is empty — check the create-github-app-token step above"
             exit 1
           fi
-          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_PAT}" | base64 | tr -d '\n')"
+          # Authenticate exactly the way actions/checkout does (basic auth header) —
+          # URL-embedded credentials are rejected for this token and would also leak
+          # into error output.
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_TOKEN}" | base64 | tr -d '\n')"
           REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
           # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
           # would override ours and 404 on the private connector repo.
@@ -107,7 +118,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          token: ${{ steps.dc-connector-token.outputs.token }}
           ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
           fetch-depth: 0
@@ -152,7 +163,7 @@ jobs:
             --include-chores="$INCLUDE_CHORES"
           mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/connector-notes.md"
         env:
-          GH_TOKEN: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          GH_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
           SINCE_SHA: ${{ steps.old-connector-sha.outputs.sha }}
           INCLUDE_CHORES: ${{ inputs.include_chores }}
 
