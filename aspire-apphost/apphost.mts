@@ -10,12 +10,12 @@
 // Usage: STATE=dc aspire run | STATE=co aspire run
 
 import { createBuilder } from "./.aspire/modules/aspire.mjs";
+import { addApi, addWebApps, type SupportedState } from "./states/apps.mjs";
 import { addCoResources } from "./states/co.mjs";
 import { addDcResources } from "./states/dc.mjs";
 import { addSharedResources } from "./states/shared.mjs";
 
-const supportedStates = ["dc", "co"] as const;
-type SupportedState = (typeof supportedStates)[number];
+const supportedStates: readonly SupportedState[] = ["dc", "co"];
 
 function resolveState(): SupportedState {
   // Defaults to dc, matching compose.yaml's `${STATE:-dc}` and `pnpm dev`.
@@ -34,15 +34,20 @@ const state = resolveState();
 console.log(`[apphost] composing resource graph for STATE=${state}`);
 
 const builder = await createBuilder();
-const shared = await addSharedResources(builder);
 
+const shared = await addSharedResources(builder);
+const api = await addApi(builder, state, shared);
+
+// State modules attach their own API environment and waits to the resource above.
 switch (state) {
   case "dc":
-    await addDcResources(builder, shared);
+    await addDcResources(builder, shared, api);
     break;
   case "co":
-    await addCoResources(builder);
+    await addCoResources(builder, api);
     break;
 }
+
+await addWebApps(builder, state, api);
 
 await builder.build().run();
