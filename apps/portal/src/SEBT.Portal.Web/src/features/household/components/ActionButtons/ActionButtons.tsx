@@ -5,16 +5,19 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
-import { getApplyHref } from '@/lib/applyHref'
+import { useApplyHref } from '@/lib/useApplyHref'
 
 import type { AllowedActions } from '../../api'
 
 interface ActionButton {
   labelKey: string
-  /** Static destination. Mutually exclusive with resolveHref. */
+  /** Static destination. Omitted only for the apply CTA, whose URL comes from useApplyHref. */
   href?: string
-  /** Destination computed at render time (e.g. the per-state, locale-aware apply URL). */
-  resolveHref?: (locale: string) => string
+  /**
+   * The apply CTA's destination is resolved at render time by useApplyHref (per-state,
+   * locale-aware, gated by the enable_apply feature flag). Null hides the CTA.
+   */
+  isApplyAction?: boolean
   /** When true, renders an outbound <a> (same tab) instead of a client-side <Link>. */
   external?: boolean
   ctaId: string
@@ -40,9 +43,11 @@ interface ActionButtonsProps {
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
 const ACTIONS: ActionButton[] = [
   {
-    // Outbound link to the state's apply form; shown for both states, always.
+    // Outbound link to the state's apply form. Hidden when applications are
+    // closed (enable_apply flag off) or the state has no apply destination
+    // (DC since DC-701).
     labelKey: 'actionNavigationApply',
-    resolveHref: getApplyHref,
+    isApplyAction: true,
     external: true,
     ctaId: 'apply_cta'
   },
@@ -82,12 +87,14 @@ const ACTIONS: ActionButton[] = [
 ]
 
 export function ActionButtons({ allowedActions, hasCases, hasApplications }: ActionButtonsProps) {
-  const { t, i18n } = useTranslation('dashboard')
+  const { t } = useTranslation('dashboard')
   const currentState = getState()
   const { actionButtonBg, actionButtonText } = getStateConfig(currentState)
+  const applyHref = useApplyHref()
 
   const visibleActions = ACTIONS.filter((action) => {
     if (action.states && !action.states.includes(currentState)) return false
+    if (action.isApplyAction && applyHref === null) return false
     if (action.requiresCases && hasCases === false) return false
     if (action.requiresApplications && hasApplications === false) return false
     if (!action.gatedBy) return true
@@ -105,7 +112,7 @@ export function ActionButtons({ allowedActions, hasCases, hasApplications }: Act
 
       <ul className="usa-list usa-list--unstyled">
         {visibleActions.map((action) => {
-          const href = action.resolveHref ? action.resolveHref(i18n.language) : (action.href ?? '')
+          const href = action.isApplyAction ? (applyHref ?? '') : (action.href ?? '')
           const className = `display-inline-flex flex-align-center padding-y-1 padding-x-205 text-no-underline ${actionButtonText} ${actionButtonBg} radius-pill font-sans-md text-semibold`
           const content = (
             <>

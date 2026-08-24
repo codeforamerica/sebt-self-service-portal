@@ -6,11 +6,11 @@ using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.EnrollmentCheck;
 using SEBT.Portal.Core.AppSettings;
-using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 using SEBT.Portal.UseCases.EnrollmentCheck;
 
 namespace SEBT.Portal.Api.Controllers.EnrollmentCheck;

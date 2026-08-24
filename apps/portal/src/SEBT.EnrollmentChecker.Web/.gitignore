@@ -26,6 +26,8 @@ public/js/
 public/fonts/*
 # Track non-USWDS locally-hosted fonts (referenced by next/font/local).
 !public/fonts/museo-slab/
+!public/fonts/urbanist/
+!public/fonts/atkinson-hyperlegible-next/
 
 # Keep only manually created public assets
 !public/.gitkeep

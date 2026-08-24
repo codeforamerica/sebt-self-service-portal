@@ -1,7 +1,7 @@
 using System.Text.Json;
-using SEBT.Portal.Infrastructure.Services.Socure;
+using SEBT.Portal.Core.Services.Socure;
 
-namespace SEBT.Portal.Tests.Unit.Infrastructure.Services.Socure;
+namespace SEBT.Portal.Tests.Unit.Core.Services.Socure;
 
 public class SocureDocumentVerificationEnrichmentParserTests
 {

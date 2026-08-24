@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.FeatureManagement;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Services;
@@ -273,5 +274,45 @@ public class FeatureFlagServiceTests
 
         // Assert
         Assert.False(result[FeatureFlags.CheckerOutagePageEnabled]);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetFeatureFlagsAsync_WhenSensitiveFlagsConfigured_ShouldOmitThemRegardlessOfValue(
+        bool enabled)
+    {
+        const string betaBanner = "enable_beta_banner";
+        var features = new[]
+        {
+            FeatureFlags.BypassOtp,
+            FeatureFlags.TestErrorEndpointsEnabled,
+            FeatureFlags.OutagePageEnabled,
+            betaBanner
+        };
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(features.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(Arg.Any<string>()).Returns(enabled);
+
+        var result = await CreateService().GetFeatureFlagsAsync();
+
+        Assert.False(result.ContainsKey(FeatureFlags.BypassOtp));
+        Assert.False(result.ContainsKey(FeatureFlags.TestErrorEndpointsEnabled));
+        Assert.True(result.ContainsKey(FeatureFlags.OutagePageEnabled));
+        Assert.True(result.ContainsKey(betaBanner));
+        Assert.Equal(enabled, result[FeatureFlags.OutagePageEnabled]);
+        Assert.Equal(enabled, result[betaBanner]);
+    }
+
+    [Fact]
+    public async Task GetFeatureFlagsAsync_WhenOnlySensitiveFlagsConfigured_ShouldReturnEmptyDictionary()
+    {
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { FeatureFlags.BypassOtp, FeatureFlags.TestErrorEndpointsEnabled }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(Arg.Any<string>()).Returns(true);
+
+        var result = await CreateService().GetFeatureFlagsAsync();
+
+        Assert.Empty(result);
     }
 }

@@ -68,6 +68,15 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
 
+      - name: Get dc-connector access token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: dc-connector-token
+        with:
+          app-id: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID }}
+          private-key: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal-dc-connector
+
       # Paired contract changes need the dc-connector branch of the same name;
       # everything else falls back to main. The matched branch resolves to a
       # commit SHA so the checkout is pinned — no window for the branch to move
@@ -78,7 +87,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
-          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          CONNECTOR_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
@@ -90,17 +99,14 @@ jobs:
             echo "::error::Invalid git ref: branch=$BRANCH"
             exit 1
           fi
-          # Secrets pasted with stray whitespace corrupt the URL-embedded credential
-          # (checkout's token input is trimmed by Actions; env vars are not).
-          CONNECTOR_PAT="${CONNECTOR_PAT//[$'\r\n\t ']/}"
-          if [ -z "$CONNECTOR_PAT" ]; then
-            echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
+          if [ -z "$CONNECTOR_TOKEN" ]; then
+            echo "::error::dc-connector app token is empty — check the create-github-app-token step above"
             exit 1
           fi
           # Authenticate exactly the way actions/checkout does (basic auth header) —
-          # URL-embedded credentials are rejected for this PAT and would also leak
+          # URL-embedded credentials are rejected for this token and would also leak
           # into error output.
-          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_PAT}" | base64 | tr -d '\n')"
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_TOKEN}" | base64 | tr -d '\n')"
           REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
           # Without --exit-code, ls-remote fails only on auth/connection problems;
           # an absent branch is just empty output. Auth failures must fail the job —
@@ -130,7 +136,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          token: ${{ steps.dc-connector-token.outputs.token }}
           ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
 
@@ -140,7 +146,7 @@ jobs:
           global-json-file: global.json
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: "10"
 
@@ -195,6 +201,7 @@ jobs:
           NEXT_PUBLIC_MOCK_SOCURE: ${{ vars.MOCK_SOCURE }}
           NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_DC_CONNECTOR_SHA: ${{ steps.dc-connector-ref.outputs.ref }}
         run: |
           ./.github/workflows/scripts/build-frontend.sh --production
           ./scripts/ci/package-frontend.sh --skip-build --output output/sebt-web.zip

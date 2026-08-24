@@ -35,7 +35,7 @@ jobs:
 
       - name: Check for tofu changes
         id: changes
-        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
             tofu:
@@ -85,6 +85,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.tag.outputs.tag }}
+      dc_connector_sha: ${{ steps.dc-connector-ref.outputs.ref }}
 
     steps:
       - name: Checkout
@@ -110,6 +111,15 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Get dc-connector access token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: dc-connector-token
+        with:
+          app-id: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID }}
+          private-key: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal-dc-connector
+
       # state + co connectors are now in-repo (apps/connectors/*); only dc remains external.
       # Same branch-matching as release-iis-dc.yaml: paired contract changes need the
       # dc-connector branch of the same name; everything else falls back to main. The
@@ -121,7 +131,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
-          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          CONNECTOR_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
@@ -133,17 +143,14 @@ jobs:
             echo "::error::Invalid git ref: branch=$BRANCH"
             exit 1
           fi
-          # Secrets pasted with stray whitespace corrupt the URL-embedded credential
-          # (checkout's token input is trimmed by Actions; env vars are not).
-          CONNECTOR_PAT="${CONNECTOR_PAT//[$'\r\n\t ']/}"
-          if [ -z "$CONNECTOR_PAT" ]; then
-            echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
+          if [ -z "$CONNECTOR_TOKEN" ]; then
+            echo "::error::dc-connector app token is empty — check the create-github-app-token step above"
             exit 1
           fi
           # Authenticate exactly the way actions/checkout does (basic auth header) —
-          # URL-embedded credentials are rejected for this PAT and would also leak
+          # URL-embedded credentials are rejected for this token and would also leak
           # into error output.
-          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_PAT}" | base64 | tr -d '\n')"
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_TOKEN}" | base64 | tr -d '\n')"
           REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
           # Without --exit-code, ls-remote fails only on auth/connection problems;
           # an absent branch is just empty output. Auth failures must fail the job —
@@ -172,7 +179,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          token: ${{ steps.dc-connector-token.outputs.token }}
           ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
 
@@ -280,6 +287,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SITEIMPROVE_ID=${{ vars.SITEIMPROVE_ID }} \
             --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
+            --build-arg NEXT_PUBLIC_DC_CONNECTOR_SHA=${{ needs.build.outputs.dc_connector_sha }} \
             -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
             .
 

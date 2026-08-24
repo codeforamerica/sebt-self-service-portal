@@ -1,4 +1,4 @@
-using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
+using SEBT.Portal.Core.StateConnector;
 
 namespace SEBT.Portal.UseCases.EnrollmentCheck;
 
