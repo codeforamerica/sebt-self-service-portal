@@ -74,9 +74,9 @@ From `docker/keycloak/sebt-realm.preview.json` (password `password`):
 
 | Username | Notes |
 | --- | --- |
-| `verified` | Has Socure-shaped IAL claims for step-up |
-| `co-loaded` | Co-loaded persona |
-| `ial1-only` | IAL1-only (no Socure claims) |
+| `verified` | Emits Socure + myColorado-shaped IAL claims (`1.5`) on login and step-up |
+| `co-loaded` | Co-loaded persona; same IAL `1.5` claims on login and step-up |
+| `ial1-only` | IAL1-only (no verification-level claims) |
 
 ## Client credentials
 
