@@ -1,0 +1,201 @@
+name: Push-Button Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      state:
+        description: 'Which state to cut a formal release for. Dispatch this against main — the release tag is created at whatever ref this workflow runs on.'
+        required: true
+        type: choice
+        options:
+          - dc
+          - co
+      include_chores:
+        description: 'Include Chores in this release (normally excluded)'
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Checkout portal
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Resolve prod URL for state
+        id: prod-url
+        env:
+          STATE: ${{ inputs.state }}
+        run: |
+          case "$STATE" in
+            dc) echo "url=https://portal.sunbucks.dc.gov" >> "$GITHUB_OUTPUT" ;;
+            co) echo "url=https://sebt.cbms.cdhs.state.co.us" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::Unknown state: $STATE"; exit 1 ;;
+          esac
+
+      - name: Resolve live portal SHA
+        id: old-portal-sha
+        run: |
+          SHA="$(./scripts/release-notes/resolve-live-sha.sh --url "${{ steps.prod-url.outputs.url }}" --field buildSha)"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      # ─── DC connector resolution (DC only) ──────────────────────────────────────
+      # Same ref-resolution logic as release-iis-dc.yaml/deploy-ecr.yaml: paired
+      # contract changes need the dc-connector branch of the same name, everything
+      # else falls back to main. Resolves to a commit SHA so the checkout is pinned.
+      - name: Determine dc-connector ref
+        id: dc-connector-ref
+        if: inputs.state == 'dc'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+          else
+            BRANCH="$REF_NAME"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH"
+            exit 1
+          fi
+          # Secrets pasted with stray whitespace corrupt the URL-embedded credential.
+          CONNECTOR_PAT="${CONNECTOR_PAT//[$'\r\n\t ']/}"
+          if [ -z "$CONNECTOR_PAT" ]; then
+            echo "::error::SEBT_CONNECTOR_REPOSITORY_PAT is empty in this job's secret context"
+            exit 1
+          fi
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_PAT}" | base64 | tr -d '\n')"
+          REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
+          # would override ours and 404 on the private connector repo.
+          if ! LS_OUT=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
+            exit 1
+          fi
+          RESOLVED="$BRANCH"
+          SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
+          if [ -z "$SHA" ]; then
+            RESOLVED="main"
+            SHA=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
+            exit 1
+          fi
+          echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
+          echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout dc-connector
+        if: inputs.state == 'dc'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: codeforamerica/sebt-self-service-portal-dc-connector
+          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          ref: ${{ steps.dc-connector-ref.outputs.ref }}
+          path: dc-connector
+          fetch-depth: 0
+
+      - name: Resolve live dc-connector SHA
+        id: old-connector-sha
+        if: inputs.state == 'dc'
+        run: |
+          SHA="$(./scripts/release-notes/resolve-live-sha.sh --url "${{ steps.prod-url.outputs.url }}" --field dcConnectorSha --git-dir dc-connector)"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      # ─── Generate release notes ──────────────────────────────────────────────────
+      # generate.ts always writes to output/YYYY-MM-DD.md, so the portal call's
+      # output has to be moved aside before the connector call (same date) overwrites it.
+      - name: Generate portal release notes
+        run: |
+          npx --yes tsx@4 scripts/release-notes/generate.ts \
+            --since-sha="$SINCE_SHA" \
+            --state-filter="$STATE_FILTER" \
+            --include-chores="$INCLUDE_CHORES"
+          mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/portal-notes.md"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SINCE_SHA: ${{ steps.old-portal-sha.outputs.sha }}
+          STATE_FILTER: ${{ inputs.state }}
+          INCLUDE_CHORES: ${{ inputs.include_chores }}
+
+      - name: Generate dc-connector release notes
+        if: inputs.state == 'dc'
+        run: |
+          # --state-filter=dc excludes Chores here the same as it does for the portal
+          # section above (unless include_chores opted back in). Chore exclusion only
+          # works if dc-connector's own PRs carry a chore-matching label
+          # (chore/dependabot/etc) rather than just GitHub's native
+          # dependencies/github_actions labels — requires that repo to have its own
+          # branch-prefix labeler mirroring .github/labeler.yml.
+          npx --yes tsx@4 scripts/release-notes/generate.ts \
+            --repo=codeforamerica/sebt-self-service-portal-dc-connector \
+            --git-dir=dc-connector \
+            --since-sha="$SINCE_SHA" \
+            --state-filter=dc \
+            --include-chores="$INCLUDE_CHORES"
+          mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/connector-notes.md"
+        env:
+          GH_TOKEN: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          SINCE_SHA: ${{ steps.old-connector-sha.outputs.sha }}
+          INCLUDE_CHORES: ${{ inputs.include_chores }}
+
+      # ─── Compose and publish ─────────────────────────────────────────────────────
+      - name: Compose release body
+        id: compose
+        env:
+          STATE: ${{ inputs.state }}
+        run: |
+          {
+            echo "## Summary"
+            echo ""
+            echo "_Fill in a plain-language summary before publishing — the lists below are the raw material, not the final thing the state partner sees._"
+            echo ""
+            tail -n +2 "$RUNNER_TEMP/portal-notes.md"
+            if [ "$STATE" = "dc" ]; then
+              echo ""
+              echo "## Changes in dc-connector"
+              # Connector PRs never carry a dc label and CO is always excluded, so
+              # "Portal Wide Changes" (a meaningless label for a single, entirely-DC
+              # repo) is the only header besides Chores (shown only if include_chores
+              # opted in) that can appear here — strip Portal Wide Changes so it
+              # doesn't appear as a redundant nested heading. Left untouched if this
+              # run had zero connector PRs (that message doesn't match the pattern).
+              tail -n +2 "$RUNNER_TEMP/connector-notes.md" \
+                | sed '/^## Portal Wide Changes$/d' \
+                | sed 's/\*\*Full Changelog\*\*:/**Full Changelog (dc-connector)**:/'
+            fi
+          } > "$RUNNER_TEMP/release-body.md"
+
+          case "$STATE" in
+            dc) echo "tag_suffix=dc" >> "$GITHUB_OUTPUT"; echo "state_name=DC" >> "$GITHUB_OUTPUT" ;;
+            co) echo "tag_suffix=colorado" >> "$GITHUB_OUTPUT"; echo "state_name=Colorado" >> "$GITHUB_OUTPUT" ;;
+          esac
+          echo "date=$(date +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.compose.outputs.date }}-${{ steps.compose.outputs.tag_suffix }}
+          name: "${{ steps.compose.outputs.date }} ${{ steps.compose.outputs.state_name }} Release"
+          body_path: ${{ runner.temp }}/release-body.md
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
