@@ -9,6 +9,10 @@ using SEBT.Portal.Tests.Unit.TestSupport;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
+/// <summary>
+/// SQL Server (Testcontainers) tests for <see cref="DatabaseDocVerificationChallengeRepository"/>.
+/// Tagged <c>Category=SqlServer</c> and excluded from unit-only runs. That is intentional.
+/// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
 public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<SqlServerTestFixture>
@@ -292,7 +296,50 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
         };
         context.DocVerificationChallenges.Add(newChallenge);
 
-        // Should not throw — terminal challenges don't count
+        // Should not throw. Terminal challenges don't count.
         await context.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenRowVersionChanged_ThrowsConcurrencyConflictException()
+    {
+        using var seedContext = _fixture.CreateContext();
+        var userId = await SeedChallengeAsync(seedContext,
+            status: (int)DocVerificationStatus.Pending,
+            expiresAt: DateTime.UtcNow.AddMinutes(30));
+        var seeded = await seedContext.DocVerificationChallenges
+            .AsNoTracking()
+            .SingleAsync(c => c.UserId == userId);
+
+        using var context1 = _fixture.CreateContext();
+        using var context2 = _fixture.CreateContext();
+        var crypto = TestPortalCryptography.PiiSymmetricEncryption;
+        var repo1 = new DatabaseDocVerificationChallengeRepository(context1, crypto);
+        var repo2 = new DatabaseDocVerificationChallengeRepository(context2, crypto);
+
+        // Track the same row in both contexts so SaveChanges uses stale rowversions.
+        await context1.DocVerificationChallenges.SingleAsync(c => c.Id == seeded.Id);
+        await context2.DocVerificationChallenges.SingleAsync(c => c.Id == seeded.Id);
+
+        DocVerificationChallenge Domain(string referenceId) =>
+            DocVerificationChallenge.Reconstitute(
+                id: seeded.Id,
+                publicId: seeded.PublicId,
+                userId: userId,
+                status: DocVerificationStatus.Pending,
+                socureReferenceId: referenceId,
+                evalId: null,
+                socureEventId: null,
+                docvTransactionToken: null,
+                docvUrl: null,
+                offboardingReason: null,
+                allowIdRetry: true,
+                createdAt: seeded.CreatedAt,
+                updatedAt: seeded.UpdatedAt,
+                expiresAt: seeded.ExpiresAt);
+
+        await repo1.UpdateAsync(Domain("ref-1"));
+
+        await Assert.ThrowsAsync<ConcurrencyConflictException>(() => repo2.UpdateAsync(Domain("ref-2")));
     }
 }
