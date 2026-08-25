@@ -97,7 +97,10 @@ jobs:
             if [ -n "$INPUT_BRANCH" ]; then
               echo "name=$INPUT_BRANCH" >> "$GITHUB_OUTPUT"
             else
-              PR_HEAD="$(gh pr view "$INPUT_PR_NUMBER" --json headRefName --jq .headRefName)"
+              PR_HEAD="$(gh pr view "$INPUT_PR_NUMBER" \
+                --repo "${GITHUB_REPOSITORY}" \
+                --json headRefName \
+                --jq .headRefName)"
               echo "name=${PR_HEAD}" >> "$GITHUB_OUTPUT"
             fi
           else
