@@ -1,23 +1,20 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
-using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Auth;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
+using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.UseCases.Auth.CompleteOidcLogin;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
 
@@ -26,18 +23,15 @@ public class OidcControllerTests
     private const string CoStateKey = "co";
     private const string TestSessionId = "test-session-id";
     private readonly IConfiguration _config;
-    private readonly IUserRepository _userRepository;
-    private readonly IOidcTokenService _oidcTokenService;
     private readonly IPreAuthSessionStore _sessionStore;
     private readonly IOidcCallbackFailureLogger _callbackFailureLogger;
+    private readonly ICommandHandler<CompleteOidcLoginCommand, CompleteOidcLoginResponse> _completeLoginHandler;
     private readonly OidcController _controller;
 
     public OidcControllerTests()
     {
         _config = Substitute.For<IConfiguration>();
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
-        _userRepository = Substitute.For<IUserRepository>();
-        _oidcTokenService = Substitute.For<IOidcTokenService>();
         var jwtSettings = Options.Create(new JwtSettings
         {
             SecretKey = new string('x', 32),
@@ -71,12 +65,13 @@ public class OidcControllerTests
             NullLogger<OidcCallbackFailureLogger>.Instance,
             new HttpContextAccessor());
 
+        _completeLoginHandler =
+            Substitute.For<ICommandHandler<CompleteOidcLoginCommand, CompleteOidcLoginResponse>>();
+
         _controller = new OidcController(
             _config,
             NullLogger<OidcController>.Instance,
             _callbackFailureLogger,
-            _userRepository,
-            _oidcTokenService,
             jwtSettings,
             allowlist,
             _sessionStore,
@@ -89,31 +84,11 @@ public class OidcControllerTests
         };
     }
 
-    /// <summary>
-    /// Sets up the controller's HttpContext with an <c>oidc_session</c> cookie and
-    /// configures the session store mock to accept <c>TryAdvanceToLoginCompletedAsync</c>.
-    /// Call before any <c>CompleteLogin</c> test that should get past session enforcement.
-    /// </summary>
-    private void SetupPreAuthSession(bool isStepUp = false, string stateCode = CoStateKey, string? returnUrl = null)
+    /// <summary>Sets the <c>oidc_session</c> cookie on the controller's request.</summary>
+    private void SetSessionCookie()
     {
-        _controller.ControllerContext.HttpContext = new DefaultHttpContext();
         _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
             $"{OidcSessionCookie.CookieName}={TestSessionId}";
-        _sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
-            .Returns(new PreAuthSession
-            {
-                Id = TestSessionId,
-                State = "test-state",
-                CodeVerifier = "test-verifier",
-                StateCode = stateCode,
-                RedirectUri = "http://localhost:3000/callback",
-                IsStepUp = isStepUp,
-                ReturnUrl = returnUrl,
-                Phase = PreAuthSessionPhase.CallbackCompleted
-            });
-        _sessionStore.TryAdvanceToLoginCompletedAsync(
-                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(true);
     }
 
     [Fact]
@@ -177,8 +152,6 @@ public class OidcControllerTests
             _config,
             NullLogger<OidcController>.Instance,
             _callbackFailureLogger,
-            _userRepository,
-            _oidcTokenService,
             jwtSettings,
             new StateAllowlist(["co"]),
             Substitute.For<IPreAuthSessionStore>(),
@@ -208,67 +181,52 @@ public class OidcControllerTests
         Assert.Equal(503, statusResult.StatusCode);
     }
 
+    #region CompleteLogin HTTP mapping (orchestration is covered by CompleteOidcLoginCommandHandlerTests)
+
+    private void SetupCompleteLoginResult(Result<CompleteOidcLoginResponse> result)
+    {
+        _completeLoginHandler.Handle(Arg.Any<CompleteOidcLoginCommand>(), Arg.Any<CancellationToken>())
+            .Returns(result);
+    }
+
     [Fact]
-    public async Task CompleteLogin_WhenCallbackTokenMissing_Returns400()
+    public async Task CompleteLogin_WhenCallbackTokenMissing_Returns400WithoutDispatching()
     {
         var body = new CompleteLoginRequest(CoStateKey, CallbackToken: null);
 
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+        var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result);
         Assert.NotNull(badRequest.Value);
+        await _completeLoginHandler.DidNotReceiveWithAnyArgs().Handle(default!, default);
     }
 
     [Fact]
-    public async Task CompleteLogin_WhenSigningKeyNotConfigured_Returns503()
+    public async Task CompleteLogin_PassesCallbackTokenAndSessionCookieToHandler()
     {
-        SetupPreAuthSession();
-        _config["Oidc:CompleteLoginSigningKey"].Returns((string?)null);
+        SetSessionCookie();
+        SetupCompleteLoginResult(Result<CompleteOidcLoginResponse>.Success(
+            new CompleteOidcLoginResponse("portal-jwt", ReturnUrl: null)));
         var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+        await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
-        var statusResult = Assert.IsType<ObjectResult>(result);
-        Assert.Equal(503, statusResult.StatusCode);
+        await _completeLoginHandler.Received(1).Handle(
+            Arg.Is<CompleteOidcLoginCommand>(c =>
+                c.CallbackToken == "some.jwt.token" && c.SessionId == TestSessionId),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
-    public async Task CompleteLogin_WhenCallbackTokenHasNoEmailOrSub_Returns400()
+    public async Task CompleteLogin_WhenHandlerSucceeds_SetsAuthCookieAndClearsPreAuthCookie()
     {
-        SetupPreAuthSession();
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        SetSessionCookie();
+        const string portalJwt = "portal-jwt-returned-by-handler";
+        SetupCompleteLoginResult(Result<CompleteOidcLoginResponse>.Success(
+            new CompleteOidcLoginResponse(portalJwt, ReturnUrl: null)));
+        var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        var callbackToken = CreateCallbackTokenWithClaims(signingKey, new Claim("given_name", "Pat"));
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        var errorResponse = Assert.IsType<ErrorResponse>(badRequest.Value);
-        Assert.Equal("Callback token must contain an email or sub claim.", errorResponse.Error);
-    }
-
-    [Fact]
-    public async Task CompleteLogin_WhenValidCallbackToken_SetsAuthCookieAndReturnsEmptyBody()
-    {
-        SetupPreAuthSession();
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var user = new User { Email = "user@example.com" };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns((user, false));
-
-        const string portalJwt = "portal-jwt-returned-by-service";
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success(portalJwt));
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+        var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
@@ -279,382 +237,105 @@ public class OidcControllerTests
         Assert.Contains("httponly", setCookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("secure", setCookie, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("samesite=lax", setCookie, StringComparison.OrdinalIgnoreCase);
-    }
-
-    /// <summary>
-    /// Step-up must not create a user; IdP email must already match a portal account from primary sign-in.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenStepUpAndNoExistingUser_Returns400()
-    {
-        SetupPreAuthSession(isStepUp: true);
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "new-user@example.com");
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
-
-        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
-            .Returns((User?)null);
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(badRequest.Value);
-        var errorProp = badRequest.Value.GetType().GetProperty("error");
-        Assert.NotNull(errorProp);
-        Assert.Equal(
-            "Step-up requires an existing session. Please sign in again.",
-            errorProp.GetValue(badRequest.Value) as string);
-
-        await _userRepository.DidNotReceive().GetOrCreateUserByExternalIdAsync(
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _userRepository.DidNotReceive().UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
+        // The consumed pre-auth session's cookie is cleared (expired) alongside.
+        Assert.Contains(OidcSessionCookie.CookieName, setCookie);
     }
 
     [Fact]
-    public async Task CompleteLogin_WhenStepUpAndSafeReturnUrl_Returns200WithReturnUrl()
+    public async Task CompleteLogin_WhenStepUpReturnUrlPresent_ReturnsIt()
     {
-        SetupPreAuthSession(isStepUp: true, returnUrl: "/profile/address?q=1");
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        SetSessionCookie();
+        SetupCompleteLoginResult(Result<CompleteOidcLoginResponse>.Success(
+            new CompleteOidcLoginResponse("portal-jwt", ReturnUrl: "/profile/address?q=1")));
+        var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        // Step-up requires verification claims from the IdP — step-up exists to obtain them
-        var verificationDate = DateTime.UtcNow.AddDays(-1).ToString("o");
-        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
-            new Claim("email", "user@example.com"),
-            new Claim("sub", "test-sub-12345"),
-            new Claim("socureIdVerificationLevel", "1.5"),
-            new Claim("socureIdVerificationDate", verificationDate));
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var user = new User { Email = "user@example.com" };
-        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
-            .Returns(user);
-
-        const string portalJwt = "portal-jwt-returned-by-service";
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success(portalJwt));
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
+        var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
         var okResult = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
         Assert.Equal("/profile/address?q=1", response.ReturnUrl);
-
-        var setCookie = _controller.Response.Headers["Set-Cookie"].ToString();
-        Assert.Contains($"{AuthCookies.AuthCookieName}={portalJwt}", setCookie);
     }
 
-    /// <summary>
-    /// When the session has no returnUrl (e.g. unsafe URL was rejected at authorize time),
-    /// complete-login should return null returnUrl.
-    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenStepUpWithNoSessionReturnUrl_OmitsReturnUrlFromResponse()
+    public async Task CompleteLogin_WhenHandlerForbids_Returns403AndKeepsPreAuthCookie()
     {
-        SetupPreAuthSession(isStepUp: true, returnUrl: null);
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        SetSessionCookie();
+        SetupCompleteLoginResult(
+            Result<CompleteOidcLoginResponse>.Forbidden("Missing pre-auth session."));
+        var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        var verificationDate = DateTime.UtcNow.AddDays(-1).ToString("o");
-        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
-            new Claim("email", "user@example.com"),
-            new Claim("sub", "test-sub-12345"),
-            new Claim("socureIdVerificationLevel", "1.5"),
-            new Claim("socureIdVerificationDate", verificationDate));
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+        var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
-        var user = new User { Email = "user@example.com" };
-        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
-            .Returns(user);
-
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success("portal-jwt"));
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        var okResult = Assert.IsType<OkObjectResult>(result);
-        var response = Assert.IsType<CompleteLoginResponse>(okResult.Value);
-        Assert.Null(response.ReturnUrl);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status403Forbidden, objectResult.StatusCode);
+        var error = Assert.IsType<ErrorResponse>(objectResult.Value);
+        Assert.Equal("Missing pre-auth session.", error.Error);
+        // Forbidden = the session was never consumed; the pre-auth cookie stays.
+        Assert.DoesNotContain(
+            OidcSessionCookie.CookieName,
+            _controller.Response.Headers["Set-Cookie"].ToString());
     }
 
-    /// <summary>
-    /// Step-up: controller delegates IAL derivation to the service. When the service
-    /// succeeds (e.g. IAL2 from IdP), controller should return 200.
-    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenStepUpAndServiceSucceeds_Returns200()
+    public async Task CompleteLogin_WhenNotConfigured_Returns503WithDevHint()
     {
-        SetupPreAuthSession(isStepUp: true);
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        SetSessionCookie();
+        SetupCompleteLoginResult(Result<CompleteOidcLoginResponse>.DependencyFailed(
+            DependencyFailedReason.NotConfigured, "Complete-login not configured."));
+        var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+        var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
-        var user = new User();
-        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
-            .Returns(user);
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), true)
-            .Returns(Result<string>.Success("portal-jwt"));
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        Assert.IsType<OkObjectResult>(result);
-        _oidcTokenService.Received(1).GenerateForOidcLogin(user, Arg.Any<ClaimsPrincipal>(), true);
+        var statusResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(503, statusResult.StatusCode);
+        var hint = statusResult.Value!.GetType().GetProperty("hint")?.GetValue(statusResult.Value) as string;
+        Assert.Contains("Oidc:CompleteLoginSigningKey", hint);
     }
 
-    /// <summary>
-    /// Step-up rejects when the service returns a failure result (e.g. no verification
-    /// claims from IdP). The controller returns 400 without setting auth cookies.
-    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenStepUpAndServiceFails_Returns400()
+    public async Task CompleteLogin_WhenHandlerReturnsValidationFailure_Returns400WithItsMessage()
     {
-        SetupPreAuthSession(isStepUp: true);
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
+        SetSessionCookie();
+        SetupCompleteLoginResult(Result<CompleteOidcLoginResponse>.ValidationFailed(
+            "callbackToken", "Invalid or expired callback token."));
+        var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
+        var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
-        var user = new User();
-        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
-            .Returns(user);
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), true)
-            .Returns(Result<string>.DependencyFailed(
-                Portal.Kernel.Results.DependencyFailedReason.BadRequest,
-                "Step-up verification failed: IdP returned no verification claims."));
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("Invalid or expired callback token.", error.Error);
     }
 
-    /// <summary>
-    /// CompleteLogin must use the session's IsStepUp value, not the body's. A client
-    /// should not be able to initiate a non-step-up flow and then send isStepUp=true
-    /// on complete-login to trigger the IAL1+ upgrade path.
-    /// </summary>
     [Fact]
-    public async Task CompleteLogin_WhenBodyIsStepUpDiffersFromSession_UsesSessionValue()
+    public async Task CompleteLogin_WhenHandlerReturnsPreconditionFailure_Returns400WithItsMessage()
     {
-        // Set oidc_session cookie
-        _controller.ControllerContext.HttpContext = new DefaultHttpContext();
-        _controller.ControllerContext.HttpContext.Request.Headers.Cookie =
-            $"{OidcSessionCookie.CookieName}={TestSessionId}";
+        SetSessionCookie();
+        SetupCompleteLoginResult(Result<CompleteOidcLoginResponse>.PreconditionFailed(
+            PreconditionFailedReason.NotFound,
+            "Step-up requires an existing session. Please sign in again."));
+        var body = new CompleteLoginRequest(CoStateKey, "some.jwt.token");
 
-        // Session was created as non-step-up
-        _sessionStore.GetAsync(TestSessionId, Arg.Any<CancellationToken>())
-            .Returns(new PreAuthSession
-            {
-                Id = TestSessionId,
-                State = "test-state",
-                CodeVerifier = "test-verifier",
-                StateCode = CoStateKey,
-                RedirectUri = "http://localhost:3000/callback",
-                IsStepUp = false,
-                Phase = PreAuthSessionPhase.CallbackCompleted
-            });
-        _sessionStore.TryAdvanceToLoginCompletedAsync(
-                TestSessionId, Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(true);
+        var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-
-        // Body lies: says IsStepUp=true, but session says false
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken, IsStepUp: true);
-
-        var user = new User { Email = "user@example.com" };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns((user, false));
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success("portal-jwt"));
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        // Should succeed (non-step-up path), NOT the step-up path
-        Assert.IsType<OkObjectResult>(result);
-
-        // The non-step-up path calls GetOrCreateUserByExternalIdAsync, NOT GetUserByExternalIdAsync
-        await _userRepository.Received(1).GetOrCreateUserByExternalIdAsync(
-            Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _userRepository.DidNotReceive().GetUserByExternalIdAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    #region Service delegation (claim processing moved to IOidcTokenService)
-
-    /// <summary>
-    /// CompleteLogin passes the correct user and principal to GenerateForOidcLogin
-    /// with isStepUp=false for normal login flows.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenNormalLogin_CallsServiceWithIsStepUpFalse()
-    {
-        SetupPreAuthSession();
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var user = new User { Email = "user@example.com" };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns((user, false));
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success("portal-jwt"));
-
-        await _controller.CompleteLogin(body, CancellationToken.None);
-
-        _oidcTokenService.Received(1).GenerateForOidcLogin(user, Arg.Any<ClaimsPrincipal>(), false);
-    }
-
-    /// <summary>
-    /// CompleteLogin passes isStepUp=true to the service for step-up flows.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenStepUp_CallsServiceWithIsStepUpTrue()
-    {
-        SetupPreAuthSession(isStepUp: true);
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var user = new User();
-        _userRepository.GetUserByExternalIdAsync("test-sub-12345", Arg.Any<CancellationToken>())
-            .Returns(user);
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success("portal-jwt"));
-
-        await _controller.CompleteLogin(body, CancellationToken.None);
-
-        _oidcTokenService.Received(1).GenerateForOidcLogin(user, Arg.Any<ClaimsPrincipal>(), true);
-    }
-
-    /// <summary>
-    /// CompleteLogin uses the sub claim (ExternalProviderId) for user lookup and passes
-    /// email as a migration hint to GetOrCreateUserByExternalIdAsync.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenValidOidcLogin_LooksUpUserByExternalProviderId()
-    {
-        SetupPreAuthSession();
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-
-        var callbackToken = CreateCallbackTokenWithClaims(signingKey,
-            new Claim("email", "user@example.com"),
-            new Claim("sub", "oidc-sub-abc123"));
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var user = new User { Email = "user@example.com" };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
-                "oidc-sub-abc123", "user@example.com", Arg.Any<CancellationToken>())
-            .Returns((user, false));
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success("portal-jwt"));
-
-        var result = await _controller.CompleteLogin(body, CancellationToken.None);
-
-        Assert.IsType<OkObjectResult>(result);
-
-        // Should have been called with the exact sub and email values
-        await _userRepository.Received(1).GetOrCreateUserByExternalIdAsync(
-            "oidc-sub-abc123", "user@example.com", Arg.Any<CancellationToken>());
-
-        // Should NOT use the old email-based lookup
-        await _userRepository.DidNotReceive().GetOrCreateUserAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _userRepository.DidNotReceive().GetUserByEmailAsync(
-            Arg.Any<string>(), Arg.Any<CancellationToken>());
-    }
-
-    /// <summary>
-    /// CompleteLogin does NOT persist IAL to the database — IAL derivation is
-    /// handled entirely by the token service via claims in the JWT.
-    /// </summary>
-    [Fact]
-    public async Task CompleteLogin_WhenServiceSucceeds_DoesNotPersistIalToDb()
-    {
-        SetupPreAuthSession();
-        const string signingKey = "complete-login-signing-key-at-least-32-characters-long";
-        _config["Oidc:CompleteLoginSigningKey"].Returns(signingKey);
-
-        var callbackToken = CreateValidCallbackToken(signingKey, email: "user@example.com");
-        var body = new CompleteLoginRequest(CoStateKey, callbackToken);
-
-        var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns((user, false));
-        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
-            .Returns(Result<string>.Success("portal-jwt"));
-
-        await _controller.CompleteLogin(body, CancellationToken.None);
-
-        // UpdateUserAsync should NEVER be called — IAL is in claims, not DB
-        await _userRepository.DidNotReceive().UpdateUserAsync(
-            Arg.Any<User>(), Arg.Any<CancellationToken>());
-
-        // The user object's IAL should remain untouched (IAL1, not IAL1plus)
-        Assert.Equal(UserIalLevel.IAL1, user.IalLevel);
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var error = Assert.IsType<ErrorResponse>(badRequest.Value);
+        Assert.Equal("Step-up requires an existing session. Please sign in again.", error.Error);
     }
 
     #endregion
 
-    /// <summary>Callback token issuer/audience must match <c>Oidc:CallbackRedirectUri</c> (trimmed).</summary>
-    private const string TestCallbackTokenAudience = "http://localhost:3000/callback";
-
-    private static string CreateValidCallbackToken(string signingKey, string email, string sub = "test-sub-12345")
-    {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var claims = new List<Claim> { new("email", email), new("sub", sub) };
-        var token = new JwtSecurityToken(
-            issuer: TestCallbackTokenAudience,
-            audience: TestCallbackTokenAudience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(5),
-            signingCredentials: credentials);
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    private static string CreateCallbackTokenWithClaims(string signingKey, params Claim[] claims)
-    {
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
-        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
-            issuer: TestCallbackTokenAudience,
-            audience: TestCallbackTokenAudience,
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(5),
-            signingCredentials: credentials);
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
     #region Authorize endpoint
 
     /// <summary>
-    /// Creates a mock <see cref="IOidcExchangeService"/> that returns a discovery config
+    /// Creates a mock <see cref="IOidcExchangeService"/> that returns discovery info
     /// with the given authorization endpoint. Used by Authorize endpoint tests.
     /// </summary>
     private static IOidcExchangeService MockExchangeServiceWithDiscovery(string authorizationEndpoint)
     {
         var exchangeService = Substitute.For<IOidcExchangeService>();
-        var discoveryConfig = new OpenIdConnectConfiguration
-        {
-            AuthorizationEndpoint = authorizationEndpoint
-        };
-        exchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(discoveryConfig);
+        exchangeService.GetDiscoveryInfoAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new OidcDiscoveryInfo { AuthorizationEndpoint = authorizationEndpoint });
         return exchangeService;
     }
 
@@ -696,8 +377,8 @@ public class OidcControllerTests
         _config["Oidc:ClientId"].Returns("client-id");
         _config["Oidc:CallbackRedirectUri"].Returns("http://localhost:3000/callback");
         var exchangeService = Substitute.For<IOidcExchangeService>();
-        exchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns<OpenIdConnectConfiguration>(_ => throw new InvalidOperationException("discovery endpoint not configured"));
+        exchangeService.GetDiscoveryInfoAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns<OidcDiscoveryInfo>(_ => throw new InvalidOperationException("discovery endpoint not configured"));
 
         var result = await _controller.Authorize(CoStateKey, exchangeService: exchangeService);
 
@@ -854,7 +535,7 @@ public class OidcControllerTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
             Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
-        await exchangeService.DidNotReceive().GetDiscoveryConfigAsync(
+        await exchangeService.DidNotReceive().GetDiscoveryInfoAsync(
             Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
 

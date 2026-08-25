@@ -8,6 +8,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
@@ -93,7 +94,7 @@ public class AuthController(
         {
             try
             {
-                var oidcConfig = await oidcExchangeService.GetDiscoveryConfigAsync(
+                var oidcConfig = await oidcExchangeService.GetDiscoveryInfoAsync(
                     isStepUp: false, cancellationToken);
 
                 if (!string.IsNullOrEmpty(oidcConfig.EndSessionEndpoint))

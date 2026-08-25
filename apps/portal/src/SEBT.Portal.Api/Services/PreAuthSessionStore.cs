@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using Medallion.Threading;
 using Microsoft.Extensions.Caching.Distributed;
 using SEBT.Portal.Api.Extensions;
+using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Api.Services;
 
