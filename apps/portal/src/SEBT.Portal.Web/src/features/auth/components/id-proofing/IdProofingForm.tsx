@@ -134,8 +134,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const REQUIRED_FIELD_ERROR: Msg = { ns: 'validation', key: 'required' }
   const SSN_ITIN_SHAPE_ERROR: Msg = { ns: 'validation', key: 'ssn' }
   const SEVEN_OR_EIGHT_DIGITS_ERROR: Msg = { ns: 'validation', key: 'idNumber' }
-  // TODO: replace with a keyed message once a DOB-invalid key exists in dc.csv (content gap).
-  const DOB_INVALID_ERROR: Msg = { literal: 'Enter a valid date of birth.' }
+  const DOB_INVALID_ERROR: Msg = { ns: 'validation', key: 'validDate' }
 
   // Resolve a deferred message at render time so it follows a language switch (DC-454).
   // Call sites guard on the message being present.
