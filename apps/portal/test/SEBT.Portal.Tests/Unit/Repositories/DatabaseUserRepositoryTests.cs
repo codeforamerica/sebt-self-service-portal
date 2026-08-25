@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
@@ -12,6 +13,10 @@ using SEBT.Portal.Tests.Unit.TestSupport;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
+/// <summary>
+/// SQL Server (Testcontainers) tests for DatabaseUserRepository.
+/// Tagged Category=SqlServer and excluded from unit-only runs. That is intentional.
+/// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
 public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
@@ -874,6 +879,57 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
         Assert.Equal(normalized, user.Email);
     }
 
+    [Fact]
+    public async Task GetOrCreateUserByExternalIdAsync_WhenConcurrentUniqueViolation_ShouldReturnExistingUser()
+    {
+        var externalProviderId = $"oidc-{Guid.NewGuid()}";
+        var interceptor = new InsertCompetingUserOnSaveInterceptor(
+            _fixture.ConnectionString,
+            externalProviderId);
+
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseSqlServer(_fixture.ConnectionString)
+            .AddInterceptors(interceptor)
+            .Options;
+        using var context = new PortalDbContext(options);
+        var repository = CreateRepository(context);
+
+        var (user, isNew) = await repository.GetOrCreateUserByExternalIdAsync(externalProviderId);
+
+        Assert.False(isNew);
+        Assert.Equal(interceptor.CompetingUserId, user.Id);
+        Assert.Equal(externalProviderId, user.ExternalProviderId);
+
+        using var verify = CreateContext();
+        Assert.Equal(1, await verify.Users.CountAsync(u => u.ExternalProviderId == externalProviderId));
+    }
+
+    [Fact]
+    public async Task GetOrCreateUserAsync_WhenConcurrentUniqueViolation_ShouldReturnExistingUser()
+    {
+        var email = $"race-{Guid.NewGuid()}@example.com";
+        var interceptor = new InsertCompetingEmailUserOnSaveInterceptor(
+            _fixture.ConnectionString,
+            email.ToLowerInvariant());
+
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseSqlServer(_fixture.ConnectionString)
+            .AddInterceptors(interceptor)
+            .Options;
+        using var context = new PortalDbContext(options);
+        var repository = CreateRepository(context);
+
+        var (user, isNew) = await repository.GetOrCreateUserAsync(email);
+
+        Assert.False(isNew);
+        Assert.Equal(interceptor.CompetingUserId, user.Id);
+        Assert.Equal(email.ToLowerInvariant(), user.Email);
+
+        using var verify = CreateContext();
+        var hash = TestPortalCryptography.EmailLookupHasher.HashNormalized(email.ToLowerInvariant());
+        Assert.Equal(1, await verify.Users.CountAsync(u => u.EmailHash == hash));
+    }
+
     private static async Task<UserEntity?> FindStoredUserWithLegacyPlaintextFallbackAsync(
         PortalDbContext ctx,
         string normalizedEmailPlaintext)
@@ -907,6 +963,93 @@ public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
             TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(ciphertextEmail!);
         Assert.False(string.IsNullOrEmpty(plain));
         Assert.Equal(expectedNormalizedPlaintext, plain);
+    }
+
+    /// <summary>
+    /// InMemory has no unique indexes. Seed the competing row on SavingChanges so the insert
+    /// hits IX_Users_ExternalProviderId instead of relying on a timing-dependent race.
+    /// </summary>
+    private sealed class InsertCompetingUserOnSaveInterceptor : SaveChangesInterceptor
+    {
+        private readonly string _connectionString;
+        private readonly string _externalProviderId;
+
+        public InsertCompetingUserOnSaveInterceptor(string connectionString, string externalProviderId)
+        {
+            _connectionString = connectionString;
+            _externalProviderId = externalProviderId;
+        }
+
+        public Guid CompetingUserId { get; private set; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (CompetingUserId != Guid.Empty)
+            {
+                return result;
+            }
+
+            var options = new DbContextOptionsBuilder<PortalDbContext>()
+                .UseSqlServer(_connectionString)
+                .Options;
+            using var competing = new PortalDbContext(options);
+            var entity = UserFactory.CreateUserEntity(e =>
+            {
+                e.ExternalProviderId = _externalProviderId;
+                e.Email = null;
+                e.EmailHash = null;
+            });
+            CompetingUserId = entity.Id;
+            competing.Users.Add(entity);
+            await competing.SaveChangesAsync(cancellationToken);
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Seed a competing EmailHash row on SavingChanges so the insert hits IX_Users_EmailHash
+    /// instead of relying on a timing-dependent race.
+    /// </summary>
+    private sealed class InsertCompetingEmailUserOnSaveInterceptor : SaveChangesInterceptor
+    {
+        private readonly string _connectionString;
+        private readonly string _normalizedEmail;
+
+        public InsertCompetingEmailUserOnSaveInterceptor(string connectionString, string normalizedEmail)
+        {
+            _connectionString = connectionString;
+            _normalizedEmail = normalizedEmail;
+        }
+
+        public Guid CompetingUserId { get; private set; }
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (CompetingUserId != Guid.Empty)
+            {
+                return result;
+            }
+
+            var options = new DbContextOptionsBuilder<PortalDbContext>()
+                .UseSqlServer(_connectionString)
+                .Options;
+            using var competing = new PortalDbContext(options);
+            var entity = UserFactory.CreateUserEntity(e =>
+            {
+                e.Email = TestPortalCryptography.PiiSymmetricEncryption.Encrypt(_normalizedEmail);
+                e.EmailHash = TestPortalCryptography.EmailLookupHasher.HashNormalized(_normalizedEmail);
+            });
+            CompetingUserId = entity.Id;
+            competing.Users.Add(entity);
+            await competing.SaveChangesAsync(cancellationToken);
+            return result;
+        }
     }
 }
 

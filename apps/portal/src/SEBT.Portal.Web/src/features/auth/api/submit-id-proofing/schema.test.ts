@@ -4,7 +4,8 @@
  * Phase 1 of DC-296 guards against malformed payloads reaching the backend
  * (and therefore Socure). These cases cover:
  *   - SSN/ITIN must be exactly 9 digits after stripping non-digits.
- *   - DOB must be a real calendar date, not in the future, not >120 years ago.
+ *   - DOB must be a real calendar date, not in the future, not >120 years ago,
+ *     and at least 18 years old (identity proofing is for the adult applicant).
  *
  * snapAccountId, snapPersonId, and medicaidId are intentionally not shape-checked
  * here: snap ids are excluded from Socure enrichment, and medicaidId length has
@@ -33,6 +34,16 @@ function issueOnPath(
 ) {
   if (result.success) return undefined
   return result.error.issues.find((i) => i.path.join('.') === path)
+}
+
+// DOB issues carry params.reason so tests can pin which rule fired, not just
+// that some dateOfBirth rule did.
+function dobIssueReason(result: ReturnType<typeof SubmitIdProofingRequestSchema.safeParse>) {
+  const issue = issueOnPath(result, 'dateOfBirth')
+  if (issue && 'params' in issue) {
+    return (issue.params as { reason?: string } | undefined)?.reason
+  }
+  return undefined
 }
 
 describe('SubmitIdProofingRequestSchema — SSN shape', () => {
@@ -120,7 +131,7 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       })
     )
     expect(result.success).toBe(false)
-    expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+    expect(dobIssueReason(result)).toBe('future_date')
   })
 
   it('rejects Feb 30 as an invalid calendar date', () => {
@@ -132,7 +143,7 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       })
     )
     expect(result.success).toBe(false)
-    expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+    expect(dobIssueReason(result)).toBe('invalid_calendar_date')
   })
 
   it('rejects Feb 29 in a non-leap year', () => {
@@ -144,7 +155,7 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       })
     )
     expect(result.success).toBe(false)
-    expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+    expect(dobIssueReason(result)).toBe('invalid_calendar_date')
   })
 
   it('accepts Feb 29 in a leap year', () => {
@@ -152,7 +163,7 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       basePayload({
         idType: null,
         idValue: null,
-        dateOfBirth: { month: '02', day: '29', year: '2020' }
+        dateOfBirth: { month: '02', day: '29', year: '2000' }
       })
     )
     expect(result.success).toBe(true)
@@ -168,7 +179,32 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       })
     )
     expect(result.success).toBe(false)
-    expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+    expect(dobIssueReason(result)).toBe('over_max_age')
+  })
+
+  it('rejects a DOB younger than 18 years old', () => {
+    const childYear = new Date().getFullYear() - 10
+    const result = SubmitIdProofingRequestSchema.safeParse(
+      basePayload({
+        idType: null,
+        idValue: null,
+        dateOfBirth: { month: '06', day: '15', year: String(childYear) }
+      })
+    )
+    expect(result.success).toBe(false)
+    expect(dobIssueReason(result)).toBe('under_min_age')
+  })
+
+  it('accepts a DOB of an adult who is 18 or older', () => {
+    const adultYear = new Date().getFullYear() - 18
+    const result = SubmitIdProofingRequestSchema.safeParse(
+      basePayload({
+        idType: null,
+        idValue: null,
+        dateOfBirth: { month: '01', day: '01', year: String(adultYear) }
+      })
+    )
+    expect(result.success).toBe(true)
   })
 
   it('rejects a month outside 1-12', () => {
@@ -180,7 +216,7 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       })
     )
     expect(result.success).toBe(false)
-    expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+    expect(dobIssueReason(result)).toBe('invalid_calendar_date')
   })
 
   it('rejects a day of 0', () => {
@@ -192,6 +228,6 @@ describe('SubmitIdProofingRequestSchema — DOB validation', () => {
       })
     )
     expect(result.success).toBe(false)
-    expect(issueOnPath(result, 'dateOfBirth')).toBeDefined()
+    expect(dobIssueReason(result)).toBe('invalid_calendar_date')
   })
 })
