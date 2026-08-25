@@ -246,6 +246,33 @@ public class DatabaseUserRepositoryUnitTests
     }
 
     [Fact]
+    public async Task UpdateUserAsync_whenEmailCollidesWithEnvelopeOrphan_throws()
+    {
+        using var context = CreateContext();
+        var takenEmail = "taken@example.com";
+        context.Users.Add(new UserEntity
+        {
+            Email = TestPortalCryptography.PiiSymmetricEncryption.Encrypt(takenEmail),
+            EmailHash = null
+        });
+        var updater = new UserEntity
+        {
+            Email = "other@example.com",
+            EmailHash = TestPortalCryptography.EmailLookupHasher.HashNormalized("other@example.com")
+        };
+        context.Users.Add(updater);
+        await context.SaveChangesAsync();
+        var repo = CreateRepository(context);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => repo.UpdateUserAsync(new User { Id = updater.Id, Email = takenEmail }));
+
+        Assert.Equal("A user with this email address already exists.", ex.Message);
+        var stored = await context.Users.SingleAsync(u => u.Id == updater.Id);
+        Assert.Equal("other@example.com", stored.Email);
+    }
+
+    [Fact]
     public async Task GetUserByEmailAsync_whenLookupHashIsNull_returnsNull()
     {
         using var context = CreateContext();
