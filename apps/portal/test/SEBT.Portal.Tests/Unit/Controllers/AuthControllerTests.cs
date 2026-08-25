@@ -86,6 +86,28 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public void GetAuthorizationStatus_WhenUserIsAnonymous_ReturnsUnauthenticatedStatus()
+    {
+        // No authentication type → IsAuthenticated is false, mirroring a request with
+        // no session cookie (or one the bearer middleware rejected). The probe answers
+        // 200 { isAuthorized: false } with no claims rather than a 401 — anonymous
+        // page loads are routine traffic, not errors.
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) }
+        };
+
+        var result = _controller.GetAuthorizationStatus();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.False(response.IsAuthorized);
+        Assert.Null(response.UserId);
+        Assert.Null(response.Email);
+        Assert.Null(response.ExpiresAt);
+    }
+
+    [Fact]
     public void GetAuthorizationStatus_WhenSubClaimPresent_PopulatesUserIdFromGuidClaim()
     {
         // Lock in the JWT sub claim → AuthorizationStatusResponse.UserId mapping

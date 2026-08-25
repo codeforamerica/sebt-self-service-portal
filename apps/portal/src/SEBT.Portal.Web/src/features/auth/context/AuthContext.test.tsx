@@ -34,14 +34,30 @@ describe('AuthContext', () => {
   })
 
   describe('AuthProvider', () => {
-    it('starts loading and resolves to unauthenticated when /auth/status returns 401', async () => {
-      mockAuthStatus({ status: 401 })
+    it('starts loading and resolves to unauthenticated when /auth/status says isAuthorized: false', async () => {
+      // The anonymous answer: 200 with isAuthorized false and no claims.
+      mockAuthStatus({ body: { isAuthorized: false } })
 
       const { result } = renderHook(() => useAuth(), {
         wrapper: AuthProvider
       })
 
       expect(result.current.isLoading).toBe(true)
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      expect(result.current.session).toBeNull()
+      expect(result.current.isAuthenticated).toBe(false)
+    })
+
+    it('resolves to unauthenticated when /auth/status returns 401', async () => {
+      // Older API deployments still answer anonymous probes with a 401 during a
+      // rollout window — it must read as "not logged in", never as an error.
+      mockAuthStatus({ status: 401 })
+
+      const { result } = renderHook(() => useAuth(), {
+        wrapper: AuthProvider
+      })
+
       await waitFor(() => expect(result.current.isLoading).toBe(false))
 
       expect(result.current.session).toBeNull()
@@ -79,7 +95,7 @@ describe('AuthContext', () => {
     })
 
     it('login() re-fetches /auth/status and updates session', async () => {
-      mockAuthStatus({ status: 401 })
+      mockAuthStatus({ body: { isAuthorized: false } })
 
       const { result } = renderHook(() => useAuth(), { wrapper: AuthProvider })
       await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -128,7 +144,7 @@ describe('AuthContext', () => {
     }
 
     it('updates UI when login() resolves the session', async () => {
-      mockAuthStatus({ status: 401 })
+      mockAuthStatus({ body: { isAuthorized: false } })
       const user = userEvent.setup()
 
       render(

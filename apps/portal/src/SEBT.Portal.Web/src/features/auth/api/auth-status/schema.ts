@@ -1,10 +1,11 @@
 import { z } from 'zod'
 
 /**
- * Zod schema for GET /api/auth/status. Returned only on 200 — a 401 means the
- * caller has no valid session cookie. Carries the non-sensitive session claims
+ * Zod schema for GET /api/auth/status. Carries the non-sensitive session claims
  * the SPA needs for IAL gating, analytics, and UI state, since the JWT itself
- * lives in an HttpOnly cookie and cannot be decoded client-side.
+ * lives in an HttpOnly cookie and cannot be decoded client-side. Anonymous
+ * callers get 200 with `isAuthorized: false` and all other fields null — the
+ * probe runs on every page load, so "not signed in" is an answer, not an error.
  */
 export const AuthorizationStatusResponseSchema = z.object({
   isAuthorized: z.boolean(),

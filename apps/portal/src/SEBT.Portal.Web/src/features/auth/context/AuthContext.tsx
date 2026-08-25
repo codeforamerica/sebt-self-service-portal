@@ -17,7 +17,8 @@ import { AuthorizationStatusResponseSchema } from '../api/auth-status'
 /**
  * Non-sensitive session claims the SPA needs for UI decisions.
  * The underlying JWT lives in an HttpOnly cookie and cannot be read by JavaScript.
- * Mirrors the validated GET /api/auth/status response, minus the always-true `isAuthorized` flag.
+ * Mirrors the validated GET /api/auth/status response, minus the `isAuthorized` flag
+ * (an unauthenticated probe resolves to a null session instead).
  */
 export interface SessionInfo {
   /** Stable, non-PII portal user UUID. Surfaced for analytics correlation. */
@@ -64,8 +65,11 @@ async function fetchSession(): Promise<SessionInfo | null> {
       absoluteExpiresAt: response.absoluteExpiresAt ?? null
     }
   } catch (error) {
-    // 401 means not logged in; anything else we also treat as unauthenticated
-    // so the guard can redirect. Network failures will retry on next navigation.
+    // The API answers anonymous probes with 200 { isAuthorized: false }, but keep
+    // treating a 401 as "not logged in" too — it still arrives from older API
+    // deployments during a rollout window. Anything else is also treated as
+    // unauthenticated so the guard can redirect; network failures retry on next
+    // navigation.
     if (error instanceof ApiError && error.status !== 401) {
       console.warn('Failed to fetch auth session', error)
     }
