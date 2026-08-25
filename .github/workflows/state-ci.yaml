@@ -323,15 +323,13 @@ jobs:
       - name: Remove SSR-only API routes
         run: rm -rf apps/portal/src/SEBT.EnrollmentChecker.Web/src/app/api
 
-      # Both states build, because state selection changes what gets compiled in:
-      # artwork paths, the locale slice, and the theme are all resolved at build
-      # time. A CO-only build cannot catch a DC-only regression.
+      # Artwork paths, the locale slice, and the theme all resolve at build time,
+      # so one state's build cannot catch another's regression.
       #
-      # These are sequential steps rather than a job matrix on purpose — lint,
-      # type check, and test are state-independent, so a matrix would re-run
-      # them (and the install) once per state to no benefit. The second build
-      # overwrites the first's output, which is fine: this job validates that
-      # each state compiles, and publishes no artifacts.
+      # Sequential steps rather than a job matrix: lint, type check, and test are
+      # state-independent, so a matrix would re-run them and the install per
+      # state for nothing. The second build overwriting the first is fine — this
+      # job only proves each state compiles and publishes no artifacts.
       - name: Build static export (CO)
         run: BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
         env:
