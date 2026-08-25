@@ -14,7 +14,9 @@
  * how the Spanish heading vanished on both Colorado and DC.
  *
  * Two checks, both from the content side:
- * - every value in every shipped bundle has balanced brackets;
+ * - every value whose English source uses brackets has balanced brackets in
+ *   every language (a stray bracket in plain prose is visible on the page and
+ *   is the content team's to fix; a broken template is not);
  * - every key whose English value carries an example list fills cleanly in
  *   every language of that state, for one item and for several.
  */
@@ -22,13 +24,7 @@ import { describe, expect, it } from 'vitest'
 
 import { fillReplacementHeading } from '@/features/household/components/DashboardAlerts/replacementHeading'
 
-import { loadBundles, type AppName } from './i18nContentScan'
-
-/** Mirrors i18nKeyCoverage.test.ts: the states each app actually ships. */
-const APP_STATES: Record<AppName, string[]> = {
-  portal: ['dc', 'co'],
-  checker: ['co']
-}
+import { APP_STATES, loadBundles, type AppName } from './i18nContentScan'
 
 interface Exemption {
   /** `state/lang namespace:key`, e.g. `co/es dashboard:alertAddressTitle`. */
@@ -71,6 +67,11 @@ function isExempt(id: string): boolean {
   return EXEMPT.some((e) => e.id === id)
 }
 
+/** English is the anchor: the sheet's source column is English and the code was written against it. */
+function usesBrackets(english: string | undefined): boolean {
+  return typeof english === 'string' && /[[\]]/.test(english)
+}
+
 function unbalancedValues(app: AppName): Offender[] {
   const bundles = loadBundles(app)
   const offenders: Offender[] = []
@@ -80,6 +81,7 @@ function unbalancedValues(app: AppName): Offender[] {
       for (const [ns, entries] of Object.entries(byLang[lang] ?? {})) {
         for (const [key, value] of Object.entries(entries)) {
           if (typeof value !== 'string') continue
+          if (!usesBrackets(byLang['en']?.[ns]?.[key])) continue
           const id = `${state}/${lang} ${ns}:${key}`
           if (isExempt(id)) continue
           const problem = bracketImbalance(value)
@@ -170,7 +172,10 @@ describe.each(Object.keys(APP_STATES) as AppName[])(
         const [state, lang] = (where ?? '').split('/')
         const [ns, key] = (path ?? '').split(':')
         const value = bundles[state ?? '']?.[lang ?? '']?.[ns ?? '']?.[key ?? '']
-        return typeof value !== 'string' || bracketImbalance(value) === null
+        const english = bundles[state ?? '']?.['en']?.[ns ?? '']?.[key ?? '']
+        return (
+          typeof value !== 'string' || !usesBrackets(english) || bracketImbalance(value) === null
+        )
       })
       expect(stale.map((e) => e.id)).toEqual([])
     })

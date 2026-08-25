@@ -17,27 +17,16 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  APP_STATES,
   extractTranslationCalls,
   loadBundles,
   resolves,
   sourceRoots,
+  staleExemptions,
   walkSource,
   type AppName,
   type TranslationCall
 } from './i18nContentScan'
-
-/**
- * The states each app actually ships. The enrollment checker builds only for
- * Colorado from this repo; the District of Columbia checker is a separate
- * application on a different stack. Its `dc` locale folders are generated
- * regardless, so they must not be treated as something this app renders.
- * Shipping a DC build from this app means adding it here and resolving whatever
- * this guard then reports.
- */
-const APP_STATES: Record<AppName, string[]> = {
-  portal: ['dc', 'co'],
-  checker: ['co']
-}
 
 interface Exemption {
   /** `namespace:key`, matching the namespace the call site resolves to. */
@@ -219,10 +208,17 @@ interface Unresolved {
   sites: string[]
 }
 
-function unresolvedKeys(app: AppName): Unresolved[] {
+interface Coverage {
+  unresolved: Unresolved[]
+  /** Every `namespace:key` the app's code asks for, resolved or not. */
+  referenced: Set<string>
+}
+
+function collectCoverage(app: AppName): Coverage {
   const calls = extractTranslationCalls(sourceRoots(app).flatMap((root) => walkSource(root)))
   const bundles = loadBundles(app)
   const found = new Map<string, Unresolved>()
+  const referenced = new Set<string>()
 
   const identify = (call: TranslationCall) =>
     `${call.namespaces.filter(Boolean).join('|')}:${call.key}`
@@ -232,6 +228,7 @@ function unresolvedKeys(app: AppName): Unresolved[] {
     if (call.hasDefault) continue
     // Namespace chosen at runtime; existence cannot be decided statically.
     if (call.namespaces.includes(null)) continue
+    referenced.add(identify(call))
 
     for (const state of APP_STATES[app]) {
       for (const lang of Object.keys(bundles[state] ?? {})) {
@@ -249,13 +246,13 @@ function unresolvedKeys(app: AppName): Unresolved[] {
     }
   }
 
-  return [...found.values()]
+  return { unresolved: [...found.values()], referenced }
 }
 
 const isExempt = (u: Unresolved) => EXEMPT.some((e) => e.key === u.id && e.states.includes(u.state))
 
 describe.each(Object.keys(APP_STATES) as AppName[])('%s: translation keys resolve', (app) => {
-  const unresolved = unresolvedKeys(app)
+  const { unresolved, referenced } = collectCoverage(app)
 
   it('has no key that would render as its own name', () => {
     const offenders = unresolved.filter((u) => !isExempt(u))
@@ -280,15 +277,7 @@ describe.each(Object.keys(APP_STATES) as AppName[])('%s: translation keys resolv
 
   it('has no stale exemption', () => {
     const live = new Set(unresolved.map((u) => `${u.id}|${u.state}`))
-    const relevant = EXEMPT.filter((e) => e.states.some((s) => APP_STATES[app].includes(s)))
-    const stale = relevant.filter((e) =>
-      e.states.filter((s) => APP_STATES[app].includes(s)).every((s) => !live.has(`${e.key}|${s}`))
-    )
-
-    // An exemption for another app's keys is not stale here, so only report
-    // entries whose key is referenced by this app at all.
-    const referenced = new Set(unresolved.map((u) => u.id))
-    const reportable = stale.filter((e) => referenced.has(e.key))
+    const reportable = staleExemptions(EXEMPT, referenced, live, APP_STATES[app])
 
     expect(
       reportable.map((e) => e.key),

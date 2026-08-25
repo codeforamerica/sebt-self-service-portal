@@ -17,23 +17,15 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  APP_STATES,
   extractTranslationCalls,
+  hasMarkdown,
   loadBundles,
   sourceRoots,
   walkSource,
   type AppName,
   type TranslationCall
 } from './i18nContentScan'
-
-/** Mirrors i18nKeyCoverage.test.ts: the states each app actually ships. */
-const APP_STATES: Record<AppName, string[]> = {
-  portal: ['dc', 'co'],
-  checker: ['co']
-}
-
-/** A letter is required so masked values such as `***-**-6789` never match. */
-const BOLD = /\*\*[^*\n]*[A-Za-z][^*\n]*\*\*/
-const LINK = /\[[^\]\n]+\]\([^)\n]+\)/
 
 interface Exemption {
   /** `namespace:key`. */
@@ -65,7 +57,7 @@ function markdownKeys(app: AppName): Map<string, string[]> {
       for (const [ns, entries] of Object.entries(byLang[lang] ?? {})) {
         for (const [key, value] of Object.entries(entries)) {
           if (typeof value !== 'string') continue
-          if (!BOLD.test(value) && !LINK.test(value)) continue
+          if (!hasMarkdown(value)) continue
           const id = `${ns}:${key}`
           const seen = keys.get(id) ?? []
           const where = `${state}/${lang}`

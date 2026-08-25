@@ -27,6 +27,19 @@ export const APP_DIRS = {
 
 export type AppName = keyof typeof APP_DIRS
 
+/**
+ * The states each app actually ships. The enrollment checker builds only for
+ * Colorado from this repo; the District of Columbia checker is a separate
+ * application on a different stack. Its `dc` locale folders are generated
+ * regardless, so they must not be treated as something this app renders.
+ * Shipping a DC build from this app means adding it here and resolving whatever
+ * the guards then report.
+ */
+export const APP_STATES: Record<AppName, string[]> = {
+  portal: ['dc', 'co'],
+  checker: ['co']
+}
+
 const DESIGN_SYSTEM_SRC = path.join(REPO_ROOT, 'packages/design-system/src')
 
 /** Source trees whose `t()` calls can render inside a given app. */
@@ -186,6 +199,48 @@ export function extractTranslationCalls(files: string[]): TranslationCall[] {
   }
 
   return calls
+}
+
+/**
+ * A letter in any script is required so masked values such as `***-**-6789`
+ * never match. `\p{L}` rather than `[A-Za-z]`: Amharic bold is bold too.
+ */
+const BOLD = /\*\*[^*\n]*\p{L}[^*\n]*\*\*/u
+const LINK = /\[[^\]\n]+\]\([^)\n]+\)/
+
+/** True when a locale value carries markdown that only `RichText` turns into markup. */
+export function hasMarkdown(value: string): boolean {
+  return BOLD.test(value) || LINK.test(value)
+}
+
+export interface StateExemption {
+  /** `namespace:key`. */
+  key: string
+  /** States where the key is expected to be absent. */
+  states: string[]
+}
+
+/**
+ * Exemptions that no longer describe a gap. An entry is stale for an app when
+ * its key is one the app's code asks for, yet none of the exempted states the
+ * app ships still lacks it. Judged against every referenced key, not only the
+ * unresolved ones: once exempted content returns, the key resolves everywhere
+ * and would otherwise vanish from both sets and never be reported. Keys the
+ * app never references belong to the other app and are not judged here.
+ *
+ * `live` holds `key|state` pairs that are still unresolved.
+ */
+export function staleExemptions<E extends StateExemption>(
+  exempt: E[],
+  referenced: ReadonlySet<string>,
+  live: ReadonlySet<string>,
+  appStates: readonly string[]
+): E[] {
+  return exempt.filter((e) => {
+    const states = e.states.filter((s) => appStates.includes(s))
+    if (states.length === 0 || !referenced.has(e.key)) return false
+    return states.every((s) => !live.has(`${e.key}|${s}`))
+  })
 }
 
 /** True when the bundle for this state and language defines the key in any of the call's namespaces. */
