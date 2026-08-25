@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 
-import { getApplyHref } from '@/lib/applyHref'
+import { useApplyHref } from '@/lib/useApplyHref'
 
 import { useRequiredHouseholdData } from '../../api'
 import { useHouseholdCardDetailsLoading } from '../../context/HouseholdCardDetailsLoadingContext'
@@ -10,10 +10,10 @@ import { ChildCard } from '../ChildCard'
 
 // Keys map to CSV: "S2 - Portal Dashboard - Section Enrolled Children - {Key}"
 export function EnrolledChildren() {
-  const { t, i18n } = useTranslation('dashboard')
+  const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
   const cardDetailsLoading = useHouseholdCardDetailsLoading()
-  const applyHref = getApplyHref(i18n.language)
+  const applyHref = useApplyHref()
 
   return (
     <section aria-labelledby="enrolled-children-heading">
@@ -23,14 +23,23 @@ export function EnrolledChildren() {
       >
         {t('sectionEnrolledChildrenHeading')}
       </h2>
+      {/* The apply link renders only when applications are open AND the sheet has
+          the link copy authored — the action row was dropped for the closed season
+          (DC-701), and t() with an empty-string default distinguishes a missing
+          key from a raw-key fallback. */}
       <p className="margin-bottom-3">
-        {t('sectionEnrolledChildrenBody1')}{' '}
-        <a
-          href={applyHref}
-          className="usa-link"
-        >
-          {t('sectionEnrolledChildrenAction')}
-        </a>
+        {t('sectionEnrolledChildrenBody1')}
+        {applyHref && t('sectionEnrolledChildrenAction', '') && (
+          <>
+            {' '}
+            <a
+              href={applyHref}
+              className="usa-link"
+            >
+              {t('sectionEnrolledChildrenAction')}
+            </a>
+          </>
+        )}
       </p>
 
       <div
