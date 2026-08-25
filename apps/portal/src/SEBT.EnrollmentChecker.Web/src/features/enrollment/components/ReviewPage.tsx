@@ -1,6 +1,7 @@
 'use client'
 
 import { Button } from '@sebt/design-system'
+import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +22,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const { state, setEditingChildId, removeChild } = useEnrollment()
+  const reviewCard = getCheckerAssetPath('reviewCard')
 
   function handleEdit(id: string) {
     setEditingChildId(id)
@@ -30,13 +32,15 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`}
-          alt=""
-          width={100}
-          height={75}
-          aria-hidden="true"
-        />
+        {reviewCard && (
+          <Image
+            src={reviewCard}
+            alt=""
+            width={100}
+            height={75}
+            aria-hidden="true"
+          />
+        )}
         <h1 className="font-family-sans margin-top-1 text-primary">{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 

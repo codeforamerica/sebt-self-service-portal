@@ -1,6 +1,7 @@
 'use client'
 
 import { getApplyHref } from '@/lib/applyHref'
+import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
@@ -101,22 +102,27 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     notEnrolled.length
   )
 
-  // Not-enrolled and no-info outcomes lead with a warning icon; enrolled
-  // outcomes keep the review-card icon.
-  const icon = ['noneEnrolled', 'indeterminate'].includes(householdEnrollmentResult)
-    ? 'icon-alert-card.svg'
-    : 'icon-review-card.svg'
+  // Which artwork each outcome leads with is state-specific — CO opens an
+  // enrolled result with the review card, DC with a checkmark — so the mapping
+  // lives in the asset manifest rather than in filenames chosen here.
+  const icon = getCheckerAssetPath(
+    ['noneEnrolled', 'indeterminate'].includes(householdEnrollmentResult)
+      ? 'resultsNotEnrolled'
+      : 'resultsEnrolled'
+  )
 
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/${icon}`}
-          alt=""
-          width={100}
-          height={75}
-          aria-hidden="true"
-        />
+        {icon && (
+          <Image
+            src={icon}
+            alt=""
+            width={100}
+            height={75}
+            aria-hidden="true"
+          />
+        )}
         <h1 className="font-family-sans text-primary margin-top-1">{t('title')}</h1>
 
         {['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (

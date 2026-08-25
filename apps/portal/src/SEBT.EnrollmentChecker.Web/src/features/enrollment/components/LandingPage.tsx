@@ -1,11 +1,13 @@
 'use client'
 
 import { Button, RichText } from '@sebt/design-system'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
+import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import { env } from '@/lib/env'
 import { useEnrollment } from '../context/EnrollmentContext'
 
@@ -26,17 +28,24 @@ export function LandingPage() {
   const reaonsForAutoEnrollment = t('body3').split('\n').filter(Boolean)
   const reasonsToApply = t('body5').split('\n').filter(Boolean)
 
+  // Undefined for states whose landing page carries no logo lockup above the
+  // heading — DC brands this screen through the toolbar logo instead.
+  const landingLogo = getCheckerAssetPath('landingLogo')
+  const { programName } = getStateConfig(getState())
+
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <Image
-          src={`${env.NEXT_PUBLIC_BASE_PATH}/images/states/co/summer-ebt-logo.svg`}
-          alt="Summer EBT"
-          width={287}
-          height={33}
-          className="margin-bottom-2"
-          priority
-        />
+        {landingLogo && (
+          <Image
+            src={landingLogo}
+            alt={programName}
+            width={287}
+            height={33}
+            className="margin-bottom-2"
+            priority
+          />
+        )}
         <h1 className="font-family-sans text-primary">{t('title')}</h1>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>
