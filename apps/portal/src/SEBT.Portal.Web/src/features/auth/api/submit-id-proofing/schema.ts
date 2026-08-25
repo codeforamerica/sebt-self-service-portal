@@ -44,39 +44,39 @@ function validateDateOfBirth(
   const year = Number(dob.year)
 
   if (!isRealCalendarDate(year, month, day)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['dateOfBirth']
-    })
+    addDobIssue(ctx, 'invalid_calendar_date')
     return
   }
 
   const dobDate = new Date(year, month - 1, day)
   const now = new Date()
   if (dobDate.getTime() > now.getTime()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['dateOfBirth']
-    })
+    addDobIssue(ctx, 'future_date')
     return
   }
 
   const oldestAllowed = new Date(now.getFullYear() - MAX_AGE_YEARS, now.getMonth(), now.getDate())
   if (dobDate.getTime() < oldestAllowed.getTime()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['dateOfBirth']
-    })
+    addDobIssue(ctx, 'over_max_age')
     return
   }
 
   const youngestAllowed = new Date(now.getFullYear() - MIN_AGE_YEARS, now.getMonth(), now.getDate())
   if (dobDate.getTime() > youngestAllowed.getTime()) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['dateOfBirth']
-    })
+    addDobIssue(ctx, 'under_min_age')
   }
+}
+
+// Every DOB failure renders the same fieldset-level message, so the reason exists to let
+// code and tests distinguish which rule fired (via issue.params.reason), not the user.
+type DobIssueReason = 'invalid_calendar_date' | 'future_date' | 'over_max_age' | 'under_min_age'
+
+function addDobIssue(ctx: z.RefinementCtx, reason: DobIssueReason): void {
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    path: ['dateOfBirth'],
+    params: { reason }
+  })
 }
 
 function validateIdValueShape(idType: IdType, idValue: string, ctx: z.RefinementCtx): void {
