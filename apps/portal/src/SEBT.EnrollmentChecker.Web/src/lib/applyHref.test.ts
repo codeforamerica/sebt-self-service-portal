@@ -14,6 +14,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
+// The PEAK cases below run under CO, the state vitest pins.
 describe('getApplyHref', () => {
   describe('no configured URL (graceful degradation)', () => {
     // With no application destination configured there is nothing to link to;
@@ -51,6 +52,35 @@ describe('getApplyHref', () => {
       vi.stubEnv('NEXT_PUBLIC_APPLICATION_URL', CONFIGURED_URL)
       for (const locale of ['en', 'es', 'fr', '']) {
         expect(getApplyHref(locale)).toContain('redirectFromEC=Y')
+      }
+    })
+  })
+
+  describe('states without a PEAK destination', () => {
+    const DC_URL = 'https://apply.dc.example.gov/start'
+
+    beforeEach(() => {
+      vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+    })
+
+    // language and redirectFromEC are PEAK's contract. Sending them to another
+    // state's destination is at best noise and at worst a wrong destination.
+    it('links to the configured URL untouched', () => {
+      vi.stubEnv('NEXT_PUBLIC_APPLICATION_URL', DC_URL)
+      const href = getApplyHref('en')
+      expect(href).toBe(DC_URL)
+      expect(href).not.toContain('language=')
+      expect(href).not.toContain('redirectFromEC')
+    })
+
+    it('adds nothing to a URL that already carries params', () => {
+      vi.stubEnv('NEXT_PUBLIC_APPLICATION_URL', `${DC_URL}?src=partner`)
+      expect(getApplyHref('es')).toBe(`${DC_URL}?src=partner`)
+    })
+
+    it('still returns null when no URL is configured', () => {
+      for (const locale of ['en', 'es', 'am', '']) {
+        expect(getApplyHref(locale)).toBeNull()
       }
     })
   })

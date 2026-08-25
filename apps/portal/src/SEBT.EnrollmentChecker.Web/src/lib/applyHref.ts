@@ -15,6 +15,8 @@
 // no application destination at all. Null means "no link" — callers hide their
 // apply link blocks rather than render a dead URL.
 
+import { getState } from '@sebt/design-system/src/lib/state'
+
 // Map i18next locale codes to the language param PEAK expects on its URL.
 // Unknown locales fall back to en_US.
 const PEAK_LANG_BY_LOCALE: Record<string, string> = {
@@ -27,14 +29,21 @@ export function getApplyHref(locale: string): string | null {
   if (!base) {
     return null
   }
-  const lang = PEAK_LANG_BY_LOCALE[locale] ?? 'en_US'
 
   const url = new URL(base)
-  // Overwrite any language baked into the configured URL so the destination
-  // matches the language the visitor is currently viewing the checker in.
-  url.searchParams.set('language', lang)
-  // CO CBMS / Deloitte read this flag on the PEAK referrer to count clicks that
-  // originate in the Enrollment Checker. Always present, independent of language.
-  url.searchParams.set('redirectFromEC', 'Y')
+
+  // language and redirectFromEC are PEAK's contract, and PEAK is Colorado's
+  // benefits portal. Other states point at their own destination, which would
+  // not understand these and could be sent somewhere unintended by them.
+  if (getState() === 'co') {
+    // Overwrite any language baked into the configured URL so the destination
+    // matches the language the visitor is currently viewing the checker in.
+    // eslint-disable-next-line security/detect-object-injection -- locale indexes a static literal map
+    url.searchParams.set('language', PEAK_LANG_BY_LOCALE[locale] ?? 'en_US')
+    // CO CBMS / Deloitte read this flag on the PEAK referrer to count clicks
+    // that originate in the Enrollment Checker.
+    url.searchParams.set('redirectFromEC', 'Y')
+  }
+
   return url.toString()
 }
