@@ -32,6 +32,6 @@
     "vitest": "^4.1.10"
   },
   "dependencies": {
-    "web-vitals": "^5.3.0"
+    "web-vitals": "^6.1.1"
   }
 }
