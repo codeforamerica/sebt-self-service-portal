@@ -39,6 +39,17 @@ variable "keycloak_image_tag" {
   default     = "latest"
 }
 
+variable "keycloak_admin_ingress_cidrs" {
+  type        = list(string)
+  description = <<-EOT
+    Optional source CIDRs allowed to reach Keycloak /admin* (console and Admin
+    REST API) without the ALB bypass header. Leave empty to rely on the header
+    secret used by preview deploy scripts. Set via TF_VAR_keycloak_admin_ingress_cidrs
+    when office/VPN break-glass is needed.
+  EOT
+  default     = []
+}
+
 variable "private_subnets" {
   type        = list(string)
   description = "List of private subnet CIDR blocks."

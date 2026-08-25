@@ -21,6 +21,8 @@ Environment:
   PREVIEW_DOMAIN / DOMAIN            Public domain (default auth host derived)
   PREVIEW_KEYCLOAK_HOSTNAME          Keycloak base URL (default: https://auth.<DOMAIN>)
   PREVIEW_KEYCLOAK_ADMIN_SECRET_ID   Bootstrap admin Secrets Manager id/ARN
+  PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID  ALB /admin* bypass header secret (default name)
+  PREVIEW_KEYCLOAK_ADMIN_BYPASS_HEADER     Bypass header value override (skips SM lookup)
   PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID  Deploy client id (default: sebt-preview-deploy)
   PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET Deploy client secret (default: realm secret)
 EOF
@@ -116,18 +118,7 @@ if [ -z "${SA_USER_ID}" ]; then
 fi
 
 # Resolve realm-management client + desired roles.
-rm_clients_body="$(mktemp)"
-http_code="$(curl -sS -o "${rm_clients_body}" -w "%{http_code}" \
-  -G "${KEYCLOAK_HOSTNAME}/admin/realms/sebt/clients" \
-  -H "Authorization: Bearer ${ADMIN_TOKEN}" \
-  --data-urlencode "clientId=realm-management")" || true
-if [ "${http_code}" != "200" ]; then
-  log_error "Failed to look up realm-management client (HTTP ${http_code})"
-  rm -f "${rm_clients_body}"
-  exit 1
-fi
-RM_CLIENT_UUID="$(jq -r 'map(select(.clientId == "realm-management")) | .[0].id // empty' "${rm_clients_body}")"
-rm -f "${rm_clients_body}"
+RM_CLIENT_UUID="$(keycloak_client_uuid "${KEYCLOAK_HOSTNAME}" "${ADMIN_TOKEN}" "realm-management")"
 if [ -z "${RM_CLIENT_UUID}" ]; then
   log_error "realm-management client not found in sebt realm"
   exit 1

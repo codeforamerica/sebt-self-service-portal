@@ -117,6 +117,64 @@ resolve_keycloak_admin_secret_id() {
   echo "sebt-portal-co-development-keycloak-admin"
 }
 
+# ALB blocks /admin* unless this bypass header is present (or the client IP is
+# in keycloak_admin_ingress_cidrs). Preview deploy/destroy and bootstrap must
+# send it on Admin API calls. OIDC /realms/* stays public and does not need it.
+KEYCLOAK_ADMIN_BYPASS_HEADER_NAME_DEFAULT="x-sebt-keycloak-admin-bypass"
+
+resolve_keycloak_admin_bypass_secret_id() {
+  if [ -n "${PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID:-}" ]; then
+    echo "${PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID}"
+    return
+  fi
+  echo "sebt-portal-co-development-keycloak-admin-bypass"
+}
+
+# Sets KEYCLOAK_ADMIN_BYPASS_HEADER_NAME / KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE
+# for this shell.
+keycloak_load_admin_bypass_header() {
+  if [ "${KEYCLOAK_ADMIN_BYPASS_LOADED:-}" = "1" ]; then
+    return 0
+  fi
+
+  KEYCLOAK_ADMIN_BYPASS_HEADER_NAME="${KEYCLOAK_ADMIN_BYPASS_HEADER_NAME_DEFAULT}"
+  KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE=""
+
+  if [ -n "${PREVIEW_KEYCLOAK_ADMIN_BYPASS_HEADER:-}" ]; then
+    KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE="${PREVIEW_KEYCLOAK_ADMIN_BYPASS_HEADER}"
+    KEYCLOAK_ADMIN_BYPASS_LOADED=1
+    export KEYCLOAK_ADMIN_BYPASS_HEADER_NAME KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE KEYCLOAK_ADMIN_BYPASS_LOADED
+    return 0
+  fi
+
+  local secret_id secret_json
+  secret_id="$(resolve_keycloak_admin_bypass_secret_id)"
+  if secret_json="$(aws secretsmanager get-secret-value \
+    --secret-id "${secret_id}" \
+    --query SecretString \
+    --output text 2>/dev/null)"; then
+    KEYCLOAK_ADMIN_BYPASS_HEADER_NAME="$(echo "${secret_json}" | jq -r \
+      --arg default "${KEYCLOAK_ADMIN_BYPASS_HEADER_NAME_DEFAULT}" \
+      '.headerName // .header_name // $default')"
+    KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE="$(echo "${secret_json}" | jq -r \
+      '.headerValue // .header_value // .value // empty')"
+  else
+    log_info "Keycloak admin bypass secret ${secret_id} not found; /admin* calls may get 403 until tofu creates it"
+  fi
+
+  KEYCLOAK_ADMIN_BYPASS_LOADED=1
+  export KEYCLOAK_ADMIN_BYPASS_HEADER_NAME KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE KEYCLOAK_ADMIN_BYPASS_LOADED
+}
+
+# Populates KEYCLOAK_CURL_EXTRA_HEADERS for Admin API curls.
+keycloak_prepare_admin_bypass_curl_headers() {
+  KEYCLOAK_CURL_EXTRA_HEADERS=()
+  keycloak_load_admin_bypass_header
+  if [ -n "${KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE:-}" ]; then
+    KEYCLOAK_CURL_EXTRA_HEADERS=(-H "${KEYCLOAK_ADMIN_BYPASS_HEADER_NAME}: ${KEYCLOAK_ADMIN_BYPASS_HEADER_VALUE}")
+  fi
+}
+
 keycloak_admin_credentials() {
   local secret_id
   secret_id="$(resolve_keycloak_admin_secret_id)"
@@ -183,16 +241,20 @@ keycloak_admin_request() {
   local payload_file="${5:-}"
   local http_code
 
+  keycloak_prepare_admin_bypass_curl_headers
+
   if [ -n "${payload_file}" ]; then
     http_code="$(curl -sS -o "${outfile}" -w "%{http_code}" \
       -X "${method}" "${url}" \
       -H "Authorization: Bearer ${token}" \
       -H "Content-Type: application/json" \
+      "${KEYCLOAK_CURL_EXTRA_HEADERS[@]}" \
       --data-binary @"${payload_file}")" || true
   else
     http_code="$(curl -sS -o "${outfile}" -w "%{http_code}" \
       -X "${method}" "${url}" \
-      -H "Authorization: Bearer ${token}")" || true
+      -H "Authorization: Bearer ${token}" \
+      "${KEYCLOAK_CURL_EXTRA_HEADERS[@]}" )" || true
   fi
 
   echo "${http_code}"
@@ -205,9 +267,11 @@ keycloak_client_uuid() {
   local body http_code uuid
 
   body="$(mktemp)"
+  keycloak_prepare_admin_bypass_curl_headers
   http_code="$(curl -sS -o "${body}" -w "%{http_code}" \
     -G "${keycloak_hostname}/admin/realms/sebt/clients" \
     -H "Authorization: Bearer ${token}" \
+    "${KEYCLOAK_CURL_EXTRA_HEADERS[@]}" \
     --data-urlencode "clientId=${client_id}")" || true
 
   if [ "${http_code}" = "401" ]; then

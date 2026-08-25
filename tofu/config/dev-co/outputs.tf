@@ -69,6 +69,17 @@ output "preview_keycloak_admin_secret_arn" {
   sensitive   = true
 }
 
+output "preview_keycloak_admin_bypass_secret_arn" {
+  description = "Secrets Manager ARN for the ALB /admin* bypass header used by preview scripts."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].admin_bypass_secret_arn : null
+  sensitive   = true
+}
+
+output "preview_keycloak_admin_bypass_secret_name" {
+  description = "Secrets Manager name for the ALB /admin* bypass header."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].admin_bypass_secret_name : null
+}
+
 output "keycloak_repository_url" {
   description = "ECR repository URL for the shared Keycloak image."
   value       = data.aws_ecr_repository.keycloak.repository_url

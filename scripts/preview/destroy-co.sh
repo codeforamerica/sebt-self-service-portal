@@ -24,6 +24,8 @@ Environment:
   PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID Keycloak Admin API client id (default: sebt-preview-deploy)
   PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET Keycloak Admin API client secret
   PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID Optional Secrets Manager id/ARN for deploy client JSON
+  PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID ALB /admin* bypass header secret (default name)
+  PREVIEW_KEYCLOAK_ADMIN_BYPASS_HEADER Bypass header value override (skips SM)
   PREVIEW_OIDC_CLIENT_ID           Keycloak login client id (default: sebt-portal)
   PREVIEW_OIDC_STEP_UP_CLIENT_ID   Keycloak step-up client id (default: sebt-portal-stepup)
   AWS_REGION                       AWS region (default: us-east-1)

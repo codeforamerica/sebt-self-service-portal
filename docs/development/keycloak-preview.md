@@ -10,6 +10,7 @@ The long-lived portal path that uses the production IdP is separate (`module.app
 - Public ALB + Fargate (`tofu/modules/sebt_keycloak`) + dedicated Postgres
 - Realm/theme baked into `docker/keycloak`
 - Consumers override API OIDC env toward Keycloak and omit production IdP client secrets when those would conflict
+- **Admin path protection:** ALB listener rules keep `/realms/*` (OIDC) public but deny `/admin` and `/admin/*` with HTTP 403 unless the request includes the bypass header from Secrets Manager (`…-keycloak-admin-bypass`) or comes from an optional allowlisted CIDR (`keycloak_admin_ingress_cidrs` / `TF_VAR_keycloak_admin_ingress_cidrs`). Preview deploy scripts send the bypass header automatically.
 
 ## First-time setup
 
@@ -39,7 +40,9 @@ Uses the bootstrap admin secret in Secrets Manager (`…-keycloak-admin`). If ad
 
 **B. Manual Admin Console** (when bootstrap admin is broken but you can still reach `/admin` with a working user):
 
-1. Open `https://auth.<DOMAIN>/admin` and sign in.
+The public ALB returns **403** for `/admin*` unless your IP is in `keycloak_admin_ingress_cidrs` or you send the bypass header. For break-glass console access, either temporarily add your VPN/office CIDR via `TF_VAR_keycloak_admin_ingress_cidrs` and re-apply, or call the Admin API with the bypass header from Secrets Manager (`…-keycloak-admin-bypass` → `headerValue`). Prefer SSM exec on the Keycloak task when you only need to inspect logs.
+
+1. Open `https://auth.<DOMAIN>/admin` (after allowlisting) and sign in.
 2. Realm **sebt** → **Clients** → **Create client**:
    - Client ID: `sebt-preview-deploy`
    - Client authentication: **On**
@@ -93,6 +96,7 @@ Baked realm redirect URIs cover the long-lived host and localhost only. Ephemera
 ## Ops notes
 
 - Do **not** use this IdP for production.
-- Bootstrap admin credentials remain in Secrets Manager (`…-keycloak-admin`) for break-glass / one-time bootstrap only. Prefer SSM exec / secret read over exposing `/admin` broadly.
+- Bootstrap admin credentials remain in Secrets Manager (`…-keycloak-admin`) for break-glass / one-time bootstrap only.
+- `/admin*` is blocked at the ALB by default. Preview scripts read `…-keycloak-admin-bypass` (override with `PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID` or `PREVIEW_KEYCLOAK_ADMIN_BYPASS_HEADER`). Optional CIDR allowlist: `keycloak_admin_ingress_cidrs`.
 - After realm or theme changes: rebuild/push the image, then force a new ECS deployment for the Keycloak service. Note that `--import-realm` does not overwrite an existing realm in the Postgres database; use `bootstrap-keycloak-deploy-client.sh` or the Admin API when you need live client changes beyond what preview deploy already manages.
 - When the environment domain changes, update the long-lived entries in `sebt-realm.preview.json` and rebuild the image.

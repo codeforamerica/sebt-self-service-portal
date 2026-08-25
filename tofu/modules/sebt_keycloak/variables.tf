@@ -81,3 +81,14 @@ variable "desired_containers" {
   description = "Desired Keycloak task count."
   default     = 1
 }
+
+variable "admin_ingress_cidrs" {
+  type        = list(string)
+  description = <<-EOT
+    Optional source CIDRs allowed to reach /admin* on the public Keycloak ALB
+    (for example office or VPN ranges). Preview deploy scripts use a Secrets
+    Manager bypass header instead of relying on these CIDRs. At most five CIDRs
+    per ALB rule; longer lists are split automatically.
+  EOT
+  default     = []
+}

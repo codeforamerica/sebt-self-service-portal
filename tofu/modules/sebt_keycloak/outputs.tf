@@ -33,3 +33,14 @@ output "admin_secret_arn" {
   value       = aws_secretsmanager_secret.admin.arn
   sensitive   = true
 }
+
+output "admin_bypass_secret_arn" {
+  description = "Secrets Manager ARN for the ALB /admin* bypass header (JSON headerName/headerValue)."
+  value       = aws_secretsmanager_secret.admin_bypass.arn
+  sensitive   = true
+}
+
+output "admin_bypass_secret_name" {
+  description = "Secrets Manager name for the ALB /admin* bypass header."
+  value       = aws_secretsmanager_secret.admin_bypass.name
+}

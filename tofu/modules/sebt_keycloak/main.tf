@@ -90,13 +90,13 @@ resource "aws_security_group_rule" "database_egress" {
 resource "aws_db_instance" "keycloak" {
   identifier = "${local.prefix}-db"
 
-  engine               = "postgres"
-  engine_version       = "16"
-  instance_class       = "db.t4g.micro"
-  allocated_storage    = 20
+  engine                = "postgres"
+  engine_version        = "16"
+  instance_class        = "db.t4g.micro"
+  allocated_storage     = 20
   max_allocated_storage = 50
-  storage_type         = "gp3"
-  storage_encrypted    = true
+  storage_type          = "gp3"
+  storage_encrypted     = true
 
   db_name  = "keycloak"
   username = "keycloak"
@@ -131,6 +131,8 @@ module "service" {
   subdomain      = local.subdomain
   hosted_zone_id = var.hosted_zone_id
 
+  # Public for OIDC (/realms/*). /admin* is denied at the ALB unless the
+  # bypass header or an allowlisted CIDR matches — see admin_access.tf.
   public          = true
   create_endpoint = true
 
@@ -168,15 +170,15 @@ module "service" {
   ]
 
   environment_variables = {
-    KC_HOSTNAME                 = local.hostname
+    KC_HOSTNAME                     = local.hostname
     KC_HOSTNAME_BACKCHANNEL_DYNAMIC = "true"
-    KC_HTTP_ENABLED             = "true"
-    KC_PROXY_HEADERS            = "xforwarded"
-    KC_HEALTH_ENABLED           = "true"
-    KC_DB                       = "postgres"
-    KC_DB_URL                   = "jdbc:postgresql://${aws_db_instance.keycloak.address}:${aws_db_instance.keycloak.port}/${aws_db_instance.keycloak.db_name}"
-    KC_DB_USERNAME              = "keycloak"
-    KC_BOOTSTRAP_ADMIN_USERNAME = "admin"
+    KC_HTTP_ENABLED                 = "true"
+    KC_PROXY_HEADERS                = "xforwarded"
+    KC_HEALTH_ENABLED               = "true"
+    KC_DB                           = "postgres"
+    KC_DB_URL                       = "jdbc:postgresql://${aws_db_instance.keycloak.address}:${aws_db_instance.keycloak.port}/${aws_db_instance.keycloak.db_name}"
+    KC_DB_USERNAME                  = "keycloak"
+    KC_BOOTSTRAP_ADMIN_USERNAME     = "admin"
   }
 
   environment_secrets = {

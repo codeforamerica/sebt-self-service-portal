@@ -275,4 +275,5 @@ module "preview_keycloak" {
   image_tag       = var.keycloak_image_tag
   force_delete    = true
   skip_final_snapshot = true
+  admin_ingress_cidrs = var.keycloak_admin_ingress_cidrs
 }
