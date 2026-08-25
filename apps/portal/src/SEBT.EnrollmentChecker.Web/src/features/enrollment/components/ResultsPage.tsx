@@ -102,9 +102,8 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     notEnrolled.length
   )
 
-  // Which artwork each outcome leads with is state-specific — CO opens an
-  // enrolled result with the review card, DC with a checkmark — so the mapping
-  // lives in the asset manifest rather than in filenames chosen here.
+  // The outcome-to-artwork mapping is state-specific, so it lives in the asset
+  // manifest rather than in filenames chosen here.
   const icon = getCheckerAssetPath(
     ['noneEnrolled', 'indeterminate'].includes(householdEnrollmentResult)
       ? 'resultsNotEnrolled'
