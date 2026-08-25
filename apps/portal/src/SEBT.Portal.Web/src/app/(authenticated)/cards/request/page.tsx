@@ -11,7 +11,7 @@ import { AnalyticsEvents } from '@sebt/analytics'
 
 export default function RequestReplacementCardsPage() {
   const { t: tOptional } = useTranslation('optionalId')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
   const router = useRouter()
   const { data, isLoading } = useHouseholdData()
   const canRequestReplacementCard = data?.allowedActions?.canRequestReplacementCard ?? true
@@ -31,7 +31,7 @@ export default function RequestReplacementCardsPage() {
         aria-busy="true"
         role="status"
       >
-        <span className="usa-sr-only">{tCommon('loading')}</span>
+        <span className="usa-sr-only">{tDev('loading')}</span>
       </div>
     )
   }
