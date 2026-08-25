@@ -247,10 +247,12 @@ jobs:
         uses: actions/github-script@v8
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
+          DOMAIN: ${{ vars.DOMAIN }}
         with:
           script: |
             const prNumber = context.payload.pull_request.number;
             const url = process.env.PREVIEW_URL;
+            const domain = process.env.DOMAIN;
             const marker = '<!-- preview-co -->';
             const body = [
               marker,
@@ -260,7 +262,7 @@ jobs:
               '',
               '**Smoke login (Keycloak):** fixture users from `docker/keycloak/sebt-realm.preview.json` (password `password`), for example username `verified`. OTP bypass also remains enabled.',
               '',
-              'OIDC for previews uses the shared Keycloak at `https://auth.<DOMAIN>`.',
+              `OIDC for previews uses the shared Keycloak at \`https://auth.${domain}\`.`,
               'Deploy registers each `pr-N` host as a Valid Redirect URI on the Keycloak clients.',
               '',
               '_Previews share the dev-co database; seeded data and portal state are not isolated per PR._',
