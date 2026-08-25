@@ -1,6 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { changeLanguage, getCurrentLanguage } from '@sebt/design-system/client'
 import { EnrollmentProvider } from '../context/EnrollmentContext'
 import { LandingPage } from './LandingPage'
 
@@ -17,7 +18,10 @@ function renderLandingPage() {
 
 describe('LandingPage', () => {
   beforeEach(() => sessionStorage.clear())
-  afterEach(() => sessionStorage.clear())
+  afterEach(() => {
+    sessionStorage.clear()
+    act(() => changeLanguage('en'))
+  })
 
   it('renders a heading and a primary action button', () => {
     renderLandingPage()
@@ -43,6 +47,20 @@ describe('LandingPage', () => {
       'data-analytics-cta',
       'start_enrollment_check_cta_es'
     )
+  })
+
+  it('launches the check in Spanish from the Spanish action button', async () => {
+    renderLandingPage()
+    await userEvent.click(screen.getByRole('button', { name: /verificar/i }))
+    expect(getCurrentLanguage()).toBe('es')
+    expect(mockPush).toHaveBeenCalledWith('/disclaimer')
+  })
+
+  it('keeps the current language from the primary action button', async () => {
+    renderLandingPage()
+    await userEvent.click(screen.getByRole('button', { name: /check enrollment/i }))
+    expect(getCurrentLanguage()).toBe('en')
+    expect(mockPush).toHaveBeenCalledWith('/disclaimer')
   })
 
   it('clears persisted children on mount', () => {

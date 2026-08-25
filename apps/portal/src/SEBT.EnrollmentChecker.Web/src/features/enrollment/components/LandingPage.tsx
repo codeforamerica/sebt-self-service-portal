@@ -1,6 +1,7 @@
 'use client'
 
 import { Button, RichText } from '@sebt/design-system'
+import { changeLanguage } from '@sebt/design-system/client'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -10,7 +11,7 @@ import { env } from '@/lib/env'
 import { useEnrollment } from '../context/EnrollmentContext'
 
 export function LandingPage() {
-  const { t } = useTranslation('landing')
+  const { t, i18n } = useTranslation('landing')
   const router = useRouter()
   const { clearState } = useEnrollment()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
@@ -21,6 +22,19 @@ export function LandingPage() {
     clearState()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, [])
+
+  // The `action` label is in the current UI language and `actionEspañol` is
+  // the other language's label. Pair each button with the language it names so
+  // the check runs in the language the user chose, not the one the landing page
+  // happened to be in.
+  const currentLang = i18n.language.startsWith('es') ? 'es' : 'en'
+  const otherLang = currentLang === 'es' ? 'en' : 'es'
+
+  function startCheck(language: 'en' | 'es') {
+    // Persist the choice so it survives the client-side navigation and reloads.
+    changeLanguage(language)
+    router.push('/disclaimer')
+  }
 
   // body3 is \n-delimited list items — split and filter empties
   const reaonsForAutoEnrollment = t('body3').split('\n').filter(Boolean)
@@ -44,7 +58,7 @@ export function LandingPage() {
 
         <div className="margin-top-3">
           <Button
-            onClick={() => router.push('/disclaimer')}
+            onClick={() => startCheck(currentLang)}
             data-analytics-cta="start_enrollment_check_cta"
           >
             {t('action')}
@@ -53,7 +67,7 @@ export function LandingPage() {
         <div className="margin-top-2">
           <Button
             variant="outline"
-            onClick={() => router.push('/disclaimer')}
+            onClick={() => startCheck(otherLang)}
             data-analytics-cta="start_enrollment_check_cta_es"
           >
             {t('actionEspañol')}
