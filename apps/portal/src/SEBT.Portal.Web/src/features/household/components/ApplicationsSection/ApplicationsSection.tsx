@@ -47,14 +47,18 @@ function ApplicationCard({ application }: { application: Application }) {
     <div className="usa-card__container margin-bottom-2">
       <div className="usa-card__body">
         <dl className="margin-0">
-          {showApplicationDate && application.applicationDate && (
-            <>
-              <dt className="text-bold">{t('applicationsTableHeadingDateSubmitted')}</dt>
-              <dd className="margin-left-0 margin-bottom-2">
-                {formatDate(application.applicationDate, i18n.language)}
-              </dd>
-            </>
-          )}
+          {/* Like the case number below, the date surfaces only where the state's content
+              sheet authors the label, so a flag flip ahead of the content row cannot leak the key. */}
+          {showApplicationDate &&
+            application.applicationDate &&
+            i18n.exists('dashboard:applicationsTableHeadingDateSubmitted') && (
+              <>
+                <dt className="text-bold">{t('applicationsTableHeadingDateSubmitted')}</dt>
+                <dd className="margin-left-0 margin-bottom-2">
+                  {formatDate(application.applicationDate, i18n.language)}
+                </dd>
+              </>
+            )}
 
           {/* States that omit the label in their content sheet do not surface a case number. */}
           {showCaseNumber &&
