@@ -1,6 +1,7 @@
 'use client'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
+import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -30,6 +31,7 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
 
   const isEditMode = !!editingChild
   const hasChildren = state.children.length > 0
+  const formCard = getCheckerAssetPath('formCard')
 
   function handleSubmit(values: ChildFormValues) {
     if (isEditMode && state.editingChildId) {
@@ -49,13 +51,15 @@ export function ChildFormPage({ showSchoolField, apiBaseUrl }: ChildFormPageProp
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-form-card.svg`}
-          alt=""
-          width={100}
-          height={75}
-          aria-hidden="true"
-        />
+        {formCard && (
+          <Image
+            src={formCard}
+            alt=""
+            width={100}
+            height={75}
+            aria-hidden="true"
+          />
+        )}
         <h1 className="font-family-sans margin-top-1 text-primary">{isEditMode ? t('editHeading', t('title')) : t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
