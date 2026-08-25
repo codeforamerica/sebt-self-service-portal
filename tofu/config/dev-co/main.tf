@@ -268,7 +268,6 @@ module "preview_keycloak" {
   vpc_id          = module.vpc.vpc_id
   private_subnets = module.vpc.private_subnets
   public_subnets  = module.vpc.public_subnets
-  vpc_cidr        = var.vpc_cidr
   logging_key_id  = module.logging.kms_key_arn
   image_url       = data.aws_ecr_repository.keycloak.repository_url
   repository_arn  = data.aws_ecr_repository.keycloak.arn

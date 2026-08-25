@@ -68,16 +68,6 @@ resource "aws_security_group" "database" {
   }
 }
 
-resource "aws_security_group_rule" "database_ingress" {
-  type              = "ingress"
-  from_port         = 5432
-  to_port           = 5432
-  protocol          = "tcp"
-  cidr_blocks       = [var.vpc_cidr]
-  security_group_id = aws_security_group.database.id
-  description       = "Postgres from VPC (Keycloak tasks)"
-}
-
 resource "aws_security_group_rule" "database_egress" {
   type              = "egress"
   from_port         = 0
@@ -191,4 +181,15 @@ module "service" {
     aws_secretsmanager_secret_version.db,
     aws_secretsmanager_secret_version.admin,
   ]
+}
+
+# Only Keycloak tasks need Postgres — not every ENI in the VPC.
+resource "aws_security_group_rule" "database_ingress" {
+  type                     = "ingress"
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
+  source_security_group_id = module.service.security_group_id
+  security_group_id        = aws_security_group.database.id
+  description              = "Postgres from Keycloak tasks"
 }

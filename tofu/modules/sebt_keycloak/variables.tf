@@ -38,11 +38,6 @@ variable "public_subnets" {
   description = "Public subnet IDs for the internet-facing Keycloak ALB."
 }
 
-variable "vpc_cidr" {
-  type        = string
-  description = "VPC CIDR allowed to reach the Keycloak Postgres instance."
-}
-
 variable "logging_key_id" {
   type        = string
   description = "KMS key ARN/ID for CloudWatch log encryption."
