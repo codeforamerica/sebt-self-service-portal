@@ -6,6 +6,15 @@ import { ResultsPage } from './ResultsPage'
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
+// Flows with a review step collect the household before submitting, so they
+// have no reason to send the visitor back for another child.
+describe('sequential checks', () => {
+  it('offers no check-another card in a review-step flow', () => {
+    render(<ResultsPage results={mixedEnrolled} portalUrl="https://portal.example.gov" />)
+    expect(screen.queryByTestId('check-another-child')).not.toBeInTheDocument()
+  })
+})
+
 let mockApplyHref: string | null = 'https://apply.example.gov/?language=en_US'
 vi.mock('@/lib/applyHref', () => ({
   getApplyHref: () => mockApplyHref
