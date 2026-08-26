@@ -24,12 +24,15 @@
     <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
   </PropertyGroup>
 
-  <!-- 
-    Triggers generation of NuGet package lock files (packages.lock.json) for 
-    all projects in the directory or subdirectories.
+  <!--
+    Generate a packages.lock.json for every project, and in CI restore in locked
+    mode (GitHub Actions sets CI=true) so a missing or drifted lockfile fails the
+    build instead of silently resolving new versions. Local dev stays unlocked so
+    developers can still add packages and refresh the lockfile.
   -->
   <PropertyGroup>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
 
   <PropertyGroup>

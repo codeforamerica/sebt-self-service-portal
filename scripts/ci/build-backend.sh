@@ -26,16 +26,10 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SKIP_RESTORE=false
 CONFIGURATION="Debug"
 EXTRA_BUILD_ARGS=""
-# Extra flags for `dotnet restore`. Populated for CI below to enforce lockfile integrity.
-RESTORE_ARGS=""
 
 # Auto-detect CI environment
 if [ "${CI:-false}" = "true" ] || [ -n "${GITHUB_ACTIONS:-}" ]; then
   CONFIGURATION="Release"
-  # CI restores must honor the committed packages.lock.json files: fail the build if any
-  # lockfile is missing or would change, instead of silently resolving new versions.
-  # Left off local runs so developers can still add packages and refresh the lockfile.
-  RESTORE_ARGS="--locked-mode"
 fi
 
 while [ $# -gt 0 ]; do
@@ -122,7 +116,9 @@ restore_dependencies() {
   log_info "Restoring .NET dependencies..."
   cd "$PROJECT_ROOT"
 
-  dotnet restore $RESTORE_ARGS --verbosity minimal
+  # Locked-mode enforcement lives in Directory.Build.props (CI-gated on $(CI)), so a
+  # plain restore here still fails on lockfile drift in CI without a shell flag.
+  dotnet restore --verbosity minimal
 
   log_success "Dependencies restored"
 }
