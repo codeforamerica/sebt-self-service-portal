@@ -2,7 +2,7 @@
 
 [![State CI](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml/badge.svg)](https://github.com/codeforamerica/sebt-self-service-portal/actions/workflows/state-ci.yaml)
 
-# About
+## About
 
 This platform allows parents/guardians of children eligible for [Summer EBT / Sun Bucks](https://www.fns.usda.gov/summer/sunbucks) to view the status of and manage their benefit.
 
@@ -11,17 +11,17 @@ This platform allows parents/guardians of children eligible for [Summer EBT / Su
 - The **Self-Service Portal** allows families to log in and:
   - Check Summer EBT benefits and card status for all enrolled children their household
   - See the application status for any applications they submitted
-  - View or update their mailing adddress on file
-  - Request a replcement Summer EBT card
- 
+  - View or update their mailing address on file
+  - Request a replacement Summer EBT card
+
 As of Summer 2026, the platform is currently in use by Colorado and Washington, DC.
 
 ## Repository structure
 
 This is a monorepo containing all application code, as well as the shared + CO state "connector" code. The DC connector code
-lives in a an external repo ([`sebt-self-service-portal-dc-connector`](https://github.com/codeforamerica/sebt-self-service-portal-dc-connector)).
+lives in an external repo ([`sebt-self-service-portal-dc-connector`](https://github.com/codeforamerica/sebt-self-service-portal-dc-connector)).
 
-```
+```text
 apps/
   portal/                 # the deployable application
     src/
@@ -30,7 +30,7 @@ apps/
       SEBT.Portal.Infrastructure             # DB context and migrations, repositories, service implementations, external integrations
       SEBT.Portal.Infrastructure.Seeding     # Data seeding for development environments
       SEBT.Portal.UseCases                   # Application layer command/query handlers (auth, households)
-      SEBT.Portal.Kernal/Kernel.AspNetCore   # Base classes, ASP.NET extensions
+      SEBT.Portal.Kernel/Kernel.AspNetCore   # Base classes, ASP.NET extensions
       SEBT.Portal.Web                 # Next.js Portal front (see [README](./src/SEBT.Portal.Web/README.md))
       SEBT.EnrollmentChecker.Web      # Standalone Next.js web app for Enrollment Checker
     test/, SEBT.Portal.sln
@@ -48,37 +48,35 @@ SEBT.slnx                 # top-level .NET solution: portal + in-repo connectors
 Other repo-wide config lives at the root: `pnpm-workspace.yaml`, `package.json`, `nuget.config`,
 `global.json`, `Directory.Build.props`.
 
-
 ## Technology Stack overview
 
-**Backend**
+### Backend
 
 - Language/framework: [C# with .NET 10](https://dotnet.microsoft.com/en-us/languages/csharp)
 - Key libraries: [ASP.NET Core](https://dotnet.microsoft.com/en-us/apps/aspnet), [Serilog](https://serilog.net/), [Managed Extensibility Framework (MEF)](https://learn.microsoft.com/en-us/dotnet/standard/mef/), [EntityFramework (EF) Core](https://learn.microsoft.com/en-us/ef/core/)
 - Package manager: [NuGet](https://www.nuget.org/)
 
-**Frontend**
+### Frontend
 
 - Language/framework: [NextJS 16](https://nextjs.org/) with TypeScript
 - Key libraries: next, react, [i18next](https://www.i18next.com/), react-i18next, tanstack/react-query, zod
 - Package manager: [pnpm](https://pnpm.io/)
 - Design system: [USWDS](https://designsystem.digital.gov/), with design tokens specified for each state
 
-**Infrastructure**
+### Infrastructure
 
 - Infrastructure as Code using OpenTofu (Terraform) - see [tofu](./tofu/)
 - Docker with [docker-compose](https://docs.docker.com/compose/) for local development
 
-## Local Environment Set Up 🧰
+## Local Environment Set Up 
 
 > **Note:** The following steps assume you are working on macOS, using [Homebrew package manager](https://brew.sh/). Steps may differ if you are working on a different operating system.
 
 > **On Windows:** you'll want to enable long paths (`git config core.longpaths true`), since the nested `apps/portal/...` paths can exceed the legacy 260-char limit.
 
-
 ### Local development
 
-### 1. Make sure you have downloaded and installed prequisite software 
+### 1. Make sure you have downloaded and installed prerequisite software
 
 - [Git](https://git-scm.com/install/)
 - [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for running the back end
@@ -97,7 +95,7 @@ The self-service portal, enrollment checker, the state plugin contract, and the 
 git clone git@github.com:codeforamerica/sebt-self-service-portal.git
 ```
 
-**To run the DC Portal**
+#### To run the DC Portal
 
 The state connector for DC is maintained in its own repository (see [apps/connectors/dc/README.md](./apps/connectors/dc/README.md)). Clone it as a sibling to this one (same parent
 folder) so it can be used when building and running the DC app (via `pnpm dev:dc`):
@@ -106,8 +104,7 @@ folder) so it can be used when building and running the DC app (via `pnpm dev:dc
 git clone git@github.com:codeforamerica/sebt-self-service-portal-dc-connector.git
 ```
 
-The current DC enrollment checker is a standalone app, in a separate repository: https://github.com/codeforamerica/cfa-dc-sebt-portal/
-
+The current DC enrollment checker is a standalone app, in a [separate repository](https://github.com/codeforamerica/cfa-dc-sebt-portal).
 
 ### 3. Configure local environment
 
@@ -150,10 +147,9 @@ For more about how appsettings work, see [state specific configuration](#state-s
   [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license. Needed tools are defined in the tools manifest in `.config/dotnet-tools.json`. To install them, run `dotnet tool restore` once from the repo root.
 - You'll also want to run `dotnet build SEBT.slnx` from the repo root before starting up the app for the first time — it builds the portal and the in-repo connectors together.
 
-
 ### 5. Start Services 💻
 
-Make sure Docker is installed and the docker daemon is running. Several components of the app are Dockerized. 
+Make sure Docker is installed and the docker daemon is running. Several components of the app are Dockerized.
 
 #### Start database in Docker
 
@@ -166,6 +162,7 @@ Before starting the app, you need to run the container for the MSSQL db (`docker
 You can start this with `docker compose up -d mailpit`. Once the Mailpit docker container is running on your machine, you can access its UI in your browser at <http://localhost:8025>
 
 #### Other dockerized services
+
 - Redis (caching) - see below
 - Jaegar (telemetry) - see below
   
@@ -199,6 +196,7 @@ docker compose down -v
 ### Testing
 
 #### Back end tests
+
 ```bash
 # from repo root
 pnpm api:test         # Run all backend tests
@@ -206,6 +204,7 @@ pnpm api:test:unit    # Run backend unit tests only
 ```
 
 #### Front end tests - portal
+
 ```bash
 # from within SEBT.Portal.Web:
 pnpm test            # Run frontend tests (vitest)
@@ -214,6 +213,7 @@ pnpm test:a11y       # Run accessibility (pa11y) tests
 ```
 
 #### Front end tests - enrollment checker
+
 ```bash
 # from within SEBT.EnrollmentChecker.Web:
 pnpm test            # Run frontend tests (vitest)
@@ -222,7 +222,8 @@ pnpm test:a11y       # Run accessibility (pa11y) tests
 
 ```
 
-####  Run tests locally exactly as they run in CI (Release mode):
+#### Run tests locally exactly as they run in CI (Release mode)
+
 ```bash
 # from repo root
 pnpm ci:test          # Test frontend + backend
@@ -275,11 +276,9 @@ When neither is configured, the application falls back to in-memory caching only
 
 ### Jaeger (Local OpenTelemetry Tracing)
 
-[Jaeger](https://github.com/jaegertracing/jaeger) acts as a local OTLP collector for OpenTelemetry tracing. The default configuration for the portal sends traces and metrics via OTLP over gRPC to http://localhost:4317, which is the standard port. Local traces can be viewed in the Jaeger UI at [http://localhost:16686](http://localhost:16686).
+[Jaeger](https://github.com/jaegertracing/jaeger) acts as a local OTLP collector for OpenTelemetry tracing. The default configuration for the portal sends traces and metrics via OTLP over gRPC to <http://localhost:4317>, which is the standard port. Local traces can be viewed in the Jaeger UI at [http://localhost:16686](http://localhost:16686).
 
 The Next.js web apps (`SEBT.Portal.Web`, `SEBT.EnrollmentChecker.Web`) also emit OTLP here, but only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set — they stay inert otherwise. `.env.example` points it at `http://localhost:4317`; copy that into `.env.local` to see web-tier traces alongside the API's.
-
-
 
 ### CI/CD (via GitHub Actions)
 
@@ -293,6 +292,7 @@ The Next.js web apps (`SEBT.Portal.Web`, `SEBT.EnrollmentChecker.Web`) also emit
 - `build-and-seed-dc-source.yaml` builds the DC seed/source image from the external DC repo.
 
 #### State-based CI testing
+
 ```bash
 pnpm ci:test:states   # Test all states
 pnpm ci:test:state:dc # Test DC state
@@ -426,7 +426,7 @@ The application uses Microsoft SQL Server as its database. This is propped up vi
 
 Configuration is managed through environment variables.
 
-Available environment variables for `.env` in the respository root:
+Available environment variables for `.env` in the repository root:
 **Database (for Docker Compose):**
 
 - `MSSQL_SA_PASSWORD` - SQL Server SA password
@@ -526,7 +526,7 @@ To clear all seeded data from the database, use the `ClearSeededData` console ap
 dotnet run --project scripts/ClearSeededData
 ```
 
-This will prompt for confirmation before deleting all seeded records from the database. This is irreversable; once done, you'll have to reseed.
+This will prompt for confirmation before deleting all seeded records from the database. This is irreversible; once done, you'll have to reseed.
 
 **View database tables example:**
 
