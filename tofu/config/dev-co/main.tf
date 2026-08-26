@@ -16,7 +16,7 @@ provider "doppler" {}
 
 # Create an S3 bucket and KMS key for logging.
 module "logging" {
-  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.2.0"
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
@@ -37,7 +37,7 @@ module "logging" {
 # Create a VPC with public and private subnets. Since this is a dev
 # environment, we'll use a single NAT gateway to reduce costs.
 module "vpc" {
-  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.1.2"
+  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.2.1"
 
   project            = "${var.project}-${var.state}"
   environment        = var.environment
