@@ -87,7 +87,7 @@ export function ChildFormPage({
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t('title')) : t('title')}</h1>
+        <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t('title')) : t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
         <ChildForm

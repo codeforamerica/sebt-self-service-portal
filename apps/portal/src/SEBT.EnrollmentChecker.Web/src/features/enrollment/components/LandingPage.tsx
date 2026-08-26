@@ -73,15 +73,19 @@ export function LandingPage() {
             priority
           />
         )}
-        <h1 className={`font-family-sans ${pageTitleText}`}>{t('title')}</h1>
+        <h1 className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
+          {t('title')}
+        </h1>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>
         </div>
 
+        {/* The primary action and the translated group each start a new block;
+            further translated actions sit tight together as one group. */}
         {actions.map((action, index) => (
           <div
             key={action.language}
-            className={index === 0 ? 'margin-top-3' : 'margin-top-2'}
+            className={index <= 1 ? 'margin-top-3' : 'margin-top-1'}
           >
             <Button
               // Spread, not `variant={action.variant}` — exactOptionalPropertyTypes
@@ -101,7 +105,7 @@ export function LandingPage() {
 
         {/* FAQ Accordion — follows USWDS accordion pattern */}
         {useAccordion ? (
-          <div className="usa-accordion margin-top-4">
+          <div className="usa-accordion margin-top-3">
             <h2 className="usa-accordion__heading">
               <button
                 type="button"
@@ -132,7 +136,7 @@ export function LandingPage() {
             </div>
           </div>
         ) : (
-          <div className="usa-prose margin-top-4">{eligibilityExplanation}</div>
+          <div className="usa-prose margin-top-3">{eligibilityExplanation}</div>
         )}
       </div>
     </div>
