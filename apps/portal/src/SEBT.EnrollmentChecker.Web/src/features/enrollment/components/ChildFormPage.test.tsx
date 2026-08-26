@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -61,6 +62,85 @@ describe('ChildFormPage', () => {
     expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument()
     // In edit mode, the form should be pre-populated with the child's firstName
     expect(await screen.findByDisplayValue('Jane')).toBeInTheDocument()
+  })
+
+  // Flows without a review step hand the check straight to their caller. The
+  // prop's presence is what selects that behavior, so the component stays
+  // unaware of which state it is running in.
+  describe('direct submit (no review step)', () => {
+    async function fillAndSubmit() {
+      await userEvent.type(screen.getByRole('textbox', { name: /first name/i }), 'Jane')
+      await userEvent.type(screen.getByRole('textbox', { name: /last name/i }), 'Doe')
+      await userEvent.selectOptions(screen.getByRole('combobox', { name: /month/i }), 'April')
+      await userEvent.type(screen.getByRole('textbox', { name: /day/i }), '12')
+      await userEvent.type(screen.getByRole('textbox', { name: /year/i }), '2015')
+      await userEvent.click(screen.getByRole('button', { name: /continue|submit|check/i }))
+    }
+
+    beforeEach(() => {
+      mockPush.mockClear()
+      sessionStorage.clear()
+    })
+    afterEach(() => sessionStorage.clear())
+
+    it('submits the newly entered child instead of routing to review', async () => {
+      const onSubmitChildren = vi.fn()
+      render(
+        <ChildFormPage
+          showSchoolField={false}
+          apiBaseUrl=""
+          onSubmitChildren={onSubmitChildren}
+        />,
+        { wrapper }
+      )
+
+      await fillAndSubmit()
+
+      expect(onSubmitChildren).toHaveBeenCalledTimes(1)
+      // The context update has not landed yet, so the child must come through
+      // the payload rather than from state.
+      const submitted = onSubmitChildren.mock.calls[0]![0] as Array<{ firstName: string }>
+      expect(submitted).toHaveLength(1)
+      expect(submitted[0]!.firstName).toBe('Jane')
+      expect(mockPush).not.toHaveBeenCalledWith('/review')
+    })
+
+    // Single-child flow: a second check covers only the child just entered, so
+    // households never accumulate across checks.
+    it('submits only the current child when one was already checked', async () => {
+      const onSubmitChildren = vi.fn()
+      sessionStorage.setItem(
+        'enrollmentState',
+        JSON.stringify({
+          children: [
+            { id: 'prior', firstName: 'Alex', lastName: 'Prior', dateOfBirth: '2014-01-01' }
+          ],
+          editingChildId: null
+        })
+      )
+
+      render(
+        <ChildFormPage
+          showSchoolField={false}
+          apiBaseUrl=""
+          onSubmitChildren={onSubmitChildren}
+        />,
+        { wrapper }
+      )
+
+      await fillAndSubmit()
+
+      const submitted = onSubmitChildren.mock.calls[0]![0] as Array<{ firstName: string }>
+      expect(submitted.map((c) => c.firstName)).toEqual(['Jane'])
+    })
+
+    it('routes to review when no direct-submit handler is given', async () => {
+      render(<ChildFormPage showSchoolField={false} apiBaseUrl="" />, { wrapper })
+
+      await fillAndSubmit()
+
+      expect(mockPush).toHaveBeenCalledWith('/review')
+    })
   })
 
   describe('analytics — DC-178', () => {
