@@ -1,36 +1,41 @@
 import { render, screen } from '@testing-library/react'
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+import { getStateLinks } from '@sebt/design-system'
+
+import enDcMaintenance from '@/content/locales/en/dc/maintenancePortal.json'
 
 import OutagePage from './page'
 
-// Wiring test: renders the shared OutagePageContent with the portal's real generated
-// locale resources, proving the outage namespace flows through end to end. The
-// component's own rendering details are covered in @sebt/design-system.
+// Wiring test: renders the page against the portal's real i18next instance
+// (initialized in test-setup from the generated locale resources), proving the
+// maintenancePortal namespace flows through end to end. Component rendering
+// details are covered in @sebt/design-system.
 
-vi.mock('next/image', () => ({
-  default: ({ alt, src }: { alt: string; src: string }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      alt={alt}
-      src={src}
-    />
+vi.mock('next/link', () => ({
+  default: ({ children, ...props }: { children: React.ReactNode; [key: string]: unknown }) => (
+    <a {...props}>{children}</a>
   )
 }))
 
-beforeAll(() => {
-  vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
-})
-
 describe('OutagePage', () => {
-  it('renders the portal outage copy from the generated locale bundle', () => {
+  it('renders the maintenance copy from the generated locale bundle', () => {
     render(<OutagePage />)
 
-    // The English body1 renders twice by design: the sr-only <h1> and the visible <p>.
-    expect(
-      screen.getAllByText('We are down for maintenance and will be back up shortly.')
-    ).toHaveLength(2)
-    expect(screen.getByText('Estamos en mantenimiento y volveremos en breve.')).toBeInTheDocument()
-    expect(screen.getByRole('img')).toBeInTheDocument()
-    expect(screen.getAllByRole('link').length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(enDcMaintenance.title)
+    expect(screen.getByText(enDcMaintenance.body1)).toBeInTheDocument()
+  })
+
+  it('routes both actions to the DC destinations', () => {
+    render(<OutagePage />)
+
+    expect(screen.getByRole('link', { name: enDcMaintenance.action1 })).toHaveAttribute(
+      'href',
+      getStateLinks('dc').help.sebtMainSite
+    )
+    expect(screen.getByRole('link', { name: enDcMaintenance.action2 })).toHaveAttribute(
+      'href',
+      getStateLinks('dc').help.contactUs
+    )
   })
 })

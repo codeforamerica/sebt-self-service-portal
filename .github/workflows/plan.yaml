@@ -22,6 +22,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   plan:
@@ -29,6 +30,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       AWS_REGION: us-east-1
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -38,17 +40,25 @@ jobs:
       plan: ${{ steps.plan.outputs.stdout }}${{ steps.plan.outputs.stderr }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DB rotation Lambda dependencies
+        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
+
       - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: "1.10.0"
 
@@ -66,6 +76,12 @@ jobs:
             exit 1
           fi
 
+      - name: Get an OIDC token for Doppler
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
       - name: OpenTofu Init
         working-directory: tofu/config/${{ inputs.config }}
         run: tofu init -upgrade
@@ -76,4 +92,4 @@ jobs:
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
         working-directory: tofu/config/${{ inputs.config }}
-        run: tofu plan -no-color -input=false -var="image_tag=${IMAGE_TAG}"
+        run: tofu plan -concise -no-color -input=false -var="image_tag=${IMAGE_TAG}"

@@ -23,30 +23,9 @@
 
     <ItemGroup>
       <PackageReference Include="DistributedLock.Core" Version="1.0.9" />
-      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.9" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.10" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.10" />
       <PackageReference Include="Microsoft.FeatureManagement" Version="4.5.0" />
     </ItemGroup>
-
-  <!-- State connector contract lives in-repo (apps/connectors/state). Reference the project
-       directly for normal monorepo builds; fall back to the NuGet package (staged in nuget-store)
-       for isolated Docker builds that copy only the portal projects. -->
-  <PropertyGroup>
-    <_StateConnectorInterfacesProject>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../../connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj'))</_StateConnectorInterfacesProject>
-  </PropertyGroup>
-  <Choose>
-    <When Condition="Exists('$(_StateConnectorInterfacesProject)')">
-      <ItemGroup>
-        <ProjectReference Include="$(_StateConnectorInterfacesProject)">
-          <PrivateAssets>all</PrivateAssets>
-          <IncludeAssets>compile; runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </ProjectReference>
-      </ItemGroup>
-    </When>
-    <Otherwise>
-      <ItemGroup>
-        <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="$(StateConnectorInterfacesFloatingVersion)" PrivateAssets="compile" />
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
 
 </Project>

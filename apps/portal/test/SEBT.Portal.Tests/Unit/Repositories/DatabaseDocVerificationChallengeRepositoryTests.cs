@@ -9,6 +9,10 @@ using SEBT.Portal.Tests.Unit.TestSupport;
 
 namespace SEBT.Portal.Tests.Unit.Repositories;
 
+/// <summary>
+/// SQL Server (Testcontainers) tests for <see cref="DatabaseDocVerificationChallengeRepository"/>.
+/// Tagged <c>Category=SqlServer</c> and excluded from unit-only runs. That is intentional.
+/// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
 public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<SqlServerTestFixture>
@@ -45,6 +49,98 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
         await context.SaveChangesAsync();
 
         return userEntity.Id;
+    }
+
+    // --- GetLatestSocureReferenceIdByUserIdAsync ---
+
+    [Fact]
+    public async Task GetLatestSocureReferenceIdByUserIdAsync_ReturnsMostRecentNonNullReferenceId()
+    {
+        using var context = _fixture.CreateContext();
+        var userEntity = UserFactory.CreateUserEntity();
+        context.Users.Add(userEntity);
+        await context.SaveChangesAsync();
+
+        var baseTime = DateTime.UtcNow;
+        // Oldest has a reference id, middle has none (abandoned before a Socure
+        // session started), newest has the one that should win.
+        context.DocVerificationChallenges.AddRange(
+            new DocVerificationChallengeEntity
+            {
+                PublicId = Guid.NewGuid(),
+                UserId = userEntity.Id,
+                Status = (int)DocVerificationStatus.Rejected,
+                SocureReferenceId = "ref-oldest",
+                CreatedAt = baseTime.AddHours(-2),
+                UpdatedAt = baseTime.AddHours(-2)
+            },
+            new DocVerificationChallengeEntity
+            {
+                PublicId = Guid.NewGuid(),
+                UserId = userEntity.Id,
+                Status = (int)DocVerificationStatus.Expired,
+                SocureReferenceId = null,
+                CreatedAt = baseTime.AddHours(-1),
+                UpdatedAt = baseTime.AddHours(-1)
+            },
+            new DocVerificationChallengeEntity
+            {
+                PublicId = Guid.NewGuid(),
+                UserId = userEntity.Id,
+                Status = (int)DocVerificationStatus.Verified,
+                SocureReferenceId = "ref-newest",
+                CreatedAt = baseTime.AddMinutes(-30),
+                UpdatedAt = baseTime.AddMinutes(-30)
+            });
+        await context.SaveChangesAsync();
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
+
+        var referenceId = await repo.GetLatestSocureReferenceIdByUserIdAsync(userEntity.Id);
+
+        Assert.Equal("ref-newest", referenceId);
+    }
+
+    [Fact]
+    public async Task GetLatestSocureReferenceIdByUserIdAsync_ReturnsNullWhenUserHasNoChallengesWithReferenceId()
+    {
+        using var context = _fixture.CreateContext();
+        var userId = await SeedChallengeAsync(context,
+            status: (int)DocVerificationStatus.Created,
+            expiresAt: null);
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
+
+        var referenceId = await repo.GetLatestSocureReferenceIdByUserIdAsync(userId);
+
+        Assert.Null(referenceId);
+    }
+
+    [Fact]
+    public async Task GetLatestSocureReferenceIdByUserIdAsync_DoesNotReturnAnotherUsersReferenceId()
+    {
+        using var context = _fixture.CreateContext();
+        var userWithChallenge = UserFactory.CreateUserEntity();
+        var userWithout = UserFactory.CreateUserEntity();
+        context.Users.AddRange(userWithChallenge, userWithout);
+        await context.SaveChangesAsync();
+
+        context.DocVerificationChallenges.Add(new DocVerificationChallengeEntity
+        {
+            PublicId = Guid.NewGuid(),
+            UserId = userWithChallenge.Id,
+            Status = (int)DocVerificationStatus.Verified,
+            SocureReferenceId = "ref-other-user",
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        });
+        await context.SaveChangesAsync();
+
+        var repo = new DatabaseDocVerificationChallengeRepository(context, TestPortalCryptography.PiiSymmetricEncryption);
+
+        var referenceId = await repo.GetLatestSocureReferenceIdByUserIdAsync(userWithout.Id);
+
+        Assert.Null(referenceId);
     }
 
     // --- GetActiveByUserIdAsync expiration filtering (N2) ---
@@ -200,7 +296,50 @@ public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<Sql
         };
         context.DocVerificationChallenges.Add(newChallenge);
 
-        // Should not throw — terminal challenges don't count
+        // Should not throw. Terminal challenges don't count.
         await context.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenRowVersionChanged_ThrowsConcurrencyConflictException()
+    {
+        using var seedContext = _fixture.CreateContext();
+        var userId = await SeedChallengeAsync(seedContext,
+            status: (int)DocVerificationStatus.Pending,
+            expiresAt: DateTime.UtcNow.AddMinutes(30));
+        var seeded = await seedContext.DocVerificationChallenges
+            .AsNoTracking()
+            .SingleAsync(c => c.UserId == userId);
+
+        using var context1 = _fixture.CreateContext();
+        using var context2 = _fixture.CreateContext();
+        var crypto = TestPortalCryptography.PiiSymmetricEncryption;
+        var repo1 = new DatabaseDocVerificationChallengeRepository(context1, crypto);
+        var repo2 = new DatabaseDocVerificationChallengeRepository(context2, crypto);
+
+        // Track the same row in both contexts so SaveChanges uses stale rowversions.
+        await context1.DocVerificationChallenges.SingleAsync(c => c.Id == seeded.Id);
+        await context2.DocVerificationChallenges.SingleAsync(c => c.Id == seeded.Id);
+
+        DocVerificationChallenge Domain(string referenceId) =>
+            DocVerificationChallenge.Reconstitute(
+                id: seeded.Id,
+                publicId: seeded.PublicId,
+                userId: userId,
+                status: DocVerificationStatus.Pending,
+                socureReferenceId: referenceId,
+                evalId: null,
+                socureEventId: null,
+                docvTransactionToken: null,
+                docvUrl: null,
+                offboardingReason: null,
+                allowIdRetry: true,
+                createdAt: seeded.CreatedAt,
+                updatedAt: seeded.UpdatedAt,
+                expiresAt: seeded.ExpiresAt);
+
+        await repo1.UpdateAsync(Domain("ref-1"));
+
+        await Assert.ThrowsAsync<ConcurrencyConflictException>(() => repo2.UpdateAsync(Domain("ref-2")));
     }
 }

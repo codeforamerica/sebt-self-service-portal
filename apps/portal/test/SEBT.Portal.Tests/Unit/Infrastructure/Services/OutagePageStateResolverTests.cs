@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.FeatureManagement;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;

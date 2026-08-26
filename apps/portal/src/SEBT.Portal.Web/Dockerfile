@@ -17,6 +17,9 @@ ARG NEXT_PUBLIC_MIXPANEL_TOKEN=""
 ARG NEXT_PUBLIC_SITEIMPROVE_ID=""
 ARG NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=""
 ARG NEXT_PUBLIC_BUILD_SHA=""
+# DC only — the dc-connector repo's resolved commit SHA at build time. Empty for CO,
+# whose connector lives in-repo (nothing separate to track).
+ARG NEXT_PUBLIC_DC_CONNECTOR_SHA=""
 ENV STATE=$STATE
 ENV BUILD_STANDALONE=true
 
@@ -29,12 +32,18 @@ COPY packages/design-system/ ./packages/design-system/
 # Copy analytics workspace package (required by web imports of @sebt/analytics)
 COPY packages/analytics/ ./packages/analytics/
 
+# Copy observability workspace package (required by web imports of @sebt/observability)
+COPY packages/observability/ ./packages/observability/
+
 # Copy web workspace
 COPY apps/portal/src/SEBT.Portal.Web/ ./apps/portal/src/SEBT.Portal.Web/
 
-# Install + build web only
+# Install + build web only.
+# Drop the base image's npm after pnpm is active — npm ships a vulnerable
+# node-tar (CVE-2026-59873 / CVE-2026-59874) that we never invoke.
 RUN corepack enable \
   && corepack prepare pnpm@10 --activate \
+  && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
   && pnpm install --frozen-lockfile \
   && cd apps/portal/src/SEBT.Portal.Web \
   && pnpm build
@@ -46,8 +55,10 @@ ENV PORT=3000
 
 WORKDIR /app
 
-# Non-root user for security (mirrors the enrollment checker's Dockerfile.ssr)
-RUN addgroup -S app && adduser -S app -G app
+# Runtime only needs the node binary. Remove npm/npx (and nested node-tar)
+# so container scans don't flag CVE-2026-59873 / CVE-2026-59874 from the base image.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+  && addgroup -S app && adduser -S app -G app
 
 # Next standalone output
 COPY --from=build /workspace/apps/portal/src/SEBT.Portal.Web/.next/standalone ./

@@ -43,6 +43,28 @@ variable "domain" {
   description = "Domain name for the application (e.g. dc.sebt-client-portal.dev.codeforamerica.app)."
 }
 
+variable "certificate_sans" {
+  type        = list(string)
+  description = <<-EOT
+    Additional ACM subject alternative names for the API and public Web
+    certificates. Pass wildcard names such as `["*.dev.co.example.app"]` so
+    ephemeral preview hosts like `pr-N` / `api-pr-N` can terminate TLS on the
+    shared ALBs. Defaults to none.
+    EOT
+  default     = []
+}
+
+variable "cloudfront_extra_aliases" {
+  type        = list(string)
+  description = <<-EOT
+    Additional CloudFront alternate domain names beyond the primary site
+    domain. Pass the same wildcard used in `certificate_sans` (such as
+    `["*.dev.co.example.app"]`) so preview hosts can be served publicly
+    through CloudFront. Defaults to none.
+    EOT
+  default     = []
+}
+
 variable "enable_appconfig" {
   type        = bool
   description = <<-EOT
@@ -108,6 +130,12 @@ variable "project" {
   type        = string
   description = "Base project name used for resource naming."
   default     = "sebt-portal"
+}
+
+variable "project_short" {
+  type        = string
+  description = "Abbreviated project name for resource naming."
+  default     = "sebt"
 }
 
 variable "public_subnets" {

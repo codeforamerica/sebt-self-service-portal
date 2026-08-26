@@ -7,10 +7,10 @@ public class ColoradoStateMetadataServiceTests
     {
         // Arrange
         var service = new ColoradoStateMetadataService();
-        
+
         // Act
         var metadata = await service.GetStateMetadata();
-        
+
         // Assert
         Assert.NotNull(metadata);
         Assert.Equal("Colorado", metadata.Name);

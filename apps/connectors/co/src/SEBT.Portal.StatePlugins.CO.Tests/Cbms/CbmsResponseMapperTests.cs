@@ -176,6 +176,7 @@ public class CbmsResponseMapperTests
 
     [Theory]
     [InlineData("AI", ApplicationStatus.Pending)]
+    [InlineData("AM", ApplicationStatus.Pending)]
     [InlineData("PD", ApplicationStatus.Pending)]
     [InlineData("PG", ApplicationStatus.Pending)]
     [InlineData("PI", ApplicationStatus.Pending)]
@@ -183,7 +184,6 @@ public class CbmsResponseMapperTests
     [InlineData("PS", ApplicationStatus.Pending)]
     [InlineData("PW", ApplicationStatus.Pending)]
     [InlineData("RC", ApplicationStatus.Pending)]
-    [InlineData("AM", ApplicationStatus.Unknown)]
     [InlineData("DU", ApplicationStatus.Unknown)]
     [InlineData("XYZZY", ApplicationStatus.Unknown)]
     [InlineData("", ApplicationStatus.Unknown)]
@@ -210,11 +210,11 @@ public class CbmsResponseMapperTests
     [InlineData("DE", ApplicationStatus.Denied)]
     [InlineData("OT", ApplicationStatus.Denied)]
     [InlineData("AI", ApplicationStatus.Pending)]
+    [InlineData("AM", ApplicationStatus.Pending)]
     [InlineData("PD", ApplicationStatus.Pending)]
     [InlineData("PE", ApplicationStatus.Pending)]
     [InlineData("PG", ApplicationStatus.Pending)]
     [InlineData("PS", ApplicationStatus.Pending)]
-    [InlineData("AM", ApplicationStatus.Unknown)]
     [InlineData("XYZZY", ApplicationStatus.Unknown)]
     [InlineData("", ApplicationStatus.Unknown)]
     [InlineData(null, ApplicationStatus.Unknown)]
@@ -558,6 +558,206 @@ public class CbmsResponseMapperTests
         CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
 
         Assert.Empty(logger.Entries);
+    }
+
+    [Theory]
+    [InlineData("XYZZY")]
+    public void MapToHouseholdData_logs_unmapped_case_status_tokens(string raw)
+    {
+        var student = CreateMinimalStudent();
+        // DIRC so the student is always a case regardless of eligibility status
+        student.EligSrc = "DIRC";
+        student.StdntEligSts = raw;
+        var response = new GetAccountDetailsResponse
+        {
+            StdntEnrollDtls = new List<GetAccountStudentDetail> { student }
+        };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        var result = CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        var caseRecord = Assert.Single(result.SummerEbtCases);
+        Assert.Equal(ApplicationStatus.Unknown, caseRecord.ApplicationStatus);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Contains(raw, entry.Message);
+        Assert.Contains("stdntEligSts", entry.Message);
+    }
+
+    [Theory]
+    [InlineData("DU")]
+    [InlineData("XYZZY")]
+    public void MapToHouseholdData_logs_unmapped_application_status_tokens(string raw)
+    {
+        var student = CreateMinimalStudent();
+        student.EligSrc = "CBMS";
+        student.StdntEligSts = "AP"; // maps cleanly, contributes no log entries
+        student.SebtAppSts = raw;
+        var response = new GetAccountDetailsResponse
+        {
+            StdntEnrollDtls = new List<GetAccountStudentDetail> { student }
+        };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        var result = CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        var app = Assert.Single(result.Applications);
+        Assert.Equal(ApplicationStatus.Unknown, app.ApplicationStatus);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Contains(raw, entry.Message);
+        Assert.Contains("sebtAppSts", entry.Message);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_does_not_log_when_case_and_application_status_map_cleanly()
+    {
+        var student = CreateMinimalStudent();
+        student.EligSrc = "CBMS";
+        student.StdntEligSts = "AP";
+        student.SebtAppSts = "PN";
+        var response = new GetAccountDetailsResponse
+        {
+            StdntEnrollDtls = new List<GetAccountStudentDetail> { student }
+        };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        Assert.Empty(logger.Entries);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public void MapToHouseholdData_does_not_log_for_null_or_empty_case_or_application_status(string? raw)
+    {
+        var student = CreateMinimalStudent();
+        student.EligSrc = "CBMS";
+        student.StdntEligSts = raw;
+        student.SebtAppSts = raw;
+        var response = new GetAccountDetailsResponse
+        {
+            StdntEnrollDtls = new List<GetAccountStudentDetail> { student }
+        };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        Assert.Empty(logger.Entries);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_logs_unmapped_case_status_once_for_application_based_student()
+    {
+        // The BuildCases filter also maps stdntEligSts for application-based students; it must not
+        // log, or every unmapped token would be reported twice (filter + application children).
+        var student = CreateMinimalStudent();
+        student.EligSrc = "CBMS";
+        student.StdntEligSts = "ZZ"; // unmapped -> excluded from cases, still mapped for the application's child
+        student.SebtAppSts = "PN"; // maps cleanly
+        var response = new GetAccountDetailsResponse
+        {
+            StdntEnrollDtls = new List<GetAccountStudentDetail> { student }
+        };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        var result = CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        Assert.Empty(result.SummerEbtCases);
+        var app = Assert.Single(result.Applications);
+        Assert.Equal(ApplicationStatus.Unknown, Assert.Single(app.Children).Status);
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Contains("ZZ", entry.Message);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_logs_unmapped_case_status_once_across_application_children()
+    {
+        // Three children on one application sharing an unmapped stdntEligSts. Before per-lookup
+        // dedup this logged once per child; it must now log exactly once.
+        var students = new List<GetAccountStudentDetail>();
+        for (var i = 0; i < 3; i++)
+        {
+            var student = CreateMinimalStudent();
+            student.EligSrc = "CBMS";
+            student.SebtAppId = 700; // same application -> one group, three children
+            student.SebtChldId = 900 + i;
+            student.SebtChldCwin = 7000900 + i;
+            student.StdntEligSts = "ZZ"; // unmapped
+            student.SebtAppSts = "PN"; // maps cleanly, contributes no log
+            students.Add(student);
+        }
+        var response = new GetAccountDetailsResponse { StdntEnrollDtls = students };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        var result = CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        var app = Assert.Single(result.Applications);
+        Assert.Equal(3, app.Children.Count);
+        var errors = logger.Entries.FindAll(e => e.Level == LogLevel.Error);
+        var entry = Assert.Single(errors);
+        Assert.Contains("ZZ", entry.Message);
+        Assert.Contains("stdntEligSts", entry.Message);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_logs_unmapped_card_status_once_across_multiple_cases()
+    {
+        // Three auto-eligible cases sharing an unmapped card status. Logs once, not once per case.
+        var students = new List<GetAccountStudentDetail>();
+        for (var i = 0; i < 3; i++)
+        {
+            var student = CreateMinimalStudent();
+            student.EligSrc = "DIRC"; // auto-eligible -> always a case
+            student.SebtChldId = 800 + i;
+            student.SebtChldCwin = 6000800 + i;
+            student.StdntEligSts = "AP"; // maps cleanly, contributes no log
+            student.EbtCardSts = "MYSTERY_CARD_STATE"; // unmapped card token
+            students.Add(student);
+        }
+        var response = new GetAccountDetailsResponse { StdntEnrollDtls = students };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        var result = CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        Assert.Equal(3, result.SummerEbtCases.Count);
+        var errors = logger.Entries.FindAll(e => e.Level == LogLevel.Error);
+        var entry = Assert.Single(errors);
+        Assert.Contains("MYSTERY_CARD_STATE", entry.Message);
+        Assert.Contains("ebtCardSts", entry.Message);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_logs_card_and_status_tokens_separately_when_text_matches()
+    {
+        // The same raw text as both an unmapped card status and an unmapped case status must produce
+        // two logs: the dedup key is scoped by field, so identical text across fields does not collide.
+        var student = CreateMinimalStudent();
+        student.EligSrc = "DIRC"; // auto-eligible -> a case, mapped for both status and card
+        student.StdntEligSts = "ZZ"; // unmapped case status
+        student.EbtCardSts = "ZZ"; // unmapped card status, identical text
+        var response = new GetAccountDetailsResponse
+        {
+            StdntEnrollDtls = new List<GetAccountStudentDetail> { student }
+        };
+        var piiVisibility = new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false);
+        var logger = new CapturingLogger();
+
+        CbmsResponseMapper.MapToHouseholdData(response, "8185551234", piiVisibility, logger);
+
+        var errors = logger.Entries.FindAll(e => e.Level == LogLevel.Error);
+        Assert.Equal(2, errors.Count);
+        Assert.Contains(errors, e => e.Message.Contains("stdntEligSts"));
+        Assert.Contains(errors, e => e.Message.Contains("ebtCardSts"));
     }
 
     [Fact]

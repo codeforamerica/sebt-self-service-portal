@@ -12,6 +12,8 @@ services:
       - "5280:8080"   # Maps localhost:5280 -> container:8080
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      # Local/CI only; never set on deployed hosts (including public "dev" environments).
+      - Seeding__EnableDevEndpoints=true
       - STATE=${STATE:-dc}
       # Note: TrustServerCertificate=True bypasses TLS certificate validation and should ONLY be used for local development.
       # Do NOT include this in connection strings for deployed environments (UAT, production).
@@ -127,6 +129,37 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  # Local OIDC IdP for CO development (this will NEVER be used for production).
+  # Docs: docs/development/keycloak-oidc.md
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2@sha256:4883630ef9db14031cde3e60700c9a9a8eaf1b5c24db1589d6a2d43de38ba2a9
+    container_name: sebt_keycloak
+    profiles:
+      - keycloak
+    command:
+      - start-dev
+      - --import-realm
+      - --hostname=http://localhost:8180
+      - --http-port=8080
+    ports:
+      - "8180:8080"   # Admin UI + OIDC endpoints
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+    volumes:
+      - ./docker/keycloak/sebt-realm.json:/opt/keycloak/data/import/sebt-realm.json:ro
+      - ./docker/keycloak/themes:/opt/keycloak/themes:ro
+    networks:
+      - sebt.portal.api
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
 
 # Define custom networks
 networks:

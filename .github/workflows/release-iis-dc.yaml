@@ -44,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout portal
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -68,13 +68,26 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "git_sha=$GIT_SHA" >> "$GITHUB_OUTPUT"
 
+      - name: Get dc-connector access token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: dc-connector-token
+        with:
+          app-id: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID }}
+          private-key: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal-dc-connector
+
+      # Paired contract changes need the dc-connector branch of the same name;
+      # everything else falls back to main. The matched branch resolves to a
+      # commit SHA so the checkout is pinned — no window for the branch to move
+      # between resolution and checkout.
       - name: Determine dc-connector ref
         id: dc-connector-ref
         env:
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
           EVENT_NAME: ${{ github.event_name }}
-          CONNECTOR_PAT: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          CONNECTOR_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
           REPO_OWNER: ${{ github.repository_owner }}
         run: |
           if [ "$EVENT_NAME" = "pull_request" ]; then
@@ -86,35 +99,59 @@ jobs:
             echo "::error::Invalid git ref: branch=$BRANCH"
             exit 1
           fi
-          FALLBACK="main"
-          REPO_URL="https://x-access-token:${CONNECTOR_PAT}@github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
-          if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/${BRANCH}" 1>/dev/null 2>&1; then
-            echo "ref=${BRANCH}" >> "$GITHUB_OUTPUT"
-          else
-            echo "ref=${FALLBACK}" >> "$GITHUB_OUTPUT"
+          if [ -z "$CONNECTOR_TOKEN" ]; then
+            echo "::error::dc-connector app token is empty — check the create-github-app-token step above"
+            exit 1
           fi
+          # Authenticate exactly the way actions/checkout does (basic auth header) —
+          # URL-embedded credentials are rejected for this token and would also leak
+          # into error output.
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_TOKEN}" | base64 | tr -d '\n')"
+          REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          # Without --exit-code, ls-remote fails only on auth/connection problems;
+          # an absent branch is just empty output. Auth failures must fail the job —
+          # a silent fallback to main masks them as baffling downstream build errors.
+          # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
+          # (actions/checkout persist-credentials) would override ours and 404 on
+          # the private connector repo.
+          if ! LS_OUT=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
+            exit 1
+          fi
+          RESOLVED="$BRANCH"
+          SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
+          if [ -z "$SHA" ]; then
+            RESOLVED="main"
+            SHA=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
+            exit 1
+          fi
+          echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
+          echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
 
       # state connector (interfaces) is now in-repo at apps/connectors/state.
       - name: Checkout dc-connector (DC plugin implementation)
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          token: ${{ steps.dc-connector-token.outputs.token }}
           ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           version: "10"
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
           cache: "pnpm"
@@ -164,6 +201,7 @@ jobs:
           NEXT_PUBLIC_MOCK_SOCURE: ${{ vars.MOCK_SOCURE }}
           NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_DC_CONNECTOR_SHA: ${{ steps.dc-connector-ref.outputs.ref }}
         run: |
           ./.github/workflows/scripts/build-frontend.sh --production
           ./scripts/ci/package-frontend.sh --skip-build --output output/sebt-web.zip
@@ -196,7 +234,7 @@ jobs:
 
       - name: Upload workflow artifact
         if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: sebt-dc-iis-${{ steps.ver.outputs.version }}
           path: |

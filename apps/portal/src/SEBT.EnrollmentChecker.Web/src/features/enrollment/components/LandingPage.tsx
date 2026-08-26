@@ -5,7 +5,8 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
+import { AdentifiPixels } from '@sebt/analytics'
+import { env } from '@/lib/env'
 import { useEnrollment } from '../context/EnrollmentContext'
 
 export function LandingPage() {
@@ -29,7 +30,7 @@ export function LandingPage() {
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/summer-ebt-logo.svg`}
+          src={`${env.NEXT_PUBLIC_BASE_PATH}/images/states/co/summer-ebt-logo.svg`}
           alt="Summer EBT"
           width={287}
           height={33}
@@ -58,6 +59,10 @@ export function LandingPage() {
             {t('actionEspañol')}
           </Button>
         </div>
+
+        {env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING && (
+          <AdentifiPixels pixelId={env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING} />
+        )}
 
         {/* FAQ Accordion — follows USWDS accordion pattern */}
         <div className="usa-accordion margin-top-4">
@@ -88,18 +93,21 @@ export function LandingPage() {
             hidden={!isAccordionExpanded}
           >
             <RichText>{t('body2')}</RichText>
-            <ul className="usa-list margin-top-2">
-              {reaonsForAutoEnrollment.map((item, index) => (
-                <li key={index}><RichText>{item}</RichText></li>
-
-              ))}
-            </ul>
+            {reaonsForAutoEnrollment.length > 0 && (
+              <ul className="usa-list margin-top-2">
+                {reaonsForAutoEnrollment.map((item, index) => (
+                  <li key={index}><RichText>{item}</RichText></li>
+                ))}
+              </ul>
+            )}
             <RichText>{t('body4')}</RichText>
-            <ul className="usa-list margin-top-2">
-              {reasonsToApply.map((item, index) => (
-                <li key={index}><RichText>{item}</RichText></li>
-              ))}
-            </ul>
+            {reasonsToApply.length > 0 && (
+              <ul className="usa-list margin-top-2">
+                {reasonsToApply.map((item, index) => (
+                  <li key={index}><RichText>{item}</RichText></li>
+                ))}
+              </ul>
+            )}
             <p className="margin-top-2">{t('body6')}</p>
           </div>
         </div>

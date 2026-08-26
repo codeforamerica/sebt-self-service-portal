@@ -1,9 +1,37 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import enCoDashboard from '@/content/locales/en/co/dashboard.json'
 import enDcDashboard from '@/content/locales/en/dc/dashboard.json'
+import {
+  clearReplacementFlash,
+  getReplacementFlash,
+  setReplacementFlash
+} from '@/features/cards/utils/replacementFlash'
+import { i18n } from '@sebt/design-system/client'
 
 import { DashboardAlerts } from './DashboardAlerts'
+
+let mockState = 'dc'
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => mockState
+  }
+})
+
+// i18next's deep addResourceBundle mutates the bundle object already in its
+// store, so only ever hand clones to it and restore from pristine snapshots.
+const pristineDashboard = {
+  dc: structuredClone(enDcDashboard),
+  co: structuredClone(enCoDashboard)
+} as const
+
+function loadDashboardBundle(state: keyof typeof pristineDashboard) {
+  const bundle = state === 'co' ? pristineDashboard.co : pristineDashboard.dc
+  i18n.addResourceBundle('en', 'dashboard', structuredClone(bundle), true, true)
+}
 
 const mockAddress = {
   streetAddress1: '123 Main St',
@@ -39,6 +67,13 @@ describe('DashboardAlerts', () => {
     mockReplace.mockClear()
     mockSearchParams = new URLSearchParams()
     mockHouseholdData = { data: null, isLoading: false, isError: false }
+    mockState = 'dc'
+    clearReplacementFlash()
+  })
+
+  afterEach(() => {
+    i18n.removeResourceBundle('en', 'dashboard')
+    loadDashboardBundle('dc')
   })
 
   it('renders nothing when no alert params are present', () => {
@@ -122,6 +157,61 @@ describe('DashboardAlerts', () => {
 
     expect(screen.getByText(enDcDashboard.alertAddressBody)).toBeInTheDocument()
     expect(screen.queryByText('123 Main St')).not.toBeInTheDocument()
+  })
+
+  it('headlines the card replaced alert with the replaced children names for DC', () => {
+    setReplacementFlash([
+      { childFirstName: 'Jane', childLastName: 'Doe', ebtCardLastFour: '1234' },
+      { childFirstName: 'John', childLastName: 'Doe', ebtCardLastFour: '5678' }
+    ])
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
+    const { container } = render(<DashboardAlerts />)
+
+    const heading = container.querySelector('.usa-alert__heading')
+    expect(heading).toHaveTextContent(
+      'A replacement for Jane Doe and John Doe cards will be sent to the following address'
+    )
+  })
+
+  it('uses the singular card wording when one card was replaced', () => {
+    setReplacementFlash([{ childFirstName: 'Jane', childLastName: 'Doe', ebtCardLastFour: '1234' }])
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
+    const { container } = render(<DashboardAlerts />)
+
+    expect(container.querySelector('.usa-alert__heading')).toHaveTextContent(
+      'A replacement for Jane Doe card will be sent to the following address'
+    )
+  })
+
+  it('headlines with card digits instead of names for CO', () => {
+    mockState = 'co'
+    loadDashboardBundle('co')
+    setReplacementFlash([
+      { childFirstName: 'Jane', childLastName: 'Doe', ebtCardLastFour: '1234' },
+      { childFirstName: 'John', childLastName: 'Doe', ebtCardLastFour: '5678' }
+    ])
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
+    const { container } = render(<DashboardAlerts />)
+
+    expect(container.querySelector('.usa-alert__heading')).toHaveTextContent(
+      'A replacement for the cards ending in 1234 and 5678 will be sent to the following address'
+    )
+  })
+
+  it('omits the heading when no replaced-card details were handed off', () => {
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
+    const { container } = render(<DashboardAlerts />)
+
+    expect(container.querySelector('.usa-alert__heading')).not.toBeInTheDocument()
+    expect(screen.getByText(enDcDashboard.alertAddressBody)).toBeInTheDocument()
+  })
+
+  it('clears the replaced-card hand-off after the dashboard reads it', () => {
+    setReplacementFlash([{ childFirstName: 'Jane', childLastName: 'Doe', ebtCardLastFour: '1234' }])
+    mockSearchParams = new URLSearchParams('flash=card_replaced')
+    render(<DashboardAlerts />)
+
+    expect(getReplacementFlash()).toEqual([])
   })
 
   it('renders the address-update-failed warning as a single sentence with no fallback body', () => {

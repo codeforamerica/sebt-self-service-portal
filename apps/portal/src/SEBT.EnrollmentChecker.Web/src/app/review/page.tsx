@@ -1,8 +1,9 @@
 'use client'
 
+import { ErrorResultPage } from '@/features/enrollment/components/ErrorResultPage'
 import { ReviewPage } from '@/features/enrollment/components/ReviewPage'
 import { checkEnrollment } from '@/features/enrollment/api/checkEnrollment'
-import { getSubmitErrorMessage, type SubmitErrorKind } from '@/features/enrollment/copy/submitErrorCopy'
+import { getRateLimitErrorMessage } from '@/features/enrollment/copy/submitErrorCopy'
 import { useEnrollment } from '@/features/enrollment/context/EnrollmentContext'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, LoadingInterstitial } from '@sebt/design-system'
@@ -11,10 +12,11 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getEnrollmentConfig } from '@/lib/stateConfig'
 
+// The rate-limit message stays hardcoded until the content sheet grows a row for it.
+type SubmitErrorKind = 'rateLimit' | 'generic'
+
 export default function Page() {
-  // confirmInfo's t() is temporarily unused: submit-error copy is hardcoded in
-  // submitErrorCopy.ts (DC-519). Keep i18n here to resolve the active language.
-  const { i18n } = useTranslation('confirmInfo')
+  const { i18n } = useTranslation('dev')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const router = useRouter()
   const { state } = useEnrollment()
@@ -34,6 +36,9 @@ export default function Page() {
     setErrorKind(null)
     setIsSubmitting(true)
     try {
+      if (window.fbq && process.env.NEXT_PUBLIC_META_PIXEL && process.env.NEXT_PUBLIC_META_PIXEL_ACTION) {
+        window.fbq('trackSingleCustom', process.env.NEXT_PUBLIC_META_PIXEL, process.env.NEXT_PUBLIC_META_PIXEL_ACTION)
+      }
       const response = await checkEnrollment(state.children, config.apiBaseUrl)
       // Pass results via sessionStorage (avoids URL length limits and keeps data off URL)
       sessionStorage.setItem('enrollmentResults', JSON.stringify(response))
@@ -43,13 +48,15 @@ export default function Page() {
       const isRateLimit = message.includes('rate')
       setPageData('error_code', isRateLimit ? 'RATE_LIMIT' : 'SUBMISSION_ERROR')
       trackEvent(AnalyticsEvents.ENROLLMENT_CHECK_ERROR)
-      setErrorKind(isRateLimit ? 'rateLimit' : 'maintenance')
+      setErrorKind(isRateLimit ? 'rateLimit' : 'generic')
     } finally {
       submittingRef.current = false
       setIsSubmitting(false)
     }
   }
 
+  // The interstitial IS this flow's processing treatment: the whole review page
+  // is replaced while the check runs, so ReviewPage carries no busy props.
   if (isSubmitting) {
     return (
       <div className="grid-container maxw-tablet">
@@ -64,10 +71,20 @@ export default function Page() {
     )
   }
 
+  // A whole-check failure replaces the review form with the full error page
+  // (portal next step, no application links — applications are closed, DC-701).
+  // Rate limiting keeps the inline alert: the fix is simply waiting and
+  // resubmitting the form that is already on screen.
+  if (errorKind === 'generic') {
+    return <ErrorResultPage portalUrl={config.portalUrl} />
+  }
+
   return (
     <>
-      {errorKind && <Alert variant="error">{getSubmitErrorMessage(errorKind, i18n.language)}</Alert>}
-      <ReviewPage onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      {errorKind === 'rateLimit' && (
+        <Alert variant="error">{getRateLimitErrorMessage(i18n.language)}</Alert>
+      )}
+      <ReviewPage onSubmit={handleSubmit} />
     </>
   )
 }

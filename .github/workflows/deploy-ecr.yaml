@@ -16,6 +16,7 @@ permissions:
   contents: read
   deployments: write
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: deploy-${{ github.event.pull_request.number || github.ref }}
@@ -30,11 +31,11 @@ jobs:
       changed: ${{ steps.changes.outputs.tofu }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Check for tofu changes
         id: changes
-        uses: dorny/paths-filter@d1c1ffe0248fe513906c8e24db8ea791d46f8590 # v3.0.3
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           filters: |
             tofu:
@@ -65,45 +66,18 @@ jobs:
     if: always() && (needs.plan-dc.outputs.plan || needs.plan-co.outputs.plan)
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
       - name: Post plan to PR
-        uses: actions/github-script@v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DC_PLAN: ${{ needs.plan-dc.outputs.plan }}
+          CO_PLAN: ${{ needs.plan-co.outputs.plan }}
         with:
           script: |
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const botComment = comments.find(comment => {
-              return comment.user.type === 'Bot' && comment.body.includes('## Plan output');
-            });
-
-            let output = '';
-              const dcPlan = `${{ needs.plan-dc.outputs.plan }}`;
-              const coPlan = `${{ needs.plan-co.outputs.plan }}`;
-
-              if (dcPlan) {
-                output += `## Plan output — dev-dc\n\n\`\`\`\n${dcPlan}\n\`\`\`\n\n`;
-              }
-              if (coPlan) {
-                output += `## Plan output — dev-co\n\n\`\`\`\n${coPlan}\n\`\`\``;
-              }
-
-              if (botComment) {
-                github.rest.issues.updateComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: botComment.id,
-                  body: output,
-                });
-              } else {
-                github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: context.issue.number,
-                  body: output,
-                });
-              }
+            const postPlanComment = require('./.github/workflows/scripts/post-plan-comment.js');
+            await postPlanComment({ github, context });
 
   # Build and deploy only on push to main or manual trigger, not on PRs
   build:
@@ -111,10 +85,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.tag.outputs.tag }}
+      dc_connector_sha: ${{ steps.dc-connector-ref.outputs.ref }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Compute image tag
         id: tag
@@ -132,16 +107,80 @@ jobs:
           fi
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5.2.0
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
+      - name: Get dc-connector access token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: dc-connector-token
+        with:
+          app-id: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID }}
+          private-key: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal-dc-connector
+
       # state + co connectors are now in-repo (apps/connectors/*); only dc remains external.
+      # Same branch-matching as release-iis-dc.yaml: paired contract changes need the
+      # dc-connector branch of the same name; everything else falls back to main. The
+      # matched branch resolves to a commit SHA so the checkout is pinned — no window
+      # for the branch to move between resolution and checkout.
+      - name: Determine dc-connector ref
+        id: dc-connector-ref
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          CONNECTOR_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+          else
+            BRANCH="$REF_NAME"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH"
+            exit 1
+          fi
+          if [ -z "$CONNECTOR_TOKEN" ]; then
+            echo "::error::dc-connector app token is empty — check the create-github-app-token step above"
+            exit 1
+          fi
+          # Authenticate exactly the way actions/checkout does (basic auth header) —
+          # URL-embedded credentials are rejected for this token and would also leak
+          # into error output.
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_TOKEN}" | base64 | tr -d '\n')"
+          REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          # Without --exit-code, ls-remote fails only on auth/connection problems;
+          # an absent branch is just empty output. Auth failures must fail the job —
+          # a silent fallback to main masks them as baffling downstream build errors.
+          # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
+          # (actions/checkout persist-credentials) would override ours and 404 on
+          # the private connector repo.
+          if ! LS_OUT=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
+            exit 1
+          fi
+          RESOLVED="$BRANCH"
+          SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
+          if [ -z "$SHA" ]; then
+            RESOLVED="main"
+            SHA=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
+            exit 1
+          fi
+          echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
+          echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Checkout dc-connector
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          token: ${{ steps.dc-connector-token.outputs.token }}
+          ref: ${{ steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
 
       - name: Build plugin interfaces (NuGet package)
@@ -188,7 +227,7 @@ jobs:
             -o /tmp/docker-images.tar
 
       - name: Upload Docker images
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docker-images
           path: /tmp/docker-images.tar
@@ -203,6 +242,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -211,10 +251,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Download Docker images
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: docker-images
           path: /tmp
@@ -223,7 +263,7 @@ jobs:
         run: docker load -i /tmp/docker-images.tar
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -231,7 +271,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Build Web image
         run: |
@@ -247,6 +287,7 @@ jobs:
             --build-arg NEXT_PUBLIC_SITEIMPROVE_ID=${{ vars.SITEIMPROVE_ID }} \
             --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
+            --build-arg NEXT_PUBLIC_DC_CONNECTOR_SHA=${{ needs.build.outputs.dc_connector_sha }} \
             -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
             .
 
@@ -262,8 +303,16 @@ jobs:
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DB rotation Lambda dependencies
+        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
+
       - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: "1.10.0"
 
@@ -271,11 +320,31 @@ jobs:
         working-directory: tofu/config/dev-dc
         run: tofu init -upgrade
 
-      - name: OpenTofu Apply
+      # Doppler OIDC tokens are single-use. Plan and apply each need their own
+      # provider authentication, so each gets its own freshly-fetched token —
+      # reusing one token for both fails with "This OIDC token was used
+      # previously".
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Plan
         working-directory: tofu/config/dev-dc
         run: |
-          tofu apply -auto-approve \
+          tofu plan -input=false -out=tfplan \
             -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-dc
+        run: tofu apply tfplan
 
       - name: Get deployment URL
         id: deploy-url
@@ -294,6 +363,7 @@ jobs:
       web_url: ${{ steps.deploy-url.outputs.url }}
     env:
       AWS_REGION: us-east-1
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
@@ -302,10 +372,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Download Docker images
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: docker-images
           path: /tmp
@@ -314,7 +384,7 @@ jobs:
         run: docker load -i /tmp/docker-images.tar
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -322,7 +392,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Build Web image
         run: |
@@ -350,8 +420,16 @@ jobs:
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
 
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DB rotation Lambda dependencies
+        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
+
       - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@v1
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: "1.10.0"
 
@@ -359,11 +437,31 @@ jobs:
         working-directory: tofu/config/dev-co
         run: tofu init -upgrade
 
-      - name: OpenTofu Apply
+      # Doppler OIDC tokens are single-use. Plan and apply each need their own
+      # provider authentication, so each gets its own freshly-fetched token —
+      # reusing one token for both fails with "This OIDC token was used
+      # previously".
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Plan
         working-directory: tofu/config/dev-co
         run: |
-          tofu apply -auto-approve \
+          tofu plan -input=false -out=tfplan \
             -var="image_tag=${{ needs.build.outputs.image_tag }}"
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-co
+        run: tofu apply tfplan
 
       - name: Get deployment URL
         id: deploy-url
@@ -383,7 +481,7 @@ jobs:
     steps:
       - name: Create GitHub deployment for DC
         if: needs.deploy-dc.result == 'success'
-        uses: actions/github-script@v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const rawUrl = '${{ needs.deploy-dc.outputs.web_url }}';
@@ -414,7 +512,7 @@ jobs:
 
       - name: Create GitHub deployment for CO
         if: needs.deploy-co.result == 'success'
-        uses: actions/github-script@v8
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';

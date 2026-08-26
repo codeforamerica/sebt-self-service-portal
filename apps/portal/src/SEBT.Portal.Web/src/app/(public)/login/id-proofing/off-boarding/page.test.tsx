@@ -2,7 +2,9 @@
  * Off-Boarding Page Unit Tests (Co-located)
  *
  * Covers:
- * - searchParams.canApply parsing (defaults to true, 'false' yields false)
+ * - searchParams.canApply parsing (defaults to true, 'false' yields false; pinned to CO
+ *   because DC has no apply destination and always forces canApply false)
+ * - DC apply closure: canApply is forced false for DC on every branch (DC-701)
  * - State-specific contactHref from getStateLinks
  * - Translation key mapping branches by session.isCoLoaded
  *   (co-loaded users see the "cannot identify" copy, not DocV copy)
@@ -63,6 +65,20 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
+// Mirrors the real hook's shape: a URL only when applications are open AND the
+// state has an apply destination (CO). Flag composition is covered by the
+// hook's own tests; here we only need null vs non-null behavior.
+let mockApplyOpen = true
+vi.mock('@/lib/useApplyHref', async () => {
+  const { getState } = await import('@sebt/design-system')
+  return {
+    useApplyHref: () =>
+      mockApplyOpen && getState() === 'co'
+        ? 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
+        : null
+  }
+})
+
 const mockUseAuth = vi.fn()
 vi.mock('@/features/auth', () => ({
   useAuth: () => mockUseAuth(),
@@ -109,9 +125,10 @@ function renderPage(
 describe('OffBoardingPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockApplyOpen = true
     mockGetState.mockReturnValue('dc')
     mockGetStateLinks.mockReturnValue({
-      help: { contactUs: 'https://sunbucks.dc.gov/page/contact-us', faqs: '' },
+      help: { contactUs: 'https://sunbucks.dc.gov/page/contact-us', faqs: '', sebtMainSite: '' },
       footer: {
         publicNotifications: '',
         accessibility: '',
@@ -125,6 +142,12 @@ describe('OffBoardingPage', () => {
   })
 
   describe('searchParams.canApply parsing', () => {
+    // Pinned to CO: DC has no apply destination (applications closed), which forces
+    // canApply false and would mask the query-param parsing behavior under test.
+    beforeEach(() => {
+      mockGetState.mockReturnValue('co')
+    })
+
     it('defaults canApply to true when searchParams has no canApply', () => {
       renderPage({})
 
@@ -172,6 +195,7 @@ describe('OffBoardingPage', () => {
         help: {
           contactUs: '#',
           faqs: '#',
+          sebtMainSite: '',
           helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
         },
         footer: {
@@ -343,6 +367,8 @@ describe('OffBoardingPage', () => {
     })
 
     it('uses dashboard application-alert copy when reason is noQualifyingHousehold', async () => {
+      // Pinned to CO so the branch's canApply=true behavior is observable.
+      mockGetState.mockReturnValue('co')
       await renderPage({ reason: 'noQualifyingHousehold' })
 
       const content = screen.getByTestId('off-boarding-content')
@@ -351,6 +377,40 @@ describe('OffBoardingPage', () => {
       expect(content).toHaveAttribute('data-apply-label', 'dashboard:alertApplicationsAction')
       expect(content).toHaveAttribute('data-back-href', '/login/id-proofing')
       expect(content).toHaveAttribute('data-can-apply', 'true')
+    })
+  })
+
+  describe('apply closure (DC-701)', () => {
+    // Outer beforeEach pins getState to 'dc'; useApplyHref returns null for DC, so the
+    // page must force canApply false and OffBoardingContent suppresses the apply section.
+    it('forces canApply to false regardless of the query param', () => {
+      renderPage({ canApply: 'true' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('forces canApply to false for CO when applications are closed', () => {
+      mockApplyOpen = false
+      mockGetState.mockReturnValue('co')
+      renderPage({ canApply: 'true' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('forces canApply to false on the co-loaded branch', () => {
+      renderPage({ isCoLoaded: true })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
+    })
+
+    it('forces canApply to false on the noQualifyingHousehold branch', () => {
+      renderPage({ reason: 'noQualifyingHousehold' })
+
+      const content = screen.getByTestId('off-boarding-content')
+      expect(content).toHaveAttribute('data-can-apply', 'false')
     })
   })
 })
