@@ -13,6 +13,7 @@ import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
 import { NotEnrolledSection } from './NotEnrolledSection'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ResultsPageProps {
   results: ChildCheckApiResponse[]
@@ -38,6 +39,7 @@ function computeHouseholdEnrollmentResult(
 
 export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   const { t, i18n } = useTranslation('result')
+  const { pageTitleText } = getStateConfig(getState())
 
   // Null when no application destination is configured (applications closed,
   // DC-701): the 2027 application link and its wait note degrade away while the
@@ -132,7 +134,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className="font-family-sans text-primary margin-top-1">{t('title')}</h1>
+        <h1 className={`font-family-sans ${pageTitleText} margin-top-1`}>{t('title')}</h1>
 
         {['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
           <div className="usa-summary-box">
@@ -190,9 +192,9 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
         {householdEnrollmentResult === 'mixedEnrolled' && applyHref && (
           <section data-testid="next-steps">
-            <h1 className="font-family-sans margin-top-4">
+            <h2 className="font-family-sans margin-top-4">
               {t('streamlinedEnrolledStepsHeading')}
-            </h1>
+            </h2>
             <ol className="usa-process-list  margin-top-1">
               <li className="usa-process-list__item margin-top-2">{portalNextStep}</li>
               <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>

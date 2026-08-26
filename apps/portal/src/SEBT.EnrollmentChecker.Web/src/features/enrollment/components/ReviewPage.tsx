@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useEnrollment } from '../context/EnrollmentContext'
 import { ChildReviewCard } from './ChildReviewCard'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ReviewPageProps {
   onSubmit: () => void
@@ -19,6 +20,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   // confirmInfo title/body exist only in the CO sheet (DC marks them !N/A!);
   // a DC build renders raw key names on this screen.
   const { t } = useTranslation('confirmInfo')
+  const { pageTitleText } = getStateConfig(getState())
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const { state, setEditingChildId, removeChild } = useEnrollment()
@@ -41,7 +43,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className="font-family-sans margin-top-1 text-primary">{t('title')}</h1>
+        <h1 className={`font-family-sans margin-top-1 ${pageTitleText}`}>{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
         <div className="margin-top-3">

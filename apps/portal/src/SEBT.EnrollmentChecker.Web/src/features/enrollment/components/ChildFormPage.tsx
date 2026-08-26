@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useEnrollment, type Child } from '../context/EnrollmentContext'
 import type { ChildFormValues } from '../schemas/childSchema'
 import { ChildForm } from './ChildForm'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ChildFormPageProps {
   showSchoolField: boolean
@@ -26,6 +27,7 @@ export function ChildFormPage({
   onSubmitChildren
 }: ChildFormPageProps) {
   const { t } = useTranslation('personalInfo')
+  const { pageTitleText } = getStateConfig(getState())
   const router = useRouter()
   const { state, addChild, updateChild, setEditingChildId } = useEnrollment()
   const { trackEvent } = useDataLayer()
@@ -85,7 +87,7 @@ export function ChildFormPage({
             aria-hidden="true"
           />
         )}
-        <h1 className="font-family-sans margin-top-1 text-primary">{isEditMode ? t('editHeading', t('title')) : t('title')}</h1>
+        <h1 className={`font-family-sans margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t('title')) : t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
         <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
         <ChildForm
