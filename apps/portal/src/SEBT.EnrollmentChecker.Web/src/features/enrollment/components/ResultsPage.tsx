@@ -2,12 +2,14 @@
 
 import { getApplyHref } from '@/lib/applyHref'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
+import { allowsSequentialChecks, getFlowConfig } from '@/lib/flowConfig'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { RichText } from '@sebt/design-system'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
+import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
 import { NotEnrolledSection } from './NotEnrolledSection'
@@ -93,9 +95,17 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     </section>
   )
 
+  const { distinguishNoResults } = getFlowConfig()
+
   const enrolled = results.filter((r) => mapApiStatus(r.status) === 'enrolled')
-  const notEnrolled = results.filter((r) => mapApiStatus(r.status) === 'notEnrolled')
-  const errors = results.filter((r) => mapApiStatus(r.status) === 'error')
+  const matchFailures = results.filter((r) => mapApiStatus(r.status) === 'notEnrolled')
+  const unresolved = results.filter((r) => mapApiStatus(r.status) === 'error')
+
+  // Where a state's backend cannot tell "no match at all" from "found but not
+  // matched", both arrive here as the same real-world answer, so they get the
+  // same treatment rather than a separate screen for an unreachable state.
+  const notEnrolled = distinguishNoResults ? matchFailures : [...matchFailures, ...unresolved]
+  const errors = distinguishNoResults ? unresolved : []
 
   const householdEnrollmentResult = computeHouseholdEnrollmentResult(
     enrolled.length,
@@ -216,6 +226,14 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
         )}
 
         {householdEnrollmentResult === 'allEnrolled' && <section>{portalNextStep}</section>}
+
+        {/* Single-child flows finish one child at a time, so the results are
+            where the next check begins. */}
+        {allowsSequentialChecks() && (
+          <CheckAnotherChildCard
+            copy={enrolled.length > 0 ? 'streamlinedEnrolledCard2' : 'applyForSebtCard2'}
+          />
+        )}
       </div>
     </div>
   )
