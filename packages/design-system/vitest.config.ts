@@ -9,5 +9,15 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     include: ['src/**/*.test.{ts,tsx}', 'design/scripts/**/*.test.{js,ts}'],
     exclude: ['node_modules/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        '**/*.config.*',
+        '**/*.d.ts',
+        '**/*.test.{ts,tsx}'
+      ]
+    }
   },
 })

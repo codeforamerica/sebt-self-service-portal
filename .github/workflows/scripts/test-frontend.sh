@@ -115,22 +115,23 @@ run_tests() {
   cd "$FRONTEND_DIR"
 
   # Check if test script exists
-  if grep -q '"test"' package.json 2>/dev/null; then
-    pnpm run test
+  if grep -q '"test:coverage"' package.json 2>/dev/null; then
+    pnpm run test:coverage
     log_success "Tests passed"
   else
-    log_warning "No test script found in package.json, skipping"
+    log_warning "No test:coverage script found in package.json, skipping"
   fi
 }
 
 # Run shared workspace package tests (packages/*). The web app's own `pnpm run
-# test` only covers apps/portal/src/SEBT.Portal.Web/src; without this the shared
-# @sebt/analytics and @sebt/design-system suites never run in CI.
+# test:coverage` only covers apps/portal/src/SEBT.Portal.Web/src; without this the
+# shared @sebt/analytics, @sebt/design-system, and @sebt/observability suites
+# never run in CI.
 run_package_tests() {
   log_info "Running shared package tests (packages/*)..."
   cd "$PROJECT_ROOT"
 
-  pnpm --filter "./packages/*" --if-present run test
+  pnpm --filter "./packages/*" --if-present run test:coverage
   log_success "Package tests passed"
 }
 

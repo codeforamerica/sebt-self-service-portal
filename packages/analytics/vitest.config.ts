@@ -5,6 +5,16 @@ export default defineConfig({
     jsx: 'automatic'
   },
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        '**/*.config.*',
+        '**/*.d.ts',
+        '**/*.test.{ts,tsx}'
+      ]
+    }
   }
 })
