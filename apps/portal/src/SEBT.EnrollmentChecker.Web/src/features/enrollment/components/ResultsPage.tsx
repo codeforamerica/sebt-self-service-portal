@@ -134,7 +134,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans ${pageTitleText} margin-top-1`}>{t('title')}</h1>
+        <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>{t('title')}</h1>
 
         {['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
           <div className="usa-summary-box">

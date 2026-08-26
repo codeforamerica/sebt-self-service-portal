@@ -43,7 +43,7 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans margin-top-1 ${pageTitleText}`}>{t('title')}</h1>
+        <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
         <div className="margin-top-3">
