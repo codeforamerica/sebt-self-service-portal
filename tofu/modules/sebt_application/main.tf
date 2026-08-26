@@ -11,7 +11,10 @@ module "appconfig" {
 # within the VPC. It runs the .NET backend API on Fargate behind an internal
 # Application Load Balancer.
 module "api" {
-  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=10d4c56eb6c156c7a670ee19e40caad476c81a1b" # 1.14.0
+  # feat/certificate-sans adds optional ACM SANs for preview hostnames.
+  # Bump to a released tag once that lands (expected >= 1.15.0).
+  # Keep this branch pin until certificate_sans ships in a release (> 1.14.0).
+  source = "github.com/codeforamerica/tofu-modules-aws-fargate-service?ref=feat/certificate-sans"
 
   project       = "${var.project}-${var.state}"
   project_short = var.project_short
@@ -19,9 +22,10 @@ module "api" {
   service       = "api"
   service_short = "api"
 
-  domain         = var.domain
-  subdomain      = "api"
-  hosted_zone_id = var.hosted_zone_id
+  domain           = var.domain
+  subdomain        = "api"
+  hosted_zone_id   = var.hosted_zone_id
+  certificate_sans = var.certificate_sans
 
   public          = false
   create_endpoint = true
@@ -279,15 +283,17 @@ module "cloudfront_waf" {
   source     = "github.com/codeforamerica/tofu-modules-aws-cloudfront-waf?ref=2.8.0"
   depends_on = [module.web.load_balancer_arn]
 
-  project        = "${var.project}-${var.state}"
-  environment    = var.environment
-  domain         = var.domain
-  subdomain      = ""
-  origin_alb_arn = module.web.load_balancer_arn
-  log_bucket     = var.logging_bucket_domain_name
-  log_group      = var.waf_log_group
-  passive        = var.passive_waf
-  hosted_zone_id = var.hosted_zone_id
+  project          = "${var.project}-${var.state}"
+  environment      = var.environment
+  domain           = var.domain
+  subdomain        = ""
+  certificate_sans = var.certificate_sans
+  extra_aliases    = var.cloudfront_extra_aliases
+  origin_alb_arn   = module.web.load_balancer_arn
+  log_bucket       = var.logging_bucket_domain_name
+  log_group        = var.waf_log_group
+  passive          = var.passive_waf
+  hosted_zone_id   = var.hosted_zone_id
 
   # AWS Security Agent penetration test bypass (development only). Evaluated
   # before the rate-limit rule so the test's traffic is allowed and terminating.
