@@ -202,7 +202,7 @@ jobs:
             -w /workspace \
             -e SKIP_SQLSERVER_TESTS=1 \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
-            bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}"
+            bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }} --coverage"
 
       - name: Build Frontend (Docker)
         if: steps.config.outputs.use_docker == 'true' && needs.changes.outputs.frontend == 'true'
@@ -250,7 +250,7 @@ jobs:
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.backend == 'true'
         # Covers the portal suite plus the in-repo connector suites (CO + interfaces).
         timeout-minutes: 10
-        run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }}
+        run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }} --coverage
 
       - name: Generate Backend Dependencies CSV
         id: generate-backend-dependencies-csv
