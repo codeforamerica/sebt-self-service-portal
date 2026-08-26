@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getLandingActions, getLandingConfig } from '@/lib/landingConfig'
 import { useEnrollment } from '../context/EnrollmentContext'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 /**
  * Post-season landing page: enrollment has ended but the check still works, so
@@ -21,6 +22,7 @@ import { useEnrollment } from '../context/EnrollmentContext'
  */
 export function ClosedPage() {
   const { t } = useTranslation('landing')
+  const { pageTitleText } = getStateConfig(getState())
   const router = useRouter()
   const { clearState } = useEnrollment()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
@@ -40,7 +42,7 @@ export function ClosedPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className="font-family-sans text-primary">{t('closedTitle')}</h1>
+        <h1 className={`font-family-sans ${pageTitleText}`}>{t('closedTitle')}</h1>
 
         <h2 className="font-family-sans font-sans-md">{t('closedSubtitle')}</h2>
 

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 
 import { RichText } from '@sebt/design-system'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ErrorResultPageProps {
   portalUrl: string
@@ -18,6 +19,7 @@ interface ErrorResultPageProps {
  */
 export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
   const { t } = useTranslation('result')
+  const { pageTitleText } = getStateConfig(getState())
   const errorCard = getCheckerAssetPath('errorCard')
 
   return (
@@ -32,7 +34,7 @@ export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className="font-family-sans text-primary margin-top-1">{t('errorTitle')}</h1>
+        <h1 className={`font-family-sans ${pageTitleText} margin-top-1`}>{t('errorTitle')}</h1>
         <p>{t('errorBody')}</p>
 
         <section data-testid="next-step-portal">
