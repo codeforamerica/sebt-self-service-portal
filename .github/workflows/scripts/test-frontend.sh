@@ -3,10 +3,11 @@
 # Environment-agnostic: Works in Docker, GitHub Actions, and local development
 #
 # Usage:
-#   ./.github/workflows/scripts/test-frontend.sh [--skip-install]
+#   ./.github/workflows/scripts/test-frontend.sh [--skip-install] [--coverage]
 #
 # Options:
 #   --skip-install    Skip dependency installation (useful if already installed)
+#   --coverage        Collect code coverage (requires @vitest/coverage-v8)
 
 set -e  # Exit on error
 set -u  # Exit on undefined variable
@@ -25,11 +26,16 @@ FRONTEND_DIR="$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Web"
 
 # Parse arguments
 SKIP_INSTALL=false
+COLLECT_COVERAGE=false
 
 for arg in "$@"; do
   case $arg in
     --skip-install)
       SKIP_INSTALL=true
+      shift
+      ;;
+    --coverage)
+      COLLECT_COVERAGE=true
       shift
       ;;
   esac
@@ -114,24 +120,35 @@ run_tests() {
   log_info "Running tests..."
   cd "$FRONTEND_DIR"
 
+  local script="test"
+  if [ "$COLLECT_COVERAGE" = true ]; then
+    log_info "Code coverage collection enabled"
+    script="test:coverage"
+  fi
+
   # Check if test script exists
-  if grep -q '"test:coverage"' package.json 2>/dev/null; then
-    pnpm run test:coverage
+  if grep -q "\"$script\"" package.json 2>/dev/null; then
+    pnpm run "$script"
     log_success "Tests passed"
   else
-    log_warning "No test:coverage script found in package.json, skipping"
+    log_warning "No $script script found in package.json, skipping"
   fi
 }
 
 # Run shared workspace package tests (packages/*). The web app's own `pnpm run
-# test:coverage` only covers apps/portal/src/SEBT.Portal.Web/src; without this the
-# shared @sebt/analytics, @sebt/design-system, and @sebt/observability suites
-# never run in CI.
+# test`/`test:coverage` only covers apps/portal/src/SEBT.Portal.Web/src; without
+# this the shared @sebt/analytics, @sebt/design-system, and @sebt/observability
+# suites never run in CI.
 run_package_tests() {
   log_info "Running shared package tests (packages/*)..."
   cd "$PROJECT_ROOT"
 
-  pnpm --filter "./packages/*" --if-present run test:coverage
+  local script="test"
+  if [ "$COLLECT_COVERAGE" = true ]; then
+    script="test:coverage"
+  fi
+
+  pnpm --filter "./packages/*" --if-present run "$script"
   log_success "Package tests passed"
 }
 

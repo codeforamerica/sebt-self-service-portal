@@ -202,7 +202,7 @@ jobs:
             -w /workspace \
             -e SKIP_SQLSERVER_TESTS=1 \
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
-            bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }} --coverage"
+            bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }} ${{ github.event_name == 'pull_request' && '--coverage' || '' }}"
 
       - name: Build Frontend (Docker)
         if: steps.config.outputs.use_docker == 'true' && needs.changes.outputs.frontend == 'true'
@@ -220,7 +220,7 @@ jobs:
             -v ${{ github.workspace }}:/workspace \
             -w /workspace \
             node:${{ steps.config.outputs.node_version }}-alpine \
-            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/test-frontend.sh --skip-install"
+            sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/test-frontend.sh --skip-install ${{ github.event_name == 'pull_request' && '--coverage' || '' }}"
 
       # Native Build Path
       - name: Setup .NET (Native)
@@ -250,7 +250,7 @@ jobs:
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.backend == 'true'
         # Covers the portal suite plus the in-repo connector suites (CO + interfaces).
         timeout-minutes: 10
-        run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }} --coverage
+        run: ./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }} ${{ github.event_name == 'pull_request' && '--coverage' || '' }}
 
       - name: Generate Backend Dependencies CSV
         id: generate-backend-dependencies-csv
@@ -263,7 +263,7 @@ jobs:
 
       - name: Test Frontend (Native)
         if: steps.config.outputs.use_docker != 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.frontend == 'true'
-        run: ./.github/workflows/scripts/test-frontend.sh --skip-install
+        run: ./.github/workflows/scripts/test-frontend.sh --skip-install ${{ github.event_name == 'pull_request' && '--coverage' || '' }}
 
       # Upload artifacts. Connector bin/ dirs are intentionally excluded: the
       # portal consumes connector plugins via the staged plugins-{state}/ dirs
@@ -276,6 +276,32 @@ jobs:
             apps/portal/src/SEBT.Portal.Web/.next/standalone
             apps/portal/src/**/bin/${{ steps.config.outputs.build_config }}
             output/backend-dependencies.csv
+          retention-days: 7
+
+      # Coverage is PR-only (see ticket): --coverage above is only passed for
+      # pull_request events, so these uploads would find nothing to attach on
+      # push/dispatch runs anyway. The explicit event_name check keeps that
+      # intent visible here too, rather than relying solely on the flag upstream.
+      #
+      # dc/co run the same tests against the same solution (see DC-735), so these
+      # two reports are near-identical duplicates today. Both are still uploaded
+      # per matrix leg for now; the PR summary step picks just one to display.
+      - name: Upload backend coverage report
+        if: github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true' && steps.config.outputs.skip_tests != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.state }}-backend-coverage
+          path: TestResults/
+          retention-days: 7
+
+      - name: Upload frontend coverage report
+        if: github.event_name == 'pull_request' && needs.changes.outputs.frontend == 'true' && steps.config.outputs.skip_tests != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.state }}-frontend-coverage
+          path: |
+            apps/portal/src/SEBT.Portal.Web/coverage
+            packages/*/coverage
           retention-days: 7
 
   # The enrollment checker is built only by deploy-enrollment-checker.yaml, which
