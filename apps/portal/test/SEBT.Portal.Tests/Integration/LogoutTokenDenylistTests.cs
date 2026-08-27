@@ -7,12 +7,12 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Tests.Integration;
 
@@ -171,20 +171,20 @@ public class LogoutTokenDenylistTests : IClassFixture<PortalWebApplicationFactor
     private WebApplicationFactory<Program> CreateFactoryWhereDiscoveryFails()
     {
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        oidcExchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        oidcExchangeService.GetDiscoveryInfoAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("discovery unavailable"));
         return CreateFactoryWithOidcExchangeService(oidcExchangeService);
     }
 
     /// <summary>
-    /// Derives a factory whose IOidcExchangeService returns a discovery document with an
+    /// Derives a factory whose IOidcExchangeService returns discovery info with an
     /// end_session_endpoint, exercising the RP-initiated logout redirect.
     /// </summary>
     private WebApplicationFactory<Program> CreateFactoryWhereDiscoverySucceeds()
     {
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        oidcExchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(new OpenIdConnectConfiguration { EndSessionEndpoint = EndSessionEndpoint });
+        oidcExchangeService.GetDiscoveryInfoAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new OidcDiscoveryInfo { EndSessionEndpoint = EndSessionEndpoint });
         return CreateFactoryWithOidcExchangeService(oidcExchangeService);
     }
 

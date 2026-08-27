@@ -14,6 +14,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -329,11 +330,11 @@ public class AuthControllerTests
             .Build();
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        var oidcConfig = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+        var oidcConfig = new OidcDiscoveryInfo
         {
             EndSessionEndpoint = "https://auth.pingone.com/logout"
         };
-        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+        oidcExchangeService.GetDiscoveryInfoAsync(false, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(oidcConfig));
         var tokenDenylist = Substitute.For<ITokenDenylist>();
 
@@ -399,7 +400,7 @@ public class AuthControllerTests
             .Build();
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+        oidcExchangeService.GetDiscoveryInfoAsync(false, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Discovery failed"));
         var tokenDenylist = Substitute.For<ITokenDenylist>();
 

@@ -785,7 +785,7 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('radio', { name: LABEL_NONE }))
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
-      const errorMessage = await screen.findByText(/valid date of birth/i)
+      const errorMessage = await screen.findByText(enDcValidation.validDate)
 
       // Year value is fine — it should not be flagged invalid.
       const yearInput = screen.getByRole('textbox', { name: INPUT_LABEL_YEAR })
