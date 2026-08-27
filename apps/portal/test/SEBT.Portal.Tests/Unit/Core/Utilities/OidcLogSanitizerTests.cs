@@ -1,6 +1,6 @@
-using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Utilities;
 
-namespace SEBT.Portal.Tests.Unit.Services;
+namespace SEBT.Portal.Tests.Unit.Core.Utilities;
 
 public class OidcLogSanitizerTests
 {

@@ -3,9 +3,10 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Services;
 
-namespace SEBT.Portal.Tests.Unit.Services;
+namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
 public class OidcExchangeServiceTests
 {
