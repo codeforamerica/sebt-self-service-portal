@@ -20,6 +20,13 @@ public class EnrollmentCheckerFeaturesEndpointTests
         ["es"] = "El verificador de inscripción puede no estar disponible temporalmente debido a mantenimiento del sistema.",
     };
 
+    private static readonly IncomeEligibilitySettings DefaultIncomeEligibility = new()
+    {
+        BaseThreshold = 28953m,
+        PerMemberIncrement = 10175m,
+        MaxHouseholdSize = 8,
+    };
+
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
     private readonly IOptionsMonitor<EnrollmentCheckerSettings> _settings =
         Substitute.For<IOptionsMonitor<EnrollmentCheckerSettings>>();
@@ -31,7 +38,8 @@ public class EnrollmentCheckerFeaturesEndpointTests
     {
         _settings.CurrentValue.Returns(new EnrollmentCheckerSettings
         {
-            MaintenanceBanner = new MaintenanceBannerSettings { Message = DefaultMessage }
+            MaintenanceBanner = new MaintenanceBannerSettings { Message = DefaultMessage },
+            IncomeEligibility = DefaultIncomeEligibility,
         });
     }
 
@@ -124,6 +132,53 @@ public class EnrollmentCheckerFeaturesEndpointTests
         Assert.True(response.MaintenanceBanner.Enabled);
         Assert.Equal(DefaultMessage, response.MaintenanceBanner.Message);
         Assert.True(response.OutagePage.Enabled);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenIncomeEligibilityFlagEnabled_ReturnsConfiguredThresholds()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility).Returns(true);
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.NotNull(response.IncomeEligibility);
+        Assert.Equal(28953m, response.IncomeEligibility.BaseThreshold);
+        Assert.Equal(10175m, response.IncomeEligibility.PerMemberIncrement);
+        Assert.Equal(8, response.IncomeEligibility.MaxHouseholdSize);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenIncomeEligibilityFlagDisabled_OmitsThresholds()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility).Returns(false);
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        // Null rather than zeroed: the checker withdraws the tool instead of
+        // screening every household against a $0 threshold.
+        Assert.Null(response.IncomeEligibility);
+    }
+
+    [Fact]
+    public async Task GetFeatures_IncomeEligibilityReadsCurrentValue_SoAppConfigReloadsApply()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility).Returns(true);
+        _settings.CurrentValue.Returns(new EnrollmentCheckerSettings
+        {
+            MaintenanceBanner = new MaintenanceBannerSettings { Message = DefaultMessage },
+            IncomeEligibility = new IncomeEligibilitySettings
+            {
+                BaseThreshold = 30000m,
+                PerMemberIncrement = 11000m,
+                MaxHouseholdSize = 10,
+            },
+        });
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.NotNull(response.IncomeEligibility);
+        Assert.Equal(30000m, response.IncomeEligibility.BaseThreshold);
+        Assert.Equal(10, response.IncomeEligibility.MaxHouseholdSize);
     }
 
     [Fact]
