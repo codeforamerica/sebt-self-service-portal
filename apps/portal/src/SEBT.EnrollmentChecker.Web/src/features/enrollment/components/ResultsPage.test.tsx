@@ -393,4 +393,21 @@ describe('single-outcome results', () => {
     renderResults('Match')
     expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
   })
+
+  // The portal guidance is a success alert in the design, and the button that
+  // acts on it sits outside so the alert stays informational.
+  it('presents the portal guidance as a success alert', () => {
+    const { container } = renderResults('Match')
+    const alert = container.querySelector('.usa-alert')
+
+    expect(alert).toHaveClass('usa-alert--success')
+    expect(alert?.querySelector('.usa-alert__heading')).toBeInTheDocument()
+    expect(alert?.contains(screen.getByTestId('portal-link'))).toBe(false)
+  })
+
+  // role="alert" is an assertive live region; this is static page content.
+  it('does not announce the alert as a live region', () => {
+    const { container } = renderResults('Match')
+    expect(container.querySelector('.usa-alert')).not.toHaveAttribute('role', 'alert')
+  })
 })
