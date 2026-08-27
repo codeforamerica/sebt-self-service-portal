@@ -32,6 +32,14 @@ export const checkerFeaturesSchema = z.object({
     .object({
       enabled: z.boolean()
     })
+    .optional(),
+  // Optional for the same deploy-order reason, but missing reads the other way —
+  // as an open season. An API that predates the field must not put the checker
+  // into past-tense copy telling families enrollment has ended.
+  enrollment: z
+    .object({
+      enabled: z.boolean()
+    })
     .optional()
 })
 

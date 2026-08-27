@@ -69,6 +69,15 @@ public static class FeatureFlags
     public const string EnableApply = "enable_apply";
 
     /// <summary>
+    /// When enabled, the season is still enrolling. Off switches the enrollment checker to
+    /// past-tense copy ("was your student enrolled?") and drops every apply path. Wider than
+    /// <see cref="EnableApply"/>, which covers only the application window inside a season —
+    /// a state can pause applications while it keeps enrolling. Set true in the base
+    /// appsettings so an unset flag cannot close a state's season.
+    /// </summary>
+    public const string EnableEnrollment = "enable_enrollment";
+
+    /// <summary>
     /// When enabled, the enrollment checker offers income screening on its not-enrolled
     /// result. Thresholds come from EnrollmentChecker:IncomeEligibility (see
     /// <see cref="IncomeEligibilitySettings"/>). Disabling withdraws the tool rather than

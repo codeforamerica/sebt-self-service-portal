@@ -122,6 +122,8 @@ public class EnrollmentCheckController : ControllerBase
 
         var applyEnabled = await featureManager.IsEnabledAsync(FeatureFlags.EnableApply);
 
+        var enrollmentEnabled = await featureManager.IsEnabledAsync(FeatureFlags.EnableEnrollment);
+
         return Ok(new EnrollmentCheckerFeaturesResponse
         {
             MaintenanceBanner = new MaintenanceBannerFeature
@@ -144,6 +146,10 @@ public class EnrollmentCheckController : ControllerBase
             Apply = new ApplyFeature
             {
                 Enabled = applyEnabled
+            },
+            Enrollment = new EnrollmentFeature
+            {
+                Enabled = enrollmentEnabled
             }
         });
     }

@@ -202,6 +202,40 @@ public class EnrollmentCheckerFeaturesEndpointTests
     }
 
     [Fact]
+    public async Task GetFeatures_WhenEnrollmentFlagEnabled_ReportsSeasonEnrolling()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableEnrollment).Returns(true);
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.True(response.Enrollment.Enabled);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenEnrollmentFlagDisabled_ReportsSeasonClosed()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableEnrollment).Returns(false);
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.False(response.Enrollment.Enabled);
+    }
+
+    [Fact]
+    public async Task GetFeatures_EnrollmentAndApplyAreIndependent()
+    {
+        // A state can pause applications while it keeps enrolling, so the checker must be
+        // able to hide apply links without switching to past-tense season copy.
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableEnrollment).Returns(true);
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableApply).Returns(false);
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.True(response.Enrollment.Enabled);
+        Assert.False(response.Apply.Enabled);
+    }
+
+    [Fact]
     public void GetFeatures_HasDedicatedRateLimitPolicy()
     {
         var attribute = typeof(EnrollmentCheckController)

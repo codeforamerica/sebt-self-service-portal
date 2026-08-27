@@ -29,6 +29,22 @@ public class EnrollmentCheckerFeaturesResponse
     /// configured before it shows an apply link.
     /// </summary>
     public ApplyFeature Apply { get; init; } = new();
+
+    /// <summary>
+    /// Whether the season is still enrolling.
+    /// </summary>
+    public EnrollmentFeature Enrollment { get; init; } = new();
+}
+
+/// <summary>
+/// Season state for the enrollment checker.
+/// </summary>
+public class EnrollmentFeature
+{
+    /// <summary>
+    /// Whether the season is still enrolling. False switches the checker to past-tense copy.
+    /// </summary>
+    public bool Enabled { get; init; }
 }
 
 /// <summary>
