@@ -7,6 +7,13 @@ import { ResultsPage } from './ResultsPage'
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
+// These tests cover results composition. Applications are open so the apply
+// blocks render; mockApplyHref below is what closes them. Income screening and
+// the apply flag are exercised in their own suites.
+vi.mock('@/features/maintenance/hooks/useCheckerFeatures', () => ({
+  useCheckerFeatures: () => ({ data: { apply: { enabled: true } } })
+}))
+
 // Flows with a review step collect the household before submitting, so they
 // have no reason to send the visitor back for another child.
 describe('sequential checks', () => {

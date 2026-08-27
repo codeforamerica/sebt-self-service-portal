@@ -1,15 +1,17 @@
 'use client'
 
-import { getApplyHref } from '@/lib/applyHref'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import { allowsSequentialChecks, getFlowConfig } from '@/lib/flowConfig'
+import { useApplyHref } from '@/lib/useApplyHref'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { RichText } from '@sebt/design-system'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
+import { ApplicationAvailable } from './ApplicationAvailable'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'
+import { EligibilityAccordion } from './EligibilityAccordion'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
 import { NotEnrolledSection } from './NotEnrolledSection'
@@ -38,14 +40,14 @@ function computeHouseholdEnrollmentResult(
 }
 
 export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
-  const { t, i18n } = useTranslation('result')
+  const { t } = useTranslation('result')
   const { pageTitleText } = getStateConfig(getState())
 
-  // Null when no application destination is configured (applications closed,
-  // DC-701): the 2027 application link and its wait note degrade away while the
-  // closure line stays. The mixed variant also drops its numbered next-steps
-  // list, since the portal step is then the only actionable one.
-  const applyHref = getApplyHref(i18n.language)
+  // Null when applications are closed — either the enable_apply flag is off or no
+  // destination is configured. The 2027 application link and its wait note degrade
+  // away while the closure line stays. The mixed variant also drops its numbered
+  // next-steps list, since the portal step is then the only actionable one.
+  const applyHref = useApplyHref()
 
   // Closure copy plus the optional summer-2027 application link. The wait-note
   // key differs by surface (standalone vs numbered step), so callers pass it.
@@ -256,7 +258,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
               </RichText>
             </div>
 
-            {enrolled.length > 0 && (
+            {enrolled.length > 0 ? (
               <section data-testid="next-step-portal">
                 <h2 className="font-family-sans font-sans-md margin-top-4">
                   {t('streamlinedEnrolledAlertTitle')}
@@ -275,16 +277,23 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
                   </a>
                 </p>
               </section>
+            ) : (
+              <EligibilityAccordion applyHref={applyHref} />
             )}
           </section>
         )}
 
-        {/* Single-child flows finish one child at a time, so the results are
-            where the next check begins. */}
+        {/* A single-outcome flow finishes one child at a time, so the results
+            are where the next check begins. It sits above the deadline so the
+            household is settled before the visitor leaves to apply. */}
         {allowsSequentialChecks() && (
           <CheckAnotherChildCard
             copy={enrolled.length > 0 ? 'streamlinedEnrolledCard2' : 'applyForSebtCard2'}
           />
+        )}
+
+        {!summarizesHousehold && enrolled.length === 0 && (
+          <ApplicationAvailable applyHref={applyHref} />
         )}
       </div>
     </div>
