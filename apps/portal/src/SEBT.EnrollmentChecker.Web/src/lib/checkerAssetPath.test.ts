@@ -95,10 +95,13 @@ describe('getCheckerAssetPath', () => {
         '/images/states/co/icon-alert-card.svg'
       )
 
+      // Not enrolled is an invitation to apply, so DC keeps the review artwork
+      // here and saves the alert artwork for the error screen.
       vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
       expect(getCheckerAssetPath('resultsNotEnrolled')).toBe(
-        '/images/states/dc/icon-alert-card.svg'
+        '/images/states/dc/icon-review-card.svg'
       )
+      expect(getCheckerAssetPath('errorCard')).toBe('/images/states/dc/icon-alert-card.svg')
     })
   })
 })
