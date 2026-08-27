@@ -9,9 +9,10 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
-using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Services;
 
-namespace SEBT.Portal.Tests.Unit.Services;
+namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
 /// <summary>
 /// Unit coverage for the OIDC token exchange and claim enrichment.
@@ -49,7 +50,7 @@ public class OidcExchangeServiceExchangeTests
         var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
 
         Assert.True(result.Success);
-        Assert.Equal(200, result.StatusCode);
+        Assert.Null(result.FailureReason);
         Assert.Null(result.Error);
         Assert.NotNull(result.CallbackToken);
         Assert.Equal("202-555-0100", result.PhoneClaim);
@@ -76,14 +77,14 @@ public class OidcExchangeServiceExchangeTests
         var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: true);
 
         Assert.True(result.Success);
-        Assert.Equal(200, result.StatusCode);
+        Assert.Null(result.FailureReason);
         var claims = DecodeCallbackToken(result.CallbackToken!);
         Assert.Equal("user-123", claims["sub"]);
         Assert.Equal("user@example.com", claims["email"]);
     }
 
     [Fact]
-    public async Task ExchangeCodeAsync_returns_503_when_step_up_client_credentials_not_configured()
+    public async Task ExchangeCodeAsync_fails_not_configured_when_step_up_client_credentials_missing()
     {
         // Step-up flow with only the non-step-up credentials set → step-up clientId/secret resolve empty.
         await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
@@ -92,14 +93,14 @@ public class OidcExchangeServiceExchangeTests
         var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: true);
 
         Assert.False(result.Success);
-        Assert.Equal(503, result.StatusCode);
+        Assert.Equal(OidcExchangeFailureReason.NotConfigured, result.FailureReason);
         Assert.Contains("not configured", result.Error);
     }
 
     // ── Configuration / discovery failures ──
 
     [Fact]
-    public async Task ExchangeCodeAsync_returns_503_when_signing_key_not_configured()
+    public async Task ExchangeCodeAsync_fails_not_configured_when_signing_key_missing()
     {
         await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
         // Omit the callback signing key — the service should fail before any network call.
@@ -108,12 +109,12 @@ public class OidcExchangeServiceExchangeTests
         var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
 
         Assert.False(result.Success);
-        Assert.Equal(503, result.StatusCode);
+        Assert.Equal(OidcExchangeFailureReason.NotConfigured, result.FailureReason);
         Assert.Contains("not configured", result.Error);
     }
 
     [Fact]
-    public async Task ExchangeCodeAsync_returns_502_when_discovery_document_cannot_be_loaded()
+    public async Task ExchangeCodeAsync_fails_discovery_unavailable_when_document_cannot_be_loaded()
     {
         await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
         // Point discovery at a path the stand-in returns 404 for → ConfigurationManager throws.
@@ -122,12 +123,12 @@ public class OidcExchangeServiceExchangeTests
         var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
 
         Assert.False(result.Success);
-        Assert.Equal(502, result.StatusCode);
+        Assert.Equal(OidcExchangeFailureReason.DiscoveryUnavailable, result.FailureReason);
         Assert.Contains("discovery", result.Error);
     }
 
     [Fact]
-    public async Task ExchangeCodeAsync_returns_502_when_discovery_missing_token_endpoint()
+    public async Task ExchangeCodeAsync_fails_discovery_invalid_when_missing_token_endpoint()
     {
         await using var idp = SigningDiscoveryServer.Start(audience: ClientId, includeTokenEndpoint: false);
         var service = CreateService(idp.DiscoveryUrl, new RoutingHandler());
@@ -135,7 +136,7 @@ public class OidcExchangeServiceExchangeTests
         var result = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
 
         Assert.False(result.Success);
-        Assert.Equal(502, result.StatusCode);
+        Assert.Equal(OidcExchangeFailureReason.DiscoveryInvalid, result.FailureReason);
         Assert.Contains("token_endpoint", result.Error);
     }
 
@@ -246,6 +247,77 @@ public class OidcExchangeServiceExchangeTests
 
         Assert.False(result.Success);
         Assert.Contains("email or sub", result.Error);
+    }
+
+    // ── ValidateCallbackToken ──
+    // Signing (in ExchangeCodeAsync) and validation share one implementation, so the
+    // round-trip below proves key + issuer/audience rules agree with each other.
+
+    [Fact]
+    public async Task ValidateCallbackToken_round_trips_a_token_signed_by_the_exchange()
+    {
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var idToken = idp.SignIdToken(
+            new Claim("sub", "user-123"),
+            new Claim("email", "user@example.com"));
+        var handler = new RoutingHandler().Token(TokenOk(idToken, accessToken: null));
+        var service = CreateService(idp.DiscoveryUrl, handler);
+        var exchange = await service.ExchangeCodeAsync("auth-code", "verifier", RedirectUri, isStepUp: false);
+
+        var result = service.ValidateCallbackToken(exchange.CallbackToken!);
+
+        Assert.True(result.Success);
+        Assert.False(result.NotConfigured);
+        Assert.Null(result.Error);
+        Assert.Equal("user-123", result.Principal!.FindFirst("sub")?.Value);
+        Assert.Equal("user@example.com", result.Principal.FindFirst("email")?.Value);
+    }
+
+    [Fact]
+    public async Task ValidateCallbackToken_fails_for_a_garbage_token()
+    {
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var service = CreateService(idp.DiscoveryUrl, new RoutingHandler());
+
+        var result = service.ValidateCallbackToken("not.a.jwt");
+
+        Assert.False(result.Success);
+        Assert.Null(result.Principal);
+        Assert.NotNull(result.Error);
+    }
+
+    [Fact]
+    public async Task ValidateCallbackToken_fails_for_an_expired_token()
+    {
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var service = CreateService(idp.DiscoveryUrl, new RoutingHandler());
+        // Sign with the same key + issuer/audience the service uses, but already expired
+        // beyond the 1-minute validation clock skew.
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(CallbackSigningKey));
+        var expired = new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
+            issuer: "https://portal.example.com",
+            audience: "https://portal.example.com",
+            claims: [new Claim("sub", "user-123")],
+            notBefore: DateTime.UtcNow.AddMinutes(-10),
+            expires: DateTime.UtcNow.AddMinutes(-5),
+            signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256)));
+
+        var result = service.ValidateCallbackToken(expired);
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.Error);
+    }
+
+    [Fact]
+    public async Task ValidateCallbackToken_reports_not_configured_when_signing_key_missing()
+    {
+        await using var idp = SigningDiscoveryServer.Start(audience: ClientId);
+        var service = CreateService(idp.DiscoveryUrl, new RoutingHandler(), configured: false);
+
+        var result = service.ValidateCallbackToken("some.jwt.token");
+
+        Assert.False(result.Success);
+        Assert.True(result.NotConfigured);
     }
 
     // ── auth_time diagnostics ──

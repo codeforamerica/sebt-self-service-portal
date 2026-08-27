@@ -1,16 +1,18 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Services;
 
 namespace SEBT.Portal.Tests.Integration;
 
@@ -40,23 +42,27 @@ public class LogoutTokenDenylistTests : IClassFixture<PortalWebApplicationFactor
     }
 
     [Fact]
-    public async Task Status_AfterLogout_ReturnsUnauthorizedForTheSameToken()
+    public async Task Status_AfterLogout_ReturnsUnauthenticatedForTheSameToken()
     {
         using var factory = CreateFactoryWhereDiscoveryFails();
         var token = CreateValidJwt(email: "logout-a@example.com");
-        Assert.Equal(HttpStatusCode.OK, (await GetStatusWithCookie(factory, token)).StatusCode);
+        Assert.True((await ReadStatus(factory, token)).IsAuthorized);
 
         using var logoutResponse = await LogoutWithCookie(factory, token);
         Assert.Equal(HttpStatusCode.Found, logoutResponse.StatusCode);
 
-        using var statusResponse = await GetStatusWithCookie(factory, token);
-        Assert.Equal(HttpStatusCode.Unauthorized, statusResponse.StatusCode);
+        // The status probe answers anonymous callers with 200 { isAuthorized: false };
+        // the revoked token must yield that anonymous shape, never a session.
+        var revokedStatus = await ReadStatus(factory, token);
+        Assert.False(revokedStatus.IsAuthorized);
+        Assert.Null(revokedStatus.Email);
 
         // Revocation must apply regardless of how the token is presented — the same jti
         // is denylisted whether the SPA sends it via cookie or a service-to-service
         // caller sends it via the Authorization header.
         using var bearerStatusResponse = await GetStatusWithBearerToken(factory, token);
-        Assert.Equal(HttpStatusCode.Unauthorized, bearerStatusResponse.StatusCode);
+        var bearerStatus = await bearerStatusResponse.Content.ReadFromJsonAsync<AuthorizationStatusResponse>();
+        Assert.False(bearerStatus!.IsAuthorized);
     }
 
     [Fact]
@@ -69,8 +75,7 @@ public class LogoutTokenDenylistTests : IClassFixture<PortalWebApplicationFactor
         using var logoutResponse = await LogoutWithCookie(factory, tokenA);
         Assert.Equal(HttpStatusCode.Found, logoutResponse.StatusCode);
 
-        using var statusResponse = await GetStatusWithCookie(factory, tokenB);
-        Assert.Equal(HttpStatusCode.OK, statusResponse.StatusCode);
+        Assert.True((await ReadStatus(factory, tokenB)).IsAuthorized);
     }
 
     [Fact]
@@ -137,8 +142,18 @@ public class LogoutTokenDenylistTests : IClassFixture<PortalWebApplicationFactor
         AssertAuthCookieCleared(logoutResponse);
 
         // Revocation happens regardless of which redirect path logout takes.
-        using var statusResponse = await GetStatusWithCookie(factory, token);
-        Assert.Equal(HttpStatusCode.Unauthorized, statusResponse.StatusCode);
+        Assert.False((await ReadStatus(factory, token)).IsAuthorized);
+    }
+
+    /// <summary>Fetches the status probe with the given session cookie and returns its body.</summary>
+    private static async Task<AuthorizationStatusResponse> ReadStatus(
+        WebApplicationFactory<Program> factory, string? token)
+    {
+        using var response = await GetStatusWithCookie(factory, token);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var status = await response.Content.ReadFromJsonAsync<AuthorizationStatusResponse>();
+        Assert.NotNull(status);
+        return status;
     }
 
     private static void AssertAuthCookieCleared(HttpResponseMessage response)
@@ -156,20 +171,20 @@ public class LogoutTokenDenylistTests : IClassFixture<PortalWebApplicationFactor
     private WebApplicationFactory<Program> CreateFactoryWhereDiscoveryFails()
     {
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        oidcExchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        oidcExchangeService.GetDiscoveryInfoAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("discovery unavailable"));
         return CreateFactoryWithOidcExchangeService(oidcExchangeService);
     }
 
     /// <summary>
-    /// Derives a factory whose IOidcExchangeService returns a discovery document with an
+    /// Derives a factory whose IOidcExchangeService returns discovery info with an
     /// end_session_endpoint, exercising the RP-initiated logout redirect.
     /// </summary>
     private WebApplicationFactory<Program> CreateFactoryWhereDiscoverySucceeds()
     {
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        oidcExchangeService.GetDiscoveryConfigAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(new OpenIdConnectConfiguration { EndSessionEndpoint = EndSessionEndpoint });
+        oidcExchangeService.GetDiscoveryInfoAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new OidcDiscoveryInfo { EndSessionEndpoint = EndSessionEndpoint });
         return CreateFactoryWithOidcExchangeService(oidcExchangeService);
     }
 

@@ -1,4 +1,4 @@
-namespace SEBT.Portal.Api.Services;
+namespace SEBT.Portal.Core.Utilities;
 
 /// <summary>
 /// Truncates and strips control characters from OIDC error strings before logging.
