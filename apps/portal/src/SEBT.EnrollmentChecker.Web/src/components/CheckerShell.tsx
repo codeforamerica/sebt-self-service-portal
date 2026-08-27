@@ -1,6 +1,7 @@
 'use client'
 
 import { OUTAGE_PATH, OutageGuard } from '@/components/OutageGuard'
+import { SeasonGate } from '@/components/SeasonGate'
 import { MaintenanceBanner } from '@/features/maintenance'
 import { Footer } from '@sebt/design-system/src/components/layout/Footer'
 import { Header } from '@sebt/design-system/src/components/layout/Header'
@@ -31,7 +32,9 @@ export function CheckerShell({ children, state }: CheckerShellProps) {
       {!isOutagePage && <MaintenanceBanner />}
       <Header state={state} />
       <main id="main-content">
-        <OutageGuard>{children}</OutageGuard>
+        {/* The outage page carries no season-dependent copy, so it is not worth
+            holding for a features poll that has nothing to tell it. */}
+        <OutageGuard>{isOutagePage ? children : <SeasonGate>{children}</SeasonGate>}</OutageGuard>
       </main>
       <HelpSection state={state} />
       <Footer state={state} />
