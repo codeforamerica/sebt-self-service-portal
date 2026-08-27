@@ -360,7 +360,7 @@ public class OidcController(
         if (result is DependencyFailedResult<CompleteOidcLoginResponse> { Reason: DependencyFailedReason.NotConfigured } notConfigured)
         {
             var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = notConfigured.Message, hint });
+            return StatusCode(OidcResultHttpStatus.For(result), new { error = notConfigured.Message, hint });
         }
 
         return MapFailure(result);
@@ -368,22 +368,17 @@ public class OidcController(
 
     /// <summary>
     /// Maps a failed handler result to the HTTP contract these endpoints have always
-    /// returned: Forbidden → 403; dependency failures → 503 (not configured) /
-    /// 502 (IdP unreachable) / 400; validation, precondition, and anything else → 400.
-    /// The failure-log statuses recorded by the handlers mirror this mapping.
+    /// returned. The status code comes from <see cref="OidcResultHttpStatus"/> — the
+    /// same table the handlers record on their failure-log entries — so the logged
+    /// and returned statuses cannot drift apart.
     /// </summary>
-    private ObjectResult MapFailure<T>(Result<T> result) => result switch
+    private ObjectResult MapFailure<T>(Result<T> result)
     {
-        ForbiddenResult<T> forbidden =>
-            StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse(forbidden.Message)),
-        ValidationFailedResult<T> validation =>
-            BadRequest(new ErrorResponse(validation.Errors.FirstOrDefault()?.Message ?? validation.Message)),
-        DependencyFailedResult<T> { Reason: DependencyFailedReason.NotConfigured } dependency =>
-            StatusCode(StatusCodes.Status503ServiceUnavailable, new ErrorResponse(dependency.Message)),
-        DependencyFailedResult<T> { Reason: DependencyFailedReason.ConnectionFailed } dependency =>
-            StatusCode(StatusCodes.Status502BadGateway, new ErrorResponse(dependency.Message)),
-        _ => BadRequest(new ErrorResponse(result.Message))
-    };
+        var error = result is ValidationFailedResult<T> validation
+            ? validation.Errors.FirstOrDefault()?.Message ?? validation.Message
+            : result.Message;
+        return StatusCode(OidcResultHttpStatus.For(result), new ErrorResponse(error));
+    }
 
     private const int MaxStepUpReturnUrlLength = 4096;
 

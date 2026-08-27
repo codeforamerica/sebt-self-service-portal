@@ -160,7 +160,8 @@ public class OidcControllerCallbackTests
 
         var result = await controller.Callback(CreateRequest(), _handler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = Assert.IsAssignableFrom<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
         var error = Assert.IsType<ErrorResponse>(badRequest.Value);
         Assert.Equal("State parameter mismatch.", error.Error);
     }
@@ -174,7 +175,8 @@ public class OidcControllerCallbackTests
 
         var result = await controller.Callback(CreateRequest(), _handler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = Assert.IsAssignableFrom<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
         var error = Assert.IsType<ErrorResponse>(badRequest.Value);
         Assert.Equal("Pre-auth session has already been used.", error.Error);
     }

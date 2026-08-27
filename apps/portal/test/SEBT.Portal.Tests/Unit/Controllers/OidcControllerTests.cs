@@ -302,7 +302,8 @@ public class OidcControllerTests
 
         var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = Assert.IsAssignableFrom<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
         var error = Assert.IsType<ErrorResponse>(badRequest.Value);
         Assert.Equal("Invalid or expired callback token.", error.Error);
     }
@@ -318,7 +319,8 @@ public class OidcControllerTests
 
         var result = await _controller.CompleteLogin(body, _completeLoginHandler, CancellationToken.None);
 
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        var badRequest = Assert.IsAssignableFrom<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
         var error = Assert.IsType<ErrorResponse>(badRequest.Value);
         Assert.Equal("Step-up requires an existing session. Please sign in again.", error.Error);
     }

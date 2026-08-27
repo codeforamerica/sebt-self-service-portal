@@ -13,6 +13,10 @@ namespace SEBT.Portal.UseCases.Auth.OidcCallback;
 /// (never from the browser), and advances the session to <c>CallbackCompleted</c>.
 /// The <c>stateCode</c> and <c>isStepUp</c> values are read from the session — the
 /// command only carries <c>code</c>, <c>state</c>, and the session id.
+///
+/// Failure log entries derive their <c>HttpStatus</c> from
+/// <see cref="OidcResultHttpStatus"/> — the same table the API layer maps responses
+/// from — so the logged status is always the returned status.
 /// </summary>
 public class OidcCallbackCommandHandler(
     IPreAuthSessionStore sessionStore,
@@ -21,11 +25,6 @@ public class OidcCallbackCommandHandler(
     ILogger<OidcCallbackCommandHandler> logger)
     : ICommandHandler<OidcCallbackCommand, OidcCallbackResponse>
 {
-    // HTTP statuses recorded on off-boarding log entries; pass-through diagnostic data
-    // matching what the API layer returns for the corresponding result type.
-    private const int StatusForbidden = 403;
-    private const int StatusBadRequest = 400;
-
     public async Task<Result<OidcCallbackResponse>> Handle(
         OidcCallbackCommand command,
         CancellationToken cancellationToken = default)
@@ -33,56 +32,61 @@ public class OidcCallbackCommandHandler(
         // --- Require the pre-auth session (bound to the browser via cookie) ---
         if (string.IsNullOrEmpty(command.SessionId))
         {
+            var failure = Result<OidcCallbackResponse>.Forbidden("Missing pre-auth session.");
             callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
             {
                 Reason = "missing_session",
                 Phase = "callback",
-                HttpStatus = StatusForbidden
+                HttpStatus = OidcResultHttpStatus.For(failure)
             });
-            return Result<OidcCallbackResponse>.Forbidden("Missing pre-auth session.");
+            return failure;
         }
 
         var session = await sessionStore.GetAsync(command.SessionId, cancellationToken);
         if (session == null)
         {
+            var failure = Result<OidcCallbackResponse>.Forbidden("Pre-auth session expired or invalid.");
             callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
             {
                 Reason = "missing_session",
                 Phase = "callback",
                 SessionId = command.SessionId,
-                HttpStatus = StatusForbidden
+                HttpStatus = OidcResultHttpStatus.For(failure)
             });
-            return Result<OidcCallbackResponse>.Forbidden("Pre-auth session expired or invalid.");
+            return failure;
         }
 
         // --- Validate state matches stored value (CSRF protection) ---
         if (string.IsNullOrEmpty(command.State) || command.State != session.State)
         {
+            var failure = Result<OidcCallbackResponse>.ValidationFailed(
+                "state", "State parameter mismatch.");
             callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
             {
                 Reason = "mismatched_state",
                 Phase = "callback",
                 SessionId = command.SessionId,
                 IsStepUp = session.IsStepUp,
-                HttpStatus = StatusBadRequest
+                HttpStatus = OidcResultHttpStatus.For(failure)
             });
-            return Result<OidcCallbackResponse>.ValidationFailed("state", "State parameter mismatch.");
+            return failure;
         }
 
         // --- Verify the session hasn't already been used (fail fast before the exchange) ---
         if (session.Phase != PreAuthSessionPhase.Created)
         {
+            var failure = Result<OidcCallbackResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict, "Pre-auth session has already been used.");
             callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
             {
                 Reason = "replay",
                 Phase = "callback",
                 SessionId = command.SessionId,
                 IsStepUp = session.IsStepUp,
-                HttpStatus = StatusBadRequest,
+                HttpStatus = OidcResultHttpStatus.For(failure),
                 ApiError = $"Phase={session.Phase}"
             });
-            return Result<OidcCallbackResponse>.PreconditionFailed(
-                PreconditionFailedReason.Conflict, "Pre-auth session has already been used.");
+            return failure;
         }
 
         // --- Exchange the authorization code using server-side session values.
@@ -110,16 +114,17 @@ public class OidcCallbackCommandHandler(
             command.SessionId, tokenHash, cancellationToken);
         if (!advanced)
         {
+            var failure = Result<OidcCallbackResponse>.PreconditionFailed(
+                PreconditionFailedReason.Conflict, "Pre-auth session has already been used.");
             callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
             {
                 Reason = "replay",
                 Phase = "callback",
                 SessionId = command.SessionId,
                 IsStepUp = session.IsStepUp,
-                HttpStatus = StatusBadRequest
+                HttpStatus = OidcResultHttpStatus.For(failure)
             });
-            return Result<OidcCallbackResponse>.PreconditionFailed(
-                PreconditionFailedReason.Conflict, "Pre-auth session has already been used.");
+            return failure;
         }
 
         logger.LogInformation(
@@ -133,7 +138,7 @@ public class OidcCallbackCommandHandler(
 
     /// <summary>
     /// Translates exchange failure categories into the Kernel dependency-failure vocabulary
-    /// (the API layer maps these to 503 / 502 / 400 respectively).
+    /// (the API layer maps these to 503 / 502 / 400 via <see cref="OidcResultHttpStatus"/>).
     /// </summary>
     private static DependencyFailedReason ToDependencyFailedReason(OidcExchangeFailureReason? reason) =>
         reason switch

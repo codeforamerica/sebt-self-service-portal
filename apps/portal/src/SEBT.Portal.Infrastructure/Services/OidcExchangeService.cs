@@ -34,13 +34,6 @@ public sealed class OidcExchangeService : IOidcExchangeService
 
     private const int CallbackTokenExpirySec = 300; // 5 minutes, matching the old Next.js value
 
-    // HTTP statuses recorded on off-boarding log entries. The API layer maps
-    // OidcExchangeFailureReason to the same statuses for the actual response —
-    // keep the two in sync (see OidcController).
-    private const int StatusServiceUnavailable = 503;
-    private const int StatusBadGateway = 502;
-    private const int StatusBadRequest = 400;
-
     /// <summary>
     /// Cached <see cref="ConfigurationManager{T}"/> instances keyed by discovery URL.
     /// <c>ConfigurationManager</c> is designed for singleton lifetime — it caches the
@@ -153,7 +146,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 Phase = "callback",
                 SessionId = sessionId,
                 IsStepUp = isStepUp,
-                HttpStatus = StatusServiceUnavailable
+                HttpStatus = OidcResultHttpStatus.For(OidcExchangeFailureReason.NotConfigured)
             });
             return OidcExchangeResult.Fail(OidcExchangeFailureReason.NotConfigured, "OIDC not configured.");
         }
@@ -172,7 +165,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 Phase = "callback",
                 SessionId = sessionId,
                 IsStepUp = isStepUp,
-                HttpStatus = StatusBadGateway,
+                HttpStatus = OidcResultHttpStatus.For(OidcExchangeFailureReason.DiscoveryUnavailable),
                 ApiError = OidcLogSanitizer.Sanitize(ex.Message)
             }, ex);
             return OidcExchangeResult.Fail(
@@ -187,7 +180,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 Phase = "callback",
                 SessionId = sessionId,
                 IsStepUp = isStepUp,
-                HttpStatus = StatusBadGateway
+                HttpStatus = OidcResultHttpStatus.For(OidcExchangeFailureReason.DiscoveryInvalid)
             });
             return OidcExchangeResult.Fail(
                 OidcExchangeFailureReason.DiscoveryInvalid, "Invalid discovery document (missing token_endpoint).");
@@ -286,7 +279,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 Phase = "callback",
                 SessionId = sessionId,
                 IsStepUp = isStepUp,
-                HttpStatus = StatusBadRequest
+                HttpStatus = OidcResultHttpStatus.For(OidcExchangeFailureReason.ExchangeFailed)
             });
             return OidcExchangeResult.Fail(OidcExchangeFailureReason.ExchangeFailed, "No id_token in token response.");
         }
@@ -321,7 +314,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 Phase = "callback",
                 SessionId = sessionId,
                 IsStepUp = isStepUp,
-                HttpStatus = StatusBadRequest,
+                HttpStatus = OidcResultHttpStatus.For(OidcExchangeFailureReason.ExchangeFailed),
                 ApiError = OidcLogSanitizer.Sanitize(ex.Message)
             }, ex);
             return OidcExchangeResult.Fail(OidcExchangeFailureReason.ExchangeFailed, "Id token has expired.");
@@ -334,7 +327,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 Phase = "callback",
                 SessionId = sessionId,
                 IsStepUp = isStepUp,
-                HttpStatus = StatusBadRequest,
+                HttpStatus = OidcResultHttpStatus.For(OidcExchangeFailureReason.ExchangeFailed),
                 ApiError = OidcLogSanitizer.Sanitize(ex.Message)
             }, ex);
             return OidcExchangeResult.Fail(OidcExchangeFailureReason.ExchangeFailed, "Id token validation failed.");
@@ -395,7 +388,7 @@ public sealed class OidcExchangeService : IOidcExchangeService
                 Phase = "callback",
                 SessionId = sessionId,
                 IsStepUp = isStepUp,
-                HttpStatus = StatusBadRequest
+                HttpStatus = OidcResultHttpStatus.For(OidcExchangeFailureReason.ExchangeFailed)
             });
             return OidcExchangeResult.Fail(
                 OidcExchangeFailureReason.ExchangeFailed, "Callback token must contain an email or sub claim.");
