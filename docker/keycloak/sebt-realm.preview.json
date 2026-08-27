@@ -1,8 +1,8 @@
 {
   "realm": "sebt",
   "enabled": true,
-  "displayName": "SEBT Local Dev",
-  "sslRequired": "none",
+  "displayName": "SEBT Preview (Keycloak stand-in)",
+  "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
@@ -20,7 +20,10 @@
         "description": "${role_default-roles}",
         "composite": true,
         "composites": {
-          "realm": ["offline_access", "uma_authorization"]
+          "realm": [
+            "offline_access",
+            "uma_authorization"
+          ]
         }
       },
       {
@@ -37,69 +40,8 @@
     "name": "default-roles-sebt",
     "composite": true
   },
-  "requiredCredentials": ["password"],
-  "users": [
-    {
-      "username": "co-loaded",
-      "enabled": true,
-      "email": "sebt.co+co-loaded@codeforamerica.org",
-      "emailVerified": true,
-      "firstName": "Jamie",
-      "lastName": "CoLoaded",
-      "attributes": {
-        "phone": ["8185558437"],
-        "phoneNumber": ["8185558437"],
-        "socureIdVerificationLevel": ["1.5"],
-        "socureIdVerificationDate": ["2026-01-15T00:00:00.000Z"]
-      },
-      "credentials": [
-        {
-          "type": "password",
-          "value": "password",
-          "temporary": false
-        }
-      ]
-    },
-    {
-      "username": "verified",
-      "enabled": true,
-      "email": "sebt.co+verified@codeforamerica.org",
-      "emailVerified": true,
-      "firstName": "John",
-      "lastName": "DoeMOCK",
-      "attributes": {
-        "phone": ["3035551009"],
-        "phoneNumber": ["3035551009"],
-        "socureIdVerificationLevel": ["1.5"],
-        "socureIdVerificationDate": ["2026-01-15T00:00:00.000Z"]
-      },
-      "credentials": [
-        {
-          "type": "password",
-          "value": "password",
-          "temporary": false
-        }
-      ]
-    },
-    {
-      "username": "ial1-only",
-      "enabled": true,
-      "email": "sebt.co+non-co-loaded@codeforamerica.org",
-      "emailVerified": true,
-      "firstName": "Alex",
-      "lastName": "IalOne",
-      "attributes": {
-        "phone": ["3035551999"],
-        "phoneNumber": ["3035551999"]
-      },
-      "credentials": [
-        {
-          "type": "password",
-          "value": "password",
-          "temporary": false
-        }
-      ]
-    }
+  "requiredCredentials": [
+    "password"
   ],
   "clients": [
     {
@@ -115,14 +57,16 @@
       "serviceAccountsEnabled": false,
       "frontchannelLogout": true,
       "redirectUris": [
-        "http://localhost:3000/callback"
+        "https://dev.co.sebt-portal.codeforamerica.app/*",
+        "http://localhost:3000/*"
       ],
       "webOrigins": [
+        "https://dev.co.sebt-portal.codeforamerica.app",
         "http://localhost:3000"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3000/*"
+        "post.logout.redirect.uris": "https://dev.co.sebt-portal.codeforamerica.app/*##http://localhost:3000/*"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -236,14 +180,16 @@
       "serviceAccountsEnabled": false,
       "frontchannelLogout": true,
       "redirectUris": [
-        "http://localhost:3000/callback"
+        "https://dev.co.sebt-portal.codeforamerica.app/*",
+        "http://localhost:3000/*"
       ],
       "webOrigins": [
+        "https://dev.co.sebt-portal.codeforamerica.app",
         "http://localhost:3000"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3000/*"
+        "post.logout.redirect.uris": "https://dev.co.sebt-portal.codeforamerica.app/*##http://localhost:3000/*"
       },
       "defaultClientScopes": [
         "web-origins",
@@ -343,6 +289,119 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "sebt-preview-deploy",
+      "name": "SEBT Preview deploy (Admin API)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "sebt-preview-deploy-secret",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "frontchannelLogout": false,
+      "redirectUris": [],
+      "webOrigins": [],
+      "attributes": {
+        "access.token.lifespan": "300"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "co-loaded",
+      "enabled": true,
+      "email": "sebt.co+co-loaded@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Jamie",
+      "lastName": "CoLoaded",
+      "attributes": {
+        "phone": [
+          "8185558437"
+        ],
+        "phoneNumber": [
+          "8185558437"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "verified",
+      "enabled": true,
+      "email": "sebt.co+verified@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "John",
+      "lastName": "DoeMOCK",
+      "attributes": {
+        "phone": [
+          "3035551009"
+        ],
+        "phoneNumber": [
+          "3035551009"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "ial1-only",
+      "enabled": true,
+      "email": "sebt.co+non-co-loaded@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Alex",
+      "lastName": "IalOne",
+      "attributes": {
+        "phone": [
+          "3035551999"
+        ],
+        "phoneNumber": [
+          "3035551999"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "service-account-sebt-preview-deploy",
+      "enabled": true,
+      "serviceAccountClientId": "sebt-preview-deploy",
+      "clientRoles": {
+        "realm-management": [
+          "manage-clients",
+          "view-clients",
+          "query-clients"
+        ]
+      }
     }
   ]
 }

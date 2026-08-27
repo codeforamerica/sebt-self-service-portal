@@ -340,7 +340,7 @@ The API serves public config via `GET /api/auth/oidc/{stateCode}/config` (no sec
 
 See `apps/portal/src/SEBT.Portal.Api/appsettings.Development.example.json` and [ADR-0008](docs/adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md).
 
-There is a local Keycloak stand-in that can be used for local development if desired. See [docs/development/keycloak-oidc.md](docs/development/keycloak-oidc.md) and `appsettings.keycloak.example.json` for additional details.
+There is a local Keycloak stand-in that can be used for local development if desired. See [docs/development/keycloak-oidc.md](docs/development/keycloak-oidc.md) and `appsettings.keycloak.example.json` for additional details. A shared Keycloak IdP can also be deployed in AWS for non-production use; see [docs/development/keycloak-preview.md](docs/development/keycloak-preview.md).
 
 ### Development Phone Override (Local dev only)
 
