@@ -174,9 +174,12 @@ jobs:
 
       - name: Publish DC plugin
         run: |
+          # dc-connector has no committed lockfile (deliberate — see the locked-mode ADR);
+          # exempt this out-of-tree restore so CI locked mode doesn't fail it.
           dotnet publish dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
             -c Release \
             -p:CopyPlugins=false \
+            -p:RestoreLockedMode=false \
             -p:StateConnectorInterfacesProject="$GITHUB_WORKSPACE/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj"
 
       - name: Stage plugin artifacts for IIS publish
