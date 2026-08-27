@@ -4,7 +4,7 @@
 
 ## About
 
-This product allows parents/guardians of children eligible for [Summer EBT / Sun Bucks](https://www.fns.usda.gov/summer/sunbucks) to view the status of and manage their benefit.
+This product allows parents/guardians of children eligible for [Summer EBT / SUN Bucks](https://www.fns.usda.gov/summer/sunbucks) to view the status of and manage their benefit.
 
 - The **Enrollment Checker** enables families to quickly confirm whether their child is already enrolled in the program or if they need to apply, without having to log in
   
