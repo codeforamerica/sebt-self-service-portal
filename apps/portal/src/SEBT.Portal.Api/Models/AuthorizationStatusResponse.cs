@@ -15,7 +15,10 @@ namespace SEBT.Portal.Api.Models;
 /// analytics so events can be correlated per-user across page loads without exposing
 /// email or other PII to vendor tooling. Null when the claim is absent.
 /// </param>
-/// <param name="Email">The email address of the authenticated user.</param>
+/// <param name="Email">
+/// The email address of the signed-in user. Null for anonymous callers, and null when
+/// the claim is absent from the session.
+/// </param>
 /// <param name="Ial">
 /// Identity assurance level claim from the JWT ("0", "1", "1plus", or "2"). Null when unknown.
 /// </param>
