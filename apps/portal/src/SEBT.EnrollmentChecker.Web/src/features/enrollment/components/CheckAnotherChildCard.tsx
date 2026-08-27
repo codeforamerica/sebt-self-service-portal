@@ -15,6 +15,12 @@ export type CheckAnotherChildCopy = 'streamlinedEnrolledCard2' | 'applyForSebtCa
 
 interface CheckAnotherChildCardProps {
   copy: CheckAnotherChildCopy
+  /**
+   * Replaces the body key. Once the season closes both outcomes ask the same
+   * question in the past tense, and the sheet stores that one wording under a key
+   * of its own — the heading and button label are unchanged, so only the body moves.
+   */
+  bodyKey?: string
 }
 
 /**
@@ -25,7 +31,7 @@ interface CheckAnotherChildCardProps {
  * personal details in session storage that the visitor can no longer see or
  * remove.
  */
-export function CheckAnotherChildCard({ copy }: CheckAnotherChildCardProps) {
+export function CheckAnotherChildCard({ copy, bodyKey }: CheckAnotherChildCardProps) {
   const { t } = useTranslation('result')
   const router = useRouter()
   const { clearState } = useEnrollment()
@@ -42,7 +48,7 @@ export function CheckAnotherChildCard({ copy }: CheckAnotherChildCardProps) {
     >
       <h2 className="usa-summary-box__heading">{t(`${copy}Title`)}</h2>
       <div className="usa-summary-box__text">
-        <RichText>{t(`${copy}Body`)}</RichText>
+        <RichText>{t(bodyKey ?? `${copy}Body`)}</RichText>
         <p className="margin-top-2">
           <Button
             variant="outline"

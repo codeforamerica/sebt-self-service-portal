@@ -51,6 +51,25 @@ describe('CheckAnotherChildCard', () => {
 
     expect(sessionStorage.getItem('enrollmentState')).toBeNull()
   })
+
+  // Once the season closes both outcomes ask the same question in the past tense,
+  // and the sheet stores that wording under one key. Only the body moves.
+  it('takes a body override while keeping the outcome heading and button', () => {
+    render(
+      <EnrollmentProvider>
+        <CheckAnotherChildCard
+          copy="streamlinedEnrolledCard2"
+          bodyKey="applyForSebtClosedCard2Body"
+        />
+      </EnrollmentProvider>
+    )
+
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
+      'streamlinedEnrolledCard2Title'
+    )
+    expect(screen.getByText('applyForSebtClosedCard2Body')).toBeInTheDocument()
+    expect(screen.queryByText('streamlinedEnrolledCard2Body')).toBeNull()
+  })
 })
 
 // The card reads its copy from the `result` namespace by prefix. A state that
@@ -86,6 +105,12 @@ describe('check-another copy', () => {
               .toBeTruthy()
           }
         }
+
+        // Both outcomes fall back to this one body once the season has closed.
+        expect(
+          copy.applyForSebtClosedCard2Body,
+          `${lang}/${state} missing applyForSebtClosedCard2Body`
+        ).toBeTruthy()
       }
     })
   }
