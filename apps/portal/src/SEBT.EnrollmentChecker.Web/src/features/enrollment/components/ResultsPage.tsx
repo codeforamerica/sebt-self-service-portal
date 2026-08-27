@@ -260,12 +260,28 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
             {enrolled.length > 0 ? (
               <section data-testid="next-step-portal">
-                <h2 className="font-family-sans font-sans-md margin-top-4">
-                  {t('streamlinedEnrolledAlertTitle')}
-                </h2>
-                <div className="usa-prose margin-top-2">
-                  <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
-                  <p>{t('streamlinedEnrolledAlertAction')}</p>
+                {/* USWDS alert classes rather than the shared Alert: this body is
+                    several paragraphs, which cannot nest inside that component's
+                    single <p>, and its role="alert" would make static page content
+                    interrupt screen readers. */}
+                <div className="usa-alert usa-alert--success margin-top-4">
+                  <div className="usa-alert__body">
+                    <h2 className="usa-alert__heading font-family-sans font-sans-md">
+                      {t('streamlinedEnrolledAlertTitle')}
+                    </h2>
+                    <div className="usa-alert__text">
+                      <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
+                      <p>
+                        <a
+                          href={portalUrl}
+                          className="text-bold"
+                          data-testid="portal-alert-link"
+                        >
+                          {t('streamlinedEnrolledAlertAction')}
+                        </a>
+                      </p>
+                    </div>
+                  </div>
                 </div>
                 <p>
                   <a
