@@ -31,7 +31,7 @@ apps/
       SEBT.Portal.Infrastructure.Seeding     # Data seeding for development environments
       SEBT.Portal.UseCases                   # Application layer command/query handlers (auth, households)
       SEBT.Portal.Kernel/Kernel.AspNetCore   # Base classes, ASP.NET extensions
-      SEBT.Portal.Web                 # Next.js Portal front (see [README](./src/SEBT.Portal.Web/README.md))
+      SEBT.Portal.Web                 # Next.js Portal web app (see [README](./src/SEBT.Portal.Web/README.md))
       SEBT.EnrollmentChecker.Web      # Standalone Next.js web app for Enrollment Checker
     test/, SEBT.Portal.sln
   connectors/
@@ -149,7 +149,7 @@ For more about how appsettings work, see [state specific configuration](#state-s
 
 ### 5. Start Services 💻
 
-Make sure Docker is installed and the docker daemon is running. Several components of the app are Dockerized.
+Make sure Docker is installed and the docker daemon is running. Several components of the app are containerized for local development.
 
 #### Start database in Docker
 
@@ -331,8 +331,11 @@ deploy/co-*    # CO-only changes (only CO builds in CI)
 ```bash
 feature/*      # Changes for all states (all states build in CI)
 chore/*
+fix/*
 main           # Production source for all states
 ```
+
+See [labeler.yml](.github/labeler.yml) for a complete list of possible branch prefixes.
 
 **How it works:** `main` contains all code (shared + state-specific). Each state deployment uses only what it needs via configuration and feature flags.
 
