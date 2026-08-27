@@ -59,4 +59,12 @@ public static class FeatureFlags
     /// checker polls the enrollment features endpoint, so no checker redeploy is required.
     /// </summary>
     public const string CheckerOutagePageEnabled = "checker_outage_page_enabled";
+
+    /// <summary>
+    /// When enabled, the enrollment checker offers income screening on its not-enrolled
+    /// result. Thresholds come from EnrollmentChecker:IncomeEligibility (see
+    /// <see cref="IncomeEligibilitySettings"/>). Disabling withdraws the tool rather than
+    /// screening against stale figures.
+    /// </summary>
+    public const string EnableCheckerIncomeEligibility = "enable_checker_income_eligibility";
 }

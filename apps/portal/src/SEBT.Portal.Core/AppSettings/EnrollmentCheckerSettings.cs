@@ -18,6 +18,34 @@ public class EnrollmentCheckerSettings
     /// Maintenance banner configuration for the enrollment checker.
     /// </summary>
     public MaintenanceBannerSettings MaintenanceBanner { get; set; } = new();
+
+    /// <summary>
+    /// Income screening thresholds for the enrollment checker.
+    /// </summary>
+    public IncomeEligibilitySettings IncomeEligibility { get; set; } = new();
+}
+
+/// <summary>
+/// Income screening thresholds for the checker's not-enrolled result. Toggled by the
+/// <see cref="FeatureFlags.EnableCheckerIncomeEligibility"/> flag; this section carries
+/// the figures. They track federal poverty guidelines, which are reissued annually.
+/// </summary>
+public class IncomeEligibilitySettings
+{
+    /// <summary>
+    /// Annual gross income threshold for a household of one.
+    /// </summary>
+    public decimal BaseThreshold { get; set; }
+
+    /// <summary>
+    /// Added to the threshold for each household member beyond the first.
+    /// </summary>
+    public decimal PerMemberIncrement { get; set; }
+
+    /// <summary>
+    /// Largest household size the selector offers.
+    /// </summary>
+    public int MaxHouseholdSize { get; set; }
 }
 
 /// <summary>

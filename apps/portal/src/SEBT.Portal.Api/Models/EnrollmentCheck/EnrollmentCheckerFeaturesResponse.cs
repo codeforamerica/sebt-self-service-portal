@@ -17,6 +17,35 @@ public class EnrollmentCheckerFeaturesResponse
     /// fallback when no such windows are configured.
     /// </summary>
     public OutagePageFeature OutagePage { get; init; } = new();
+
+    /// <summary>
+    /// Income screening state. Null when the feature is off, so the checker has no
+    /// figures to screen against rather than stale ones.
+    /// </summary>
+    public IncomeEligibilityFeature? IncomeEligibility { get; init; }
+}
+
+/// <summary>
+/// Income screening thresholds for the checker's not-enrolled result. The threshold is
+/// <see cref="BaseThreshold"/> plus <see cref="PerMemberIncrement"/> per member beyond
+/// the first.
+/// </summary>
+public class IncomeEligibilityFeature
+{
+    /// <summary>
+    /// Annual gross income threshold for a household of one.
+    /// </summary>
+    public decimal BaseThreshold { get; init; }
+
+    /// <summary>
+    /// Added to the threshold for each household member beyond the first.
+    /// </summary>
+    public decimal PerMemberIncrement { get; init; }
+
+    /// <summary>
+    /// Largest household size the selector offers.
+    /// </summary>
+    public int MaxHouseholdSize { get; init; }
 }
 
 /// <summary>
