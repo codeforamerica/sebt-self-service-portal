@@ -40,9 +40,8 @@ const checkerAssets: Record<StateCode, Partial<Record<CheckerAsset, string>>> = 
     formCard: 'icon-form-card.svg',
     reviewCard: 'icon-review-card.svg',
     resultsEnrolled: 'icon-checkmark-card.svg',
-    // DC's not-enrolled result reuses the review artwork.
-    resultsNotEnrolled: 'icon-review-card.svg'
-    // No errorCard — DC has no alert artwork.
+    resultsNotEnrolled: 'icon-alert-card.svg',
+    errorCard: 'icon-alert-card.svg'
   },
   co: {
     landingLogo: 'summer-ebt-logo.svg',

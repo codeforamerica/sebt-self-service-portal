@@ -22,11 +22,23 @@ export interface FlowConfig {
    * a distinct no-results screen would describe a state that cannot occur.
    */
   distinguishNoResults: boolean
+
+  /**
+   * How the results read.
+   *
+   * `household` summarises several children at once: one neutral heading, each
+   * child named under the outcome that applies to them, and next steps for the
+   * household. `singleOutcome` answers for one child, so the outcome itself is
+   * the heading and there is no one to name.
+   */
+  resultsLayout: ResultsLayout
 }
 
+export type ResultsLayout = 'household' | 'singleOutcome'
+
 const flowConfigs: Record<StateCode, FlowConfig> = {
-  dc: { useReviewStep: false, distinguishNoResults: false },
-  co: { useReviewStep: true, distinguishNoResults: true }
+  dc: { useReviewStep: false, distinguishNoResults: false, resultsLayout: 'singleOutcome' },
+  co: { useReviewStep: true, distinguishNoResults: true, resultsLayout: 'household' }
 }
 
 /** Flow config for the active state. */
