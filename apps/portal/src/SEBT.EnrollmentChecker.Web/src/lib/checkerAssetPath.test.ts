@@ -103,5 +103,17 @@ describe('getCheckerAssetPath', () => {
       )
       expect(getCheckerAssetPath('errorCard')).toBe('/images/states/dc/icon-alert-card.svg')
     })
+
+    // Once the season closes there is nothing left to invite, so DC's not-enrolled
+    // result stops being an invitation and becomes a warning.
+    it('maps the closed-season not-enrolled outcome to the alert artwork', () => {
+      vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+      expect(getCheckerAssetPath('resultsNotEnrolledClosed')).toBe(
+        '/images/states/dc/icon-alert-card.svg'
+      )
+      expect(getCheckerAssetPath('resultsNotEnrolledClosed')).not.toBe(
+        getCheckerAssetPath('resultsNotEnrolled')
+      )
+    })
   })
 })
