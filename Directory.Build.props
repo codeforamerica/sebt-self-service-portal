@@ -35,6 +35,23 @@
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
   </PropertyGroup>
 
+  <!--
+    The DC IIS bundle publishes the API for the win-x64 runtime
+    (scripts/ci/publish-api.sh), so every lockfile must carry a
+    `net10.0/win-x64` section next to the RID-less `net10.0` one. Restoring
+    with the RID writes that section; this property is what makes it legal for
+    the ordinary RID-less restores. Both halves are required — with the section
+    but without this property, every RID-less restore fails locked mode with
+    NU1004 ("runtime identifiers have changed").
+
+    Repo-wide rather than on the API alone: a RID flows down through
+    ProjectReferences, so scoping it to today's publish closure would silently
+    break the next project added to it. See docs/adr/0021 for the refresh command.
+  -->
+  <PropertyGroup>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
