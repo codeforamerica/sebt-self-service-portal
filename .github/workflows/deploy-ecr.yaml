@@ -190,9 +190,12 @@ jobs:
 
       - name: Publish DC plugin
         run: |
+          # dc-connector has no committed lockfile (deliberate — see the locked-mode ADR);
+          # exempt this out-of-tree restore so CI locked mode doesn't fail it.
           dotnet publish dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
             -c Release \
             -p:CopyPlugins=false \
+            -p:RestoreLockedMode=false \
             -p:StateConnectorInterfacesProject="$GITHUB_WORKSPACE/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj"
 
       - name: Publish CO plugin
@@ -203,8 +206,6 @@ jobs:
 
       - name: Stage plugin artifacts for Docker build
         run: |
-          mkdir -p nuget-store
-          cp -r ~/nuget-store/* nuget-store/
           mkdir -p apps/portal/src/SEBT.Portal.Api/plugins-dc
           cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/publish/*.dll \
             apps/portal/src/SEBT.Portal.Api/plugins-dc/
@@ -216,6 +217,7 @@ jobs:
         run: |
           docker build \
             --platform linux/amd64 \
+            --build-arg CI=true \
             -f apps/portal/src/SEBT.Portal.Api/Dockerfile \
             -t sebt-portal-api:${{ steps.tag.outputs.tag }} \
             .

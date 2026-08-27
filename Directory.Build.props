@@ -13,14 +13,43 @@
       NU1901 = low      NU1902 = moderate
       NU1903 = high     NU1904 = critical
 
-    Without lockfiles, this is our primary defense against silently picking up
-    a vulnerable transitive package on a fresh restore.
+    Lockfiles (below) pin the exact versions we restore; NuGetAudit complements
+    them by failing the build when a pinned direct or transitive package has a
+    known CVE.
   -->
   <PropertyGroup>
     <NuGetAudit>true</NuGetAudit>
     <NuGetAuditMode>all</NuGetAuditMode>
     <NuGetAuditLevel>moderate</NuGetAuditLevel>
     <WarningsAsErrors>$(WarningsAsErrors);NU1903;NU1904</WarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    Generate a packages.lock.json for every project, and in CI restore in locked
+    mode (GitHub Actions sets CI=true) so a missing or drifted lockfile fails the
+    build instead of silently resolving new versions. Local dev stays unlocked so
+    developers can still add packages and refresh the lockfile.
+  -->
+  <PropertyGroup>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+  </PropertyGroup>
+
+  <!--
+    The DC IIS bundle publishes the API for the win-x64 runtime
+    (scripts/ci/publish-api.sh), so every lockfile must carry a
+    `net10.0/win-x64` section next to the RID-less `net10.0` one. Restoring
+    with the RID writes that section; this property is what makes it legal for
+    the ordinary RID-less restores. Both halves are required — with the section
+    but without this property, every RID-less restore fails locked mode with
+    NU1004 ("runtime identifiers have changed").
+
+    Repo-wide rather than on the API alone: a RID flows down through
+    ProjectReferences, so scoping it to today's publish closure would silently
+    break the next project added to it. See docs/adr/0021 for the refresh command.
+  -->
+  <PropertyGroup>
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <PropertyGroup>
