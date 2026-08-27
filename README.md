@@ -4,7 +4,7 @@
 
 ## About
 
-This platform allows parents/guardians of children eligible for [Summer EBT / Sun Bucks](https://www.fns.usda.gov/summer/sunbucks) to view the status of and manage their benefit.
+This product allows parents/guardians of children eligible for [Summer EBT / Sun Bucks](https://www.fns.usda.gov/summer/sunbucks) to view the status of and manage their benefit.
 
 - The **Enrollment Checker** enables families to quickly confirm whether their child is already enrolled in the program or if they need to apply, without having to log in
   
@@ -14,7 +14,7 @@ This platform allows parents/guardians of children eligible for [Summer EBT / Su
   - View or update their mailing address on file
   - Request a replacement Summer EBT card
 
-As of Summer 2026, the platform is currently in use by Colorado and Washington, DC.
+As of Summer 2026, the product is currently in use by Colorado and Washington, DC.
 
 ## Repository structure
 
@@ -128,20 +128,20 @@ You'll also need **API `appsettings.json` files** for your local machine with ce
 cd apps/portal/src/SEBT.Portal.Api
 
 cp appsettings.Development.example.json appsettings.Development.json
-cp appsettings.Development.co.json appsettings.co.json   # for colorado local development
-cp appsettings.Development.dc.json appsettings.dc.json   # for DC local development
+cp appsettings.co.example.json appsettings.co.json   # for colorado local development
+cp appsettings.dc.example.json appsettings.dc.json   # for DC local development
 ```
 
 For more about how appsettings work, see [state specific configuration](#state-specific-configuration) below.
 
 ### 4. Install dependencies
 
-**Front end**
+#### Front end
 
 - To install all javascript package dependencies, run `pnpm install` from the root of this repository.
 - You can learn more about the front end in the [SEBT.Portal.Web README](./apps/portal/src/SEBT.Portal.Web/README.md)
 
-**Back end**
+#### Back end
 
 - .NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). Currently, we are using the
   [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool for auditing backend dependency license. Needed tools are defined in the tools manifest in `.config/dotnet-tools.json`. To install them, run `dotnet tool restore` once from the repo root.
@@ -171,9 +171,9 @@ You can start this with `docker compose up -d mailpit`. Once the Mailpit docker 
 Then, you'll need to build the code + relevant state connector plugins, run the API (`dotnet watch`), and start the front end (`next dev`). Available start commands:
 
 ```bash
-`pnpm dev:dc` to start the DC Portal (using the external `dc-connector` repo alongside this repo)
-`pnpm dev:co`   to start the CO Portal
-`pnpm dev:co-enroll`  to start the CO Enrollment Checker
+`pnpm dev:dc` # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
+`pnpm dev:co`  #  to start the CO Portal
+`pnpm dev:co-enroll` # to start the CO Enrollment Checker
 ```
 
 To open the app, navigate in your browser to <https://localhost:3000>
