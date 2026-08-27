@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
+import { EnrollmentProvider } from '../context/EnrollmentContext'
 import { ResultsPage } from './ResultsPage'
 
 const mockPush = vi.fn()
@@ -326,5 +327,63 @@ describe('ResultsPage', () => {
       expect(screen.queryByTestId('eligibility-accordion')).toBeNull()
       expect(screen.queryByTestId('income-calculator')).toBeNull()
     })
+  })
+})
+
+// A single-outcome flow answers for one child, so the outcome is the heading
+// and there is nobody to name below it.
+//
+// i18n initialises once at import with one state's resources (see
+// vitest.config.ts), so DC keys do not resolve here and i18next echoes the key
+// back. That makes the rendered heading the exact key the component chose,
+// which is the selection this suite is testing; the copy itself comes from the
+// content pipeline.
+describe('single-outcome results', () => {
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  const oneChild = (status: string): ChildCheckApiResponse[] => [
+    { checkId: '1', firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12', status }
+  ]
+
+  // The single-outcome results offer the next check, which reads flow state.
+  const renderResults = (status: string) =>
+    render(
+      <EnrollmentProvider>
+        <ResultsPage results={oneChild(status)} portalUrl="https://portal.example.gov" />
+      </EnrollmentProvider>
+    )
+
+  const heading = () => screen.getByRole('heading', { level: 1 }).textContent
+
+  it('makes the enrolled outcome the heading', () => {
+    renderResults('Match')
+    expect(heading()).toBe('streamlinedEnrolledTitle')
+  })
+
+  it('makes the not-enrolled outcome the heading', () => {
+    renderResults('NonMatch')
+    expect(heading()).toBe('applyForSebtTitle')
+  })
+
+  it('folds an unresolved check into the not-enrolled outcome', () => {
+    renderResults('Error')
+    expect(heading()).toBe('applyForSebtTitle')
+  })
+
+  it('names no children and renders no numbered next steps', () => {
+    const { container } = renderResults('Match')
+    expect(screen.queryByText(/Jane Doe/)).toBeNull()
+    expect(container.querySelector('.usa-process-list')).toBeNull()
+  })
+
+  it('offers the next check', () => {
+    renderResults('Match')
+    expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
   })
 })

@@ -64,12 +64,17 @@ describe('getCheckerAssetPath', () => {
 
     // DC has no alert artwork, so its error screen renders without a decorative
     // icon rather than borrowing the wrong one.
-    it('resolves the error card for CO and omits it for DC', () => {
+    it('resolves the error card for every state that ships one', () => {
       vi.stubEnv('NEXT_PUBLIC_STATE', 'co')
       expect(getCheckerAssetPath('errorCard')).toBe('/images/states/co/icon-alert-card.svg')
 
       vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
-      expect(getCheckerAssetPath('errorCard')).toBeUndefined()
+      expect(getCheckerAssetPath('errorCard')).toBe('/images/states/dc/icon-alert-card.svg')
+    })
+
+    it('omits a slot the state has no artwork for', () => {
+      vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+      expect(getCheckerAssetPath('landingLogo')).toBeUndefined()
     })
   })
 
@@ -92,7 +97,7 @@ describe('getCheckerAssetPath', () => {
 
       vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
       expect(getCheckerAssetPath('resultsNotEnrolled')).toBe(
-        '/images/states/dc/icon-review-card.svg'
+        '/images/states/dc/icon-alert-card.svg'
       )
     })
   })
