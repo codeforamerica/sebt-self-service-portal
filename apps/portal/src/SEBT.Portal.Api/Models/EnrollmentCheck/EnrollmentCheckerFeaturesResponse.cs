@@ -23,6 +23,23 @@ public class EnrollmentCheckerFeaturesResponse
     /// figures to screen against rather than stale ones.
     /// </summary>
     public IncomeEligibilityFeature? IncomeEligibility { get; init; }
+
+    /// <summary>
+    /// Whether applications are open. The checker also needs an apply destination
+    /// configured before it shows an apply link.
+    /// </summary>
+    public ApplyFeature Apply { get; init; } = new();
+}
+
+/// <summary>
+/// Application window state for the enrollment checker.
+/// </summary>
+public class ApplyFeature
+{
+    /// <summary>
+    /// Whether applications are open.
+    /// </summary>
+    public bool Enabled { get; init; }
 }
 
 /// <summary>

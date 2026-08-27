@@ -182,6 +182,26 @@ public class EnrollmentCheckerFeaturesEndpointTests
     }
 
     [Fact]
+    public async Task GetFeatures_WhenApplyFlagEnabled_ReportsApplicationsOpen()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableApply).Returns(true);
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.True(response.Apply.Enabled);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenApplyFlagUnset_ReportsApplicationsClosed()
+    {
+        // IFeatureManager returns false for a flag nobody configured, and the checker
+        // hides its apply UI on false — the safe direction once the window has ended.
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.False(response.Apply.Enabled);
+    }
+
+    [Fact]
     public void GetFeatures_HasDedicatedRateLimitPolicy()
     {
         var attribute = typeof(EnrollmentCheckController)

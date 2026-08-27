@@ -120,6 +120,8 @@ public class EnrollmentCheckController : ControllerBase
             await featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility);
         var incomeEligibility = settings.CurrentValue.IncomeEligibility;
 
+        var applyEnabled = await featureManager.IsEnabledAsync(FeatureFlags.EnableApply);
+
         return Ok(new EnrollmentCheckerFeaturesResponse
         {
             MaintenanceBanner = new MaintenanceBannerFeature
@@ -138,7 +140,11 @@ public class EnrollmentCheckController : ControllerBase
                     PerMemberIncrement = incomeEligibility.PerMemberIncrement,
                     MaxHouseholdSize = incomeEligibility.MaxHouseholdSize
                 }
-                : null
+                : null,
+            Apply = new ApplyFeature
+            {
+                Enabled = applyEnabled
+            }
         });
     }
 
