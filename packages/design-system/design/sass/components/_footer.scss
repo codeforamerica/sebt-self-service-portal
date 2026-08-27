@@ -26,3 +26,13 @@ from each state's Figma design that don't map to USWDS tokens.
 .usa-footer__secondary-section {
   background-color: var(--footer-section-bg);
 }
+
+// Each state's seal has its own aspect ratio, so the artwork sizes itself
+// rather than being held to fixed dimensions. max-width keeps the widest
+// lockups inside a mobile grid-container.
+.footer-logo {
+  width: auto;
+  height: auto;
+  max-height: 50px;
+  max-width: 100%;
+}
