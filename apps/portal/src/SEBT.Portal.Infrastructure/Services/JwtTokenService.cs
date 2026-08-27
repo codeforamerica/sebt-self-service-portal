@@ -25,18 +25,6 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
     private readonly ILogger<JwtTokenService> _logger;
 
     /// <summary>
-    /// Standard OIDC/JWT infrastructure claim names excluded when copying IdP claims.
-    /// Parallel to OidcExchangeService.CommonOidcInfrastructureClaims (in Api layer).
-    /// </summary>
-    private static readonly HashSet<string> OidcInfrastructureClaims =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            "iss", "aud", "iat", "exp", "nbf", "nonce", "at_hash", "c_hash",
-            "auth_time", "acr", "amr", "azp", "sid", "jti",
-            "env", "org", "p1.region"
-        };
-
-    /// <summary>
     /// Claim names that BuildAndSignToken sets directly — excluded from the passthrough loop
     /// to avoid duplicates (which .NET's JWT reader rejects).
     /// </summary>
@@ -136,7 +124,7 @@ public class JwtTokenService : ILocalLoginTokenService, IOidcTokenService, ISess
         var idpClaims = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (var claim in idpPrincipal.Claims)
         {
-            if (!OidcInfrastructureClaims.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
+            if (!OidcClaims.InfrastructureClaimNames.Contains(claim.Type) && !string.IsNullOrEmpty(claim.Value))
             {
                 idpClaims[claim.Type] = claim.Value;
             }

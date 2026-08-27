@@ -1,13 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
-using Medallion.Threading;
-using Microsoft.Extensions.Caching.Hybrid;
+using SEBT.Portal.Core.Models.Auth;
 
-namespace SEBT.Portal.Api.Services;
+namespace SEBT.Portal.Core.Services;
 
 /// <summary>
 /// manages the lifecycle of server-side pre-auth OIDC sessions.
-/// Sessions are stored in <see cref="HybridCache"/> (L1 memory + optional L2 Redis)
+/// Implementations store sessions in a cache (L1 memory + optional L2 Redis)
 /// with an automatic TTL so abandoned flows expire without explicit cleanup.
 /// </summary>
 public interface IPreAuthSessionStore
@@ -30,7 +29,7 @@ public interface IPreAuthSessionStore
     /// and stores the callback token hash. Fails if the session is not in <c>Created</c> phase.
     /// </summary>
     /// <remarks>
-    /// Uses <see cref="IDistributedLockProvider"/> to serialize concurrent transitions
+    /// Implementations use a distributed lock to serialize concurrent transitions
     /// across all container instances (Redis-backed in production, SQL fallback otherwise).
     /// </remarks>
     Task<bool> TryAdvanceToCallbackCompletedAsync(
