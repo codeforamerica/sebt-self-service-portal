@@ -1,14 +1,22 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DataLayer } from '@sebt/analytics'
+import { i18n } from '@sebt/design-system/client'
+import dcPersonalInfo from '@/content/locales/en/dc/personalInfo.json'
 import { EnrollmentProvider, useEnrollment } from '../context/EnrollmentContext'
 import { ChildFormPage } from './ChildFormPage'
 
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
+
+// Drives the season. A payload without `enrollment` is an open season.
+let mockFeatures: unknown = {}
+vi.mock('@/features/maintenance/hooks/useCheckerFeatures', () => ({
+  useCheckerFeatures: () => ({ data: mockFeatures })
+}))
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <QueryClientProvider client={new QueryClient()}>
@@ -200,5 +208,35 @@ describe('ChildFormPage', () => {
       const serialized = JSON.stringify(event!.eventData)
       expect(serialized).not.toContain('private@example.com')
     })
+  })
+})
+
+// The form itself is unchanged by the season; only what it says it is checking
+// moves into the past tense. CO authors the same words for both, so these read
+// against DC's bundle.
+describe('ChildFormPage — season copy', () => {
+  beforeAll(() => {
+    i18n.addResourceBundle('en', 'personalInfo', dcPersonalInfo, true, true)
+  })
+
+  afterEach(() => {
+    mockFeatures = {}
+  })
+
+  it('asks whether a student needs to apply while the season is enrolling', () => {
+    render(<ChildFormPage showSchoolField={false} apiBaseUrl="" />, { wrapper })
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(dcPersonalInfo.title)
+    expect(screen.getByText(dcPersonalInfo.body)).toBeInTheDocument()
+  })
+
+  it('asks whether a student was enrolled once the season has closed', () => {
+    mockFeatures = { enrollment: { enabled: false } }
+    render(<ChildFormPage showSchoolField={false} apiBaseUrl="" />, { wrapper })
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      dcPersonalInfo.closedTitle
+    )
+    expect(screen.getByText(dcPersonalInfo.closedBody)).toBeInTheDocument()
   })
 })
