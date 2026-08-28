@@ -87,7 +87,11 @@ describe('ClosedPage — flat tail', () => {
     vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
     const { container } = renderClosedPage()
 
-    const tail = container.querySelector('.usa-prose.margin-top-4')
+    // The body copy is the other .usa-prose block; the notes are the last one.
+    const proseBlocks = container.querySelectorAll('.grid-container > .usa-prose')
+    const tail = proseBlocks[proseBlocks.length - 1]
+
+    expect(proseBlocks).toHaveLength(2)
     expect(tail?.children).toHaveLength(2)
     expect(tail?.children[0]?.textContent).not.toBe(tail?.children[1]?.textContent)
   })
