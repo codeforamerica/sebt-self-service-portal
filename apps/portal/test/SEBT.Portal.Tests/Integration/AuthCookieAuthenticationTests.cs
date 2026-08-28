@@ -1,8 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.IdentityModel.Tokens;
+using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 
 namespace SEBT.Portal.Tests.Integration;
@@ -30,23 +32,35 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
     }
 
     [Fact]
-    public async Task GetStatus_WithValidSessionCookie_ReturnsOk()
+    public async Task GetStatus_WithValidSessionCookie_ReturnsAuthorizedStatus()
     {
         using var response = await GetStatusWithCookie(CreateValidJwt(email: "user@example.com"));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var status = await ReadStatus(response);
+        Assert.True(status.IsAuthorized);
+        Assert.Equal("user@example.com", status.Email);
     }
 
+    // The status probe answers anonymous callers with 200 { isAuthorized: false } rather
+    // than a 401: the SPA hits it on every page load, so "not signed in" is an expected
+    // answer, not an error to surface in logs. The tests below prove an unusable session
+    // yields the anonymous shape with no claims.
+
     [Fact]
-    public async Task GetStatus_WithoutSessionCookie_ReturnsUnauthorized()
+    public async Task GetStatus_WithoutSessionCookie_ReturnsUnauthenticatedStatus()
     {
         using var response = await GetStatusWithCookie(token: null);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var status = await ReadStatus(response);
+        Assert.False(status.IsAuthorized);
+        Assert.Null(status.UserId);
+        Assert.Null(status.Email);
     }
 
     [Fact]
-    public async Task GetStatus_WithTamperedSessionCookie_ReturnsUnauthorized()
+    public async Task GetStatus_WithTamperedSessionCookie_ReturnsUnauthenticatedStatus()
     {
         var token = CreateValidJwt(email: "user@example.com");
         // Replace the last 4 chars of the signature with garbage so verification fails.
@@ -54,17 +68,23 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
 
         using var response = await GetStatusWithCookie(tampered);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var status = await ReadStatus(response);
+        Assert.False(status.IsAuthorized);
+        Assert.Null(status.Email);
     }
 
     [Fact]
-    public async Task GetStatus_WithExpiredSessionCookie_ReturnsUnauthorized()
+    public async Task GetStatus_WithExpiredSessionCookie_ReturnsUnauthenticatedStatus()
     {
         var token = CreateValidJwt(email: "user@example.com", expiresInMinutes: -10);
 
         using var response = await GetStatusWithCookie(token);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var status = await ReadStatus(response);
+        Assert.False(status.IsAuthorized);
+        Assert.Null(status.Email);
     }
 
     [Fact]
@@ -93,12 +113,24 @@ public class AuthCookieAuthenticationTests : IClassFixture<PortalWebApplicationF
         // Control for EnrollmentEndpoint_IgnoresSessionCookie: on a portal
         // endpoint the same policy-violating token IS read from the cookie and
         // rejected, clearing it. Proves the Set-Cookie observable is real.
+        // Bearer authentication (and its cookie-clearing rejection) runs before
+        // the anonymous-friendly status handler, so the cleanup survives the
+        // 200 { isAuthorized: false } contract.
         var token = CreateValidJwt(email: "user@example.com", includeAuthTime: false);
 
         using var response = await GetStatusWithCookie(token);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var status = await ReadStatus(response);
+        Assert.False(status.IsAuthorized);
         Assert.True(response.Headers.Contains("Set-Cookie"));
+    }
+
+    private static async Task<AuthorizationStatusResponse> ReadStatus(HttpResponseMessage response)
+    {
+        var status = await response.Content.ReadFromJsonAsync<AuthorizationStatusResponse>();
+        Assert.NotNull(status);
+        return status;
     }
 
     private async Task<HttpResponseMessage> GetStatusWithCookie(string? token)

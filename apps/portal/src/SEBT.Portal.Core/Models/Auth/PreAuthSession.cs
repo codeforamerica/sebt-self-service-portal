@@ -1,4 +1,4 @@
-namespace SEBT.Portal.Api.Services;
+namespace SEBT.Portal.Core.Models.Auth;
 
 /// <summary>
 /// server-side pre-auth session created at <c>GET /api/auth/oidc/{stateCode}/config</c>.

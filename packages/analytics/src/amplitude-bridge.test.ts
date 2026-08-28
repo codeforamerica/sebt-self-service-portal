@@ -188,13 +188,13 @@ describe('initAmplitudeBridge', () => {
   })
 
   describe('privacy configuration', () => {
-    it('disables cross-session identity storage', () => {
+    it('uses session storage', () => {
       new DataLayer('digitalData')
       initAmplitudeBridge('test-key', amplitudeStub)
 
       expect(amplitudeStub.init).toHaveBeenCalledWith(
         'test-key',
-        expect.objectContaining({ identityStorage: 'none' })
+        expect.objectContaining({ identityStorage: 'session' })
       )
     })
 
