@@ -9,7 +9,7 @@
     "dev:co": "export STATE=co && export ENROLLMENT_CHECKER_ORIGIN=http://localhost:3001 && pnpm api:build-co && pnpm dev",
     "dev:co-enroll": "export STATE=co && pnpm api:build-co && pnpm dev:kill-port && concurrently -n \"API,EnrollChecker\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm --filter @sebt/enrollment-checker dev\"",
     "dev:dc": "export STATE=dc && pnpm api:build-dc && pnpm dev",
-    "dev:dc-enroll": "export STATE=dc && pnpm api:build-dc && pnpm dev && concurrently -n \"API,EnrollChecker\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm --filter @sebt/enrollment-checker dev\"",
+    "dev:dc-enroll": "export STATE=dc && pnpm api:build-dc && pnpm dev:kill-port && concurrently -n \"API,EnrollChecker\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm --filter @sebt/enrollment-checker dev\"",
     "dev:kill-port": "lsof -ti :5280 | xargs kill 2>/dev/null; sleep 2 || true",
     "web:dev": "pnpm --filter @sebt/web dev",
     "api:dev": "ASPNETCORE_ENVIRONMENT=Development dotnet watch run --project apps/portal/src/SEBT.Portal.Api --launch-profile http",
