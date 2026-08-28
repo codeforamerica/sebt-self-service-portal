@@ -109,8 +109,15 @@ export function ClosedPage() {
           </div>
         ) : (
           <div className="usa-prose margin-top-4">
-            <RichText>{t('closedBody2')}</RichText>
-            <RichText>{t('closedBody3')}</RichText>
+            {/* Two standalone notes. Each is one sentence, which RichText renders
+                inline, so they need their own blocks to read as separate
+                paragraphs rather than running together. */}
+            <div>
+              <RichText>{t('closedBody2')}</RichText>
+            </div>
+            <div className="margin-top-2">
+              <RichText>{t('closedBody3')}</RichText>
+            </div>
           </div>
         )}
       </div>

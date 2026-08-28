@@ -74,3 +74,21 @@ describe('ClosedPage', () => {
     expect(sessionStorage.getItem('enrollmentState')).toBeNull()
   })
 })
+
+// States without the accordion end the page with two standalone notes. Each is a
+// single sentence, which RichText renders inline, so sharing one block would run
+// them together as one paragraph.
+describe('ClosedPage — flat tail', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('keeps the two closing notes in separate blocks', () => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+    const { container } = renderClosedPage()
+
+    const tail = container.querySelector('.usa-prose.margin-top-4')
+    expect(tail?.children).toHaveLength(2)
+    expect(tail?.children[0]?.textContent).not.toBe(tail?.children[1]?.textContent)
+  })
+})
