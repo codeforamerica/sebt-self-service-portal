@@ -41,11 +41,27 @@ jobs:
       contents: write
       pull-requests: read
     steps:
+      # actions/checkout's ref: only accepts a branch/tag name or a FULL 40-char
+      # SHA, unlike git itself it won't resolve an abbreviated SHA. Resolve via
+      # the GitHub API first (which does accept abbreviated SHAs) so end_sha can
+      # be given in either form, same as start_sha already can.
+      - name: Resolve end_sha
+        id: end-sha
+        if: inputs.end_sha != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FULL="$(gh api "repos/${{ github.repository }}/commits/${{ inputs.end_sha }}" --jq .sha)" || {
+            echo "::error::end_sha '${{ inputs.end_sha }}' could not be resolved via the GitHub API"
+            exit 1
+          }
+          echo "sha=$FULL" >> "$GITHUB_OUTPUT"
+
       - name: Checkout portal
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
-          ref: ${{ inputs.end_sha || 'main' }}
+          ref: ${{ steps.end-sha.outputs.sha || 'main' }}
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -137,13 +153,28 @@ jobs:
           echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
           echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
 
+      # Same abbreviated-SHA limitation as Resolve end_sha above, resolved the
+      # same way — dc-connector is private, so this needs the App token rather
+      # than the default GITHUB_TOKEN.
+      - name: Resolve connector_end_sha
+        id: connector-end-sha
+        if: inputs.state == 'dc' && inputs.connector_end_sha != ''
+        env:
+          GH_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
+        run: |
+          FULL="$(gh api "repos/codeforamerica/sebt-self-service-portal-dc-connector/commits/${{ inputs.connector_end_sha }}" --jq .sha)" || {
+            echo "::error::connector_end_sha '${{ inputs.connector_end_sha }}' could not be resolved via the GitHub API"
+            exit 1
+          }
+          echo "sha=$FULL" >> "$GITHUB_OUTPUT"
+
       - name: Checkout dc-connector
         if: inputs.state == 'dc'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
           token: ${{ steps.dc-connector-token.outputs.token }}
-          ref: ${{ inputs.connector_end_sha || steps.dc-connector-ref.outputs.ref }}
+          ref: ${{ steps.connector-end-sha.outputs.sha || steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
           fetch-depth: 0
 
@@ -230,7 +261,7 @@ jobs:
           tag_name: ${{ steps.compose.outputs.date }}-${{ steps.compose.outputs.tag_suffix }}
           name: "${{ steps.compose.outputs.date }} ${{ steps.compose.outputs.state_name }} Release"
           body_path: ${{ runner.temp }}/release-body.md
-          target_commitish: ${{ inputs.end_sha || github.sha }}
+          target_commitish: ${{ steps.end-sha.outputs.sha || github.sha }}
           draft: true
           prerelease: false
         env:
