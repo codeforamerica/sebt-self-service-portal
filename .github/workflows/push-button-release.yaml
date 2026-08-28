@@ -50,9 +50,11 @@ jobs:
         if: inputs.end_sha != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          END_SHA: ${{ inputs.end_sha }}
         run: |
-          FULL="$(gh api "repos/${{ github.repository }}/commits/${{ inputs.end_sha }}" --jq .sha)" || {
-            echo "::error::end_sha '${{ inputs.end_sha }}' could not be resolved via the GitHub API"
+          FULL="$(gh api "repos/${REPO}/commits/${END_SHA}" --jq .sha)" || {
+            echo "::error::end_sha '${END_SHA}' could not be resolved via the GitHub API"
             exit 1
           }
           echo "sha=$FULL" >> "$GITHUB_OUTPUT"
@@ -161,9 +163,10 @@ jobs:
         if: inputs.state == 'dc' && inputs.connector_end_sha != ''
         env:
           GH_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
+          CONNECTOR_END_SHA: ${{ inputs.connector_end_sha }}
         run: |
-          FULL="$(gh api "repos/codeforamerica/sebt-self-service-portal-dc-connector/commits/${{ inputs.connector_end_sha }}" --jq .sha)" || {
-            echo "::error::connector_end_sha '${{ inputs.connector_end_sha }}' could not be resolved via the GitHub API"
+          FULL="$(gh api "repos/codeforamerica/sebt-self-service-portal-dc-connector/commits/${CONNECTOR_END_SHA}" --jq .sha)" || {
+            echo "::error::connector_end_sha '${CONNECTOR_END_SHA}' could not be resolved via the GitHub API"
             exit 1
           }
           echo "sha=$FULL" >> "$GITHUB_OUTPUT"
