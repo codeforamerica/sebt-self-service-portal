@@ -12,14 +12,13 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: deploy-enrollment-checker
-  cancel-in-progress: true
-
 jobs:
-  build:
+  build-co:
     runs-on: ubuntu-latest
     environment: dev-co
+    concurrency:
+      group: deploy-enrollment-checker-co
+      cancel-in-progress: true
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -68,21 +67,119 @@ jobs:
       - name: Upload static site artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: enrollment-checker-out
+          name: enrollment-checker-out-co
           path: apps/portal/src/SEBT.EnrollmentChecker.Web/out/
           retention-days: 1
 
   deploy-co:
-    needs: build
+    needs: build-co
     runs-on: ubuntu-latest
     environment: dev-co
+    concurrency:
+      group: deploy-enrollment-checker-co
+      cancel-in-progress: true
     env:
       AWS_REGION: us-east-1
     steps:
       - name: Download static site artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: enrollment-checker-out
+          name: enrollment-checker-out-co
+          path: out/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync out/ "s3://${{ vars.ENROLLMENT_CHECKER_S3_BUCKET }}" \
+            --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.ENROLLMENT_CHECKER_DISTRIBUTION_ID }}" \
+            --paths "/*"
+
+  build-dc:
+    runs-on: ubuntu-latest
+    environment: dev-dc
+    concurrency:
+      group: deploy-enrollment-checker-dc
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 10
+
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: echo "store=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache pnpm dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.pnpm-cache.outputs.store }}
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Remove SSR-only API routes
+        run: rm -rf apps/portal/src/SEBT.EnrollmentChecker.Web/src/app/api
+
+      - name: Build static export
+        run: BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
+        env:
+          STATE: dc
+          NEXT_PUBLIC_STATE: dc
+          NEXT_PUBLIC_API_BASE_URL: ${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}
+          NEXT_PUBLIC_PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
+          # NEXT_PUBLIC_APPLICATION_URL is intentionally omitted as of Aug 24th
+          # while DC Summer EBT applications are closed. Add it back
+          # (NEXT_PUBLIC_APPLICATION_URL: ${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }})
+          # once applications reopen.
+          NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
+          NEXT_PUBLIC_AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
+          NEXT_PUBLIC_MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
+          NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
+
+      - name: Upload static site artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: enrollment-checker-out-dc
+          path: apps/portal/src/SEBT.EnrollmentChecker.Web/out/
+          retention-days: 1
+
+  deploy-dc:
+    needs: build-dc
+    runs-on: ubuntu-latest
+    environment: dev-dc
+    concurrency:
+      group: deploy-enrollment-checker-dc
+      cancel-in-progress: true
+    env:
+      AWS_REGION: us-east-1
+    steps:
+      - name: Download static site artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: enrollment-checker-out-dc
           path: out/
 
       - name: Configure AWS credentials
