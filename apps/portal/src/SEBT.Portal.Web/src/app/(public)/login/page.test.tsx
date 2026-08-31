@@ -7,84 +7,44 @@
  */
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import enCoCommon from '@/content/locales/en/co/common.json'
+import enCoLogin from '@/content/locales/en/co/login.json'
+import esCoCommon from '@/content/locales/es/co/common.json'
+import esCoLogin from '@/content/locales/es/co/login.json'
+
 import LoginPage from './page'
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() })
 }))
 
-vi.mock('@sebt/design-system', () => ({
-  getState: vi.fn(),
-  getStateLinks: vi.fn().mockReturnValue({
-    external: {
-      contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
-    }
-  }),
-  TextLink: ({
-    href,
-    children,
-    target,
-    rel
-  }: {
-    href: string
-    children: React.ReactNode
-    target?: string
-    rel?: string
-  }) => (
-    <a
-      href={href}
-      target={target}
-      rel={rel}
-    >
-      {children}
-    </a>
-  )
-}))
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: vi.fn(),
+    getStateLinks: vi.fn().mockReturnValue({
+      external: {
+        contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
+      }
+    })
+  }
+})
 
-// COLoginPage now uses the client-side useTranslation() hook (DC-187 fix).
-// Mock the hook with state-specific copy so CO/DC tests stay isolated from
-// the project's real i18n init (which boots in DC mode for tests).
+// COLoginPage uses the client-side useTranslation() hook. Mock the hook so the
+// CO/DC cases stay isolated from the project's real i18n init (which boots in
+// DC mode for tests), but feed the CO mock the *generated* CO bundles rather
+// than hand-typed copy. Content-sheet syncs rewrite these strings; a fixture
+// that drifts from the real JSON lets unrendered markdown and dropped keys
+// reach production unnoticed. The `?? key` fallback below mirrors i18next's
+// behavior for a missing key, which is what makes a leaked key assertable.
 //
 // `logIn` resolves to the current UI language's label; `logInEsp` resolves to
-// the other language. Mirrors the real locale files in `content/locales/{en,es}/co/common.json`.
+// the other language.
 const CO_TEST_TRANSLATIONS: Record<string, Record<string, Record<string, string>>> = {
-  en: {
-    login: {
-      title: 'Access your Summer EBT account',
-      body: 'Enter your email to receive a one-time code.',
-      logInDisclaimerBody1:
-        'After tapping "Log in" you\'ll be redirected to log in using your myColorado™ account.',
-      logInDisclaimerBody2: 'Having trouble signing into the portal?',
-      logInDisclaimerBody3: 'Contact myColorado® Support',
-      cardTitle: 'About the Summer EBT portal',
-      cardBody1:
-        "The Summer EBT portal is the fastest way to manage your family's Summer EBT benefits without ever making a phone call.\n\nBy creating a secure account, the main parent or guardian on file can:",
-      cardBody2:
-        "Request a new Summer EBT card if their child's is lost, stolen, or damaged.\nUpdate your mailing address so you don't miss important mail.\nCheck benefits and card status for all enrolled children in your household.\nSee the application status for any applications that you submitted.\nOpt-in to email communications about your benefits."
-    },
-    common: {
-      logIn: 'Log in with myColorado™',
-      logInEsp: 'Iniciar sesión con myColorado™'
-    }
-  },
-  es: {
-    login: {
-      title: 'Accede a tu cuenta de Summer EBT',
-      body: 'Ingresa tu correo electrónico para recibir un código.',
-      logInDisclaimerBody1:
-        'Al tocar "Iniciar sesión" serás redirigido a iniciar sesión con tu cuenta myColorado™.',
-      logInDisclaimerBody2: 'Contáctanos si necesitas ayuda para iniciar sesión.',
-      logInDisclaimerBody3: 'Comunícate con la ayuda de myColorado®',
-      cardTitle: 'Sobre el portal de Summer EBT',
-      cardBody1:
-        'El portal de Summer EBT es la forma más rápida de manejar los beneficios de Summer EBT de tu familia.\n\nAl crear una cuenta segura, el padre, madre o tutor principal registrado puede:',
-      cardBody2: 'Pedir una nueva Tarjeta Summer EBT si la de tu niño/a se perdió.'
-    },
-    common: {
-      logIn: 'Iniciar sesión con myColorado™',
-      logInEsp: 'Log in with myColorado™'
-    }
-  }
+  en: { login: enCoLogin, common: enCoCommon },
+  es: { login: esCoLogin, common: esCoCommon }
 }
 
 const DC_TEST_TRANSLATIONS: Record<string, Record<string, Record<string, string>>> = {
@@ -167,7 +127,7 @@ describe('LoginPage', () => {
       render(<LoginPage />)
       expect(
         screen.getByRole('heading', {
-          name: /Access your Summer EBT account/i
+          name: /Access the Summer EBT portal/i
         })
       ).toBeInTheDocument()
     })
@@ -175,25 +135,52 @@ describe('LoginPage', () => {
     it('applies text-primary class to the title', () => {
       render(<LoginPage />)
       const heading = screen.getByRole('heading', {
-        name: /Access your Summer EBT account/i
+        name: /Access the Summer EBT portal/i
       })
       expect(heading).toHaveClass('text-primary')
     })
 
     it('renders the disclaimer body text', () => {
       render(<LoginPage />)
-      expect(
-        screen.getByText(/you'll be redirected to log in using your myColorado/i)
-      ).toBeInTheDocument()
+      expect(screen.getByText(/you'll be redirected to sign in using/i)).toBeInTheDocument()
     })
 
-    it('renders the myColorado support prompt and link', () => {
-      render(<LoginPage />)
-      expect(screen.getByText('Having trouble signing into the portal?')).toBeInTheDocument()
+    it('renders the disclaimer markdown emphasis as strong text, not literal asterisks', () => {
+      const { container } = render(<LoginPage />)
+      const disclaimer = screen.getByText(/you'll be redirected to sign in using/i)
+      expect(disclaimer.textContent).not.toContain('**')
 
-      const supportLink = screen.getByRole('link', { name: /Contact myColorado/i })
+      const emphasis = Array.from(container.querySelectorAll('strong')).map((el) => el.textContent)
+      expect(emphasis).toContain('your myColorado® account')
+      expect(emphasis).toContain('new one')
+    })
+
+    it('does not render a raw translation key for the unpublished disclaimer body', () => {
+      render(<LoginPage />)
+      expect(screen.queryByText('logInDisclaimerBody2')).not.toBeInTheDocument()
+    })
+
+    it('renders the myColorado support link with the full support sentence', () => {
+      render(<LoginPage />)
+      const supportLink = screen.getByRole('link', {
+        name: /Contact myColorado® support if you are having trouble signing into the portal/i
+      })
       expect(supportLink).toHaveAttribute('href', 'https://mycolorado.state.co.us/customer-support')
       expect(supportLink).toHaveAttribute('target', '_blank')
+    })
+
+    it('renders the Spanish disclaimer emphasis and support link without raw keys', () => {
+      mockLanguage = 'es'
+      const { container } = render(<LoginPage />)
+
+      const emphasis = Array.from(container.querySelectorAll('strong')).map((el) => el.textContent)
+      expect(emphasis).toContain('tu cuenta de myColorado®')
+      expect(screen.queryByText('logInDisclaimerBody2')).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('link', {
+          name: /Comunícate con el equipo de ayuda de myColorado® si tienes problemas/i
+        })
+      ).toBeInTheDocument()
     })
 
     it('renders the about portal card with bullet list', () => {
@@ -205,16 +192,16 @@ describe('LoginPage', () => {
         screen.getByText(/fastest way to manage your family's Summer EBT benefits/i)
       ).toBeInTheDocument()
       expect(
-        screen.getByText(/Request a new Summer EBT card if their child's is lost/i)
+        screen.getByText(/Request a new Summer EBT card if their child’s is lost/i)
       ).toBeInTheDocument()
       expect(
-        screen.getByText(/Opt-in to email communications about your benefits/i)
+        screen.getByText(/Opt-in to email communications about their benefits/i)
       ).toBeInTheDocument()
     })
 
     it('renders the Log in button with myColorado branded styling', () => {
       render(<LoginPage />)
-      const logInButton = screen.getByRole('button', { name: /Log in with myColorado/i })
+      const logInButton = screen.getByRole('button', { name: /Sign in with myColorado/i })
       expect(logInButton).toHaveClass('usa-button')
       expect(logInButton).toHaveClass('usa-button--mycolorado')
       expect(logInButton).not.toHaveClass('usa-button--outline')
@@ -222,7 +209,7 @@ describe('LoginPage', () => {
 
     it('renders the Iniciar sesión button as an outlined myColorado variant', () => {
       render(<LoginPage />)
-      const espButton = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+      const espButton = screen.getByRole('button', { name: /Iniciar con myColorado/i })
       expect(espButton).toHaveAttribute('lang', 'es')
       expect(espButton).toHaveClass('usa-button--mycolorado')
       expect(espButton).toHaveClass('usa-button--outline')
@@ -230,8 +217,8 @@ describe('LoginPage', () => {
 
     it('renders the myColorado logo inside both auth buttons', () => {
       render(<LoginPage />)
-      const logInButton = screen.getByRole('button', { name: /Log in with myColorado/i })
-      const espButton = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+      const logInButton = screen.getByRole('button', { name: /Sign in with myColorado/i })
+      const espButton = screen.getByRole('button', { name: /Iniciar con myColorado/i })
       expect(logInButton.querySelector('[data-testid="mycolorado-logo"]')).toBeInTheDocument()
       expect(espButton.querySelector('[data-testid="mycolorado-logo"]')).toBeInTheDocument()
     })
@@ -244,8 +231,8 @@ describe('LoginPage', () => {
     describe('analytics', () => {
       it('tags both auth buttons with data-analytics-cta for cta_click tracking', () => {
         render(<LoginPage />)
-        const primary = screen.getByRole('button', { name: /Log in with myColorado/i })
-        const secondary = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+        const primary = screen.getByRole('button', { name: /Sign in with myColorado/i })
+        const secondary = screen.getByRole('button', { name: /Iniciar con myColorado/i })
 
         expect(primary).toHaveAttribute('data-analytics-cta', 'login_cta')
         expect(secondary).toHaveAttribute('data-analytics-cta', 'login_cta_alt_lang')
@@ -253,7 +240,7 @@ describe('LoginPage', () => {
 
       it('fires oidc_start when the primary auth button is clicked', () => {
         render(<LoginPage />)
-        const primary = screen.getByRole('button', { name: /Log in with myColorado/i })
+        const primary = screen.getByRole('button', { name: /Sign in with myColorado/i })
 
         primary.click()
 
@@ -262,7 +249,7 @@ describe('LoginPage', () => {
 
       it('fires oidc_start when the secondary auth button is clicked', () => {
         render(<LoginPage />)
-        const secondary = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+        const secondary = screen.getByRole('button', { name: /Iniciar con myColorado/i })
 
         secondary.click()
 
@@ -299,7 +286,7 @@ describe('LoginPage', () => {
       it('routes the primary button to the current UI language in English mode', () => {
         mockLanguage = 'en'
         render(<LoginPage />)
-        const primary = screen.getByRole('button', { name: /Log in with myColorado/i })
+        const primary = screen.getByRole('button', { name: /Sign in with myColorado/i })
 
         primary.click()
 
@@ -310,7 +297,7 @@ describe('LoginPage', () => {
       it('routes the secondary button to the other language in English mode', () => {
         mockLanguage = 'en'
         render(<LoginPage />)
-        const secondary = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+        const secondary = screen.getByRole('button', { name: /Iniciar con myColorado/i })
 
         secondary.click()
 
@@ -323,7 +310,7 @@ describe('LoginPage', () => {
         // should send the user to the Spanish-language MyCO flow, not the English one.
         mockLanguage = 'es'
         render(<LoginPage />)
-        const primary = screen.getByRole('button', { name: /Iniciar sesión con myColorado/i })
+        const primary = screen.getByRole('button', { name: /Iniciar con myColorado/i })
 
         primary.click()
 
@@ -334,7 +321,7 @@ describe('LoginPage', () => {
       it('routes the secondary button to the other language in Spanish mode', () => {
         mockLanguage = 'es'
         render(<LoginPage />)
-        const secondary = screen.getByRole('button', { name: /Log in with myColorado/i })
+        const secondary = screen.getByRole('button', { name: /Sign in with myColorado/i })
 
         secondary.click()
 

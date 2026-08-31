@@ -3,7 +3,7 @@ using SEBT.Portal.Core.Models.Household;
 namespace SEBT.Portal.Core.Models.AddressUpdate;
 
 /// <summary>
-/// Successful outcome of <see cref="SEBT.Portal.Core.Services.IAddressUpdateService"/>.
+/// Successful outcome of <see cref="SEBT.Portal.Core.Services.IAddressVerificationService"/>.
 /// </summary>
 public sealed record AddressUpdateSuccess
 {

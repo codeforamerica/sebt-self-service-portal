@@ -62,7 +62,15 @@ test.describe('DC co-loaded id proofing (full stack)', () => {
         name: /we're sorry, we aren't able to show your dc sun bucks information/i
       })
     ).toBeVisible()
-    await expect(page.getByRole('link', { name: /apply now/i })).toBeVisible()
+    // DC-701 removed all DC apply CTAs; the co-loaded off-boarding page now
+    // offers Contact us instead of an apply link. Scoped to the off-boarding
+    // section to exclude the global help band's Contact Us link.
+    await expect(
+      page
+        .locator('section[aria-labelledby="off-boarding-title"]')
+        .getByRole('link', { name: /contact us/i })
+    ).toBeVisible()
+    await expect(page.getByRole('link', { name: /apply now/i })).not.toBeVisible()
   })
 
   // Mutates the seeded pending user to Completed + IsCoLoaded — keep last in this serial suite.

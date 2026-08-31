@@ -15,6 +15,7 @@ import { toAnalyticsCohort } from '../../api/schema'
 import { HouseholdCardDetailsLoadingProvider } from '../../context/HouseholdCardDetailsLoadingContext'
 import { ActionButtons } from '../ActionButtons'
 import { ApplicationsSection } from '../ApplicationsSection'
+import { BenefitExpirationBanner } from '../BenefitExpirationBanner'
 import { DashboardAlerts } from '../DashboardAlerts'
 import { DashboardSkeleton } from '../DashboardSkeleton'
 import { EbtEdgeSection } from '../EbtEdgeSection'
@@ -189,6 +190,8 @@ export function DashboardContent() {
   return (
     <HouseholdCardDetailsLoadingProvider value={isLoadingCardDetails}>
       {pageHeading}
+      {/* Copy references enrolled children, so the banner only accompanies cases. */}
+      {data.summerEbtCases.length > 0 && <BenefitExpirationBanner />}
       <DashboardAlerts />
       <ActionButtons
         allowedActions={data.allowedActions}

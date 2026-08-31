@@ -16,7 +16,7 @@ provider "doppler" {}
 
 # Create an S3 bucket and KMS key for logging.
 module "logging" {
-  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.2.0"
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
@@ -37,7 +37,7 @@ module "logging" {
 # Create a VPC with public and private subnets. Since this is a dev
 # environment, we'll use a single NAT gateway to reduce costs.
 module "vpc" {
-  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.1.2"
+  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.2.1"
 
   project            = "${var.project}-${var.state}"
   environment        = var.environment
@@ -61,6 +61,11 @@ data "aws_ecr_repository" "web" {
 # Look up the hosted zone for DNS records.
 data "aws_route53_zone" "main" {
   name = "dc.sebt-portal.codeforamerica.app"
+}
+
+# Look up the enrollment checker hosted zone (created by bootstrap).
+data "aws_route53_zone" "enrollment_checker" {
+  name = "dc.sebt-enrollment.codeforamerica.app"
 }
 
 # Store DC-specific secrets in Secrets Manager. Each key represents a
@@ -176,8 +181,10 @@ module "app" {
     "PiiEncryption__Keys__0__KeyMaterialBase64" = module.state_secrets.secrets["PII_ENCRYPTION_KEY_MATERIAL_BASE64"].secret_arn
   }
 
-  state_web_environment_variables = {}
-  state_web_environment_secrets   = {}
+  state_web_environment_variables = {
+    ENROLLMENT_CHECKER_ORIGIN = "https://dev.dc.sebt-enrollment.codeforamerica.app"
+  }
+  state_web_environment_secrets = {}
 }
 
 # SSM bastion for developer DB access. Uses pure-SSM port forwarding;
@@ -207,4 +214,18 @@ module "dc_source_seed" {
   db_endpoint       = module.app.database_endpoint
   db_secret_arn     = module.app.database_secret_arn
   logging_key_arn   = module.logging.kms_key_arn
+}
+
+# Deploy the enrollment checker as a static site behind CloudFront.
+module "enrollment_checker" {
+  source = "../../modules/sebt_enrollment_checker"
+
+  project                    = var.project
+  state                      = var.state
+  environment                = var.environment
+  domain                     = "dev.dc.sebt-enrollment.codeforamerica.app"
+  hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
+  logging_bucket_domain_name = module.logging.bucket_domain_name
+  logging_bucket_name        = module.logging.bucket
+  force_delete               = true
 }

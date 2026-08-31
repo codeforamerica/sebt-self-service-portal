@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.Api.Extensions;
 using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Services;

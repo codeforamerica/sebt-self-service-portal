@@ -1,3 +1,4 @@
+import { i18n } from '@sebt/design-system/client'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -5,10 +6,9 @@ import type { HouseholdData, SummerEbtCase } from '../../api'
 
 import { EnrolledChildren } from './EnrolledChildren'
 
-let mockApplyHref = '/apply'
-const mockGetApplyHref = vi.fn((_locale: string) => mockApplyHref)
-vi.mock('@/lib/applyHref', () => ({
-  getApplyHref: (locale: string) => mockGetApplyHref(locale)
+let mockApplyHref: string | null = '/apply'
+vi.mock('@/lib/useApplyHref', () => ({
+  useApplyHref: () => mockApplyHref
 }))
 
 const mockCase1: SummerEbtCase = {
@@ -57,7 +57,6 @@ describe('EnrolledChildren', () => {
   beforeEach(() => {
     mockReturnData = defaultMockData
     mockApplyHref = '/apply'
-    mockGetApplyHref.mockClear()
   })
 
   it('renders section heading', () => {
@@ -97,18 +96,36 @@ describe('EnrolledChildren', () => {
     expect(screen.getByText('Emily Brown')).toBeInTheDocument()
   })
 
-  it('routes the apply link to whatever getApplyHref returns', () => {
+  it('renders the apply link when applications are open and the action label is authored', () => {
+    // The action key was dropped from the closed-season content (DC-701); an open
+    // season restores it via the sheet. Simulate that restored state here.
+    i18n.addResource('en', 'dashboard', 'sectionEnrolledChildrenAction', 'submit an application.')
     mockApplyHref = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
     render(<EnrolledChildren />)
     expect(screen.getByRole('link', { name: /submit/i })).toHaveAttribute('href', mockApplyHref)
+    // Reset to the closed-season shape (key empty) without dropping the whole bundle.
+    i18n.addResource('en', 'dashboard', 'sectionEnrolledChildrenAction', '')
   })
 
-  it('passes the active i18n locale through to getApplyHref so PEAK gets the right language', () => {
+  it('renders the intro sentence without an apply link when applications are closed', () => {
+    // Applications are closed (DC-701): the intro is a complete sentence and stays;
+    // only the link is gone.
+    mockApplyHref = null
     render(<EnrolledChildren />)
-    // Test setup boots i18n with state=dc and language=en. We just need to
-    // confirm whatever the active language is gets forwarded — not a hardcoded
-    // value, which is the bug this guards against.
-    expect(mockGetApplyHref).toHaveBeenCalledWith(expect.any(String))
-    expect(mockGetApplyHref.mock.calls[0]![0]).not.toBe('')
+    expect(
+      screen.getByText('The following students are enrolled in DC SUN Bucks.')
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /submit/i })).toBeNull()
+    expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument()
+    expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+  })
+
+  it('omits the apply link when the action label has no content even if applications are open', () => {
+    // Guard against a raw key or empty anchor if the flag flips on before the
+    // sheet restores the action copy.
+    mockApplyHref = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page?language=en_US'
+    const { container } = render(<EnrolledChildren />)
+    expect(container.querySelector(`a[href="${mockApplyHref}"]`)).toBeNull()
+    expect(screen.queryByText('sectionEnrolledChildrenAction')).toBeNull()
   })
 })

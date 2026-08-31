@@ -30,8 +30,6 @@ minimumReleaseAgeExclude:
   # Next.js 16.3 adds native TypeScript 7 support via the project-local tsc CLI.
   - next@16.3.1
   - eslint-config-next@16.3.1
-  - '@next/bundle-analyzer@16.3.1'
-  - '@next/third-parties@16.3.1'
   - typescript@7.0.2
   - '@next/eslint-plugin-next@16.3.1'
   - '@next/env@16.3.1'
