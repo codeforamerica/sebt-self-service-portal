@@ -87,6 +87,42 @@ jobs:
           echo "::error::connector_start_sha/connector_end_sha only apply when state=dc — leave them blank for a co release."
           exit 1
 
+      # The release tag is date + state based (YYYY.MM.DD-dc/-colorado), so two
+      # runs for the same state on the same day would otherwise collide. A
+      # collision with an existing DRAFT is fine — action-gh-release just
+      # updates it in place, which is what lets you iterate on a range before
+      # publishing. A collision with an already-PUBLISHED release is not fine:
+      # the same update-in-place behavior would silently rewrite a release a
+      # state partner may have already seen. So only escalate to the next
+      # available suffix (-2, -3, ...) when the existing release is published.
+      - name: Resolve release tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          STATE: ${{ inputs.state }}
+          REPO: ${{ github.repository }}
+        run: |
+          case "$STATE" in
+            dc) SUFFIX="dc"; STATE_NAME="DC" ;;
+            co) SUFFIX="colorado"; STATE_NAME="Colorado" ;;
+          esac
+          DATE="$(date +%Y.%m.%d)"
+          BASE="${DATE}-${SUFFIX}"
+          TAG="$BASE"
+          N=1
+          while EXISTING="$(gh api "repos/${REPO}/releases/tags/${TAG}" 2>/dev/null)"; do
+            if [ "$(echo "$EXISTING" | jq -r '.draft')" = "true" ]; then
+              echo "A draft release already exists for tag ${TAG} and will be updated in place."
+              break
+            fi
+            N=$((N + 1))
+            TAG="${BASE}-${N}"
+          done
+          echo "Using tag ${TAG}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "date=$DATE" >> "$GITHUB_OUTPUT"
+          echo "state_name=$STATE_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Resolve live portal SHA
         id: old-portal-sha
         if: inputs.start_sha == ''
@@ -252,17 +288,11 @@ jobs:
             fi
           } > "$RUNNER_TEMP/release-body.md"
 
-          case "$STATE" in
-            dc) echo "tag_suffix=dc" >> "$GITHUB_OUTPUT"; echo "state_name=DC" >> "$GITHUB_OUTPUT" ;;
-            co) echo "tag_suffix=colorado" >> "$GITHUB_OUTPUT"; echo "state_name=Colorado" >> "$GITHUB_OUTPUT" ;;
-          esac
-          echo "date=$(date +%Y.%m.%d)" >> "$GITHUB_OUTPUT"
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
-          tag_name: ${{ steps.compose.outputs.date }}-${{ steps.compose.outputs.tag_suffix }}
-          name: "${{ steps.compose.outputs.date }} ${{ steps.compose.outputs.state_name }} Release"
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "${{ steps.tag.outputs.date }} ${{ steps.tag.outputs.state_name }} Release"
           body_path: ${{ runner.temp }}/release-body.md
           target_commitish: ${{ steps.end-sha.outputs.sha || github.sha }}
           draft: true
