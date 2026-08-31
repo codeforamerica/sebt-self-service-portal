@@ -258,13 +258,19 @@ jobs:
         run: ./.github/workflows/scripts/license-audit.sh
 
       # HTML report for humans browsing the uploaded artifact; the PR comment
-      # itself only links to it rather than embedding it.
+      # itself only links to it rather than embedding it. Also emits a merged
+      # Cobertura.xml (single file, all 3 test projects' coverage properly
+      # unioned): post-coverage-comment.js reads that instead of the raw
+      # per-project TestResults/*.xml files, since several assemblies (e.g.
+      # SEBT.Portal.StatesPlugins.Interfaces) are exercised by more than one
+      # test project, and naively summing raw per-project totals double-counts
+      # their lines. ReportGenerator already solves that merge correctly.
       - name: Generate Backend Coverage HTML Report
         if: steps.config.outputs.use_docker != 'true' && github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true' && steps.config.outputs.skip_tests != 'true'
         run: |
           dotnet tool install -g dotnet-reportgenerator-globaltool
           export PATH="$PATH:$HOME/.dotnet/tools"
-          reportgenerator -reports:"./TestResults/**/coverage.cobertura.xml" -targetdir:./CoverageReport -reporttypes:Html
+          reportgenerator -reports:"./TestResults/**/coverage.cobertura.xml" -targetdir:./CoverageReport -reporttypes:"Html;Cobertura"
 
       - name: Build Frontend (Native)
         if: steps.config.outputs.use_docker != 'true' && needs.changes.outputs.frontend == 'true'
