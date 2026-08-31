@@ -56,7 +56,7 @@ function frontendCoverage(dir) {
   return { covered, total, pct: (covered / total) * 100 };
 }
 
-function buildCommentBody(backend, frontend) {
+function buildCommentBody(backend, frontend, runUrl) {
   let body = `${COMMENT_MARKER}\n\n`;
   body += `| Stack | Lines covered | Coverage |\n`;
   body += `|---|---|---|\n`;
@@ -66,11 +66,17 @@ function buildCommentBody(backend, frontend) {
   if (frontend) {
     body += `| Frontend | ${frontend.covered} / ${frontend.total} | ${frontend.pct.toFixed(2)}% |\n`;
   }
+  if (runUrl) {
+    // Full HTML reports (backend: ReportGenerator; frontend: Vitest's html reporter)
+    // aren't embeddable in a PR comment -- links to the workflow run's
+    // artifacts instead, where reviewers can download and open them locally.
+    body += `\n[Download full HTML coverage reports](${runUrl}) (workflow run artifacts)\n`;
+  }
   body += `\n_Informational only, not enforced as a merge gate._`;
   return body;
 }
 
-module.exports = async ({ github, context, backendDir, frontendDir }) => {
+module.exports = async ({ github, context, backendDir, frontendDir, runUrl }) => {
   const backend = backendCoverage(backendDir);
   const frontend = frontendCoverage(frontendDir);
 
@@ -78,7 +84,7 @@ module.exports = async ({ github, context, backendDir, frontendDir }) => {
     return;
   }
 
-  const body = buildCommentBody(backend, frontend);
+  const body = buildCommentBody(backend, frontend, runUrl);
 
   const { data: comments } = await github.rest.issues.listComments({
     owner: context.repo.owner,
