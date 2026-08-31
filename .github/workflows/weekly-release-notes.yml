@@ -1,0 +1,53 @@
+name: Release Notes Drafts
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Weekly: every Monday at 9am UTC
+  workflow_dispatch:      # Also allow manual trigger (e.g. for testing)
+
+permissions: {}
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Compute date outputs
+        id: date
+        run: |
+          echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+          echo "tag=weekly-$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+
+      # ─── Generate release notes ───────────────────────────────────────────────
+      # Runs scripts/release-notes/generate.ts, which writes
+      # docs/release-notes/YYYY-MM-DD.md using merged PRs fetched via gh CLI.
+      - name: Generate release notes
+        run: |
+          npx --yes tsx@4 scripts/release-notes/generate.ts \
+            --days=7 \
+            --tag-prefix=weekly
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ─── Create GitHub Release ────────────────────────────────────────────────
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
+        with:
+          tag_name: ${{ steps.date.outputs.tag }}
+          name: "Weekly Update – ${{ steps.date.outputs.today }}"
+          body_path: scripts/release-notes/output/${{ steps.date.outputs.today }}.md
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
