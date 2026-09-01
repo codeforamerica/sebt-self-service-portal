@@ -94,11 +94,11 @@ public sealed record OidcExchangeResult
     public static OidcExchangeResult Fail(
         OidcExchangeFailureReason reason,
         string error) => new()
-    {
-        Success = false,
-        Error = error,
-        FailureReason = reason
-    };
+        {
+            Success = false,
+            Error = error,
+            FailureReason = reason
+        };
 }
 
 /// <summary>
