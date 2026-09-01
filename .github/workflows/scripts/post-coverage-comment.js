@@ -120,9 +120,9 @@ function buildCommentBody(backend, frontend, runUrl) {
     // Full HTML reports (backend: ReportGenerator; frontend: Vitest's html reporter)
     // aren't embeddable in a PR comment -- links to the workflow run's summary
     // page instead. That page doesn't trigger a download itself -- reviewers
-    // land on the run summary and click the "Artifacts" count near the top to
+    // land on the run summary and scroll to "Artifacts" section the bottom to
     // find and download the individual reports.
-    body += `\n[View workflow run](${runUrl}) — click "Artifacts" near the top to download the full HTML coverage reports\n`;
+    body += `\n[View workflow run](${runUrl}) — Scroll down to "Artifacts" near the bottom to download the full HTML coverage reports\n`;
   }
   body += `\n_Informational only, not enforced as a merge gate._`;
   return body;
