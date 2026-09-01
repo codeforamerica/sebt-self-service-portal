@@ -4,12 +4,28 @@ on:
   workflow_dispatch:
     inputs:
       state:
-        description: 'Which state to cut a formal release for. Dispatch this against main — the release tag is created at whatever ref this workflow runs on.'
+        description: 'Which state to cut a formal release for. Dispatch this against main — the release tag is created at end_sha if set, otherwise at whatever ref this workflow runs on.'
         required: true
         type: choice
         options:
           - dc
           - co
+      start_sha:
+        description: 'Optional: manually specify the starting commit SHA for the portal range, instead of auto-resolving it from the live /api/build-info endpoint. Use this when that endpoint is unreachable (e.g. blocked by state WAF/network rules). Leave blank to auto-resolve.'
+        required: false
+        type: string
+      end_sha:
+        description: 'Optional: commit SHA to end the portal range at. Leave blank to use the latest commit on main.'
+        required: false
+        type: string
+      connector_start_sha:
+        description: '(DC only) Optional: manually specify the starting commit SHA for the dc-connector range, instead of auto-resolving it from the live endpoint. Ignored (must be blank) when state is not dc.'
+        required: false
+        type: string
+      connector_end_sha:
+        description: '(DC only) Optional: commit SHA to end the dc-connector range at, instead of auto-resolving the branch/main ref. Ignored (must be blank) when state is not dc.'
+        required: false
+        type: string
       include_chores:
         description: 'Include Chores in this release (normally excluded)'
         required: false
@@ -25,10 +41,29 @@ jobs:
       contents: write
       pull-requests: read
     steps:
+      # actions/checkout's ref: only accepts a branch/tag name or a FULL 40-char
+      # SHA, unlike git itself it won't resolve an abbreviated SHA. Resolve via
+      # the GitHub API first (which does accept abbreviated SHAs) so end_sha can
+      # be given in either form, same as start_sha already can.
+      - name: Resolve end_sha
+        id: end-sha
+        if: inputs.end_sha != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          END_SHA: ${{ inputs.end_sha }}
+        run: |
+          FULL="$(gh api "repos/${REPO}/commits/${END_SHA}" --jq .sha)" || {
+            echo "::error::end_sha '${END_SHA}' could not be resolved via the GitHub API"
+            exit 1
+          }
+          echo "sha=$FULL" >> "$GITHUB_OUTPUT"
+
       - name: Checkout portal
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          ref: ${{ steps.end-sha.outputs.sha || 'main' }}
 
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -46,8 +81,15 @@ jobs:
             *) echo "::error::Unknown state: $STATE"; exit 1 ;;
           esac
 
+      - name: Validate connector SHA overrides are DC-only
+        if: inputs.state != 'dc' && (inputs.connector_start_sha != '' || inputs.connector_end_sha != '')
+        run: |
+          echo "::error::connector_start_sha/connector_end_sha only apply when state=dc — leave them blank for a co release."
+          exit 1
+
       - name: Resolve live portal SHA
         id: old-portal-sha
+        if: inputs.start_sha == ''
         run: |
           SHA="$(./scripts/release-notes/resolve-live-sha.sh --url "${{ steps.prod-url.outputs.url }}" --field buildSha)"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
@@ -68,7 +110,7 @@ jobs:
 
       - name: Determine dc-connector ref
         id: dc-connector-ref
-        if: inputs.state == 'dc'
+        if: inputs.state == 'dc' && inputs.connector_end_sha == ''
         env:
           HEAD_REF: ${{ github.head_ref }}
           REF_NAME: ${{ github.ref_name }}
@@ -113,19 +155,35 @@ jobs:
           echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
           echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
 
+      # Same abbreviated-SHA limitation as Resolve end_sha above, resolved the
+      # same way — dc-connector is private, so this needs the App token rather
+      # than the default GITHUB_TOKEN.
+      - name: Resolve connector_end_sha
+        id: connector-end-sha
+        if: inputs.state == 'dc' && inputs.connector_end_sha != ''
+        env:
+          GH_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
+          CONNECTOR_END_SHA: ${{ inputs.connector_end_sha }}
+        run: |
+          FULL="$(gh api "repos/codeforamerica/sebt-self-service-portal-dc-connector/commits/${CONNECTOR_END_SHA}" --jq .sha)" || {
+            echo "::error::connector_end_sha '${CONNECTOR_END_SHA}' could not be resolved via the GitHub API"
+            exit 1
+          }
+          echo "sha=$FULL" >> "$GITHUB_OUTPUT"
+
       - name: Checkout dc-connector
         if: inputs.state == 'dc'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
           token: ${{ steps.dc-connector-token.outputs.token }}
-          ref: ${{ steps.dc-connector-ref.outputs.ref }}
+          ref: ${{ steps.connector-end-sha.outputs.sha || steps.dc-connector-ref.outputs.ref }}
           path: dc-connector
           fetch-depth: 0
 
       - name: Resolve live dc-connector SHA
         id: old-connector-sha
-        if: inputs.state == 'dc'
+        if: inputs.state == 'dc' && inputs.connector_start_sha == ''
         run: |
           SHA="$(./scripts/release-notes/resolve-live-sha.sh --url "${{ steps.prod-url.outputs.url }}" --field dcConnectorSha --git-dir dc-connector)"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
@@ -142,7 +200,7 @@ jobs:
           mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/portal-notes.md"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SINCE_SHA: ${{ steps.old-portal-sha.outputs.sha }}
+          SINCE_SHA: ${{ inputs.start_sha || steps.old-portal-sha.outputs.sha }}
           STATE_FILTER: ${{ inputs.state }}
           INCLUDE_CHORES: ${{ inputs.include_chores }}
 
@@ -164,7 +222,7 @@ jobs:
           mv "scripts/release-notes/output/$(date +%Y-%m-%d).md" "$RUNNER_TEMP/connector-notes.md"
         env:
           GH_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
-          SINCE_SHA: ${{ steps.old-connector-sha.outputs.sha }}
+          SINCE_SHA: ${{ inputs.connector_start_sha || steps.old-connector-sha.outputs.sha }}
           INCLUDE_CHORES: ${{ inputs.include_chores }}
 
       # ─── Compose and publish ─────────────────────────────────────────────────────
@@ -206,6 +264,7 @@ jobs:
           tag_name: ${{ steps.compose.outputs.date }}-${{ steps.compose.outputs.tag_suffix }}
           name: "${{ steps.compose.outputs.date }} ${{ steps.compose.outputs.state_name }} Release"
           body_path: ${{ runner.temp }}/release-body.md
+          target_commitish: ${{ steps.end-sha.outputs.sha || github.sha }}
           draft: true
           prerelease: false
         env:
