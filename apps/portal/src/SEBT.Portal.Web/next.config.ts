@@ -26,6 +26,10 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY || ''
   },
   experimental: {
+    // @typescript/typescript6 (aliased as `typescript`) exposes tsc6, not tsc.
+    // Next's default CLI mode looks for typescript/bin/tsc; use the TS 6 API until
+    // typescript-eslint supports TS 7.1. CI `pnpm typecheck` still uses TS 7 via @typescript/native.
+    useTypeScriptCli: false,
     // Use our custom sass-loader configuration instead of built-in
     turbopackUseBuiltinSass: false,
     // Tree-shake the design-system barrel so importing a single export

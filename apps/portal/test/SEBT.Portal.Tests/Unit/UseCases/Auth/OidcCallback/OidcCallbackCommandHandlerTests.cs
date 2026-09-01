@@ -34,11 +34,11 @@ public class OidcCallbackCommandHandlerTests
         string code = "auth-code",
         string? state = TestState,
         string? sessionId = TestSessionId) => new()
-    {
-        Code = code,
-        State = state,
-        SessionId = sessionId
-    };
+        {
+            Code = code,
+            State = state,
+            SessionId = sessionId
+        };
 
     private static PreAuthSession CreateSession(
         PreAuthSessionPhase phase = PreAuthSessionPhase.Created,
