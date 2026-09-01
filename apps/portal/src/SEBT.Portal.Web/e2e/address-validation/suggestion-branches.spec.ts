@@ -29,10 +29,14 @@ async function mockSuggestionThenValid(page: Page): Promise<Array<Record<string,
     if (route.request().method() !== 'PUT') return route.fallback()
     puts += 1
     if (puts === 1) {
+      // 422, matching HouseholdController: any address that isn't valid — suggestion
+      // included — comes back as UnprocessableEntity carrying the structured body.
+      // The client only unwraps a suggestion from the 422 branch, so mocking 200 here
+      // would skip that path entirely.
       return route.fulfill({
-        status: 200,
+        status: 422,
         contentType: 'application/json',
-        body: JSON.stringify({ status: 'suggestion', suggestedAddress: SUGGESTED })
+        body: JSON.stringify({ status: 'suggestion', reason: 'suggested', suggestedAddress: SUGGESTED })
       })
     }
     followUpBodies.push(route.request().postDataJSON() as Record<string, unknown>)

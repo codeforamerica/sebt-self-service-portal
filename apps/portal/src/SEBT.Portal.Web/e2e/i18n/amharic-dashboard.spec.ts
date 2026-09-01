@@ -8,8 +8,14 @@ import { skipUnlessState } from '../fixtures/state'
 // Amharic (DC-only) is verified with a screenshot diff rather than string
 // asserts — the team has no Amharic speakers, so the pixels are the contract:
 // any rendering or copy regression shows up against the committed baseline.
-// Baselines are per-platform; regenerate with `--update-snapshots` (use the
-// Playwright Docker image for the Linux baselines CI compares against).
+// Baselines are per-platform. Regenerate with `--update-snapshots=all`: the
+// default mode only rewrites a baseline whose diff already exceeds
+// maxDiffPixelRatio, so a small contaminant (a dev-tools overlay, say) survives
+// a plain `--update-snapshots`.
+// For the Linux baseline CI compares against, run the server *inside* the
+// Playwright container rather than pointing it at a host server — a split
+// host/container origin never reaches the authenticated dashboard and silently
+// captures the sign-in page instead.
 test.describe('Amharic on the authenticated dashboard', () => {
   test.beforeEach(() => skipUnlessState('dc'))
 
@@ -23,6 +29,11 @@ test.describe('Amharic on the authenticated dashboard', () => {
     // partially loaded font repaints every glyph and fails the whole diff.
     // Hydration can be slow on CI-class hardware, so give the language flip time.
     await expect(page.locator('html')).toHaveAttribute('lang', 'am', { timeout: 20_000 })
+    // Prove we're on the authenticated dashboard before capturing. Without this the
+    // screenshot silently accepts whatever rendered — an unauthenticated run captures
+    // the sign-in page, and because the baseline is generated the same way, the diff
+    // still passes while asserting nothing about the dashboard.
+    await expect(page.locator('#enrolled-children-heading')).toBeVisible({ timeout: 20_000 })
     await page.waitForLoadState('networkidle')
     await page.evaluate(() => document.fonts.ready)
 
