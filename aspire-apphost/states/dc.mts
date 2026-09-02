@@ -2,7 +2,6 @@
 // standing in for the state's ESA_LINK system, and guardians authenticate by email OTP,
 // so DC also needs a local SMTP sink.
 
-import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { EndpointProperty, refExpr } from "../.aspire/modules/aspire.mjs";
@@ -14,29 +13,9 @@ import type {
   SqlServerDatabaseResource,
   SqlServerServerResource,
 } from "../.aspire/modules/aspire.mjs";
+import { repoRoot } from "../config.mjs";
+import type { AppHostConfig } from "../config.mjs";
 import type { SharedResources } from "./shared.mjs";
-
-/** states/ -> aspire-apphost/ -> repo root. */
-const repoRoot = resolve(import.meta.dirname, "../..");
-
-/**
- * The DC connector is a separate repository, and its Dockerfile.seed plus scripts/sql
- * are the source of DcSource's schema and test data, so the checkout must be on disk.
- * Defaults to a sibling of this repo; override with DC_CONNECTOR_PATH.
- */
-function resolveConnectorPath(): string {
-  const path =
-    process.env.DC_CONNECTOR_PATH ??
-    resolve(repoRoot, "..", "sebt-self-service-portal-dc-connector");
-
-  if (!existsSync(path)) {
-    throw new Error(
-      `DC connector checkout not found at '${path}'. Clone it beside this repo, or set DC_CONNECTOR_PATH.`,
-    );
-  }
-
-  return path;
-}
 
 export interface DcResources {
   /** SQL Server standing in for DC's ESA_LINK system. */
@@ -53,10 +32,11 @@ export interface DcResources {
 
 export async function addDcResources(
   builder: DistributedApplicationBuilder,
+  config: AppHostConfig,
   shared: SharedResources,
   api: ProjectResource,
 ): Promise<DcResources> {
-  const connectorPath = resolveConnectorPath();
+  const connectorPath = config.dcConnectorPath;
 
   // A separate server rather than another database on the portal's instance: DcSource
   // represents an external state system the portal does not own, and collapsing the two

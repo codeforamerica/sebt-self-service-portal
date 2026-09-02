@@ -45,6 +45,10 @@
     "test:scripts": "tsx --test scripts/**/*.test.ts",
     "prepare": "husky",
     "aspire:start": "pnpm --dir aspire-apphost run aspire:start",
+    "aspire:dc": "pnpm --dir aspire-apphost run aspire:dc",
+    "aspire:co": "pnpm --dir aspire-apphost run aspire:co",
+    "aspire:stop": "pnpm --dir aspire-apphost run aspire:stop",
+    "aspire:status": "pnpm --dir aspire-apphost run aspire:status",
     "aspire:build": "pnpm --dir aspire-apphost run aspire:build",
     "aspire:dev": "pnpm --dir aspire-apphost run aspire:dev"
   },

@@ -8,9 +8,7 @@ import type {
   ProjectResource,
   RedisResource,
 } from "../.aspire/modules/aspire.mjs";
-
-/** Local-dev Redis password. Aspire requires auth; compose runs Redis unauthenticated. */
-const defaultRedisPassword = "LocalDevRedis1!";
+import type { AppHostConfig } from "../config.mjs";
 
 export interface CoResources {
   /** Distributed cache backing the CBMS household cache. */
@@ -19,12 +17,13 @@ export interface CoResources {
 
 export async function addCoResources(
   builder: DistributedApplicationBuilder,
+  config: AppHostConfig,
   api: ProjectResource,
 ): Promise<CoResources> {
   // Supplied explicitly rather than letting Aspire generate it, so the value can be
   // handed to the API and used with redis-cli.
   const redisPassword = await builder.addParameter("redis-password", {
-    value: process.env.REDIS_PASSWORD ?? defaultRedisPassword,
+    value: config.redisPassword,
     secret: true,
   });
 

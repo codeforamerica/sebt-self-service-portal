@@ -4,7 +4,7 @@ import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig({
-  files: ['apphost.mts', 'states/**/*.mts'],
+  files: ['apphost.mts', 'config.mts', 'states/**/*.mts'],
   extends: [tseslint.configs.base],
   languageOptions: {
     parserOptions: {

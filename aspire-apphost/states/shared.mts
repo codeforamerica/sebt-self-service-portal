@@ -7,13 +7,7 @@ import type {
   SqlServerDatabaseResource,
   SqlServerServerResource,
 } from "../.aspire/modules/aspire.mjs";
-
-/**
- * Local-dev SA password, matching compose.yaml and appsettings.json. Never used in a
- * deployed environment. Override by exporting MSSQL_SA_PASSWORD — the AppHost does not
- * read `.env` files the way Docker Compose does.
- */
-const defaultSaPassword = "YourStrong@Passw0rd";
+import type { AppHostConfig } from "../config.mjs";
 
 export interface SharedResources {
   /** SQL Server instance hosting the portal's own database. */
@@ -26,11 +20,12 @@ export interface SharedResources {
 
 export async function addSharedResources(
   builder: DistributedApplicationBuilder,
+  config: AppHostConfig,
 ): Promise<SharedResources> {
   // Explicit rather than Aspire's generated password: the value must stay stable so the
   // persistent data volume keeps accepting it and external tooling connects unchanged.
   const saPassword = await builder.addParameter("sql-password", {
-    value: process.env.MSSQL_SA_PASSWORD ?? defaultSaPassword,
+    value: config.sqlPassword,
     secret: true,
   });
 

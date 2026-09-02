@@ -11,12 +11,9 @@ import type {
   NextJsAppResource,
   ProjectResource,
 } from "../.aspire/modules/aspire.mjs";
+import { repoRoot } from "../config.mjs";
+import type { AppHostConfig } from "../config.mjs";
 import type { SharedResources } from "./shared.mjs";
-
-/** states/ -> aspire-apphost/ -> repo root. */
-const repoRoot = resolve(import.meta.dirname, "../..");
-
-export type SupportedState = "dc" | "co";
 
 export interface WebApps {
   /** The portal itself. */
@@ -27,7 +24,7 @@ export interface WebApps {
 
 export async function addApi(
   builder: DistributedApplicationBuilder,
-  state: SupportedState,
+  config: AppHostConfig,
   shared: SharedResources,
 ): Promise<ProjectResource> {
   // The `http` launch profile supplies ASPNETCORE_ENVIRONMENT and
@@ -38,7 +35,7 @@ export async function addApi(
       resolve(repoRoot, "apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj"),
       { launchProfileOrOptions: "http" },
     )
-    .withEnvironment("STATE", state)
+    .withEnvironment("STATE", config.state)
     .withEnvironment("ConnectionStrings__DefaultConnection", shared.portalDb)
     .withOtlpExporter()
     .waitFor(shared.portalDb);
@@ -57,7 +54,7 @@ export async function addApi(
 
 export async function addWebApps(
   builder: DistributedApplicationBuilder,
-  state: SupportedState,
+  config: AppHostConfig,
   api: ProjectResource,
 ): Promise<WebApps> {
   const apiEndpoint = await api.getEndpoint("http");
@@ -67,11 +64,11 @@ export async function addWebApps(
   const web = await builder
     .addNextJsApp("web", resolve(repoRoot, "apps/portal/src/SEBT.Portal.Web"))
     .withPnpm()
-    .withEnvironment("NEXT_PUBLIC_STATE", state)
+    .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
     .waitFor(api);
 
-  if (state !== "co") {
+  if (config.state !== "co") {
     return { web };
   }
 
@@ -81,7 +78,7 @@ export async function addWebApps(
       resolve(repoRoot, "apps/portal/src/SEBT.EnrollmentChecker.Web"),
     )
     .withPnpm()
-    .withEnvironment("NEXT_PUBLIC_STATE", state)
+    .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
     .waitFor(api);
 
