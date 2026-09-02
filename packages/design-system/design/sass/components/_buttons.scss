@@ -2,18 +2,28 @@
 ----------------------------------------
 Button Overrides
 ----------------------------------------
-Primary button styling per Figma design.
-Background: secondary, Border: 1px secondary, Padding: 12px 20px
+Button styling per Figma design.
+Colors come from per-state semantic tokens (theme-button-* in
+design/states/{state}.json, emitted to _uswds-theme-semantic.scss at build
+time), so each state configures button colors without SCSS overrides.
+Padding: 12px 20px
 Typography: 16px, Bold (700), Line height 24px
+Hover/active text colors are intentionally not set here; USWDS base rules
+own them (solid hover text goes white, outline hover/active text follows
+primary-dark/darker).
+Disabled colors stay on the USWDS disabled-* roles rather than semantic
+tokens: they carry the same meaning in every state, so there is nothing for
+a state to configure.
 ----------------------------------------
 */
 
 @use 'uswds-core' as *;
+@use '../uswds-theme-semantic' as semantic;
 
 .usa-button {
-  background-color: color('secondary');
-  border: 1px solid color('secondary');
-  color: color('ink');
+  background-color: color(semantic.$theme-button-bg);
+  border: 1px solid color(semantic.$theme-button-bg);
+  color: color(semantic.$theme-button-text);
   font-size: 16px;
   font-weight: 700;
   line-height: 24px;
@@ -21,13 +31,23 @@ Typography: 16px, Bold (700), Line height 24px
   width: auto;
 
   &:hover {
-    background-color: color('secondary-dark');
-    border-color: color('secondary-dark');
+    background-color: color(semantic.$theme-button-bg-hover);
+    border-color: color(semantic.$theme-button-bg-hover);
   }
 
   &:active {
-    background-color: color('secondary-darker');
-    border-color: color('secondary-darker');
+    background-color: color(semantic.$theme-button-bg-active);
+    border-color: color(semantic.$theme-button-bg-active);
+  }
+
+  // Resting text stays ink regardless of the state's theme-button-text
+  // (which styles solid buttons and can be white). :where() requires the
+  // base class without raising specificity above (0,1,0), so elements
+  // carrying only usa-button--unstyled (e.g. usa-link buttons) keep USWDS's
+  // link color, and USWDS's own .usa-button--unstyled:hover/:active link
+  // colors still win on interaction via their higher specificity.
+  &:where(.usa-button--unstyled) {
+    color: color('ink');
   }
 
   // USWDS's button-disabled mixin sets background and text but never
@@ -52,7 +72,6 @@ Typography: 16px, Bold (700), Line height 24px
     margin: 0;
     padding: 0;
     text-align: left;
-    // Note: intentionally no color override so companion classes (e.g. usa-link) can set color
 
     &:hover,
     &:active {
@@ -63,20 +82,20 @@ Typography: 16px, Bold (700), Line height 24px
   }
 
   &--outline {
-    background-color: color('white');
-    border: 2px solid color('secondary');
+    background-color: color(semantic.$theme-button-outline-bg);
+    border: 2px solid color(semantic.$theme-button-outline-border);
     box-shadow: none;
-    color: color('ink');
+    color: color(semantic.$theme-button-outline-text);
 
     &:hover {
-      background-color: color('secondary-lighter');
-      border-color: color('secondary-dark');
+      background-color: color(semantic.$theme-button-outline-bg-hover);
+      border-color: color(semantic.$theme-button-outline-border-hover);
       box-shadow: none;
     }
 
     &:active {
-      background-color: color('secondary-light');
-      border-color: color('secondary-darker');
+      background-color: color(semantic.$theme-button-outline-bg-active);
+      border-color: color(semantic.$theme-button-outline-border-active);
       box-shadow: none;
     }
 
@@ -84,69 +103,6 @@ Typography: 16px, Bold (700), Line height 24px
     // button by 4px per axis at the moment of disabling. box-shadow: none
     // suppresses USWDS's inset disabled stroke, which would double-stroke with
     // our real border.
-    &:disabled,
-    &:disabled:hover,
-    &:disabled:active {
-      background-color: color('white');
-      border-color: color('disabled-lighter');
-      box-shadow: none;
-      color: color('disabled');
-    }
-  }
-}
-
-// Temporary CO override: DC uses secondary (gold) for buttons, but CO's secondary
-// is red — intended for error/validation states, not interactive controls.
-// CO mockups show buttons in the primary teal range.
-// TODO: Resolve with a proper per-state button token mapping so this override
-// is unnecessary. See design token discussion re: semantic color roles.
-html[data-state='co'] {
-  .usa-button:not(.usa-language__link):not(.usa-button--unstyled):not(.usa-button--outline):not(.usa-button--mycolorado) {
-    background-color: color('primary');
-    border-color: color('primary');
-    color: color('white');
-
-    &:hover {
-      background-color: color('primary-dark');
-      border-color: color('primary-dark');
-    }
-
-    &:active {
-      background-color: color('primary-darker');
-      border-color: color('primary-darker');
-    }
-
-    // This chain's specificity buries USWDS's .usa-button:disabled rule, so
-    // without an explicit disabled branch a disabled CO button keeps its full
-    // teal fill. Mirrors the base .usa-button:disabled treatment above.
-    &:disabled,
-    &:disabled:hover,
-    &:disabled:active {
-      background-color: color('disabled-lighter');
-      border-color: color('disabled-lighter');
-      color: color('disabled-dark');
-    }
-  }
-
-  .usa-button--outline:not(.usa-language__link):not(.usa-button--mycolorado) {
-    background-color: color('white');
-    border: 2px solid color('primary');
-    color: color('primary');
-
-    &:hover {
-      background-color: color('primary-lightest');
-      border-color: color('primary-dark');
-      color: color('primary-dark');
-    }
-
-    &:active {
-      background-color: color('primary-lighter');
-      border-color: color('primary-darker');
-      color: color('primary-darker');
-    }
-
-    // Same reason as the filled chain above; mirrors the base outline
-    // disabled treatment.
     &:disabled,
     &:disabled:hover,
     &:disabled:active {

@@ -6,6 +6,9 @@ using SEBT.Portal.Infrastructure.Data.Entities;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
 
+/// <summary>
+/// Maps encrypted <see cref="UserEntity"/> columns to and from the <see cref="User"/> domain model.
+/// </summary>
 internal static class UserEncryptedFieldMapper
 {
     internal static User ToDomain(UserEntity entity, IPiiSymmetricEncryption crypto)

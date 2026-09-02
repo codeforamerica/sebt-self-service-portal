@@ -32,5 +32,14 @@ export default async function globalSetup(): Promise<void> {
 
   await waitForOk(API_HEALTH_URL, 'API')
   await waitForOk(WEB_URL, 'Web app')
-  await waitForOk(`${MAILPIT_API_URL}/api/v1/info`, 'Mailpit')
+  // Mailpit backs the DC OTP flow only; set MAILPIT_API_URL='' for stacks
+  // (e.g. Colorado/Keycloak) that don't run it.
+  if (MAILPIT_API_URL !== '') {
+    await waitForOk(`${MAILPIT_API_URL}/api/v1/info`, 'Mailpit')
+  }
+  // The Colorado stack signs in through the local Keycloak stand-in; wait for
+  // its discovery document when the URL is provided.
+  if (process.env.KEYCLOAK_DISCOVERY_URL) {
+    await waitForOk(process.env.KEYCLOAK_DISCOVERY_URL, 'Keycloak')
+  }
 }

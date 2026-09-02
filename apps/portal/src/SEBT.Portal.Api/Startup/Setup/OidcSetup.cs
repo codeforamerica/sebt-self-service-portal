@@ -1,4 +1,6 @@
 using SEBT.Portal.Api.Services;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Services;
 
 namespace SEBT.Portal.Api.Startup.Setup;
 

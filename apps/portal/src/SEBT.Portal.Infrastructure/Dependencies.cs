@@ -10,11 +10,13 @@ using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.StateConnector;
 using SEBT.Portal.Kernel.Services;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Infrastructure.StateConnector;
 using StackExchange.Redis;
 using SEBT.Portal.StatesPlugins.Interfaces.Services;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
@@ -83,15 +85,18 @@ public static class Dependencies
             client.Timeout = TimeSpan.FromSeconds(Math.Clamp(smarty.TimeoutSeconds, 1, 120));
         });
 
-        services.AddTransient<SmartyAddressUpdateService>();
-        services.AddTransient<PassThroughAddressUpdateService>();
-        services.AddTransient<IAddressUpdateService>(sp =>
+        services.AddTransient<SmartyAddressVerificationService>();
+        services.AddTransient<PassThroughAddressVerificationService>();
+        services.AddTransient<IAddressVerificationService>(sp =>
         {
             var smarty = sp.GetRequiredService<IOptionsSnapshot<SmartySettings>>().Value;
             return smarty.Enabled
-                ? sp.GetRequiredService<SmartyAddressUpdateService>()
-                : sp.GetRequiredService<PassThroughAddressUpdateService>();
+                ? sp.GetRequiredService<SmartyAddressVerificationService>()
+                : sp.GetRequiredService<PassThroughAddressVerificationService>();
         });
+
+        // Diagnostics-only: exercises the Smarty verification error paths with canned responses.
+        services.AddScoped<IAddressVerificationDiagnostics, SmartyAddressVerificationDiagnostics>();
 
         // Per-state blocked-address data file. CO ships a CSV
         // (county/government office addresses) embedded in this assembly; other
@@ -119,6 +124,13 @@ public static class Dependencies
         services.AddSingleton<IPiiSymmetricEncryption>(sp =>
             PiiSymmetricEncryptionFactory.Create(sp.GetRequiredService<IOptions<PiiEncryptionSettings>>()));
         services.AddSingleton<IEmailLookupHasher, EmailLookupHasher>();
+
+        // State connector ports: adapters that map Core models to the plugin contract.
+        // The plugin interfaces they wrap always resolve because the Api composition
+        // layer registers defaults for any service the loaded plugin does not export.
+        services.AddScoped<IStateEnrollmentCheckService, PluginEnrollmentCheckService>();
+        services.AddScoped<IStateAddressUpdateService, PluginAddressUpdateService>();
+        services.AddScoped<IStateCardReplacementService, PluginCardReplacementService>();
 
         // Expose SocureSettings directly for use case injection (avoids IOptions dependency in UseCases layer).
         // Scoped so each request gets a consistent snapshot, supporting live AppConfig reload.

@@ -1961,6 +1961,50 @@
       "$type": "color",
       "$value": "{gold-70v}"
     },
+    "theme-button-bg": {
+      "$type": "color",
+      "$value": "{theme-secondary}"
+    },
+    "theme-button-bg-hover": {
+      "$type": "color",
+      "$value": "{theme-secondary-dark}"
+    },
+    "theme-button-bg-active": {
+      "$type": "color",
+      "$value": "{theme-secondary-darker}"
+    },
+    "theme-button-text": {
+      "$type": "color",
+      "$value": "{ink}"
+    },
+    "theme-button-outline-bg": {
+      "$type": "color",
+      "$value": "{white}"
+    },
+    "theme-button-outline-border": {
+      "$type": "color",
+      "$value": "{theme-secondary}"
+    },
+    "theme-button-outline-border-hover": {
+      "$type": "color",
+      "$value": "{theme-secondary-dark}"
+    },
+    "theme-button-outline-border-active": {
+      "$type": "color",
+      "$value": "{theme-secondary-darker}"
+    },
+    "theme-button-outline-text": {
+      "$type": "color",
+      "$value": "{ink}"
+    },
+    "theme-button-outline-bg-hover": {
+      "$type": "color",
+      "$value": "{theme-secondary-lighter}"
+    },
+    "theme-button-outline-bg-active": {
+      "$type": "color",
+      "$value": "{theme-secondary-light}"
+    },
     "theme-link-color": {
       "$type": "color",
       "$value": "{cyan-60}"

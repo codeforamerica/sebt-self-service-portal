@@ -1141,6 +1141,14 @@ public class MockHouseholdRepository : IHouseholdRepository
         }
 
         var digits = Regex.Replace(phone.Trim(), @"\D", "");
+
+        // Resolved identifiers now arrive in E.164 (+1NNNNNNNNNN); strip the leading
+        // US country code so they match the 10-digit keys the personas are seeded with.
+        if (digits.Length == 11 && digits[0] == '1')
+        {
+            digits = digits[1..];
+        }
+
         return string.IsNullOrEmpty(digits) ? null : digits;
     }
 

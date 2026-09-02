@@ -162,10 +162,42 @@ describe('DashboardContent', () => {
       expect(screen.getByRole('alert')).toBeInTheDocument()
     })
 
-    expect(screen.getByRole('link', { name: /apply/i })).toHaveAttribute(
-      'href',
-      'https://forms.sunbucks.dc.gov/s3/app2026'
+    // DC applications are closed (DC-701): the empty-state alert renders without an apply link.
+    expect(screen.queryByRole('link', { name: /apply/i })).toBeNull()
+  })
+
+  it('shows the benefit-expiration banner on a populated dashboard while applications are closed', async () => {
+    // The feature-flags mock returns false for enable_apply, i.e. applications closed.
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Summer 2026 DC SUN Bucks were issued beginning in June 2026/)
+      ).toBeInTheDocument()
+    })
+    expect(
+      screen.getByText('Check each enrolled child here to see when their benefits expire.')
+    ).toBeInTheDocument()
+  })
+
+  it('does not show the benefit-expiration banner on the empty state', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [],
+          applications: []
+        })
+      })
     )
+
+    renderWithProviders(<DashboardContent />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText(/Summer 2026 DC SUN Bucks were issued/)).toBeNull()
   })
 
   it('renders UserProfileCard in empty state when userProfile available', async () => {

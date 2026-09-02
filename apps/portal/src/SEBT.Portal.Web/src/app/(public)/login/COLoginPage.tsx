@@ -2,7 +2,7 @@
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
-import { TextLink, getStateLinks } from '@sebt/design-system'
+import { RichText, TextLink, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import { MyColoradoLogo } from './MyColoradoLogo'
 
@@ -56,7 +56,9 @@ export function COLoginPage({ state }: { state: StateCode }) {
             {t('title')}
           </h1>
 
-          <p className="margin-top-4 font-sans-sm">{t('logInDisclaimerBody1')}</p>
+          <p className="margin-top-4 font-sans-sm">
+            <RichText inline>{t('logInDisclaimerBody1')}</RichText>
+          </p>
 
           <div className="margin-top-4">
             <button
@@ -84,8 +86,7 @@ export function COLoginPage({ state }: { state: StateCode }) {
             </button>
           </div>
 
-          <p className="margin-top-4 margin-bottom-1 font-sans-sm">{t('logInDisclaimerBody2')}</p>
-          <p className="margin-top-0 font-sans-sm">
+          <p className="margin-top-4 font-sans-sm">
             <TextLink
               href={links.external.contactUsAssistance}
               target="_blank"

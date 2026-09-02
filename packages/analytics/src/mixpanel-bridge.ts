@@ -6,8 +6,7 @@
  * @see docs/tdd/analytics-data-layer.md — "DOM Bridge & Sample Integration"
  */
 
-import type { DataLayerEvent, DataLayerRoot } from './data-layer'
-import { PAGE_LOAD } from './events'
+import { type DataLayerRoot, subscribeToPageViews } from './data-layer'
 
 /** Subset of the Mixpanel SDK API used by the bridge. */
 interface MixpanelLike {
@@ -25,16 +24,6 @@ declare global {
 function attachBridge(dl: DataLayerRoot): () => void {
   const mp = window.mixpanel!
 
-  function handlePageViewed(event: Event) {
-    const detail = (event as CustomEvent).detail as { data?: Record<string, unknown> } | undefined
-    // Fall back to mp.track for older SDK builds without track_pageview
-    if (mp.track_pageview) {
-      mp.track_pageview(detail?.data)
-    } else {
-      mp.track('page_view', detail?.data)
-    }
-  }
-
   function handleEventTracked(event: Event) {
     const detail = (event as CustomEvent).detail as {
       eventName?: string
@@ -49,26 +38,24 @@ function attachBridge(dl: DataLayerRoot): () => void {
     mp.track(detail.eventName, detail.eventData)
   }
 
-  const pageViewedEvent = dl.eventTypes.PAGE_VIEWED!
   const eventTrackedEvent = dl.eventTypes.EVENT_TRACKED!
-
-  document.addEventListener(pageViewedEvent, handlePageViewed)
   document.addEventListener(eventTrackedEvent, handleEventTracked)
 
-  // Replay the most recent page_load that fired before the bridge attached.
-  // dl.event[] is append-only — the last PAGE_LOAD entry is the current page.
-  const missed = [...dl.event].reverse().find((e: DataLayerEvent) => e.eventName === PAGE_LOAD)
-  if (missed) {
+  // Page views go through the shared subscription, which also replays the
+  // page_load that fired before this bridge attached — Mixpanel loads from a CDN,
+  // so it always attaches after the first page_load. Fall back to mp.track for
+  // older SDK builds without track_pageview.
+  const detachPageViews = subscribeToPageViews(dl, (_eventName, eventData) => {
     if (mp.track_pageview) {
-      mp.track_pageview(missed.eventData)
+      mp.track_pageview(eventData)
     } else {
-      mp.track('page_view', missed.eventData)
+      mp.track('page_view', eventData)
     }
-  }
+  })
 
   return () => {
-    document.removeEventListener(pageViewedEvent, handlePageViewed)
     document.removeEventListener(eventTrackedEvent, handleEventTracked)
+    detachPageViews()
   }
 }
 

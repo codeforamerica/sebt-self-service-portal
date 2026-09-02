@@ -1,18 +1,24 @@
 namespace SEBT.Portal.Api.Models;
 
 /// <summary>
-/// Response model for GET /api/auth/status. Returned only on 200 — a 401 means the caller
-/// is not authenticated. Carries non-sensitive session claims the SPA needs to drive UI
-/// decisions (IAL gating, analytics) now that the raw JWT lives in an HttpOnly cookie
-/// and cannot be decoded client-side.
+/// Response model for GET /api/auth/status. Carries non-sensitive session claims the SPA
+/// needs to drive UI decisions (IAL gating, analytics) now that the raw JWT lives in an
+/// HttpOnly cookie and cannot be decoded client-side. Anonymous callers get this same
+/// shape with <c>IsAuthorized</c> false and every claim null.
 /// </summary>
-/// <param name="IsAuthorized">Always true when this response is returned (200 OK).</param>
+/// <param name="IsAuthorized">
+/// True when the caller has a valid session; false for anonymous callers (no cookie, or an
+/// expired/tampered/revoked session), in which case all other fields are null.
+/// </param>
 /// <param name="UserId">
 /// Stable, non-PII portal user identifier (the portal's own user UUID). Surfaced for
 /// analytics so events can be correlated per-user across page loads without exposing
 /// email or other PII to vendor tooling. Null when the claim is absent.
 /// </param>
-/// <param name="Email">The email address of the authenticated user.</param>
+/// <param name="Email">
+/// The email address of the signed-in user. Null for anonymous callers, and null when
+/// the claim is absent from the session.
+/// </param>
 /// <param name="Ial">
 /// Identity assurance level claim from the JWT ("0", "1", "1plus", or "2"). Null when unknown.
 /// </param>
