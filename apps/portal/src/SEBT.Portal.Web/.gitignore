@@ -87,3 +87,4 @@ src/lib/generated-locale-resources.ts
 
 # Generated per-state USWDS stylesheets (auto-generated from design/states/*.json)
 public/themes/
+design/font-manifest.json

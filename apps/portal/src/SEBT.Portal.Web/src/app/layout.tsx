@@ -1,5 +1,5 @@
 import { AppShell } from '@/components/AppShell'
-import { getFonts } from '@/design/fonts'
+import fontManifest from '@/design/font-manifest.json'
 import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
 import { getRuntimeConfig } from '@/lib/runtime-config'
@@ -97,7 +97,12 @@ export default async function RootLayout({
   const nonce = (await headers()).get('x-nonce') ?? undefined
   // Resolved per request so a config change takes effect on release, not rebuild.
   const state = getState()
-  const { primaryFont, headingFont } = getFonts(state)
+  // The theme sits outside Next's asset pipeline, so it has no content hash to
+  // bust caches on deploy. Key it to the build instead, or a returning visitor
+  // can be served the previous release's stylesheet.
+  const themeCacheKey = process.env.NEXT_PUBLIC_BUILD_SHA
+    ? `?v=${process.env.NEXT_PUBLIC_BUILD_SHA}`
+    : ''
   const runtimeConfig = getRuntimeConfig()
   const { gaId, mixpanelToken, amplitudeApiKey, siteImproveId } = runtimeConfig
 
@@ -105,16 +110,29 @@ export default async function RootLayout({
     <html
       lang="en"
       data-state={state}
-      className={`usa-js-loading ${primaryFont.variable} ${headingFont.variable}`}
+      className="usa-js-loading"
     >
       <head>
         {/* The USWDS theme is per state and cannot be bundled: Sass configures
             uswds-core once per compilation, so each state is compiled to its own
             stylesheet (public/themes/) and linked once STATE is known at request
             time. A visitor downloads one theme, not every state's. */}
+        {/* Preload only this state's faces. They are declared as @font-face in the
+            theme stylesheet above, so without this the browser would not discover
+            them until the stylesheet parses. */}
+        {(fontManifest[state as keyof typeof fontManifest] ?? []).map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            as="font"
+            type="font/woff2"
+            href={href}
+            crossOrigin="anonymous"
+          />
+        ))}
         <link
           rel="stylesheet"
-          href={`/themes/theme-${state}.css`}
+          href={`/themes/theme-${state}.css${themeCacheKey}`}
         />
         {/* Build SHA exposed for identifying the deployed commit per environment.
             Inlined at build time from NEXT_PUBLIC_BUILD_SHA (set to the GitHub

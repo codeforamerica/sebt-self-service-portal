@@ -52,7 +52,7 @@ const GOOGLE_FONTS_MAP = {
 // the generator does not bundle fonts. Each font dir should carry its license
 // (OFL.txt) and a SOURCE.md noting where the file came from and what, if any,
 // subsetting was done.
-const LOCAL_FONTS_MAP = {
+export const LOCAL_FONTS_MAP = {
   'museo slab': {
     src: [
       {
@@ -138,9 +138,6 @@ export function extractFonts(tokensJson) {
     heading: read('theme-font-type-serif')
   }
 }
-
-// Keep in step with generate-all-tokens.js and generate-theme-css.js.
-const ALL_STATES = ['dc', 'co']
 
 function fileHeader(state, sourceLabel) {
   return `/**
@@ -273,65 +270,6 @@ export const headingFont = primaryFont`)
   return `${sections.join('\n\n')}\n`
 }
 
-/**
- * Generate a fonts module covering every state, plus the single-state exports.
- *
- * The portal ships one artifact for all states, so it cannot know at build time
- * which typefaces it will need — it applies the right pair's CSS-variable classes
- * once STATE is read at runtime. Every state's faces are therefore declared here.
- * `preload` is off for all of them: preloading is a build-time hint and would
- * otherwise fetch the fonts of states this process will never render.
- *
- * `primaryFont` / `headingFont` remain exported for the state named by STATE, so
- * per-state consumers (the enrollment checker) keep working unchanged.
- */
-export function generateAllStatesFontsTs(fontsByState, activeState) {
-  const imports = new Set()
-  const blocks = []
-  const entries = []
-
-  for (const [state, fonts] of Object.entries(fontsByState)) {
-    const prefix = state.toLowerCase()
-    const bodyName = `${prefix}PrimaryFont`
-    const body = buildFontLoader(fonts.body, { variable: '--font-primary', exportName: bodyName })
-    if (body.import) imports.add(body.import)
-    blocks.push(body.declaration.replace('export const', 'const').replace('preload: true', 'preload: false'))
-
-    let headingName = bodyName
-    if (fonts.heading && fonts.heading !== fonts.body) {
-      headingName = `${prefix}HeadingFont`
-      const heading = buildFontLoader(fonts.heading, { variable: '--font-heading', exportName: headingName })
-      if (heading.import) imports.add(heading.import)
-      blocks.push(heading.declaration.replace('export const', 'const').replace('preload: true', 'preload: false'))
-    }
-    entries.push(`  ${prefix}: { primaryFont: ${bodyName}, headingFont: ${headingName} }`)
-  }
-
-  const activePrefix = activeState.toLowerCase()
-  const sections = [
-    fileHeader('all states', `design/states/{${Object.keys(fontsByState).join(',')}}.json (active: ${activeState})`),
-    imports.size ? [...imports].join('\n') : null,
-    ...blocks,
-    `/** Every state's font pair. The portal picks one once STATE is known at runtime. */
-export const fontsByState = {
-${entries.join(',\n')}
-} as const
-
-export type FontState = keyof typeof fontsByState
-
-/** Falls back to the first configured state when STATE names one we have no tokens for. */
-export function getFonts(state: string) {
-  return fontsByState[state?.toLowerCase() as FontState] ?? fontsByState.${activePrefix}
-}
-
-// Single-state exports for per-state consumers (the enrollment checker).
-export const primaryFont = fontsByState.${activePrefix}.primaryFont
-export const headingFont = fontsByState.${activePrefix}.headingFont`
-  ].filter(Boolean)
-
-  return `${sections.join('\n\n')}\n`
-}
-
 function main() {
   try {
     const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
@@ -355,23 +293,7 @@ function main() {
 
     assertLocalFontFilesExist([fonts.body, fonts.heading], dirname(outputPath))
 
-    // ALL_STATE_FONTS=true emits every state's faces so one artifact can render any
-    // state; the portal sets it because STATE is only known at runtime there.
-    let fontsTs
-    if (process.env.ALL_STATE_FONTS === 'true') {
-      const byState = {}
-      for (const candidate of ALL_STATES) {
-        const path = join(rootDir, 'design', 'states', `${candidate}.json`)
-        if (!existsSync(path)) continue
-        const candidateFonts = extractFonts(JSON.parse(readFileSync(path, 'utf8')))
-        assertLocalFontFilesExist([candidateFonts.body, candidateFonts.heading], dirname(outputPath))
-        byState[candidate] = candidateFonts
-      }
-      console.log(`   Emitting fonts for: ${Object.keys(byState).join(', ')}`)
-      fontsTs = generateAllStatesFontsTs(byState, state)
-    } else {
-      fontsTs = generateFontsTs(fonts, state)
-    }
+    const fontsTs = generateFontsTs(fonts, state)
     mkdirSync(dirname(outputPath), { recursive: true })
     writeFileSync(outputPath, fontsTs, 'utf8')
 
