@@ -4,7 +4,7 @@ Date: 2026-09-01
 
 ## Status
 
-Accepted for the portal's vendor and analytics configuration. `NEXT_PUBLIC_STATE` is explicitly out of scope; see "Where we stop".
+Accepted for the portal's browser-facing configuration, including the state it serves.
 
 ## Context
 
@@ -30,11 +30,16 @@ The middleware in `proxy.ts` made this sharper. It gates CSP `connect-src`/`scri
 
 - **Config is no longer a build input.** The Dockerfile `ARG`s, the `--build-arg` flags in `deploy-ecr.yaml`, and the build-step `env:` entries in `release-iis-dc.yaml` are gone. Only build-identity values (`NEXT_PUBLIC_BUILD_SHA`, `NEXT_PUBLIC_DC_CONNECTOR_SHA`) stay inlined, which is correct — they describe the artifact, not the environment.
 
-- **Where we stop: `NEXT_PUBLIC_STATE` keeps its prefix.** It is not merely a value; it selects build-time assets. `generate-tokens.js` writes `design/tokens.css` as an unscoped `:root {}`, `generate-sass-tokens.js` feeds `@use "uswds-core" with (...)` so USWDS compiles its whole utility set per state, and `design/fonts.ts` declares per-state `next/font/local` faces. Making state runtime-selectable means emitting every state's tokens, scoping them behind a `[data-state]` attribute, and loading both font sets — a CSS and font-loading change, not a config one. Tracked separately.
+- **The state moves to runtime too, which needed the theming to change.** `STATE` is not merely a value: it selected the compiled USWDS stylesheet, the `next/font` faces, and the locale bundle. Sass configures `uswds-core` once per compilation — `@use ... with (...)` is singleton — so two themes cannot coexist in one stylesheet. Each state is therefore compiled to its own file (`public/themes/theme-{state}.css`, ~630 KB each) and linked once `STATE` is known at request time, so a visitor downloads one theme rather than every state's. Fonts for every state are declared in one generated module with `preload` off, since preloading is a build-time hint and would otherwise fetch faces this process will never render. Locale bundles already carried every state.
+
+- **Client components read the state from the DOM.** `getState()` resolves `<html data-state>` first, then `process.env.STATE`, then `NEXT_PUBLIC_STATE`. The attribute is the browser's only runtime source; the server stamps it per request so both sides agree and hydration stays stable. Keeping the function's signature meant none of its 27 call sites changed. The `NEXT_PUBLIC_STATE` fallback remains for the enrollment checker, which deploys one static export per state and has no server to read env from.
+
+- **The portal image is state-agnostic.** The Dockerfile no longer takes `ARG STATE`, and neither ECR build passes it. The image is identical for every state and can be promoted between them; the ECS task definition supplies `STATE`. (Each environment still pushes to its own ECR repository — consolidating those is infrastructure work outside this repo.)
 
 ## Consequences
 
-- One frontend artifact runs in any environment. Verified: an image built with no client config set served `G-RUNTIME-AAA`/`smarty-aaa` on one run and `G-RUNTIME-BBB`/`smarty-bbb`/`amp-bbb` on the next, with the CSP widening for Amplitude on the second run only.
+- One frontend artifact runs in any environment **and as any state**. Verified: an artifact built with no client config and no `STATE` served `G-RUNTIME-AAA`/`smarty-aaa` then `G-RUNTIME-BBB`/`smarty-bbb`/`amp-bbb` (CSP widening for Amplitude only on the second run), and the same artifact served `data-state="dc"` with `theme-dc.css` and the DC title, then `data-state="co"` with `theme-co.css` and the CO title, purely from `STATE`.
+- The USWDS theme is no longer part of the JS bundle's CSS; it is a static stylesheet linked at request time. That trades Next's CSS pipeline (hashing, critical-CSS inlining) for runtime selectability.
 - **Deployment coordination is required before this reaches production.** The values must now be set on the running container (Tofu / ECS task definition) for the Docker path, and in `web.config`'s `<environmentVariables>` on the host for the IIS path. Removing the build args without that leaves analytics, Socure, and Smarty switched off in deployed environments — the same silent failure as before, in the opposite direction.
 - The `web.config` runtime env block is now load-bearing rather than inert. CLAUDE.md previously (and correctly) warned that it had no effect on browser code; that guidance is superseded for these variables.
 - Tests that need a vendor key enabled supply it through `RuntimeConfigProvider` instead of stubbing `process.env`. Omitting the wrapper is how a test expresses "not configured", which removed some `vi.resetModules()` re-import workarounds that existed only because the key was read at module scope.

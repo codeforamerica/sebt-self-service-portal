@@ -276,14 +276,15 @@ jobs:
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Build Web image
+        # State-agnostic: STATE is supplied by the ECS task definition at runtime,
+        # so this image is identical for every state and can be promoted between them.
         run: |
           docker build \
             --platform linux/amd64 \
             -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=dc \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
             --build-arg NEXT_PUBLIC_DC_CONNECTOR_SHA=${{ needs.build.outputs.dc_connector_sha }} \
-            -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
+            -t sebt-portal-web:${{ needs.build.outputs.image_tag }} \
             .
 
       - name: Push images to ECR
@@ -293,7 +294,7 @@ jobs:
           WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
 
           docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
-          docker tag sebt-portal-web-dc:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
@@ -390,13 +391,14 @@ jobs:
         uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Build Web image
+        # State-agnostic: STATE is supplied by the ECS task definition at runtime,
+        # so this image is identical for every state and can be promoted between them.
         run: |
           docker build \
             --platform linux/amd64 \
             -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=co \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
-            -t sebt-portal-web-co:${{ needs.build.outputs.image_tag }} \
+            -t sebt-portal-web:${{ needs.build.outputs.image_tag }} \
             .
 
       - name: Push images to ECR
@@ -406,7 +408,7 @@ jobs:
           WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
 
           docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
-          docker tag sebt-portal-web-co:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}

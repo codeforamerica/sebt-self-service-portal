@@ -1,6 +1,8 @@
 # Next.js standalone container image
 #
-# This builds the web app for a specific state (STATE build arg)
+# The image is state-agnostic: every state's theme stylesheet, fonts, and locale
+# bundles are built in, and STATE is read from the container environment at
+# request time. One image can therefore run as DC or CO.
 # and runs the generated standalone server.
 
 FROM node:24-alpine AS build
@@ -8,7 +10,6 @@ FROM node:24-alpine AS build
 WORKDIR /workspace
 
 # Build arg controls which state is embedded at build-time.
-ARG STATE=dc
 # Browser-facing config (analytics, Socure, Smarty) is NOT a build input: it is
 # read from the container environment per request and served to the client, so
 # one image runs in any environment. Set those variables on the running
@@ -17,7 +18,6 @@ ARG NEXT_PUBLIC_BUILD_SHA=""
 # DC only — the dc-connector repo's resolved commit SHA at build time. Empty for CO,
 # whose connector lives in-repo (nothing separate to track).
 ARG NEXT_PUBLIC_DC_CONNECTOR_SHA=""
-ENV STATE=$STATE
 ENV BUILD_STANDALONE=true
 
 # Install dependencies (root workspace)

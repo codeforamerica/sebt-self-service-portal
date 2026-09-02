@@ -79,7 +79,6 @@ function setupApiFetchMock(options: {
 }
 
 describe('IalGuard', () => {
-  let prevNextPublicState: string | undefined
 
   // IalGuard renders CO-only step-up copy (the gate is CO-specific). Tests run under
   // DC locale by default, so load the CO bundles for these namespaces explicitly.
@@ -94,8 +93,9 @@ describe('IalGuard', () => {
   })
 
   beforeEach(() => {
-    prevNextPublicState = process.env.NEXT_PUBLIC_STATE
-    process.env.NEXT_PUBLIC_STATE = 'co'
+    // IalGuard is a client component, so it reads the state from the attribute the
+    // server stamped on <html> — the same path the browser takes at runtime.
+    document.documentElement.dataset.state = 'co'
     vi.useFakeTimers({ shouldAdvanceTime: true })
     apiFetchMock.mockReset()
     mockBack.mockReset()
@@ -108,11 +108,7 @@ describe('IalGuard', () => {
 
   afterEach(() => {
     vi.useRealTimers()
-    if (prevNextPublicState === undefined) {
-      delete process.env.NEXT_PUBLIC_STATE
-    } else {
-      process.env.NEXT_PUBLIC_STATE = prevNextPublicState
-    }
+    delete document.documentElement.dataset.state
   })
 
   it('renders children when session already satisfies IAL gate', async () => {

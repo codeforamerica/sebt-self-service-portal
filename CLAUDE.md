@@ -123,7 +123,9 @@ To add a new browser-facing value:
 
 Only build-identity values stay inlined (`NEXT_PUBLIC_BUILD_SHA`, `NEXT_PUBLIC_DC_CONNECTOR_SHA`) — they describe the artifact rather than the environment.
 
-`NEXT_PUBLIC_STATE` is the deliberate exception: it selects build-time assets (design tokens, USWDS theme SCSS, `next/font` faces), so it is still a build input and one artifact still serves one state.
+`STATE` is runtime too, and is also unprefixed. It selects a per-state USWDS stylesheet from `public/themes/` (Sass can only configure `uswds-core` once per compilation, so each state is compiled separately) plus that state's `next/font` faces. The server stamps it onto `<html data-state>`; client code reads it back via `getState()` from `@sebt/design-system`, so **never read `process.env.STATE` directly in a client component**. Adding a state means adding it to the `STATES` list in `generate-theme-css.js` and `generate-fonts.js`.
+
+The enrollment checker is the exception: it deploys one static export per state to its own bucket, so it keeps `NEXT_PUBLIC_STATE` and `NEXT_PUBLIC_BASE_PATH` as build inputs. Its other browser config comes from a `config.js` in the deployed bucket (see `public/config.js`).
 
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.

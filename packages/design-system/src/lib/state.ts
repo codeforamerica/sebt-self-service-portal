@@ -82,11 +82,26 @@ export function getStateConfig(state: StateCode): StateConfig {
 }
 
 /**
- * Get the current state code from environment
- * @returns Two-letter state code (e.g., 'dc', 'co')
+ * Get the current state code.
+ *
+ * Resolution order, and why:
+ *  1. `<html data-state>` — the browser's only runtime source. The portal ships
+ *     one artifact for every state, so the state cannot be inlined into the
+ *     bundle; the server stamps this attribute per request and client components
+ *     read it back. Server and client therefore agree, so hydration is stable.
+ *  2. `process.env.STATE` — unprefixed, so Next leaves it in the server process
+ *     rather than inlining it. This is what server components read.
+ *  3. `process.env.NEXT_PUBLIC_STATE` — the per-state build path, still used by
+ *     the enrollment checker, which deploys one static export per state.
  */
 export function getState(): StateCode {
-  return (process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase() as StateCode
+  if (typeof document !== 'undefined') {
+    const fromDocument = document.documentElement.dataset.state
+    if (fromDocument) {
+      return fromDocument.toLowerCase() as StateCode
+    }
+  }
+  return (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase() as StateCode
 }
 
 /**

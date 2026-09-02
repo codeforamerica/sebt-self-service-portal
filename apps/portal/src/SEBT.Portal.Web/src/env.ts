@@ -6,7 +6,7 @@
  *
  * Usage:
  *   import { env } from '@/env';
- *   const state = env.NEXT_PUBLIC_STATE; // Type-safe!
+ *   const state = env.STATE; // Type-safe!
  */
 import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
@@ -44,7 +44,11 @@ export const env = createEnv({
     // Smarty US Autocomplete Pro embeddable key.
     // When set, the change-address form shows type-ahead suggestions.
     // Omit to disable autocomplete (users type addresses manually).
-    SMARTY_EMBEDDED_KEY: z.string().min(1).optional()
+    SMARTY_EMBEDDED_KEY: z.string().min(1).optional(),
+    // Which state this process serves. Unprefixed so one artifact can serve any
+    // state: the server stamps it onto <html data-state> per request, and client
+    // code reads it back from there (see getState in @sebt/design-system).
+    STATE: z.enum(['dc', 'co']).optional()
     // OIDC secrets (CLIENT_SECRET, COMPLETE_LOGIN_SIGNING_KEY, etc.) moved to
     // .NET appsettings. The Next.js OIDC callback route was deleted — all OIDC exchange
     // and validation now happens server-side in OidcExchangeService.
@@ -54,12 +58,7 @@ export const env = createEnv({
    * Client-side environment variables
    * Must be prefixed with NEXT_PUBLIC_
    */
-  client: {
-    // NEXT_PUBLIC_STATE still selects build-time assets (design tokens, USWDS
-    // theme SCSS, next/font faces), so it cannot move to runtime until those
-    // are emitted for every state. Tracked as phase 2 of this work.
-    NEXT_PUBLIC_STATE: z.enum(['dc', 'co'])
-  },
+  client: {},
 
   /**
    * Runtime environment variables
@@ -78,7 +77,7 @@ export const env = createEnv({
     MOCK_SOCURE: process.env.MOCK_SOCURE,
     DEBUG_REPEAT_OIDC_STEP_UP: process.env.DEBUG_REPEAT_OIDC_STEP_UP,
     SMARTY_EMBEDDED_KEY: process.env.SMARTY_EMBEDDED_KEY,
-    NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE
+    STATE: process.env.STATE
   },
 
   /**

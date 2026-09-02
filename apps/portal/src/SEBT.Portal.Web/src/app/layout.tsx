@@ -1,5 +1,5 @@
 import { AppShell } from '@/components/AppShell'
-import { headingFont, primaryFont } from '@/design/fonts'
+import { getFonts } from '@/design/fonts'
 import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
 import { getRuntimeConfig } from '@/lib/runtime-config'
@@ -24,15 +24,11 @@ import {
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
-import './styles.scss'
 
-const state = getState()
-const stateName = getStateName(state)
-const siteDisplayName = getSiteDisplayName(state)
-const portalMetadataDescription = getPortalMetadataDescription(state)
-const portalTitle = `${siteDisplayName} Self-Service Portal`
+// Resolved per call rather than at module scope: one artifact serves every state,
+// so STATE is only known from the server process environment at request time.
 
-function getDefaultBaseUrl() {
+function getDefaultBaseUrl(state: string) {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
 }
 
@@ -46,7 +42,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
   const host = h.get('host')
   const proto = h.get('x-forwarded-proto') ?? 'http'
-  const baseUrl = host ? `${proto}://${host}` : getDefaultBaseUrl()
+  const state = getState()
+  const stateName = getStateName(state)
+  const siteDisplayName = getSiteDisplayName(state)
+  const portalMetadataDescription = getPortalMetadataDescription(state)
+  const portalTitle = `${siteDisplayName} Self-Service Portal`
+  const baseUrl = host ? `${proto}://${host}` : getDefaultBaseUrl(state)
 
   return {
     title: {
@@ -95,6 +96,8 @@ export default async function RootLayout({
   // Get nonce from proxy for CSP-compliant script loading
   const nonce = (await headers()).get('x-nonce') ?? undefined
   // Resolved per request so a config change takes effect on release, not rebuild.
+  const state = getState()
+  const { primaryFont, headingFont } = getFonts(state)
   const runtimeConfig = getRuntimeConfig()
   const { gaId, mixpanelToken, amplitudeApiKey, siteImproveId } = runtimeConfig
 
@@ -105,6 +108,14 @@ export default async function RootLayout({
       className={`usa-js-loading ${primaryFont.variable} ${headingFont.variable}`}
     >
       <head>
+        {/* The USWDS theme is per state and cannot be bundled: Sass configures
+            uswds-core once per compilation, so each state is compiled to its own
+            stylesheet (public/themes/) and linked once STATE is known at request
+            time. A visitor downloads one theme, not every state's. */}
+        <link
+          rel="stylesheet"
+          href={`/themes/theme-${state}.css`}
+        />
         {/* Build SHA exposed for identifying the deployed commit per environment.
             Inlined at build time from NEXT_PUBLIC_BUILD_SHA (set to the GitHub
             commit SHA in CI); absent in local/dev builds. */}

@@ -6,14 +6,14 @@
   "scripts": {
     "tokens": "node ../../../../packages/design-system/design/scripts/generate-tokens.js",
     "tokens:sass": "node ../../../../packages/design-system/design/scripts/generate-sass-tokens.js",
-    "tokens:fonts": "node ../../../../packages/design-system/design/scripts/generate-fonts.js",
+    "tokens:fonts": "ALL_STATE_FONTS=true node ../../../../packages/design-system/design/scripts/generate-fonts.js",
     "tokens:all": "node ../../../../packages/design-system/design/scripts/generate-all-tokens.js",
     "copy:generate": "node ../../../../packages/design-system/content/scripts/generate-locales.js --out-dir content/locales --ts-out src/lib/generated-locale-resources.ts --app portal && node ../../../../packages/design-system/content/scripts/generate-backend-email.js --out-dir ../SEBT.Portal.Infrastructure/Templates/Email",
     "copy:validate": "node ../../../../packages/design-system/content/scripts/generate-locales.js --out-dir content/locales --ts-out src/lib/generated-locale-resources.ts --app portal --validate",
     "postinstall": "sh ../../../../packages/design-system/design/scripts/copy-uswds-assets.sh",
-    "predev": "node ../../../../packages/design-system/design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:fonts && pnpm --silent copy:generate",
+    "predev": "node ../../../../packages/design-system/design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:fonts && pnpm --silent tokens:themes && pnpm --silent copy:generate",
     "dev": "next dev --turbopack",
-    "prebuild": "node ../../../../packages/design-system/design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:fonts && pnpm --silent copy:generate",
+    "prebuild": "node ../../../../packages/design-system/design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:fonts && pnpm --silent tokens:themes && pnpm --silent copy:generate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -30,7 +30,8 @@
     "analyze": "ANALYZE=true pnpm build",
     "size": "size-limit",
     "knip": "knip",
-    "knip:production": "knip --production"
+    "knip:production": "knip --production",
+    "tokens:themes": "node ../../../../packages/design-system/design/scripts/generate-theme-css.js"
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.45.5",
