@@ -10,7 +10,7 @@ import { Alert } from '@sebt/design-system'
 
 export default function CardReplaceAddressPage() {
   const { t } = useTranslation('confirmInfo')
-  const { t: tCommon } = useTranslation('common')
+  const { t: tDev } = useTranslation('dev')
 
   const searchParams = useSearchParams()
   const { data, isLoading, isError } = useHouseholdData()
@@ -18,7 +18,7 @@ export default function CardReplaceAddressPage() {
   const caseId = searchParams.get('case')
 
   if (isLoading) {
-    return <p>{tCommon('loading')}</p>
+    return <p>{tDev('loading')}</p>
   }
 
   if (isError || !data || !caseId) {

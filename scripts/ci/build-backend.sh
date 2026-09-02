@@ -116,6 +116,8 @@ restore_dependencies() {
   log_info "Restoring .NET dependencies..."
   cd "$PROJECT_ROOT"
 
+  # Locked-mode enforcement lives in Directory.Build.props (CI-gated on $(CI)), so a
+  # plain restore here still fails on lockfile drift in CI without a shell flag.
   dotnet restore --verbosity minimal
 
   log_success "Dependencies restored"

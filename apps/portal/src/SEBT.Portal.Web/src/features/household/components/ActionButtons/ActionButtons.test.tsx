@@ -1,9 +1,22 @@
 import { render, screen } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { FeatureFlagsContext } from '@/features/feature-flags'
 
 import type { AllowedActions } from '../../api'
 
 import { ActionButtons } from './ActionButtons'
+
+function withApplyFlag(children: ReactNode, enableApply: boolean) {
+  return (
+    <FeatureFlagsContext.Provider
+      value={{ flags: { enable_apply: enableApply }, isLoading: false, isError: false }}
+    >
+      {children}
+    </FeatureFlagsContext.Provider>
+  )
+}
 
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
@@ -45,8 +58,9 @@ describe('ActionButtons', () => {
   it('renders all action buttons when all actions are allowed', () => {
     render(<ActionButtons allowedActions={allowAll} />)
     const links = screen.getAllByRole('link')
-    // Apply (always-on) + change address + request cards + check cards + check applications
-    expect(links).toHaveLength(5)
+    // Change address + request cards + check cards + check applications.
+    // Apply is hidden for DC (applications closed); see the Apply describe below.
+    expect(links).toHaveLength(4)
   })
 
   it('renders check existing cards button', () => {
@@ -121,8 +135,8 @@ describe('ActionButtons', () => {
   it('hides all gated CTAs when all self-service actions are denied', () => {
     render(<ActionButtons allowedActions={denyAll} />)
     const links = screen.getAllByRole('link')
-    // Apply (always-on) + check cards + check applications remain; address & replacement are gated out
-    expect(links).toHaveLength(3)
+    // Check cards + check applications remain; address & replacement are gated out, apply is DC-hidden
+    expect(links).toHaveLength(2)
     expect(screen.queryByText('Change my mailing address')).toBeNull()
     expect(screen.queryByText('Request new cards')).toBeNull()
   })
@@ -190,7 +204,7 @@ describe('ActionButtons', () => {
   it('shows all CTAs when allowedActions is not provided (backward compatible)', () => {
     render(<ActionButtons />)
     const links = screen.getAllByRole('link')
-    expect(links).toHaveLength(5)
+    expect(links).toHaveLength(4)
     expect(screen.queryByRole('status')).toBeNull()
   })
 
@@ -266,37 +280,56 @@ describe('ActionButtons', () => {
     })
   })
 
-  // The apply CTA is an outbound link shown for both states, regardless of cases. The unit-test
-  // i18n bundle is always DC, so the CO case asserts on href/cta rather than the label text.
+  // The apply CTA is an outbound link driven by useApplyHref: it renders only when the
+  // enable_apply flag is on AND the state has an apply destination (CO's PEAK form; DC
+  // has none since DC-701). The unit-test i18n bundle is always DC, so the CO cases
+  // assert on href/cta attributes rather than the label text.
   describe('Apply for benefits CTA', () => {
     const applyLink = (container: HTMLElement) =>
       container.querySelector('a[data-analytics-cta="apply_cta"]')
 
-    it('renders the DC apply CTA linking to the DC apply form', () => {
+    it('does not render the apply CTA for DC even when applications are open', () => {
       mockGetState.mockReturnValue('dc')
-      render(<ActionButtons allowedActions={allowAll} />)
-      const link = screen.getByText('Apply for DC SUN Bucks')
-      expect(link).toHaveAttribute('href', 'https://forms.sunbucks.dc.gov/s3/app2026')
-      expect(link).toHaveAttribute('data-analytics-cta', 'apply_cta')
-      expect(link).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
+      const { container } = render(withApplyFlag(<ActionButtons allowedActions={allowAll} />, true))
+      expect(applyLink(container)).toBeNull()
+      expect(screen.queryByText('Apply for DC SUN Bucks')).toBeNull()
     })
 
-    it('renders the CO apply CTA linking to the PEAK apply form', () => {
+    it('renders the CO apply CTA linking to the PEAK apply form when applications are open', () => {
       mockGetState.mockReturnValue('co')
-      const { container } = render(<ActionButtons allowedActions={allowAll} />)
+      const { container } = render(withApplyFlag(<ActionButtons allowedActions={allowAll} />, true))
       const link = applyLink(container)
       expect(link).toBeInTheDocument()
       expect(link?.getAttribute('href')).toContain(
         'peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
       )
+      expect(link).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
     })
 
-    it('shows the apply CTA even when actions are denied and there are no cases', () => {
+    it('does not render the CO apply CTA when the enable_apply flag is off', () => {
+      mockGetState.mockReturnValue('co')
       const { container } = render(
-        <ActionButtons
-          allowedActions={denyAll}
-          hasCases={false}
-        />
+        withApplyFlag(<ActionButtons allowedActions={allowAll} />, false)
+      )
+      expect(applyLink(container)).toBeNull()
+    })
+
+    it('does not render the CO apply CTA outside the feature-flags provider (fail closed)', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(<ActionButtons allowedActions={allowAll} />)
+      expect(applyLink(container)).toBeNull()
+    })
+
+    it('shows the CO apply CTA even when actions are denied and there are no cases', () => {
+      mockGetState.mockReturnValue('co')
+      const { container } = render(
+        withApplyFlag(
+          <ActionButtons
+            allowedActions={denyAll}
+            hasCases={false}
+          />,
+          true
+        )
       )
       expect(applyLink(container)).toBeInTheDocument()
     })

@@ -13,6 +13,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -83,6 +84,28 @@ public class AuthControllerTests
         var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
         Assert.True(response.IsAuthorized);
         Assert.Equal(email, response.Email);
+    }
+
+    [Fact]
+    public void GetAuthorizationStatus_WhenUserIsAnonymous_ReturnsUnauthenticatedStatus()
+    {
+        // No authentication type → IsAuthenticated is false, mirroring a request with
+        // no session cookie (or one the bearer middleware rejected). The probe answers
+        // 200 { isAuthorized: false } with no claims rather than a 401 — anonymous
+        // page loads are routine traffic, not errors.
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity()) }
+        };
+
+        var result = _controller.GetAuthorizationStatus();
+
+        var okResult = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<AuthorizationStatusResponse>(okResult.Value);
+        Assert.False(response.IsAuthorized);
+        Assert.Null(response.UserId);
+        Assert.Null(response.Email);
+        Assert.Null(response.ExpiresAt);
     }
 
     [Fact]
@@ -305,11 +328,11 @@ public class AuthControllerTests
         });
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        var oidcConfig = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+        var oidcConfig = new OidcDiscoveryInfo
         {
             EndSessionEndpoint = "https://auth.pingone.com/logout"
         };
-        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+        oidcExchangeService.GetDiscoveryInfoAsync(false, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(oidcConfig));
         var tokenDenylist = Substitute.For<ITokenDenylist>();
 
@@ -371,7 +394,7 @@ public class AuthControllerTests
         });
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
-        oidcExchangeService.GetDiscoveryConfigAsync(false, Arg.Any<CancellationToken>())
+        oidcExchangeService.GetDiscoveryInfoAsync(false, Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Discovery failed"));
         var tokenDenylist = Substitute.For<ITokenDenylist>();
 

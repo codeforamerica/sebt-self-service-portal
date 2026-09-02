@@ -6,6 +6,7 @@ using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
@@ -25,19 +26,30 @@ public class AuthController(
     IOptions<JwtSettings> jwtSettingsOptions) : ControllerBase
 {
     /// <summary>
-    /// Returns the authenticated user's session info read from validated JWT claims.
+    /// Returns the caller's session info read from validated JWT claims.
     /// The JWT is carried in the HttpOnly session cookie; this endpoint exposes the
     /// non-sensitive claims the SPA needs for IAL gating, analytics, and UI state.
+    ///
+    /// Anonymous callers (no cookie, or an expired/tampered/revoked session) get
+    /// 200 with <c>isAuthorized: false</c> instead of a 401: the SPA probes this
+    /// endpoint on every page load — including logged-out ones — so "not signed in"
+    /// is an expected answer, not an error worth surfacing in logs and traces.
+    /// Bearer authentication still runs first, so an invalid session cookie is
+    /// still cleared (Set-Cookie) exactly as before.
     /// </summary>
-    /// <returns>An OK result with the session info for the authenticated caller.</returns>
-    /// <response code="200">Caller is authenticated. Returns session info.</response>
-    /// <response code="401">Caller is not authenticated (missing or invalid session cookie).</response>
+    /// <returns>An OK result with the session info for the caller.</returns>
+    /// <response code="200">Returns session info; <c>isAuthorized</c> is false for anonymous callers.</response>
     [HttpGet("status")]
-    [Authorize]
+    [AllowAnonymous]
     [ProducesResponseType(typeof(AuthorizationStatusResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult GetAuthorizationStatus()
     {
+        if (User.Identity?.IsAuthenticated != true)
+        {
+            // Intentionally unlogged: anonymous probes are routine traffic.
+            return Ok(new AuthorizationStatusResponse(IsAuthorized: false));
+        }
+
         var userId = User.GetUserId();
 
         logger.LogInformation("Authorization status check successful for UserId {UserId}, Phone={MaskedPhone}",
@@ -90,7 +102,7 @@ public class AuthController(
         {
             try
             {
-                var oidcConfig = await oidcExchangeService.GetDiscoveryConfigAsync(
+                var oidcConfig = await oidcExchangeService.GetDiscoveryInfoAsync(
                     isStepUp: false, cancellationToken);
 
                 if (!string.IsNullOrEmpty(oidcConfig.EndSessionEndpoint))
