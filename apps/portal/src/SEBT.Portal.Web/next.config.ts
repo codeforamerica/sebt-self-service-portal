@@ -22,8 +22,10 @@ const nextConfig: NextConfig = {
   // into server-safe (index.ts) and client (client.ts) entry points instead.
   reactCompiler: true,
   env: {
-    NEXT_PUBLIC_STATE: state,
-    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY || ''
+    // STATE only: every other browser-facing value is served at request time
+    // (see src/lib/runtime-config.ts). STATE stays here because it selects
+    // build-time assets, not just a value.
+    NEXT_PUBLIC_STATE: state
   },
   experimental: {
     // @typescript/typescript6 (aliased as `typescript`) exposes tsc6, not tsc.

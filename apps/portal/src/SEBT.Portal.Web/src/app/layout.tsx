@@ -2,13 +2,15 @@ import { AppShell } from '@/components/AppShell'
 import { headingFont, primaryFont } from '@/design/fonts'
 import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
+import { getRuntimeConfig } from '@/lib/runtime-config'
 import {
   AuthProvider,
   AxeProvider,
   DataLayerProvider,
   FeatureFlagsProvider,
   I18nProvider,
-  QueryProvider
+  QueryProvider,
+  RuntimeConfigProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
@@ -33,10 +35,6 @@ const portalTitle = `${siteDisplayName} Self-Service Portal`
 function getDefaultBaseUrl() {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
 }
-const gaId = process.env.NEXT_PUBLIC_GA_ID
-const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
-const amplitudeApiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
-const siteImproveId = process.env.NEXT_PUBLIC_SITEIMPROVE_ID
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -96,6 +94,9 @@ export default async function RootLayout({
 }>) {
   // Get nonce from proxy for CSP-compliant script loading
   const nonce = (await headers()).get('x-nonce') ?? undefined
+  // Resolved per request so a config change takes effect on release, not rebuild.
+  const runtimeConfig = getRuntimeConfig()
+  const { gaId, mixpanelToken, amplitudeApiKey, siteImproveId } = runtimeConfig
 
   return (
     <html
@@ -119,7 +120,8 @@ export default async function RootLayout({
           application="sebt-portal"
           routes={portalRoutes}
         >
-          <QueryProvider>
+          <RuntimeConfigProvider config={runtimeConfig}>
+            <QueryProvider>
             <AuthProvider>
               <SessionIdentityCacheSync />
               <FeatureFlagsProvider>
@@ -136,7 +138,8 @@ export default async function RootLayout({
                 </I18nProvider>
               </FeatureFlagsProvider>
             </AuthProvider>
-          </QueryProvider>
+            </QueryProvider>
+          </RuntimeConfigProvider>
         </DataLayerProvider>
         {/* USWDS initialization script - uses nonce for CSP compliance */}
         {/* suppressHydrationWarning: nonce changes per request, mismatch is expected */}
@@ -162,9 +165,9 @@ export default async function RootLayout({
           {...(nonce ? { nonce } : {})}
         />
       )}
-      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
+      {/* Amplitude - only rendered when AMPLITUDE_API_KEY is configured */}
       {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
-      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
+      {/* SiteImprove — only rendered when SITEIMPROVE_ID is configured */}
       {siteImproveId && (
         <SiteImproveAnalytics
           siteId={siteImproveId}

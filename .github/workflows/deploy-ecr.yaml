@@ -281,13 +281,6 @@ jobs:
             --platform linux/amd64 \
             -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
             --build-arg STATE=dc \
-            --build-arg NEXT_PUBLIC_SOCURE_SDK_KEY=${{ vars.SOCURE_SDK_KEY }} \
-            --build-arg NEXT_PUBLIC_SOCURE_DI_SDK_KEY=${{ vars.SOCURE_DI_SDK_KEY }} \
-            --build-arg NEXT_PUBLIC_MOCK_SOCURE=${{ vars.MOCK_SOCURE }} \
-            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
-            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
-            --build-arg NEXT_PUBLIC_SITEIMPROVE_ID=${{ vars.SITEIMPROVE_ID }} \
-            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
             --build-arg NEXT_PUBLIC_DC_CONNECTOR_SHA=${{ needs.build.outputs.dc_connector_sha }} \
             -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
@@ -402,10 +395,6 @@ jobs:
             --platform linux/amd64 \
             -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
             --build-arg STATE=co \
-            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
-            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
-            --build-arg NEXT_PUBLIC_SITEIMPROVE_ID=${{ vars.SITEIMPROVE_ID }} \
-            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
             -t sebt-portal-web-co:${{ needs.build.outputs.image_tag }} \
             .

@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next'
 import { RichText } from '@sebt/design-system'
 
 interface ErrorResultPageProps {
-  portalUrl: string
+  /** Undefined on a misconfigured deployment; the CTA is hidden rather than dead. */
+  portalUrl: string | undefined
 }
 
 /**
@@ -36,15 +37,17 @@ export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
           <div className="margin-top-2">
             <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
           </div>
-          <p>
-            <a
-              href={portalUrl}
-              className="usa-button"
-              data-testid="portal-link"
-            >
-              {t('streamlinedEnrolledAction')}
-            </a>
-          </p>
+          {portalUrl && (
+            <p>
+              <a
+                href={portalUrl}
+                className="usa-button"
+                data-testid="portal-link"
+              >
+                {t('streamlinedEnrolledAction')}
+              </a>
+            </p>
+          )}
         </section>
       </div>
     </div>

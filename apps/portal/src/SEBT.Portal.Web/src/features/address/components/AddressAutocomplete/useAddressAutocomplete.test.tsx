@@ -1,23 +1,36 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
+import { RuntimeConfigProvider } from '@/providers'
 
 import type { SmartySuggestion } from './types'
 
 const SMARTY_URL = 'https://us-autocomplete-pro.api.smarty.com/lookup'
 
-// Set the embedded key so the hook is enabled
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
-  process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY = 'test-embedded-key'
 })
 
 afterEach(() => {
   vi.useRealTimers()
-  delete process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
 })
+
+// The hook reads the Smarty key from RuntimeConfigProvider, so every renderHook
+// supplies it the way the root layout does.
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <RuntimeConfigProvider
+    config={{
+      smartyEmbeddedKey: 'test-embedded-key',
+      mockSocure: false,
+      debugRepeatOidcStepUp: false
+    }}
+  >
+    {children}
+  </RuntimeConfigProvider>
+)
 
 // Lazy import so env var is set before module loads
 async function importHook() {
@@ -42,8 +55,9 @@ describe('useAddressAutocomplete', () => {
     const useAddressAutocomplete = await importHook()
     const onSelect = vi.fn()
 
-    const { result } = renderHook(() =>
-      useAddressAutocomplete({ search: 'ab', stateCode: 'dc', onSelect })
+    const { result } = renderHook(
+      () => useAddressAutocomplete({ search: 'ab', stateCode: 'dc', onSelect }),
+      { wrapper }
     )
 
     await act(() => vi.advanceTimersByTime(300))
@@ -61,7 +75,7 @@ describe('useAddressAutocomplete', () => {
     // real search. Then rerender with a long-enough value to simulate user typing.
     const { result, rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect }),
-      { initialProps: { search: '' } }
+      { initialProps: { search: '' }, wrapper }
     )
 
     rerender({ search: '123 Main' })
@@ -91,7 +105,7 @@ describe('useAddressAutocomplete', () => {
 
     const { rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect }),
-      { initialProps: { search: '123' } }
+      { initialProps: { search: '123' }, wrapper }
     )
 
     // Rapid changes within debounce window
@@ -124,7 +138,7 @@ describe('useAddressAutocomplete', () => {
     // Start with empty value; rerender to simulate typing past the initial-render skip
     const { rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect: vi.fn() }),
-      { initialProps: { search: '' } }
+      { initialProps: { search: '' }, wrapper }
     )
 
     rerender({ search: '123 Main' })
@@ -146,7 +160,7 @@ describe('useAddressAutocomplete', () => {
 
     const { result, rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect }),
-      { initialProps: { search: '' } }
+      { initialProps: { search: '' }, wrapper }
     )
 
     rerender({ search: '123 Main' })
@@ -188,7 +202,7 @@ describe('useAddressAutocomplete', () => {
 
     const { result, rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect }),
-      { initialProps: { search: '' } }
+      { initialProps: { search: '' }, wrapper }
     )
 
     rerender({ search: '123 Main' })
@@ -216,7 +230,7 @@ describe('useAddressAutocomplete', () => {
 
     const { result, rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect: vi.fn() }),
-      { initialProps: { search: '' } }
+      { initialProps: { search: '' }, wrapper }
     )
 
     rerender({ search: '123 Main' })
@@ -237,7 +251,7 @@ describe('useAddressAutocomplete', () => {
     // Start empty so the initial-render skip doesn't suppress the real search
     const { result, rerender } = renderHook(
       ({ search }) => useAddressAutocomplete({ search, stateCode: 'dc', onSelect: vi.fn() }),
-      { initialProps: { search: '' } }
+      { initialProps: { search: '' }, wrapper }
     )
 
     rerender({ search: '123 Main' })

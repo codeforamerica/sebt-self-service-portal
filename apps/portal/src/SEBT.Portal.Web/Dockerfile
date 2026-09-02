@@ -9,13 +9,10 @@ WORKDIR /workspace
 
 # Build arg controls which state is embedded at build-time.
 ARG STATE=dc
-ARG NEXT_PUBLIC_SOCURE_SDK_KEY=""
-ARG NEXT_PUBLIC_SOCURE_DI_SDK_KEY=""
-ARG NEXT_PUBLIC_MOCK_SOCURE="false"
-ARG NEXT_PUBLIC_AMPLITUDE_API_KEY=""
-ARG NEXT_PUBLIC_MIXPANEL_TOKEN=""
-ARG NEXT_PUBLIC_SITEIMPROVE_ID=""
-ARG NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=""
+# Browser-facing config (analytics, Socure, Smarty) is NOT a build input: it is
+# read from the container environment per request and served to the client, so
+# one image runs in any environment. Set those variables on the running
+# container, not here. Only build-identity values stay baked in.
 ARG NEXT_PUBLIC_BUILD_SHA=""
 # DC only — the dc-connector repo's resolved commit SHA at build time. Empty for CO,
 # whose connector lives in-repo (nothing separate to track).

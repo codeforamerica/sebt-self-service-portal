@@ -1,3 +1,5 @@
+import { getClientConfig } from './client-config'
+
 // Duplicated from src/SEBT.Portal.Web/src/lib/applyHref.ts. Portal.Web and
 // EnrollmentChecker.Web are separate pnpm workspace members and can't import
 // each other's src/lib internals; the proper home for this is
@@ -5,8 +7,8 @@
 // is a pure refactor (move file, update import sites, relocate the existing
 // test, swap vi.mock targets) and should happen in its own change.
 
-// The apply destination comes from NEXT_PUBLIC_APPLICATION_URL (declared in
-// env.ts, documented in .env.local.example) so it can change via config without
+// The apply destination comes from runtime client config (applicationUrl,
+// documented in public/config.js) so it can change via config without
 // a code change — not from the CSV-driven translation, whose source-of-truth
 // Google Sheet still points at the legacy `/SEBT/s/?language=en_US` URL. Read
 // process.env directly (like getState) to keep this a small, stubbable helper.
@@ -23,7 +25,7 @@ const PEAK_LANG_BY_LOCALE: Record<string, string> = {
 }
 
 export function getApplyHref(locale: string): string | null {
-  const base = process.env.NEXT_PUBLIC_APPLICATION_URL
+  const base = getClientConfig().applicationUrl
   if (!base) {
     return null
   }

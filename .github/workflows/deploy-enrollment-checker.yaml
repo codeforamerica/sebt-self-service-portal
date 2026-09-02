@@ -56,13 +56,24 @@ jobs:
         env:
           STATE: co
           NEXT_PUBLIC_STATE: co
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}
+          # Required by the env schema as a fallback; config.js overrides it at runtime.
           NEXT_PUBLIC_PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
-          NEXT_PUBLIC_APPLICATION_URL: ${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }}
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
-          NEXT_PUBLIC_AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
-          NEXT_PUBLIC_MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
-          NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
+
+      - name: Write runtime client config
+        # Browser config lives in the deployed bucket, not the bundle, so the same
+        # export can be promoted between environments by rewriting this one file.
+        run: |
+          cat > apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js <<'EOF'
+          window.__CHECKER_CONFIG__ = {
+            apiBaseUrl: '${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}',
+            portalUrl: '${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}',
+            applicationUrl: '${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }}',
+            amplitudeApiKey: '${{ vars.AMPLITUDE_API_KEY }}',
+            mixpanelToken: '${{ vars.MIXPANEL_TOKEN }}',
+            siteImproveId: '${{ vars.SITEIMPROVE_ID }}'
+          }
+          EOF
 
       - name: Upload static site artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -148,16 +159,29 @@ jobs:
         env:
           STATE: dc
           NEXT_PUBLIC_STATE: dc
-          NEXT_PUBLIC_API_BASE_URL: ${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}
+          # Required by the env schema as a fallback; config.js overrides it at runtime.
           NEXT_PUBLIC_PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
           # NEXT_PUBLIC_APPLICATION_URL is intentionally omitted as of Aug 24th
           # while DC Summer EBT applications are closed. Add it back
           # (NEXT_PUBLIC_APPLICATION_URL: ${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }})
           # once applications reopen.
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
-          NEXT_PUBLIC_AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
-          NEXT_PUBLIC_MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
-          NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
+
+      - name: Write runtime client config
+        # Browser config lives in the deployed bucket, not the bundle, so the same
+        # export can be promoted between environments by rewriting this one file.
+        # applicationUrl stays out while DC applications are closed; add it here
+        # (not as a build arg) when they reopen.
+        run: |
+          cat > apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js <<'EOF'
+          window.__CHECKER_CONFIG__ = {
+            apiBaseUrl: '${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}',
+            portalUrl: '${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}',
+            amplitudeApiKey: '${{ vars.AMPLITUDE_API_KEY }}',
+            mixpanelToken: '${{ vars.MIXPANEL_TOKEN }}',
+            siteImproveId: '${{ vars.SITEIMPROVE_ID }}'
+          }
+          EOF
 
       - name: Upload static site artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

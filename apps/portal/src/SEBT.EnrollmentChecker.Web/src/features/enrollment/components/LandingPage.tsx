@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
+import { getClientConfig } from '@/lib/client-config'
 import { env } from '@/lib/env'
 import { useEnrollment } from '../context/EnrollmentContext'
 
 export function LandingPage() {
   const { t } = useTranslation('landing')
+  const { adentifiPixelLanding } = getClientConfig()
   const router = useRouter()
   const { clearState } = useEnrollment()
   const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
@@ -60,8 +62,8 @@ export function LandingPage() {
           </Button>
         </div>
 
-        {env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING && (
-          <AdentifiPixels pixelId={env.NEXT_PUBLIC_ADENTIFI_PIXEL_LANDING} />
+        {adentifiPixelLanding && (
+          <AdentifiPixels pixelId={adentifiPixelLanding} />
         )}
 
         {/* FAQ Accordion — follows USWDS accordion pattern */}

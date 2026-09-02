@@ -5,6 +5,7 @@ import { ReviewPage } from '@/features/enrollment/components/ReviewPage'
 import { checkEnrollment } from '@/features/enrollment/api/checkEnrollment'
 import { getRateLimitErrorMessage } from '@/features/enrollment/copy/submitErrorCopy'
 import { useEnrollment } from '@/features/enrollment/context/EnrollmentContext'
+import { getClientConfig } from '@/lib/client-config'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { Alert, LoadingInterstitial } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
@@ -36,8 +37,9 @@ export default function Page() {
     setErrorKind(null)
     setIsSubmitting(true)
     try {
-      if (window.fbq && process.env.NEXT_PUBLIC_META_PIXEL && process.env.NEXT_PUBLIC_META_PIXEL_ACTION) {
-        window.fbq('trackSingleCustom', process.env.NEXT_PUBLIC_META_PIXEL, process.env.NEXT_PUBLIC_META_PIXEL_ACTION)
+      const { metaPixel, metaPixelAction } = getClientConfig()
+      if (window.fbq && metaPixel && metaPixelAction) {
+        window.fbq('trackSingleCustom', metaPixel, metaPixelAction)
       }
       const response = await checkEnrollment(state.children, config.apiBaseUrl)
       // Pass results via sessionStorage (avoids URL length limits and keeps data off URL)

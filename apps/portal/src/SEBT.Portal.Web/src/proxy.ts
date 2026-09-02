@@ -38,9 +38,12 @@ export function proxy(request: NextRequest) {
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
-  const hasAmplitude = !!process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
-  const hasMixpanel = !!process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
-  const hasSiteImprove = !!process.env.NEXT_PUBLIC_SITEIMPROVE_ID
+  // Unprefixed so these stay server-side: the middleware runs per request, so a
+  // key added at release time widens the CSP without a rebuild. Prefixed reads
+  // would be inlined at build and freeze the policy to the build environment.
+  const hasAmplitude = !!process.env.AMPLITUDE_API_KEY
+  const hasMixpanel = !!process.env.MIXPANEL_TOKEN
+  const hasSiteImprove = !!process.env.SITEIMPROVE_ID
   const proto =
     request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '')
   const isHttps = proto === 'https'

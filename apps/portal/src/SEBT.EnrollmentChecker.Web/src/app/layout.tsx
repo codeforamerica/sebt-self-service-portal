@@ -3,21 +3,17 @@
 // Server Component would pull react-i18next into the RSC bundle and crash.
 import { CheckerShell } from '@/components/CheckerShell'
 import { headingFont, primaryFont } from '@/design/fonts'
+import { RuntimeAnalytics } from '@/components/RuntimeAnalytics'
 import { env } from '@/lib/env'
 import { buildRootMetadata } from '@/lib/metadata'
 import { Providers } from '@/providers/Providers'
-import { AmplitudeAnalytics, MetaPixelAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
 import { getState } from '@sebt/design-system/src/lib/state'
 import type { Viewport } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import './styles.scss'
 
 const state = getState()
-
-const amplitudeApiKey = env.NEXT_PUBLIC_AMPLITUDE_API_KEY
-const mixpanelToken = env.NEXT_PUBLIC_MIXPANEL_TOKEN
-const siteImproveId = env.NEXT_PUBLIC_SITEIMPROVE_ID
-const metaPixelId = env.NEXT_PUBLIC_META_PIXEL
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -38,8 +34,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {process.env.NEXT_PUBLIC_BUILD_SHA && (
           <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />
         )}
-        {/* Meta Pixel - only rendered when NEXT_PUBLIC_META_PIXEL is configured */}
-        {metaPixelId && <MetaPixelAnalytics pixelId={metaPixelId} />}
+        {/* Loaded before the app bundle so window.__CHECKER_CONFIG__ is set by the
+            time any module reads it. Replaced per environment in the deployed
+            bucket; the copy in public/ is an empty default. basePath-prefixed so
+            it resolves under a sub-path deployment. */}
+        <Script
+          src={`${env.NEXT_PUBLIC_BASE_PATH}/config.js`}
+          strategy="beforeInteractive"
+        />
       </head>
       <body>
         <Providers>
@@ -47,12 +49,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Providers>
         <script src="/js/uswds-init.min.js" defer />
       </body>
-      {/* Mixpanel - only rendered when MIXPANEL_TOKEN is configured */}
-      {mixpanelToken && <MixpanelAnalytics token={mixpanelToken} />}
-      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
-      {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
-      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
-      {siteImproveId && <SiteImproveAnalytics siteId={siteImproveId} />}
+      {/* Vendor tags come from runtime config, so they are rendered on the client:
+          a Server Component would freeze them into the static export. */}
+      <RuntimeAnalytics />
     </html>
   )
 }

@@ -9,6 +9,8 @@ import enDcValidation from '@/content/locales/en/dc/validation.json'
 import esDcValidation from '@/content/locales/es/dc/validation.json'
 import type { Address } from '@/features/household/api'
 import { server } from '@/mocks/server'
+import type { RuntimeConfig } from '@/lib/runtime-config'
+import { RuntimeConfigProvider } from '@/providers'
 import { AnalyticsEvents } from '@sebt/analytics'
 import { i18n } from '@sebt/design-system/client'
 
@@ -74,17 +76,21 @@ function createTestQueryClient() {
   })
 }
 
-function renderForm(initialAddress: Address | null = null) {
+// Browser-facing config now arrives through RuntimeConfigProvider, so tests that
+// need a vendor key enabled pass it here instead of stubbing an env var.
+function renderForm(initialAddress: Address | null = null, config: Partial<RuntimeConfig> = {}) {
   const queryClient = createTestQueryClient()
   const user = userEvent.setup()
   return {
     user,
     ...render(
-      <QueryClientProvider client={queryClient}>
-        <AddressFlowProvider>
-          <AddressForm initialAddress={initialAddress} />
-        </AddressFlowProvider>
-      </QueryClientProvider>
+      <RuntimeConfigProvider config={{ mockSocure: false, debugRepeatOidcStepUp: false, ...config }}>
+        <QueryClientProvider client={queryClient}>
+          <AddressFlowProvider>
+            <AddressForm initialAddress={initialAddress} />
+          </AddressFlowProvider>
+        </QueryClientProvider>
+      </RuntimeConfigProvider>
     )
   }
 }
@@ -621,16 +627,8 @@ describe('AddressForm', () => {
   // --- Autocomplete integration ---
 
   describe('with Smarty autocomplete enabled', () => {
-    beforeEach(() => {
-      process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY = 'test-embedded-key'
-    })
-
-    afterEach(() => {
-      delete process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
-    })
-
     it('renders street address as a combobox when Smarty key is configured', () => {
-      renderForm()
+      renderForm(null, { smartyEmbeddedKey: 'test-embedded-key' })
       expect(screen.getByRole('combobox', { name: /street address/i })).toBeInTheDocument()
     })
 
@@ -656,11 +654,19 @@ describe('AddressForm', () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const queryClient = createTestQueryClient()
       render(
-        <QueryClientProvider client={queryClient}>
-          <AddressFlowProvider>
-            <AddressForm initialAddress={null} />
-          </AddressFlowProvider>
-        </QueryClientProvider>
+        <RuntimeConfigProvider
+          config={{
+            smartyEmbeddedKey: 'test-embedded-key',
+            mockSocure: false,
+            debugRepeatOidcStepUp: false
+          }}
+        >
+          <QueryClientProvider client={queryClient}>
+            <AddressFlowProvider>
+              <AddressForm initialAddress={null} />
+            </AddressFlowProvider>
+          </QueryClientProvider>
+        </RuntimeConfigProvider>
       )
 
       const input = screen.getByRole('combobox', { name: /street address/i })
@@ -684,7 +690,6 @@ describe('AddressForm', () => {
   })
 
   it('renders street address as a plain textbox when Smarty key is not configured', () => {
-    delete process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
     renderForm()
     expect(
       screen.queryByRole('combobox', { name: /^street address(?! line)/i })

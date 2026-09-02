@@ -13,7 +13,8 @@ import { NotEnrolledSection } from './NotEnrolledSection'
 
 interface ResultsPageProps {
   results: ChildCheckApiResponse[]
-  portalUrl: string
+  /** Undefined on a misconfigured deployment; the CTA is hidden rather than dead. */
+  portalUrl: string | undefined
 }
 
 type HouseholdEnrollmentResult = 'allEnrolled' | 'noneEnrolled' | 'mixedEnrolled' | 'indeterminate'
@@ -72,15 +73,17 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
       <div className="margin-top-2">
         <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
       </div>
-      <p>
-        <a
-          href={portalUrl}
-          className="usa-button"
-          data-testid="portal-link"
-        >
-          {t('streamlinedEnrolledAction')}
-        </a>
-      </p>
+      {portalUrl && (
+        <p>
+          <a
+            href={portalUrl}
+            className="usa-button"
+            data-testid="portal-link"
+          >
+            {t('streamlinedEnrolledAction')}
+          </a>
+        </p>
+      )}
     </section>
   )
 

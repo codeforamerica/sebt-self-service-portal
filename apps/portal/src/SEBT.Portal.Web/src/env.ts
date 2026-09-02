@@ -22,7 +22,29 @@ export const env = createEnv({
     // Origin of the enrollment checker static site (e.g. https://dev.co.sebt-enrollment.codeforamerica.app).
     // When set, the portal returns CORS headers on /api/enrollment/* responses to allow
     // cross-origin requests from the SSG-deployed enrollment checker.
-    ENROLLMENT_CHECKER_ORIGIN: z.url().optional()
+    ENROLLMENT_CHECKER_ORIGIN: z.url().optional(),
+
+    // Browser-facing config, deliberately unprefixed. Next inlines every
+    // NEXT_PUBLIC_* reference at build time, which pins the value to the build
+    // environment and stops one artifact being promoted across environments.
+    // These stay server-side and reach the browser at request time via
+    // lib/runtime-config.ts -> RuntimeConfigProvider. See docs/adr/0022.
+    GA_ID: z.string().startsWith('G-').optional(),
+    AMPLITUDE_API_KEY: z.string().min(1).optional(),
+    MIXPANEL_TOKEN: z.string().min(1).optional(),
+    SITEIMPROVE_ID: z.string().min(1).optional(),
+    SOCURE_SDK_KEY: z.string().min(1).optional(),
+    SOCURE_DI_SDK_KEY: z.string().min(1).optional(),
+    MOCK_SOCURE: z.enum(['true', 'false']).optional(),
+    /**
+     * Development only: when `true`, IalGuard still sends users to OIDC step-up even if the portal JWT already has IAL1+.
+     * No effect unless NODE_ENV is `development`.
+     */
+    DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional(),
+    // Smarty US Autocomplete Pro embeddable key.
+    // When set, the change-address form shows type-ahead suggestions.
+    // Omit to disable autocomplete (users type addresses manually).
+    SMARTY_EMBEDDED_KEY: z.string().min(1).optional()
     // OIDC secrets (CLIENT_SECRET, COMPLETE_LOGIN_SIGNING_KEY, etc.) moved to
     // .NET appsettings. The Next.js OIDC callback route was deleted — all OIDC exchange
     // and validation now happens server-side in OidcExchangeService.
@@ -33,23 +55,10 @@ export const env = createEnv({
    * Must be prefixed with NEXT_PUBLIC_
    */
   client: {
-    NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
-    NEXT_PUBLIC_GA_ID: z.string().startsWith('G-').optional(),
-    NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1).optional(),
-    NEXT_PUBLIC_MIXPANEL_TOKEN: z.string().min(1).optional(),
-    NEXT_PUBLIC_SITEIMPROVE_ID: z.string().min(1).optional(),
-    NEXT_PUBLIC_SOCURE_SDK_KEY: z.string().min(1).optional(),
-    NEXT_PUBLIC_SOCURE_DI_SDK_KEY: z.string().min(1).optional(),
-    NEXT_PUBLIC_MOCK_SOCURE: z.enum(['true', 'false']).optional(),
-    /**
-     * Development only: when `true`, IalGuard still sends users to OIDC step-up even if the portal JWT already has IAL1+.
-     * No effect unless NODE_ENV is `development`.
-     */
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: z.enum(['true', 'false']).optional(),
-    // Smarty US Autocomplete Pro embeddable key.
-    // When set, the change-address form shows type-ahead suggestions.
-    // Omit to disable autocomplete (users type addresses manually).
-    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: z.string().min(1).optional()
+    // NEXT_PUBLIC_STATE still selects build-time assets (design tokens, USWDS
+    // theme SCSS, next/font faces), so it cannot move to runtime until those
+    // are emitted for every state. Tracked as phase 2 of this work.
+    NEXT_PUBLIC_STATE: z.enum(['dc', 'co'])
   },
 
   /**
@@ -60,16 +69,16 @@ export const env = createEnv({
     NODE_ENV: process.env.NODE_ENV,
     BACKEND_URL: process.env.BACKEND_URL,
     ENROLLMENT_CHECKER_ORIGIN: process.env.ENROLLMENT_CHECKER_ORIGIN,
-    NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE,
-    NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
-    NEXT_PUBLIC_AMPLITUDE_API_KEY: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
-    NEXT_PUBLIC_MIXPANEL_TOKEN: process.env.NEXT_PUBLIC_MIXPANEL_TOKEN,
-    NEXT_PUBLIC_SITEIMPROVE_ID: process.env.NEXT_PUBLIC_SITEIMPROVE_ID,
-    NEXT_PUBLIC_SOCURE_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_SDK_KEY,
-    NEXT_PUBLIC_SOCURE_DI_SDK_KEY: process.env.NEXT_PUBLIC_SOCURE_DI_SDK_KEY,
-    NEXT_PUBLIC_MOCK_SOCURE: process.env.NEXT_PUBLIC_MOCK_SOCURE,
-    NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP: process.env.NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP,
-    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
+    GA_ID: process.env.GA_ID,
+    AMPLITUDE_API_KEY: process.env.AMPLITUDE_API_KEY,
+    MIXPANEL_TOKEN: process.env.MIXPANEL_TOKEN,
+    SITEIMPROVE_ID: process.env.SITEIMPROVE_ID,
+    SOCURE_SDK_KEY: process.env.SOCURE_SDK_KEY,
+    SOCURE_DI_SDK_KEY: process.env.SOCURE_DI_SDK_KEY,
+    MOCK_SOCURE: process.env.MOCK_SOCURE,
+    DEBUG_REPEAT_OIDC_STEP_UP: process.env.DEBUG_REPEAT_OIDC_STEP_UP,
+    SMARTY_EMBEDDED_KEY: process.env.SMARTY_EMBEDDED_KEY,
+    NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE
   },
 
   /**
