@@ -26,6 +26,7 @@ jobs:
     outputs:
       backend: ${{ steps.decide.outputs.backend }}
       frontend: ${{ steps.decide.outputs.frontend }}
+      enrollment: ${{ steps.decide.outputs.enrollment }}
     steps:
       - name: Filter changed paths (PRs only)
         id: filter
@@ -56,6 +57,11 @@ jobs:
               - 'packages/**'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
+            enrollment:
+              - 'apps/portal/src/SEBT.EnrollmentChecker.Web/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
 
       - name: Decide which areas run
         id: decide
@@ -64,13 +70,16 @@ jobs:
           INFRA: ${{ steps.filter.outputs.infra }}
           BACKEND: ${{ steps.filter.outputs.backend }}
           FRONTEND: ${{ steps.filter.outputs.frontend }}
+          ENROLLMENT: ${{ steps.filter.outputs.enrollment }}
         run: |
           if [ "$EVENT_NAME" != "pull_request" ] || [ "$INFRA" = "true" ]; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
             echo "frontend=true" >> "$GITHUB_OUTPUT"
+            echo "enrollment=true" >> "$GITHUB_OUTPUT"
           else
             echo "backend=${BACKEND:-false}" >> "$GITHUB_OUTPUT"
             echo "frontend=${FRONTEND:-false}" >> "$GITHUB_OUTPUT"
+            echo "enrollment=${ENROLLMENT:-false}" >> "$GITHUB_OUTPUT"
           fi
 
   # E2E drives the web app alone (MSW mocks the API), so backend-only changes
@@ -139,6 +148,49 @@ jobs:
           retention-days: 7
 
   # Integration E2E drives the full stack (real API + web), so it reacts to both areas.
+  # The enrollment checker's suite mocks its API at the browser level, so it
+  # only needs the Next dev server the Playwright config boots itself.
+  e2e-checker:
+    name: Enrollment Checker E2E (CO)
+    needs: changes
+    if: needs.changes.outputs.enrollment == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Install Playwright browsers
+        run: cd apps/portal/src/SEBT.EnrollmentChecker.Web && pnpm exec playwright install --with-deps chromium
+
+      - name: Run enrollment checker E2E tests
+        env:
+          CI: true
+        run: pnpm ci:test:e2e:checker
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: playwright-report-checker
+          path: apps/portal/src/SEBT.EnrollmentChecker.Web/playwright-report/
+          retention-days: 7
+
   e2e-integration-dc:
     name: Playwright Integration E2E (DC)
     needs: changes
@@ -309,6 +361,189 @@ jobs:
         if: ${{ always() }}
         with:
           name: playwright-integration-report-dc
+          path: apps/portal/src/SEBT.Portal.Web/playwright-report/
+          retention-days: 7
+
+  # Full-stack Colorado sign-in through the compose Keycloak stand-in for
+  # myColorado: a real OIDC credential dance, not cookie injection. Keycloak
+  # runs via docker compose (not a service container) because the realm import
+  # needs the checked-out repo's fixture files.
+  e2e-integration-co:
+    name: Playwright Integration E2E (CO)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: YourStrong@Passw0rd
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong@Passw0rd -Q 'SELECT 1' -C -b -o /dev/null || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=10s
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Start Keycloak (myColorado stand-in)
+        run: |
+          docker compose --profile keycloak up -d keycloak
+          echo "Waiting for Keycloak discovery document..."
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8180/realms/sebt/.well-known/openid-configuration > /dev/null && echo "Keycloak ready" && break
+            sleep 2
+          done
+          curl -sf http://localhost:8180/realms/sebt/.well-known/openid-configuration > /dev/null || (echo "Keycloak failed to start" && docker logs sebt_keycloak | tail -50 && exit 1)
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      - name: Build backend
+        run: ./.github/workflows/scripts/build-backend.sh --configuration Release
+
+      - name: Build frontend for integration E2E
+        env:
+          STATE: co
+          NEXT_PUBLIC_STATE: co
+        run: ./.github/workflows/scripts/build-frontend.sh --production --skip-install
+
+      - name: Install Playwright browsers
+        run: cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright install --with-deps chromium
+
+      - name: Install dotnet-ef
+        run: |
+          dotnet tool install --global dotnet-ef --version "$CI_DOTNET_EF_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Initialize SQL Server Database
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          STATE: co
+        run: |
+          set -euo pipefail
+          export PATH="$PATH:$HOME/.dotnet/tools"
+
+          CONN="Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          SA_PASSWORD='YourStrong@Passw0rd'
+          SQLCMD_IMAGE="$CI_MSSQL_IMAGE"
+
+          run_sqlcmd() {
+            docker run --rm --network host "$SQLCMD_IMAGE" \
+              /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P "$SA_PASSWORD" -C -b "$@"
+          }
+
+          for i in $(seq 1 30); do
+            if run_sqlcmd -Q 'SELECT 1' -o /dev/null 2>&1; then
+              echo "SQL Server ready"
+              break
+            fi
+            if [ "$i" -eq 30 ]; then
+              echo "SQL Server did not become ready in time"
+              exit 1
+            fi
+            sleep 1
+          done
+
+          echo "Creating SebtPortal database if missing..."
+          run_sqlcmd -Q "IF DB_ID(N'SebtPortal') IS NULL CREATE DATABASE [SebtPortal];"
+
+          for attempt in $(seq 1 3); do
+            echo "Applying EF migrations (attempt ${attempt}/3)..."
+            if dotnet ef database update \
+              --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+              --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
+              --configuration Release \
+              --no-build \
+              --connection "$CONN"; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "EF migrations failed after 3 attempts"
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Run Playwright integration E2E tests
+        env:
+          CI: true
+          E2E_FULL_STACK: "1"
+          SKIP_WEB_SERVER: "1"
+          STATE: co
+          NEXT_PUBLIC_STATE: co
+          BACKEND_URL: http://localhost:5280
+          # No Mailpit in the CO stack — the checker/DC OTP flow doesn't run here.
+          MAILPIT_API_URL: ""
+          KEYCLOAK_DISCOVERY_URL: http://localhost:8180/realms/sebt/.well-known/openid-configuration
+          ASPNETCORE_ENVIRONMENT: Development
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=SebtPortal;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;"
+          JwtSettings__SecretKey: "ci-e2e-jwt-secret-at-least-32-characters-long"
+          IdentifierHasher__SecretKey: "ci-e2e-identifier-hasher-key-32chars"
+          # The CO overlay expects TLS Redis; the single-instance e2e stack uses
+          # the in-memory stores instead.
+          Redis__Host: ""
+          Oidc__DiscoveryEndpoint: http://localhost:8180/realms/sebt/.well-known/openid-configuration
+          Oidc__ClientId: sebt-portal
+          Oidc__ClientSecret: sebt-portal-dev-secret
+          Oidc__CallbackRedirectUri: http://localhost:3000/callback
+          Oidc__CompleteLoginSigningKey: "ci-e2e-oidc-signing-key-at-least-32-chars"
+          Oidc__StepUp__DiscoveryEndpoint: http://localhost:8180/realms/sebt/.well-known/openid-configuration
+          Oidc__StepUp__ClientId: sebt-portal-stepup
+          Oidc__StepUp__ClientSecret: sebt-portal-stepup-dev-secret
+          PluginAssemblyPaths__0: "plugins-co"
+          UseMockHouseholdData: "true"
+          Cbms__UseMockResponses: "true"
+        run: |
+          # The CO overlay (IAL requirements, phone-based household ids, seeding)
+          # ships as an example file; the env above overrides its Redis/OIDC bits.
+          cp apps/portal/src/SEBT.Portal.Api/appsettings.co.example.json apps/portal/src/SEBT.Portal.Api/appsettings.co.json
+          ASPNETCORE_ENVIRONMENT=Development dotnet run --project apps/portal/src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
+          (cd apps/portal/src/SEBT.Portal.Web && pnpm start) &
+          echo "Waiting for API at http://localhost:5280/health..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:5280/health > /dev/null && echo "API ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:5280/health > /dev/null || (echo "API failed to start" && exit 1)
+          echo "Waiting for web app at http://localhost:3000..."
+          for i in $(seq 1 90); do
+            curl -sf --max-time 15 http://localhost:3000 > /dev/null && echo "Web ready" && break
+            sleep 2
+          done
+          curl -sf --max-time 15 http://localhost:3000 > /dev/null || (echo "Web failed to start" && exit 1)
+          echo "Running Playwright integration E2E tests..."
+          pnpm ci:test:e2e:integration:co
+
+      - name: Upload Playwright integration report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ always() }}
+        with:
+          name: playwright-integration-report-co
           path: apps/portal/src/SEBT.Portal.Web/playwright-report/
           retention-days: 7
 
