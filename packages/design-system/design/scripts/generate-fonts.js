@@ -52,7 +52,7 @@ const GOOGLE_FONTS_MAP = {
 // the generator does not bundle fonts. Each font dir should carry its license
 // (OFL.txt) and a SOURCE.md noting where the file came from and what, if any,
 // subsetting was done.
-const LOCAL_FONTS_MAP = {
+export const LOCAL_FONTS_MAP = {
   'museo slab': {
     src: [
       {
@@ -139,12 +139,12 @@ export function extractFonts(tokensJson) {
   }
 }
 
-function fileHeader(state) {
+function fileHeader(state, sourceLabel) {
   return `/**
  * Font Configuration - ${state.toUpperCase()}
  *
  * Auto-generated from design tokens.
- * Source: design/states/${state}.json
+ * Source: ${sourceLabel ?? `design/states/${state}.json`}
  * DO NOT EDIT DIRECTLY - Regenerate with: pnpm tokens
  *
  * Generated: ${new Date().toISOString()}

@@ -3,6 +3,7 @@
 import { useAuth } from '@/features/auth/context'
 import { isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
 import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
+import { useRuntimeConfig } from '@/providers'
 import { Button, getState, SummaryBox } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -45,7 +46,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { t: tProcessing } = useTranslation('step-upProcessing')
 
   const useOidcStepUpGate = getState() === 'co'
-  const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp()
+  const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp(useRuntimeConfig().debugRepeatOidcStepUp)
 
   const ialAndIdProofingSufficient =
     requiredIal === 'IAL1plus' &&

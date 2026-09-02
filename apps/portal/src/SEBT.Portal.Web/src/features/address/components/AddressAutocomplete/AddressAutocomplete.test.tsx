@@ -1,10 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
+import { RuntimeConfigProvider } from '@/providers'
 
 import type { SelectedAddress, SmartySuggestion } from './types'
 
@@ -30,17 +31,30 @@ function makeSuggestion(overrides: Partial<SmartySuggestion> = {}): SmartySugges
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
-  process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY = 'test-embedded-key'
   mockState = 'dc'
 })
 
 afterEach(() => {
   vi.useRealTimers()
-  delete process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
 })
 
-// Lazy import so env var is set before module evaluation.
-//
+// The Smarty key reaches the component through RuntimeConfigProvider rather than an
+// inlined env var, so tests supply it the same way the root layout does. Omitting the
+// wrapper is how a test represents "no key configured".
+function withSmartyKey({ children }: { children: ReactNode }) {
+  return (
+    <RuntimeConfigProvider
+      config={{
+        smartyEmbeddedKey: 'test-embedded-key',
+        mockSocure: false,
+        debugRepeatOidcStepUp: false
+      }}
+    >
+      {children}
+    </RuntimeConfigProvider>
+  )
+}
+
 // Wraps AddressAutocomplete in a stateful container so that userEvent.type
 // actually updates the `value` prop on each keystroke. Without this the
 // component is stuck at value="" and the hook never fires a search.
@@ -67,7 +81,7 @@ async function renderAutocomplete(extraProps: Record<string, unknown> = {}) {
   }
 
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  const result = render(<Wrapper />)
+  const result = render(<Wrapper />, { wrapper: withSmartyKey })
   return { user, ...result, onSuggestionSelected }
 }
 
@@ -238,10 +252,7 @@ describe('AddressAutocomplete', () => {
   // --- Graceful degradation ---
 
   it('renders as a plain input when Smarty key is not configured', async () => {
-    delete process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY
-
-    // Re-import with no key
-    vi.resetModules()
+    // No RuntimeConfigProvider: the component sees no Smarty key.
     const { AddressAutocomplete } = await import('./AddressAutocomplete')
 
     render(
@@ -387,7 +398,7 @@ describe('AddressAutocomplete', () => {
     }
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-    render(<Wrapper />)
+    render(<Wrapper />, { wrapper: withSmartyKey })
 
     await user.type(screen.getByRole('combobox'), '123 Main')
     await vi.advanceTimersByTimeAsync(300)

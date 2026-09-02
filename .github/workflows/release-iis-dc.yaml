@@ -192,17 +192,13 @@ jobs:
         run: ./scripts/ci/publish-api.sh --output staging --configuration Release
 
       - name: Build and package frontend
-        # NEXT_PUBLIC_* values are inlined into the client bundle at build time
+        # Only build-identity values are inlined now; browser-facing config is read
+        # at runtime from web.config's <environmentVariables> on the target host
         # (Next.js webpack-replaces them; web.config runtime env vars cannot
         # rescue them after the fact). These resolve from prod-dc on release
         # triggers, from prod-dc-test on PR runs (sentinel values for plumbing
         # validation), and from empty otherwise.
         env:
-          NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: ${{ vars.SMARTY_EMBEDDED_KEY }}
-          NEXT_PUBLIC_SOCURE_SDK_KEY: ${{ vars.SOCURE_SDK_KEY }}
-          NEXT_PUBLIC_SOCURE_DI_SDK_KEY: ${{ vars.SOCURE_DI_SDK_KEY }}
-          NEXT_PUBLIC_MOCK_SOCURE: ${{ vars.MOCK_SOCURE }}
-          NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
           NEXT_PUBLIC_DC_CONNECTOR_SHA: ${{ steps.dc-connector-ref.outputs.ref }}
         run: |

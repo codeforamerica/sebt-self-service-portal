@@ -6,8 +6,8 @@ import { MockDocVAdapter } from './mock-adapter'
 import { SocureDocVAdapter } from './socure-adapter'
 import type { DocVAdapter } from './types'
 
-export function createDocVAdapter(): DocVAdapter {
-  if (process.env.NEXT_PUBLIC_MOCK_SOCURE === 'true') {
+export function createDocVAdapter(mockSocure: boolean): DocVAdapter {
+  if (mockSocure) {
     return new MockDocVAdapter()
   }
   return new SocureDocVAdapter()
