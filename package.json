@@ -29,6 +29,8 @@
     "ci:test": "./scripts/ci/test-backend.sh && ./scripts/ci/test-frontend.sh && pnpm ci:test:enrollment-checker",
     "ci:test:e2e": "cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright test --project=chromium",
     "ci:test:e2e:integration": "cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright test --project=chromium-integration-dc",
+    "ci:test:e2e:integration:co": "cd apps/portal/src/SEBT.Portal.Web && pnpm exec playwright test --project=chromium-integration-co",
+    "ci:test:e2e:checker": "cd apps/portal/src/SEBT.EnrollmentChecker.Web && pnpm exec playwright test --project=chromium",
     "ci:test:e2e:all": "cd apps/portal/src/SEBT.Portal.Web && pnpm test:e2e",
     "ci:test:a11y": "cd apps/portal/src/SEBT.Portal.Web && pnpm test:a11y",
     "ci:test:frontend": "./scripts/ci/test-frontend.sh",
