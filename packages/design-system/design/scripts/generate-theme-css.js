@@ -64,14 +64,14 @@ function writePartialsFor(state) {
  * at stable paths, and adjustFontFallback was already off, so next/font was
  * contributing little here.
  */
-function fontCss(state) {
+export function fontCss(state, root = appRoot) {
   const tokens = JSON.parse(
     readFileSync(join(designSystemRoot, 'design', 'states', `${state}.json`), 'utf8')
   )
   const { body, heading } = extractFonts(tokens)
   // Same guard generate-fonts.js applies: a token naming a font whose file is
   // missing would otherwise emit a @font-face and a preload pointing at a 404.
-  assertLocalFontFilesExist([body, heading], join(appRoot, 'design'))
+  assertLocalFontFilesExist([body, heading], join(root, 'design'))
   const roles = [
     { name: body, variable: '--font-primary' },
     { name: heading && heading !== body ? heading : null, variable: '--font-heading' }
@@ -170,4 +170,7 @@ function main() {
   console.log(`✅ Theme stylesheets generated; Sass partials restored to ${activeState.toUpperCase()}.`)
 }
 
-main()
+// Only auto-run when invoked as a script, so tests can import fontCss.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main()
+}
