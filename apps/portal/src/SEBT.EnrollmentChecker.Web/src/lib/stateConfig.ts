@@ -6,7 +6,8 @@ export interface EnrollmentStateConfig {
   checkerEnabled: boolean
   botProtectionEnabled: boolean
   portalUrl: string
-  applicationUrl: string
+  /** Absent when no application destination is configured (applications closed, DC-701). */
+  applicationUrl: string | undefined
   /** SSG: portal Node server URL. SSR: '' (same-origin /api routes). */
   apiBaseUrl: string
 }

@@ -210,6 +210,22 @@ describe('ApplicationsSection', () => {
     expect(screen.queryByText('CASE-DC-2026-001')).not.toBeInTheDocument()
   })
 
+  it('omits the date heading when the state does not author the label, even with the flag on', () => {
+    // CO enables neither the flag nor the label today. If the flag is turned on before the
+    // content row lands, the heading must degrade away rather than render its key.
+    const bundle = i18n.getResourceBundle('en', 'dashboard') as Record<string, string | undefined>
+    const authoredLabel = bundle.applicationsTableHeadingDateSubmitted
+    delete bundle.applicationsTableHeadingDateSubmitted
+    try {
+      renderWithFlags()
+
+      expect(screen.queryByText('applicationsTableHeadingDateSubmitted')).not.toBeInTheDocument()
+      expect(screen.queryByText('formatted:2026-01-15T00:00:00Z')).not.toBeInTheDocument()
+    } finally {
+      bundle.applicationsTableHeadingDateSubmitted = authoredLabel
+    }
+  })
+
   it('renders application date when show_application_date flag is on', () => {
     renderWithFlags()
 

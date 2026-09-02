@@ -7,6 +7,7 @@ using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.DocVerification;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Core.Services.Socure;
 using SEBT.Portal.Infrastructure.Services.Socure;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;

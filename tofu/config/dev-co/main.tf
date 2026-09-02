@@ -16,7 +16,7 @@ provider "doppler" {}
 
 # Create an S3 bucket and KMS key for logging.
 module "logging" {
-  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.1.0"
+  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.2.0"
 
   project     = "${var.project}-${var.state}"
   environment = var.environment
@@ -37,7 +37,7 @@ module "logging" {
 # Create a VPC with public and private subnets. Since this is a dev
 # environment, we'll use a single NAT gateway to reduce costs.
 module "vpc" {
-  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.1.2"
+  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.2.1"
 
   project            = "${var.project}-${var.state}"
   environment        = var.environment
@@ -56,6 +56,10 @@ data "aws_ecr_repository" "api" {
 
 data "aws_ecr_repository" "web" {
   name = "${var.project}-${var.state}-${var.environment}-web"
+}
+
+data "aws_ecr_repository" "keycloak" {
+  name = "${var.project}-${var.state}-${var.environment}-keycloak"
 }
 
 # Look up the hosted zone for DNS records.
@@ -146,6 +150,10 @@ module "app" {
 
   apply_immediately          = true
   domain                     = var.domain
+  # Cover pr-N / api-pr-N preview hosts on the shared ALBs (ACM one-level wildcard).
+  certificate_sans           = ["*.${var.domain}"]
+  # Serve pr-N preview hosts through CloudFront (same wildcard as certificate_sans).
+  cloudfront_extra_aliases   = ["*.${var.domain}"]
   hosted_zone_id             = data.aws_route53_zone.main.zone_id
   environment                = var.environment
   image_tag                  = var.image_tag
@@ -244,4 +252,27 @@ module "enrollment_checker" {
   logging_bucket_domain_name = module.logging.bucket_domain_name
   logging_bucket_name        = module.logging.bucket
   force_delete               = true
+}
+
+# Shared Keycloak IdP.
+# Push an image before the first apply: ./scripts/preview/build-keycloak.sh
+module "preview_keycloak" {
+  count  = var.enable_preview_keycloak ? 1 : 0
+  source = "../../modules/sebt_keycloak"
+
+  project         = var.project
+  state           = var.state
+  environment     = var.environment
+  domain          = var.domain
+  hosted_zone_id  = data.aws_route53_zone.main.zone_id
+  vpc_id          = module.vpc.vpc_id
+  private_subnets = module.vpc.private_subnets
+  public_subnets  = module.vpc.public_subnets
+  logging_key_id  = module.logging.kms_key_arn
+  image_url       = data.aws_ecr_repository.keycloak.repository_url
+  repository_arn  = data.aws_ecr_repository.keycloak.arn
+  image_tag       = var.keycloak_image_tag
+  force_delete    = true
+  skip_final_snapshot = true
+  admin_ingress_cidrs = var.keycloak_admin_ingress_cidrs
 }

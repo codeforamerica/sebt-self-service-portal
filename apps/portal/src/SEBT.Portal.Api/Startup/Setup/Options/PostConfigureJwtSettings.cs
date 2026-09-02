@@ -43,7 +43,10 @@ internal class PostConfigureJwtSettings(IOptions<JwtSettings> jwtSettingsOptions
         {
             OnMessageReceived = context =>
             {
-                if (string.IsNullOrEmpty(context.Token))
+                // The cookie fallback is skipped for the anonymous enrollment-checker
+                // API — see AuthCookies.AllowsCookieAuthentication for why.
+                if (string.IsNullOrEmpty(context.Token) &&
+                    AuthCookies.AllowsCookieAuthentication(context.Request.Path))
                 {
                     var cookieToken = context.Request.Cookies[AuthCookies.AuthCookieName];
                     if (!string.IsNullOrEmpty(cookieToken))

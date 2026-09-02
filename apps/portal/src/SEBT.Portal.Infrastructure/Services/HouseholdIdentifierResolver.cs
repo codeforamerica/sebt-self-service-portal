@@ -74,22 +74,28 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
             var overridePhone = _phoneOverrideProvider.GetOverridePhone();
             if (!string.IsNullOrWhiteSpace(overridePhone))
             {
-                _logger?.LogInformation("Using development phone override for household lookup");
-                return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, overridePhone);
+                var canonical = CanonicalizePhone(overridePhone);
+                if (canonical != null)
+                {
+                    _logger?.LogInformation("Using development phone override for household lookup");
+                    return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, canonical);
+                }
+
+                _logger?.LogWarning("Development phone override is not a valid US phone number; ignoring it for household lookup");
             }
 
             var phoneFromClaims = GetValueFromClaims(principal, PreferredHouseholdIdType.Phone);
             if (!string.IsNullOrWhiteSpace(phoneFromClaims))
             {
-                var normalized = phoneFromClaims.Trim();
-                if (!string.IsNullOrWhiteSpace(normalized))
+                var canonical = CanonicalizePhone(phoneFromClaims);
+                if (canonical != null)
                 {
                     _logger?.LogInformation("Using phone from JWT claims for household lookup");
-                    return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, normalized);
+                    return new HouseholdIdentifier(PreferredHouseholdIdType.Phone, canonical);
                 }
             }
 
-            _logger?.LogWarning("Failed to resolve phone number from JWT claims for household lookup");
+            _logger?.LogWarning("Failed to resolve a valid phone number from JWT claims for household lookup");
         }
 
         foreach (var preferredType in preferredTypes)
@@ -150,11 +156,26 @@ public class HouseholdIdentifierResolver : IHouseholdIdentifierResolver
         return type switch
         {
             PreferredHouseholdIdType.Email => EmailNormalizer.NormalizeOrNull(value),
-            PreferredHouseholdIdType.Phone => value.Trim(),
+            PreferredHouseholdIdType.Phone => CanonicalizePhone(value),
             PreferredHouseholdIdType.SnapId => value.Trim(),
             PreferredHouseholdIdType.TanfId => value.Trim(),
             PreferredHouseholdIdType.Ssn => value.Trim(),
             _ => value.Trim()
         };
+    }
+
+    /// <summary>
+    /// Canonicalizes a phone identifier to E.164 (<c>+1NNNNNNNNNN</c>) so the same
+    /// number hashes identically as a HouseholdIdentifierHash regardless of the
+    /// format its source emitted (dev override, JWT claim, or user record). Returns
+    /// null when the value is not a valid US number, so callers fall through to the
+    /// next identifier source rather than hashing a non-canonical value.
+    /// E.164 (not 10-digit national) preserves parity with the format already
+    /// persisted for existing Colorado card-replacement records.
+    /// </summary>
+    private static string? CanonicalizePhone(string? value)
+    {
+        var national = PhoneNormalizer.Normalize(value);
+        return national is null ? null : $"+1{national}";
     }
 }
