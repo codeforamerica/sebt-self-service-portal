@@ -365,6 +365,47 @@ export class DataLayer {
   }
 }
 
+/**
+ * Subscribe an analytics bridge to page_load events with catch-up.
+ *
+ * Calls `onPageView(eventName, eventData)` for every future page_load and —
+ * crucially — immediately for the current page's page_load when one already
+ * fired before this subscription. Bridges attach asynchronously (a bundled SDK
+ * in an effect, a CDN script's onReady) and routinely do so after PageTracker's
+ * requestAnimationFrame has already emitted the page_load for a fresh load (the
+ * OIDC callback, the dashboard landing). Binding the catch-up to the act of
+ * subscribing is what stops a bridge from silently missing the current page view
+ * — every page-view integration gets it here instead of re-implementing it.
+ *
+ * Delivers each page view exactly once: subscribe before the page_load and the
+ * append-only event log holds none yet (catch-up no-ops, the listener delivers
+ * it live); subscribe after and the listener missed it (the catch-up delivers
+ * it). Returns a teardown that removes the listener.
+ */
+export function subscribeToPageViews(
+  dl: DataLayerRoot,
+  onPageView: (eventName: string, eventData: Record<string, unknown>) => void
+): () => void {
+  const pageViewedEvent = dl.eventTypes.PAGE_VIEWED!
+
+  function handlePageViewed(event: Event): void {
+    const detail = (event as CustomEvent).detail as
+      | { eventName?: string; eventData?: Record<string, unknown> }
+      | undefined
+    if (!detail?.eventName) return
+    onPageView(detail.eventName, detail.eventData ?? {})
+  }
+  document.addEventListener(pageViewedEvent, handlePageViewed)
+
+  // Catch-up: the append-only event log's last PAGE_LOAD is the current page.
+  const current = [...dl.event].reverse().find((e: DataLayerEvent) => e.eventName === PAGE_LOAD)
+  if (current) {
+    onPageView(current.eventName, current.eventData)
+  }
+
+  return () => document.removeEventListener(pageViewedEvent, handlePageViewed)
+}
+
 declare global {
   interface Window {
     digitalData?: DataLayerRoot

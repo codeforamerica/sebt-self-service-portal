@@ -3,50 +3,52 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
+# deploy-ecr.yaml passes --build-arg CI=true; RestoreLockedMode in Directory.Build.props
+# keys off $(CI), so the image restores the exact committed lockfile versions or fails.
+ARG CI
 
 WORKDIR /src
 
-# Copy project files for restore caching
-COPY apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj SEBT.Portal.Api/
-COPY apps/portal/src/SEBT.Portal.Core/SEBT.Portal.Core.csproj SEBT.Portal.Core/
-COPY apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj SEBT.Portal.Infrastructure/
-COPY apps/portal/src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj SEBT.Portal.Infrastructure.Seeding/
-COPY apps/portal/src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj SEBT.Portal.Kernel/
-COPY apps/portal/src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj SEBT.Portal.Kernel.AspNetCore/
-COPY apps/portal/src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj SEBT.Portal.UseCases/
-COPY apps/portal/src/SEBT.Portal.TestUtilities/SEBT.Portal.TestUtilities.csproj SEBT.Portal.TestUtilities/
+# Project files + committed lockfiles first, for restore-layer caching. Projects are
+# copied to their real repo-relative paths (not flattened) so Api.csproj's relative
+# reference to the state-connector contract resolves and the contract builds from
+# source as a ProjectReference — matching the committed (ProjectReference-mode)
+# lockfile so locked-mode restore validates instead of silently rewriting.
+COPY apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj apps/portal/src/SEBT.Portal.Api/packages.lock.json apps/portal/src/SEBT.Portal.Api/
+COPY apps/portal/src/SEBT.Portal.Core/SEBT.Portal.Core.csproj apps/portal/src/SEBT.Portal.Core/packages.lock.json apps/portal/src/SEBT.Portal.Core/
+COPY apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj apps/portal/src/SEBT.Portal.Infrastructure/packages.lock.json apps/portal/src/SEBT.Portal.Infrastructure/
+COPY apps/portal/src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj apps/portal/src/SEBT.Portal.Infrastructure.Seeding/packages.lock.json apps/portal/src/SEBT.Portal.Infrastructure.Seeding/
+COPY apps/portal/src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj apps/portal/src/SEBT.Portal.Kernel/packages.lock.json apps/portal/src/SEBT.Portal.Kernel/
+COPY apps/portal/src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj apps/portal/src/SEBT.Portal.Kernel.AspNetCore/packages.lock.json apps/portal/src/SEBT.Portal.Kernel.AspNetCore/
+COPY apps/portal/src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj apps/portal/src/SEBT.Portal.UseCases/packages.lock.json apps/portal/src/SEBT.Portal.UseCases/
+COPY apps/portal/src/SEBT.Portal.TestUtilities/SEBT.Portal.TestUtilities.csproj apps/portal/src/SEBT.Portal.TestUtilities/packages.lock.json apps/portal/src/SEBT.Portal.TestUtilities/
+COPY apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/packages.lock.json apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/
 
-# Copy local NuGet packages (plugin interfaces built in CI)
-COPY nuget-store/ /root/nuget-store/
-
-# Repo NuGet config, so packageSourceMapping (SEBT.* only from the local store —
-# the dependency-confusion guard) also applies inside the image build. Its
-# %HOME%/nuget-store source resolves to /root/nuget-store copied above.
+# Repo NuGet config (packageSourceMapping — dependency-confusion guard, defense in
+# depth) and repo-wide MSBuild defaults (NuGet audit, lockfile + locked-mode policy).
 COPY nuget.config .
-
-# Repo-wide MSBuild defaults: supplies the contract fallback version
-# (StateConnectorInterfacesFloatingVersion) and applies the same NuGet-audit /
-# warnings-as-errors policy here as in every other build.
 COPY Directory.Build.props .
 
-RUN dotnet restore SEBT.Portal.Api/SEBT.Portal.Api.csproj
+RUN dotnet restore apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj
 
 # Copy source and publish
-COPY apps/portal/src/SEBT.Portal.Api/ SEBT.Portal.Api/
-COPY apps/portal/src/SEBT.Portal.Core/ SEBT.Portal.Core/
-COPY apps/portal/src/SEBT.Portal.Infrastructure/ SEBT.Portal.Infrastructure/
-COPY apps/portal/src/SEBT.Portal.Infrastructure.Seeding/ SEBT.Portal.Infrastructure.Seeding/
-COPY apps/portal/src/SEBT.Portal.Kernel/ SEBT.Portal.Kernel/
-COPY apps/portal/src/SEBT.Portal.Kernel.AspNetCore/ SEBT.Portal.Kernel.AspNetCore/
-COPY apps/portal/src/SEBT.Portal.UseCases/ SEBT.Portal.UseCases/
-COPY apps/portal/src/SEBT.Portal.TestUtilities/ SEBT.Portal.TestUtilities/
+COPY apps/portal/src/SEBT.Portal.Api/ apps/portal/src/SEBT.Portal.Api/
+COPY apps/portal/src/SEBT.Portal.Core/ apps/portal/src/SEBT.Portal.Core/
+COPY apps/portal/src/SEBT.Portal.Infrastructure/ apps/portal/src/SEBT.Portal.Infrastructure/
+COPY apps/portal/src/SEBT.Portal.Infrastructure.Seeding/ apps/portal/src/SEBT.Portal.Infrastructure.Seeding/
+COPY apps/portal/src/SEBT.Portal.Kernel/ apps/portal/src/SEBT.Portal.Kernel/
+COPY apps/portal/src/SEBT.Portal.Kernel.AspNetCore/ apps/portal/src/SEBT.Portal.Kernel.AspNetCore/
+COPY apps/portal/src/SEBT.Portal.UseCases/ apps/portal/src/SEBT.Portal.UseCases/
+COPY apps/portal/src/SEBT.Portal.TestUtilities/ apps/portal/src/SEBT.Portal.TestUtilities/
+COPY apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/ apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/
 
-RUN dotnet publish SEBT.Portal.Api/SEBT.Portal.Api.csproj \
+RUN dotnet publish apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
     -c $BUILD_CONFIGURATION \
     -o /app/publish \
     --no-restore \
     /p:UseAppHost=false \
-    /p:BuildFrontend=false
+    /p:BuildFrontend=false \
+    /p:GeneratePackageOnBuild=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app

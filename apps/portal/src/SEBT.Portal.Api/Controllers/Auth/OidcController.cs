@@ -1,19 +1,16 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
-using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
-
-using static SEBT.Portal.Core.Utilities.PiiMasker;
+using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.UseCases.Auth.CompleteOidcLogin;
+using SEBT.Portal.UseCases.Auth.OidcCallback;
 
 namespace SEBT.Portal.Api.Controllers.Auth;
 
@@ -21,6 +18,9 @@ namespace SEBT.Portal.Api.Controllers.Auth;
 /// OIDC endpoints for external IdP login and step-up. Primary config uses flat <c>Oidc</c> keys
 /// (<c>DiscoveryEndpoint</c>, <c>ClientId</c>, <c>CallbackRedirectUri</c>); optional <c>Oidc:StepUp:*</c>
 /// selects a second client for elevated verification when <c>stepUp=true</c> on the config endpoint.
+///
+/// The controller owns PKCE generation, cookies, and HTTP mapping; the callback and
+/// complete-login business orchestration lives in UseCases handlers.
 /// </summary>
 [ApiController]
 [Route("api/auth/oidc")]
@@ -28,8 +28,6 @@ public class OidcController(
     IConfiguration config,
     ILogger<OidcController> logger,
     IOidcCallbackFailureLogger callbackFailureLogger,
-    IUserRepository userRepository,
-    IOidcTokenService oidcTokenService,
     IOptions<JwtSettings> jwtSettingsOptions,
     IStateAllowlist stateAllowlist,
     IPreAuthSessionStore sessionStore,
@@ -164,10 +162,10 @@ public class OidcController(
         }
 
         // Fetch the authorization endpoint from the cached discovery document.
-        Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration oidcConfig;
+        OidcDiscoveryInfo oidcConfig;
         try
         {
-            oidcConfig = await exchangeService.GetDiscoveryConfigAsync(stepUp, cancellationToken);
+            oidcConfig = await exchangeService.GetDiscoveryInfoAsync(stepUp, cancellationToken);
         }
         catch (Exception ex)
         {
@@ -282,11 +280,10 @@ public class OidcController(
 
     /// <summary>
     /// Server-side OIDC callback. Requires the <c>oidc_session</c> cookie to
-    /// locate the pre-auth session. Validates <c>state</c> against the stored value,
-    /// uses the stored <c>code_verifier</c> for the token exchange (never from the
-    /// request body), and advances the session to <c>CallbackCompleted</c>.
-    /// The <c>stateCode</c> and <c>isStepUp</c> values are read from the session —
-    /// the request body only needs <c>code</c> and <c>state</c>.
+    /// locate the pre-auth session; the orchestration (state validation, replay
+    /// protection, code exchange, session advancement) is dispatched to
+    /// <see cref="OidcCallbackCommandHandler"/>. The request body only needs
+    /// <c>code</c> and <c>state</c>.
     /// </summary>
     [HttpPost("callback")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -295,116 +292,34 @@ public class OidcController(
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Callback(
         [FromBody] OidcCallbackRequest? body,
-        [FromServices] IOidcExchangeService exchangeService,
+        [FromServices] ICommandHandler<OidcCallbackCommand, OidcCallbackResponse> handler,
         CancellationToken cancellationToken)
     {
         if (body == null || string.IsNullOrEmpty(body.Code))
             return BadRequest(new ErrorResponse("Missing code."));
 
-        // --- Require the oidc_session cookie ---
-        var sessionId = OidcSessionCookie.Read(Request);
-        if (string.IsNullOrEmpty(sessionId))
+        var result = await handler.Handle(new OidcCallbackCommand
         {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "missing_session",
-                Phase = "callback",
-                HttpStatus = StatusCodes.Status403Forbidden
-            });
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
+            Code = body.Code,
+            State = body.State,
+            SessionId = OidcSessionCookie.Read(Request)
+        }, cancellationToken);
+
+        if (result.IsSuccess)
+        {
+            return Ok(new { callbackToken = result.Value.CallbackToken });
         }
 
-        var session = await sessionStore.GetAsync(sessionId, cancellationToken);
-        if (session == null)
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "missing_session",
-                Phase = "callback",
-                SessionId = sessionId,
-                HttpStatus = StatusCodes.Status403Forbidden
-            });
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session expired or invalid."));
-        }
-
-        // --- Validate state matches stored value (CSRF protection) ---
-        if (string.IsNullOrEmpty(body.State) || body.State != session.State)
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "mismatched_state",
-                Phase = "callback",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status400BadRequest
-            });
-            return BadRequest(new ErrorResponse("State parameter mismatch."));
-        }
-
-        // --- Verify the session hasn't already been used (fail fast before the exchange) ---
-        if (session.Phase != PreAuthSessionPhase.Created)
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "replay",
-                Phase = "callback",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status400BadRequest,
-                ApiError = $"Phase={session.Phase}"
-            });
-            return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
-        }
-
-        // --- Exchange the authorization code from PingOne (body.Code) using server-side
-        // session values. code_verifier, redirectUri, and isStepUp are read from the
-        // pre-auth session — never from the body. ---
-        var result = await exchangeService.ExchangeCodeAsync(
-            body.Code,
-            session.CodeVerifier,
-            session.RedirectUri,
-            session.IsStepUp,
-            sessionId,
-            cancellationToken);
-
-        if (!result.Success)
-        {
-            // Exchange failures are logged in <see cref="OidcExchangeService"/> with SessionId and IdP detail.
-            return StatusCode(result.StatusCode, new ErrorResponse(result.Error ?? "Exchange failed."));
-        }
-
-        // --- Advance session to CallbackCompleted and store the callback token hash ---
-        var tokenHash = IPreAuthSessionStore.HashCallbackToken(result.CallbackToken!);
-        var advanced = await sessionStore.TryAdvanceToCallbackCompletedAsync(sessionId, tokenHash, cancellationToken);
-        if (!advanced)
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "replay",
-                Phase = "callback",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status400BadRequest
-            });
-            return BadRequest(new ErrorResponse("Pre-auth session has already been used."));
-        }
-
-        logger.LogInformation(
-            "OIDC Callback exchange succeeded: IsStepUp={IsStepUp}, Phone={MaskedPhone}, SessionId={SessionId}",
-            session.IsStepUp,
-            MaskPhone(result.PhoneClaim),
-            sessionId);
-
-        return Ok(new { callbackToken = result.CallbackToken });
+        return MapFailure(result);
     }
 
     /// <summary>
-    /// Completes OIDC login. Requires the <c>oidc_session</c> cookie to locate
-    /// the pre-auth session. Verifies the callback token was issued for this session and
-    /// has not been used before. On success, mints the portal JWT, marks the session
-    /// consumed, and clears the pre-auth cookie. The <c>stateCode</c>, <c>isStepUp</c>,
-    /// and <c>returnUrl</c> are read from the session — the request body only needs
-    /// <c>callbackToken</c>.
+    /// Completes OIDC login. Requires the <c>oidc_session</c> cookie to locate the
+    /// pre-auth session; the orchestration (callback-token verification, user
+    /// resolution, portal JWT minting) is dispatched to
+    /// <see cref="CompleteOidcLoginCommandHandler"/>. On success the portal JWT is
+    /// written to the session cookie and the pre-auth cookie is cleared. The request
+    /// body only needs <c>callbackToken</c>.
     /// </summary>
     [HttpPost("complete-login")]
     [ProducesResponseType(typeof(CompleteLoginResponse), StatusCodes.Status200OK)]
@@ -413,225 +328,56 @@ public class OidcController(
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CompleteLogin(
         [FromBody] CompleteLoginRequest body,
+        [FromServices] ICommandHandler<CompleteOidcLoginCommand, CompleteOidcLoginResponse> handler,
         CancellationToken cancellationToken)
     {
-        // Bind callbackToken after null check; the token is validated cryptographically
-        // (signature + hash match) before any sensitive action.
         if (string.IsNullOrEmpty(body.CallbackToken))
             return BadRequest(new ErrorResponse("Missing callbackToken."));
-        var callbackToken = body.CallbackToken;
 
-        // --- Require the oidc_session cookie ---
-        var sessionId = OidcSessionCookie.Read(Request);
-        if (string.IsNullOrEmpty(sessionId))
+        var result = await handler.Handle(new CompleteOidcLoginCommand
         {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "missing_session",
-                Phase = "complete-login",
-                HttpStatus = StatusCodes.Status403Forbidden
-            });
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Missing pre-auth session."));
+            CallbackToken = body.CallbackToken,
+            SessionId = OidcSessionCookie.Read(Request)
+        }, cancellationToken);
+
+        // The handler consumes the session on its first advance; any non-Forbidden outcome
+        // means it was consumed, so clear the pre-auth cookie (Forbidden = the session was
+        // never validated, keep the cookie for a retry with the same browser state).
+        if (result is not ForbiddenResult<CompleteOidcLoginResponse>)
+        {
+            OidcSessionCookie.Clear(Response);
         }
 
-        // --- Retrieve session (stateCode, isStepUp, returnUrl are authoritative from here) ---
-        var session = await sessionStore.GetAsync(sessionId, cancellationToken);
-        if (session == null)
+        if (result.IsSuccess)
         {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "missing_session",
-                Phase = "complete-login",
-                SessionId = sessionId,
-                HttpStatus = StatusCodes.Status403Forbidden
-            });
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
+            var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
+            AuthCookies.SetAuthCookie(Response, result.Value.Token, expiresAt);
+            return Ok(new CompleteLoginResponse(ReturnUrl: result.Value.ReturnUrl));
         }
 
-        // --- Verify the callback token matches this session and hasn't been consumed ---
-        var tokenHash = IPreAuthSessionStore.HashCallbackToken(callbackToken);
-        var advanced = await sessionStore.TryAdvanceToLoginCompletedAsync(sessionId, tokenHash, cancellationToken);
-        if (!advanced)
+        // Not-configured carries a dev-only remediation hint; every other failure uses the
+        // shared mapping.
+        if (result is DependencyFailedResult<CompleteOidcLoginResponse> { Reason: DependencyFailedReason.NotConfigured } notConfigured)
         {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "replay",
-                Phase = "complete-login",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status403Forbidden
-            });
-            return StatusCode(StatusCodes.Status403Forbidden, new ErrorResponse("Pre-auth session invalid, expired, or already used."));
-        }
-
-        // Clear the pre-auth cookie and remove the session from cache (defense-in-depth:
-        // even if the phase check were bypassed, the code_verifier is gone from memory).
-        OidcSessionCookie.Clear(Response);
-        await sessionStore.RemoveAsync(sessionId, cancellationToken);
-
-        var stateKey = session.StateCode.ToLowerInvariant();
-        var signingKey = config["Oidc:CompleteLoginSigningKey"];
-        if (string.IsNullOrEmpty(signingKey))
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "complete_login_not_configured",
-                Phase = "complete-login",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status503ServiceUnavailable
-            });
             var hint = environment.IsDevelopment() ? "Set Oidc:CompleteLoginSigningKey in appsettings." : "";
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { error = "Complete-login not configured.", hint });
+            return StatusCode(OidcResultHttpStatus.For(result), new { error = notConfigured.Message, hint });
         }
 
-        var portalOrigin = config["Oidc:CallbackRedirectUri"]?.TrimEnd('/') ?? "sebt-portal";
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
-        var validationParams = new TokenValidationParameters
-        {
-            ValidateIssuerSigningKey = true,
-            ValidateIssuer = true,
-            ValidIssuer = portalOrigin,
-            ValidateAudience = true,
-            ValidAudience = portalOrigin,
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
-            // Use resolver instead of IssuerSigningKey to bypass kid-matching;
-            // the callback token is signed without a kid header, which causes IDX10517
-            // when JwtSecurityTokenHandler tries to match by kid.
-            IssuerSigningKeyResolver = (token, securityToken, kid, parameters) => [key]
-        };
-        var handler = new JwtSecurityTokenHandler();
-        handler.MapInboundClaims = false; // Preserve original JWT claim names (sub, email)
-        ClaimsPrincipal principal;
-        try
-        {
-            principal = handler.ValidateToken(callbackToken, validationParams, out _);
-        }
-        catch (Exception ex)
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "invalid_callback_token",
-                Phase = "complete-login",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status400BadRequest,
-                ApiError = OidcLogSanitizer.Sanitize(ex.Message)
-            });
-            logger.LogError(ex, "OIDC complete-login off-boarding: invalid_callback_token (SessionId={SessionId})", sessionId);
-            return BadRequest(new ErrorResponse("Invalid or expired callback token."));
-        }
+        return MapFailure(result);
+    }
 
-        // Extract sub + email from principal for user lookup. The service handles
-        // all claim processing (filtering, verification, IAL derivation).
-        var subClaim = principal.FindFirst("sub")?.Value;
-        var email = GetEmailFromClaims(principal);
-        var phoneClaim = principal.FindFirst("phone")?.Value;
-        var maskedPhone = MaskPhone(phoneClaim);
-
-        if (phoneClaim == null)
-        {
-            logger.LogError("OIDC incoming claims missing 'phone' (SessionId={SessionId})", sessionId);
-        }
-
-        if (string.IsNullOrWhiteSpace(email) && string.IsNullOrWhiteSpace(subClaim))
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "missing_identity_claim",
-                Phase = "complete-login",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status400BadRequest
-            });
-            return BadRequest(new ErrorResponse("Callback token must contain an email or sub claim."));
-        }
-
-        User user;
-
-        if (session.IsStepUp)
-        {
-            if (string.IsNullOrWhiteSpace(subClaim))
-            {
-                callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-                {
-                    Reason = "missing_sub_claim",
-                    Phase = "complete-login",
-                    SessionId = sessionId,
-                    IsStepUp = true,
-                    HttpStatus = StatusCodes.Status400BadRequest
-                });
-                return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
-            }
-
-            var existingEntity = await userRepository.GetUserByExternalIdAsync(subClaim, cancellationToken);
-            if (existingEntity == null)
-            {
-                callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-                {
-                    Reason = "step_up_user_not_found",
-                    Phase = "complete-login",
-                    SessionId = sessionId,
-                    IsStepUp = true,
-                    HttpStatus = StatusCodes.Status400BadRequest
-                });
-                return BadRequest(new { error = "Step-up requires an existing session. Please sign in again." });
-            }
-
-            user = existingEntity;
-        }
-        else
-        {
-            if (string.IsNullOrWhiteSpace(subClaim))
-            {
-                callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-                {
-                    Reason = "missing_sub_claim",
-                    Phase = "complete-login",
-                    SessionId = sessionId,
-                    IsStepUp = false,
-                    HttpStatus = StatusCodes.Status400BadRequest
-                });
-                return BadRequest(new ErrorResponse("Callback token must contain a sub claim."));
-            }
-
-            // Pass email from IdP claims as a migration hint: if no user exists for
-            // this sub but one exists for this email, adopt that legacy record.
-            // TODO: Remove email parameter once all existing users have been migrated.
-            var emailHint = principal.FindFirst("email")?.Value;
-            var (createdUser, _) = await userRepository.GetOrCreateUserByExternalIdAsync(
-                subClaim, emailHint, cancellationToken);
-            user = createdUser;
-        }
-
-        // The service handles claim filtering, verification translation,
-        // IAL derivation, and timestamp computation.
-        var tokenResult = oidcTokenService.GenerateForOidcLogin(user, principal, session.IsStepUp);
-
-        if (!tokenResult.IsSuccess)
-        {
-            callbackFailureLogger.Log(new OidcCallbackFailureLogEntry
-            {
-                Reason = "token_generation_failed",
-                Phase = "complete-login",
-                SessionId = sessionId,
-                IsStepUp = session.IsStepUp,
-                HttpStatus = StatusCodes.Status400BadRequest,
-                ApiError = tokenResult.Message
-            });
-            return BadRequest(new { error = "Step-up verification failed. Please try again." });
-        }
-
-        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(jwtSettingsOptions.Value.ExpirationMinutes);
-        AuthCookies.SetAuthCookie(Response, tokenResult.Value, expiresAt);
-
-        logger.LogInformation(
-            "OIDC {FlowType} complete: UserId {UserId}, Phone={MaskedPhone}, SessionId={SessionId}",
-            session.IsStepUp ? "step-up" : "login", user.Id, maskedPhone, sessionId);
-
-        var safeReturnUrl = session.IsStepUp ? session.ReturnUrl : null;
-        return Ok(new CompleteLoginResponse(ReturnUrl: safeReturnUrl));
+    /// <summary>
+    /// Maps a failed handler result to the HTTP contract these endpoints have always
+    /// returned. The status code comes from <see cref="OidcResultHttpStatus"/> — the
+    /// same table the handlers record on their failure-log entries — so the logged
+    /// and returned statuses cannot drift apart.
+    /// </summary>
+    private ObjectResult MapFailure<T>(Result<T> result)
+    {
+        var error = result is ValidationFailedResult<T> validation
+            ? validation.Errors.FirstOrDefault()?.Message ?? validation.Message
+            : result.Message;
+        return StatusCode(OidcResultHttpStatus.For(result), new ErrorResponse(error));
     }
 
     private const int MaxStepUpReturnUrlLength = 4096;
@@ -680,30 +426,6 @@ public class OidcController(
             || t.Contains("\0", StringComparison.Ordinal))
             return null;
         return t;
-    }
-
-    /// <summary>
-    /// Removes newline/control-friendly breaks from values logged from user input.
-    /// </summary>
-    private static string SanitizeForLog(string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-            return string.Empty;
-        return value
-            .Replace("\r", string.Empty, StringComparison.Ordinal)
-            .Replace("\n", string.Empty, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Gets the email (or subject) from the callback token claims for portal user lookup.
-    /// </summary>
-    private static string? GetEmailFromClaims(ClaimsPrincipal principal)
-    {
-        var emailClaim = principal.FindFirst("email");
-        if (!string.IsNullOrEmpty(emailClaim?.Value))
-            return emailClaim.Value;
-        var subClaim = principal.FindFirst("sub");
-        return subClaim?.Value;
     }
 
 }

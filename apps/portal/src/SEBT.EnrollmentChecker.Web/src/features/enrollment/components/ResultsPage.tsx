@@ -2,7 +2,6 @@
 
 import { getApplyHref } from '@/lib/applyHref'
 import Image from 'next/image'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
@@ -10,7 +9,6 @@ import { RichText } from '@sebt/design-system'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
-import { IncomeCalculator } from './IncomeCalculator'
 import { NotEnrolledSection } from './NotEnrolledSection'
 
 interface ResultsPageProps {
@@ -37,32 +35,38 @@ function computeHouseholdEnrollmentResult(
 
 export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   const { t, i18n } = useTranslation('result')
-  const { t: tCommon } = useTranslation('common')
 
-  const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
+  // Null when no application destination is configured (applications closed,
+  // DC-701): the 2027 application link and its wait note degrade away while the
+  // closure line stays. The mixed variant also drops its numbered next-steps
+  // list, since the portal step is then the only actionable one.
   const applyHref = getApplyHref(i18n.language)
 
-  const notEnrolledNextSteps = (
-    <section data-testid="not-enrolled-next-steps">
-      <h2 className="usa-process-list__heading margin-top-4">{t('applyForSebtActionApply')}</h2>
-      <p className="margin-top-05">{t('applyForSebtBody2')}</p>
-      <p>
-        <a
-          href={applyHref}
-          data-analytics-cta="apply_cta"
-          className="usa-button"
-          data-testid="apply-for-sebt-link"
-        >
-          {tCommon('applyOnline')}
-        </a>
-      </p>
-    </section>
+  // Closure copy plus the optional summer-2027 application link. The wait-note
+  // key differs by surface (standalone vs numbered step), so callers pass it.
+  const apply2027Block = (noteKey: 'apply2027Note' | 'apply2027StepNote') => (
+    <>
+      <p>{t('enrollmentClosedBody')}</p>
+      {applyHref && (
+        <>
+          <p>
+            <a
+              href={applyHref}
+              data-analytics-cta="apply_cta"
+              data-testid="apply-2027-link"
+            >
+              {t('apply2027Action')}
+            </a>
+          </p>
+          <RichText>{t(noteKey)}</RichText>
+        </>
+      )}
+    </>
   )
 
-  const enrolledNextSteps = (
-    <section data-testid="enrolled-next-steps">
+  const portalNextStep = (
+    <section data-testid="next-step-portal">
       <h2 className="usa-process-list__heading margin-top-4">
-        {' '}
         {t('streamlinedEnrolledAlertTitle')}
       </h2>
       <div className="margin-top-2">
@@ -80,39 +84,12 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     </section>
   )
 
-  const eligibilityAccordion = (
-    <div
-      className="usa-accordion margin-top-4"
-      data-testid="eligibility-accordion"
-    >
-      <h2 className="usa-accordion__heading">
-        <button
-          type="button"
-          className="usa-accordion__button"
-          aria-expanded={isAccordionExpanded}
-          aria-controls="faq-content"
-          onClick={() => setIsAccordionExpanded((prev) => !prev)}
-        >
-          {t('applyForSebtAccordionTitle')}
-        </button>
-      </h2>
-      <div
-        id="faq-content"
-        className="usa-accordion__content usa-prose"
-        hidden={!isAccordionExpanded}
-      >
-        <p>{t('applyForSebtAccordionBody1')}</p>
-        <p>
-          <a
-            href={applyHref}
-            data-analytics-cta="apply_cta_accordion"
-          >
-            {t('applyForSebtAccordionBody2')}
-          </a>
-        </p>
-        <IncomeCalculator />
-      </div>
-    </div>
+  const apply2027NextStep = (
+    <section data-testid="next-step-apply-2027">
+      <h2 className="usa-process-list__heading margin-top-4">{t('apply2027StepTitle')}</h2>
+      <p className="margin-top-05">{t('applyForSebtBody2')}</p>
+      {apply2027Block('apply2027StepNote')}
+    </section>
   )
 
   const enrolled = results.filter((r) => mapApiStatus(r.status) === 'enrolled')
@@ -124,11 +101,17 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     notEnrolled.length
   )
 
+  // Not-enrolled and no-info outcomes lead with a warning icon; enrolled
+  // outcomes keep the review-card icon.
+  const icon = ['noneEnrolled', 'indeterminate'].includes(householdEnrollmentResult)
+    ? 'icon-alert-card.svg'
+    : 'icon-review-card.svg'
+
   return (
     <div className="usa-section">
       <div className="grid-container">
         <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`}
+          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/${icon}`}
           alt=""
           width={100}
           height={75}
@@ -136,64 +119,98 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
         />
         <h1 className="font-family-sans text-primary margin-top-1">{t('title')}</h1>
 
-        {['mixedEnrolled', 'noneEnrolled'].includes(householdEnrollmentResult) && (
-          <section>
-            <div className="usa-summary-box">
-              <NotEnrolledSection results={notEnrolled} />
-            </div>
-            <div className="margin-top-3">
-              <EnrolledSection results={enrolled} />
-            </div>
-          </section>
-        )}
-
-        {householdEnrollmentResult === 'allEnrolled' && (
+        {['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
           <div className="usa-summary-box">
             <EnrolledSection results={enrolled} />
           </div>
         )}
 
-        {householdEnrollmentResult === 'indeterminate' && (
-          <section>
-            <h2 className="font-family-sans">{t('errorTitle')}</h2>
-            {errors.map((child) => (
-              <ChildResultCard
-                key={child.checkId}
-                firstName={child.firstName}
-                lastName={child.lastName}
-                displayStatus="error"
-                {...(child.statusMessage !== undefined && { errorMessage: child.statusMessage })}
-              />
-            ))}
+        {householdEnrollmentResult === 'mixedEnrolled' && (
+          <section
+            className="margin-top-3"
+            data-testid="not-enrolled-inline"
+          >
+            <RichText>{t('notEnrolledInlineTitle')}</RichText>
+            <ul>
+              {notEnrolled.map((child) => (
+                <ChildResultCard
+                  key={child.checkId}
+                  firstName={child.firstName}
+                  lastName={child.lastName}
+                  displayStatus="notEnrolled"
+                />
+              ))}
+            </ul>
           </section>
         )}
 
-        {['mixedEnrolled', 'indeterminate'].includes(householdEnrollmentResult) && (
+        {householdEnrollmentResult === 'noneEnrolled' && (
+          <div className="usa-summary-box">
+            <NotEnrolledSection results={notEnrolled} />
+          </div>
+        )}
+
+        {householdEnrollmentResult === 'indeterminate' && (
+          <div
+            className="usa-summary-box"
+            data-testid="no-info-summary-box"
+          >
+            <section>
+              <h4 className="usa-summary-box__heading">{t('noneBody1')}</h4>
+              <div className="usa-summary-box__text">
+                <ul>
+                  {errors.map((child) => (
+                    <ChildResultCard
+                      key={child.checkId}
+                      firstName={child.firstName}
+                      lastName={child.lastName}
+                      displayStatus="error"
+                    />
+                  ))}
+                </ul>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {householdEnrollmentResult === 'mixedEnrolled' && applyHref && (
           <section data-testid="next-steps">
             <h1 className="font-family-sans margin-top-4">
               {t('streamlinedEnrolledStepsHeading')}
             </h1>
             <ol className="usa-process-list  margin-top-1">
-              <li className="usa-process-list__item margin-top-2">{notEnrolledNextSteps}</li>
-              <li className="usa-process-list__item margin-top-2">{enrolledNextSteps}</li>
+              <li className="usa-process-list__item margin-top-2">{portalNextStep}</li>
+              <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>
             </ol>
-
-            {eligibilityAccordion}
-            <p> {t('applyForSebtBody3')}</p>
-            <p> {t('applyForSebtBody4')}</p>
           </section>
+        )}
+
+        {/* Without an application destination the 2027 step would be an
+            instruction with nothing to act on, so the portal step stands alone
+            (as on the all-enrolled page) and the not-enrolled children get the
+            same explanation and closure line as the no-results page. */}
+        {householdEnrollmentResult === 'mixedEnrolled' && !applyHref && (
+          <>
+            <section>{portalNextStep}</section>
+            <section className="margin-top-3">
+              <p>{t('applyForSebtBody2')}</p>
+              {apply2027Block('apply2027Note')}
+            </section>
+          </>
         )}
 
         {householdEnrollmentResult === 'noneEnrolled' && (
-          <section>
-            {notEnrolledNextSteps}
-            {eligibilityAccordion}
-            <p> {t('applyForSebtBody3')}</p>
-            <p> {t('applyForSebtBody4')}</p>
+          <section className="margin-top-3">{apply2027Block('apply2027Note')}</section>
+        )}
+
+        {householdEnrollmentResult === 'indeterminate' && (
+          <section className="margin-top-3">
+            <p>{t('applyForSebtBody2')}</p>
+            {apply2027Block('apply2027Note')}
           </section>
         )}
 
-        {householdEnrollmentResult === 'allEnrolled' && <section>{enrolledNextSteps}</section>}
+        {householdEnrollmentResult === 'allEnrolled' && <section>{portalNextStep}</section>}
       </div>
     </div>
   )

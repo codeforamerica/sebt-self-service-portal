@@ -17,6 +17,9 @@ ARG NEXT_PUBLIC_MIXPANEL_TOKEN=""
 ARG NEXT_PUBLIC_SITEIMPROVE_ID=""
 ARG NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=""
 ARG NEXT_PUBLIC_BUILD_SHA=""
+# DC only — the dc-connector repo's resolved commit SHA at build time. Empty for CO,
+# whose connector lives in-repo (nothing separate to track).
+ARG NEXT_PUBLIC_DC_CONNECTOR_SHA=""
 ENV STATE=$STATE
 ENV BUILD_STANDALONE=true
 

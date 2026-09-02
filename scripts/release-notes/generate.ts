@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Fetches merged PRs from the past week (or --days=N) and writes a release-notes-style
-// markdown summary bucketed by state to scripts/release-notes/output/YYYY-MM-DD.md.
+// Fetches merged PRs — either from the past N days (--days, default 7) or from an
+// exact commit range (--since-sha, diffed up to HEAD) — and writes a release-notes-
+// style markdown summary bucketed by state to scripts/release-notes/output/YYYY-MM-DD.md.
 //
 // Requires the `gh` CLI to be installed and authenticated (`gh auth login`).
 // Run via: pnpm release-notes:generate
@@ -8,13 +9,14 @@
 import { execSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
-interface PullRequest {
+export interface PullRequest {
   number: number
   title: string
   labels: { name: string }[]
   mergedAt: string
+  mergeCommit: { oid: string } | null
   author: { login: string }
   url: string
 }
@@ -24,11 +26,15 @@ interface TicketRef {
   jiraUrl: string
 }
 
-function parseDaysArg(argv: string[]): number {
-  const flag = argv.find((a) => a.startsWith('--days='))
-  if (!flag) return 7
-  const n = parseInt(flag.split('=')[1], 10)
-  if (isNaN(n) || n < 1) throw new Error(`Invalid --days value: ${flag.split('=')[1]}`)
+function parseFlag(argv: string[], name: string): string | undefined {
+  const flag = argv.find((a) => a.startsWith(`--${name}=`))
+  return flag ? flag.slice(`--${name}=`.length) : undefined
+}
+
+function parseDaysArg(raw: string | undefined): number {
+  if (!raw) return 7
+  const n = parseInt(raw, 10)
+  if (isNaN(n) || n < 1) throw new Error(`Invalid --days value: ${raw}`)
   return n
 }
 
@@ -42,23 +48,21 @@ const CHORE_LABELS = new Set([
   'refactor',
 ])
 
-function isChore(pr: PullRequest): boolean {
+export function isChore(pr: PullRequest): boolean {
   return pr.labels.some((l) => CHORE_LABELS.has(l.name.toLowerCase()))
 }
 
-// Label-first; falls back to word-boundary title match.
-// \bCO\b matches standalone "CO" but not "Consolidate", "Connect", etc.
-function isColorado(pr: PullRequest): boolean {
-  if (pr.labels.some((l) => l.name.toLowerCase() === 'co')) return true
-  return /\bCO\b/.test(pr.title) || /colorado/i.test(pr.title)
+// Checks label which we enforce in a pre merge PR check
+export function isColorado(pr: PullRequest): boolean {
+  return pr.labels.some((l) => l.name.toLowerCase() === 'co')
 }
 
-// Label-only — "DC-NNN" ticket prefixes in titles don't mean DC-only.
-function isDC(pr: PullRequest): boolean {
+// Checks label which we enforce in a pre merge PR check
+export function isDC(pr: PullRequest): boolean {
   return pr.labels.some((l) => l.name.toLowerCase() === 'dc')
 }
 
-function extractTicketRef(title: string): TicketRef | null {
+export function extractTicketRef(title: string): TicketRef | null {
   const match = title.match(/DC-\d+/)
   if (!match) return null
   return {
@@ -67,7 +71,7 @@ function extractTicketRef(title: string): TicketRef | null {
   }
 }
 
-function formatEntry(pr: PullRequest): string {
+export function formatEntry(pr: PullRequest): string {
   const ticket = extractTicketRef(pr.title)
   // Strip the raw ticket reference from the title so it isn't shown twice.
   const cleanTitle = ticket ? pr.title.replace(/\[?DC-\d+\]?:?[-\s]*/i, '').trim() : pr.title
@@ -75,22 +79,58 @@ function formatEntry(pr: PullRequest): string {
   return `* ${ticketPrefix}${cleanTitle} by @${pr.author.login} in ${pr.url}`
 }
 
-function getPreviousWeeklyTag(): string | null {
+interface PreviousRelease {
+  tagName: string
+  createdAt: string
+}
+
+// Finds the most recent release tagged with this cadence's prefix, regardless of
+// draft status — weekly releases never get published (confirmed against real data:
+// every existing weekly-* release is still a draft, even ones from weeks ago), so
+// filtering to published-only would mean weekly never finds a previous run and never
+// benefits from "since last run" below. Returns null on the very first run of a given
+// cadence (e.g. nightly-* the day this ships), which callers treat as "no prior run
+// to diff against yet".
+function getPreviousRelease(tagPrefix: string): PreviousRelease | null {
   try {
-    const raw = execSync('gh release list --json tagName --limit 20', { encoding: 'utf8' })
-    const releases = JSON.parse(raw) as { tagName: string }[]
-    return releases.find((r) => r.tagName.startsWith('weekly-'))?.tagName ?? null
+    const raw = execSync('gh release list --json tagName,createdAt --limit 20', {
+      encoding: 'utf8',
+    })
+    const releases = JSON.parse(raw) as PreviousRelease[]
+    return releases.find((r) => r.tagName.startsWith(`${tagPrefix}-`)) ?? null
   } catch {
     return null
   }
 }
 
-function buildMarkdown(
+function getRepoUrl(repoArg: string | undefined): string {
+  if (repoArg) return `https://github.com/${repoArg}`
+  return execSync('gh repo view --json url -q .url', { encoding: 'utf8' }).trim()
+}
+
+// Resolves sinceSha to a commit and returns every commit reached between it and HEAD
+// (exclusive of sinceSha itself) — exact, unlike a date window. gitDir is wherever the
+// relevant repo (portal or dc-connector) is checked out. sinceSha is expected to
+// already be a full, resolvable commit SHA (see resolve-live-sha.sh); this fails
+// loudly rather than guessing if it isn't.
+function getCommitsSince(gitDir: string, sinceSha: string): Set<string> {
+  try {
+    execSync(`git -C "${gitDir}" rev-parse --verify "${sinceSha}^{commit}"`, { stdio: 'pipe' })
+  } catch {
+    throw new Error(`--since-sha ${sinceSha} is not a resolvable commit in ${gitDir}`)
+  }
+  const raw = execSync(`git -C "${gitDir}" log --format=%H "${sinceSha}..HEAD"`, {
+    encoding: 'utf8',
+  })
+  return new Set(raw.split('\n').filter(Boolean))
+}
+
+export function buildMarkdown(
   mergedPRs: PullRequest[],
-  weekStart: string,
-  today: string,
-  repoUrl: string,
-  prevTag: string | null,
+  rangeLabel: string,
+  compareUrl: string | null,
+  stateFilter: 'dc' | 'co' | null,
+  includeChores: boolean = false,
 ): string {
   const co: string[] = []
   const dc: string[] = []
@@ -113,52 +153,117 @@ function buildMarkdown(
   let md = `## What's Changed\n`
 
   if (mergedPRs.length === 0) {
-    md += `\n_No pull requests were merged between ${weekStart} and ${today}._\n`
+    md += `\n_No pull requests were merged ${rangeLabel}._\n`
     return md
   }
 
-  if (co.length > 0) {
-    md += `\n## CO\n${co.join('\n')}\n`
+  // A formal per-state release (--state-filter set) only shows that state's PRs plus
+  // the portal-wide ones — the other state's PRs and Chores are deliberately left out,
+  // unless includeChores opts back in for this specific run (--include-chores).
+  // Nightly/weekly (no --state-filter) keep showing every bucket, unchanged.
+  if (stateFilter !== 'dc' && co.length > 0) {
+    md += `\n## CO Specific\n${co.join('\n')}\n`
   }
-  if (dc.length > 0) {
-    md += `\n## DC\n${dc.join('\n')}\n`
+  if (stateFilter !== 'co' && dc.length > 0) {
+    md += `\n## DC Specific\n${dc.join('\n')}\n`
   }
   if (both.length > 0) {
-    md += `\n## Both\n${both.join('\n')}\n`
+    md += `\n## Portal Wide Changes\n${both.join('\n')}\n`
   }
-  if (chores.length > 0) {
+  if ((!stateFilter || includeChores) && chores.length > 0) {
     md += `\n## Chores\n${chores.join('\n')}\n`
   }
 
-  if (prevTag && repoUrl) {
-    md += `\n**Full Changelog**: ${repoUrl}/compare/${prevTag}...weekly-${today}\n`
+  if (compareUrl) {
+    md += `\n**Full Changelog**: ${compareUrl}\n`
   }
 
   return md
 }
 
 async function main(): Promise<void> {
-  const days = parseDaysArg(process.argv.slice(2))
+  const argv = process.argv.slice(2)
+  const repoArg = parseFlag(argv, 'repo')
+  const sinceSha = parseFlag(argv, 'since-sha')
+  const gitDir = parseFlag(argv, 'git-dir') ?? '.'
+  const daysArgRaw = parseFlag(argv, 'days')
+  const stateFilterArg = parseFlag(argv, 'state-filter')
+  // Only meaningful in date-window mode — generate-release-notes.yml runs both the
+  // weekly and nightly cadence through this same script/job, and each cadence tags
+  // its own release differently (weekly-YYYY-MM-DD vs nightly-YYYY-MM-DD). Without
+  // this, the "Full Changelog" link would always reference a weekly-* tag even on a
+  // nightly run, pointing at a tag that was never created.
+  const tagPrefix = parseFlag(argv, 'tag-prefix') ?? 'weekly'
 
-  const since = new Date()
-  since.setDate(since.getDate() - days)
+  if (sinceSha && daysArgRaw) {
+    throw new Error('--since-sha and --days are mutually exclusive')
+  }
+  if (stateFilterArg && stateFilterArg !== 'dc' && stateFilterArg !== 'co') {
+    throw new Error(`Invalid --state-filter value: ${stateFilterArg} (expected "dc" or "co")`)
+  }
+  const stateFilter = (stateFilterArg as 'dc' | 'co' | undefined) ?? null
+  // Opt-in escape hatch for a --state-filter run that would otherwise exclude
+  // Chores — e.g. a one-off push-button release where the operator wants to see
+  // everything. No effect outside --state-filter mode (Chores are never excluded
+  // there to begin with).
+  const includeChores = parseFlag(argv, 'include-chores') === 'true'
 
-  const today = new Date().toISOString().split('T')[0]
-  const weekStart = since.toISOString().split('T')[0]
-
-  // gh resolves owner/repo from the current git remote and handles auth automatically.
+  const repoFlag = repoArg ? ` --repo ${repoArg}` : ''
+  // A low limit would silently truncate once a range spans more merged PRs than the
+  // limit — a real risk for --since-sha given DC/CO's irregular, sometimes
+  // months-long gaps between deploys. 1000 is a generous ceiling for a still-fast
+  // query; the warning below catches anything that still hits it, rather than
+  // silently under-reporting.
+  const PR_FETCH_LIMIT = 1000
+  // gh resolves owner/repo from the current git remote when --repo isn't given.
   const raw = execSync(
-    `gh pr list --state merged --json number,title,labels,mergedAt,author,url --limit 100`,
+    `gh pr list --state merged --json number,title,labels,mergedAt,mergeCommit,author,url --limit ${PR_FETCH_LIMIT}${repoFlag}`,
     { encoding: 'utf8' },
   )
-
   const allPRs: PullRequest[] = JSON.parse(raw)
-  const mergedPRs = allPRs.filter((pr) => pr.mergedAt && new Date(pr.mergedAt) >= since)
+  if (allPRs.length === PR_FETCH_LIMIT) {
+    console.warn(
+      `::warning::Fetched exactly ${PR_FETCH_LIMIT} merged PRs (the fetch limit) — ` +
+        `older PRs may have been silently dropped. Consider raising PR_FETCH_LIMIT.`,
+    )
+  }
 
-  const repoUrl = mergedPRs.length > 0 ? mergedPRs[0].url.replace(/\/pull\/\d+$/, '') : ''
-  const prevTag = getPreviousWeeklyTag() ?? `weekly-${weekStart}`
+  const repoUrl = getRepoUrl(repoArg)
+  const today = new Date().toISOString().split('T')[0]
 
-  const md = buildMarkdown(mergedPRs, weekStart, today, repoUrl, prevTag)
+  let mergedPRs: PullRequest[]
+  let rangeLabel: string
+  let compareUrl: string | null
+
+  if (sinceSha) {
+    const inRange = getCommitsSince(gitDir, sinceSha)
+    mergedPRs = allPRs.filter((pr) => pr.mergeCommit && inRange.has(pr.mergeCommit.oid))
+    const headSha = execSync(`git -C "${gitDir}" rev-parse HEAD`, { encoding: 'utf8' }).trim()
+    rangeLabel = `since ${sinceSha}`
+    compareUrl = `${repoUrl}/compare/${sinceSha}...${headSha}`
+  } else {
+    // --days is now only the fallback window for a cadence's first-ever run (no
+    // previous release of this tag prefix to diff against yet) — otherwise this
+    // diffs against the last actual run, so a skipped/failed run doesn't silently
+    // drop whatever merged during the gap.
+    const days = parseDaysArg(daysArgRaw)
+    const fallbackSince = new Date()
+    fallbackSince.setDate(fallbackSince.getDate() - days)
+
+    const previousRelease = getPreviousRelease(tagPrefix)
+    const since = previousRelease ? new Date(previousRelease.createdAt) : fallbackSince
+    const rangeStart = since.toISOString().split('T')[0]
+
+    mergedPRs = allPRs.filter((pr) => pr.mergedAt && new Date(pr.mergedAt) >= since)
+    rangeLabel = previousRelease
+      ? `since the last ${tagPrefix} release (${previousRelease.tagName})`
+      : `between ${rangeStart} and ${today}`
+
+    const prevTagName = previousRelease?.tagName ?? `${tagPrefix}-${rangeStart}`
+    compareUrl = `${repoUrl}/compare/${prevTagName}...${tagPrefix}-${today}`
+  }
+
+  const md = buildMarkdown(mergedPRs, rangeLabel, compareUrl, stateFilter, includeChores)
 
   // scripts/release-notes/generate.ts → up 3 levels → repo root
   const repoRoot = resolve(fileURLToPath(import.meta.url), '../../..')
@@ -169,10 +274,17 @@ async function main(): Promise<void> {
   writeFileSync(outPath, md, 'utf8')
 
   console.log(`Written to: scripts/release-notes/output/${today}.md`)
-  console.log(`Covered ${mergedPRs.length} merged PR(s) from ${weekStart} through ${today}.`)
+  console.log(`Covered ${mergedPRs.length} merged PR(s) ${rangeLabel}.`)
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+// Only run main() when this file is executed directly (npx tsx generate.ts), not
+// when its pure functions are imported elsewhere (e.g. generate.test.ts) — without
+// this guard, importing anything from this module also runs the full CLI, including
+// a live `gh pr list` call that fails outside an authenticated shell.
+const isMainModule = import.meta.url === pathToFileURL(process.argv[1] ?? '').href
+if (isMainModule) {
+  main().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}
