@@ -50,7 +50,7 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
-    "knip": "^6.32.1",
+    "knip": "^6.32.3",
     "lint-staged": "^17.3.0",
     "tsx": "^4.23.12",
     "yaml": "~2.9.0"
