@@ -1,4 +1,4 @@
-# 4. State-based CI architecture with branch-driven builds
+# 22. State-based CI architecture with branch-driven builds
 
 Date: 2025-11-25
 

@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Colorado production auth uses myColorado/PingOne (see [ADR-0008](./0008-oidc-mycolorado-authentication-and-state-auth-context.md) and [ADR-0012](./0012-oidc-rp-initiated-logout.md)).  For production use, it works fine with the application, but we don't have a local solution to run ourseleves and are depended on instances that we don't own.  Some example of problems that creates are:
+Colorado production auth uses myColorado/PingOne (see [ADR-0008](./0008-oidc-mycolorado-authentication-and-state-auth-context.md) and [ADR-0012](./0028-oidc-rp-initiated-logout.md)).  For production use, it works fine with the application, but we don't have a local solution to run ourseleves and are depended on instances that we don't own.  Some example of problems that creates are:
 
 - MFA and phone ownership block local sign-in and force workarounds such as using `DevelopmentPhoneOverride` or Google Groups juggling
 - Shared IdP accounts can lock or change under other people.  The current process is that we reach out to existing third-party instances (in the case with MyCO) and directly request resetting of data and state.
@@ -90,4 +90,4 @@ Highest fidelity to myColorado, but keeps the MFA, account, and non-determinism 
 - `docker/keycloak/sebt-realm.json`
 - `apps/portal/src/SEBT.Portal.Api/appsettings.keycloak.example.json`
 - [ADR-0008](./0008-oidc-mycolorado-authentication-and-state-auth-context.md)
-- [ADR-0012](./0012-oidc-rp-initiated-logout.md)
+- [ADR-0012](./0028-oidc-rp-initiated-logout.md)

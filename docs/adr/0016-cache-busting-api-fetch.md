@@ -1,4 +1,6 @@
-# ADR 0016: Per-request Cache-Busting on Client API GET Requests
+# 16. Per-request Cache-Busting on Client API GET Requests
+
+Date: 2026-05-12
 
 ## Status
 

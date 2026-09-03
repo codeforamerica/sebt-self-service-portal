@@ -1,4 +1,6 @@
-# ADR 0014: Session Idle and Absolute Timeout
+# 14. Session Idle and Absolute Timeout
+
+Date: 2026-05-04
 
 ## Status
 

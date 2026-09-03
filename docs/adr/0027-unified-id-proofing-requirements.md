@@ -1,4 +1,4 @@
-# 12. Unified IdProofingRequirements — Replace Dual IAL Config with Resource+Action Model
+# 27. Unified IdProofingRequirements — Replace Dual IAL Config with Resource+Action Model
 
 Date: 2026-04-15
 

@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-The multi-state plugin system ([0007-multi-state-plugin-approach.md](./0007-multi-state-plugin-approach.md)) exposes state-specific behavior through the plugin contract (`SEBT.Portal.StatesPlugins.Interfaces`). UseCases command handlers and Api controllers referenced that contract — and in some cases Infrastructure types — directly. This violated Clean Architecture layer boundaries ([0002-adopt-clean-architecture.md](./0002-adopt-clean-architecture.md)): inner layers depended on an outer-edge vendor contract, and any change to the plugin interfaces rippled straight into application logic. Household data access already avoided this via `IHouseholdRepository`, a Core-owned abstraction implemented in Infrastructure.
+The multi-state plugin system ([0023-multi-state-plugin-approach.md](./0023-multi-state-plugin-approach.md)) exposes state-specific behavior through the plugin contract (`SEBT.Portal.StatesPlugins.Interfaces`). UseCases command handlers and Api controllers referenced that contract — and in some cases Infrastructure types — directly. This violated Clean Architecture layer boundaries ([0002-adopt-clean-architecture.md](./0002-adopt-clean-architecture.md)): inner layers depended on an outer-edge vendor contract, and any change to the plugin interfaces rippled straight into application logic. Household data access already avoided this via `IHouseholdRepository`, a Core-owned abstraction implemented in Infrastructure.
 
 ## Decision
 

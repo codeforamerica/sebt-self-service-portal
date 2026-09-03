@@ -1,7 +1,10 @@
-# 0018 — OpenTelemetry for the Web Tier
+# 30. OpenTelemetry for the Web Tier
 
-**Status:** Accepted
-**Date:** 2026-07-15
+Date: 2026-07-15
+
+## Status
+
+Accepted
 
 ## Context
 
