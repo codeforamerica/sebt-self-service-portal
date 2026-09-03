@@ -1,0 +1,18 @@
+# Everything listed here is produced by `pnpm docs:build`.
+
+# Rendered site
+_site/
+.docfx/
+
+# `docfx metadata` output, extracted from C# source on every build
+api/*.yml
+api/.manifest
+
+# Copies of docs/adr/*.md and the navigation built from them. adr/index.md is
+# authored, so it stays tracked.
+adr/*.md
+!adr/index.md
+adr/toc.yml
+
+# Copies of the docs/guides/ pages and the navigation built from them.
+guides/

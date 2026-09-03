@@ -1,0 +1,487 @@
+/*
+ * SEBT documentation theme
+ * ========================
+ *
+ * docfx's `modern` template ships an empty `public/main.css` as an override
+ * hook. Because this template is listed after `modern` in docfx.json, this
+ * file replaces it and is the last stylesheet the page loads.
+ *
+ * On the hardcoded hex values: the portal apps derive their colors from the
+ * design tokens in `packages/design-system/design/states/*.json`, compiled
+ * through the USWDS SCSS pipeline. This site is not part of that pipeline,
+ * since docfx has no SCSS step, and it is state-neutral, so it cannot adopt
+ * either state's theme layer. It uses the *system* layer both states share: the USWDS
+ * base palette. Each value below is annotated with the token it came from. To
+ * track a state rebrand, generate this file from the token JSON rather than
+ * editing values here.
+ */
+
+:root {
+  /* Teals, from the USWDS cyan family. The primary brand color for both
+     states. */
+  --sebt-teal-lightest: #e7f6f8; /* cyan-5 */
+  --sebt-teal-lighter: #ccecf2; /* cyan-10 */
+  --sebt-teal-light: #99deea; /* cyan-20 */
+  --sebt-teal-bright: #00bde3; /* cyan-30v */
+  --sebt-teal: #2a646d; /* cyan-60, DC theme-primary */
+  --sebt-teal-vivid: #00687d; /* cyan-60v, DC theme-link-color */
+  --sebt-teal-dark: #2c4a4e; /* cyan-70 */
+  --sebt-teal-darker: #203133; /* cyan-80 */
+  --sebt-teal-darkest: #111819; /* cyan-90 */
+
+  /* Golds, from the USWDS gold vivid family. The accent, used sparingly. */
+  --sebt-gold-light: #ffe396; /* gold-10v */
+  --sebt-gold: #ffbe2e; /* gold-20v, DC theme-secondary */
+  --sebt-gold-dark: #c2850c; /* gold-40v */
+
+  /* Neutrals, from the USWDS gray-cool family, plus ink. */
+  --sebt-gray-1: #fbfcfd; /* gray-cool-1 */
+  --sebt-gray-2: #f7f9fa; /* gray-cool-2 */
+  --sebt-gray-4: #f1f3f6; /* gray-cool-4 */
+  --sebt-gray-5: #edeff0; /* gray-cool-5 */
+  --sebt-gray-10: #dfe1e2; /* gray-cool-10 */
+  --sebt-gray-20: #c6cace; /* gray-cool-20 */
+  --sebt-gray-30: #a9aeb1; /* gray-cool-30 */
+  --sebt-gray-50: #71767a; /* gray-cool-50 */
+  --sebt-gray-60: #565c65; /* gray-cool-60 */
+  --sebt-gray-70: #3d4551; /* gray-cool-70 */
+  --sebt-gray-80: #2d2e2f; /* gray-cool-80 */
+  --sebt-gray-90: #1c1d1f; /* gray-cool-90 */
+  --sebt-ink: #1b1b1b; /* gray-90 */
+
+  /* Semantic accents for callouts, from USWDS status colors. */
+  --sebt-mint: #00a871; /* mint-40v */
+  --sebt-red: #d83933; /* red-50 */
+  --sebt-red-vivid: #b50909; /* red-60v, CO theme-secondary */
+
+  /* USWDS focus ring, the same one the apps use. */
+  --sebt-focus-color: #2491ff; /* blue-40v */
+  --sebt-focus-width: 0.25rem;
+
+  /* No webfont is loaded: the apps use Urbanist (DC) and Atkinson Hyperlegible
+     (CO), neither of which is state-neutral. */
+  --sebt-font-sans:
+    system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  --sebt-font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+/* ---------------------------------------------------------------------------
+ * Bootstrap variable mapping
+ *
+ * The modern template is Bootstrap 5.3. Remapping its variables themes
+ * components this file never names, which is why little component-level CSS
+ * follows.
+ * ------------------------------------------------------------------------- */
+
+:root,
+[data-bs-theme="light"] {
+  --bs-body-font-family: var(--sebt-font-sans);
+  --bs-font-monospace: var(--sebt-font-mono);
+  --bs-body-color: var(--sebt-ink);
+  --bs-body-bg: #fff;
+  --bs-emphasis-color: #000;
+  --bs-border-color: var(--sebt-gray-10);
+  --bs-secondary-color: var(--sebt-gray-60);
+  --bs-secondary-bg: var(--sebt-gray-5);
+  --bs-tertiary-bg: var(--sebt-gray-2);
+
+  --bs-primary: var(--sebt-teal);
+  --bs-primary-rgb: 42, 100, 109;
+  --bs-primary-bg-subtle: var(--sebt-teal-lightest);
+  --bs-primary-border-subtle: var(--sebt-teal-light);
+  --bs-primary-text-emphasis: var(--sebt-teal-dark);
+
+  /* cyan-60v: 5.6:1 on white, so links clear WCAG AA as body text. */
+  --bs-link-color: var(--sebt-teal-vivid);
+  --bs-link-color-rgb: 0, 104, 125;
+  --bs-link-hover-color: var(--sebt-teal-darker);
+  --bs-link-hover-color-rgb: 32, 49, 51;
+
+  --bs-code-color: #7a591a; /* gold-60v, 5.1:1 on the code background */
+  --bs-highlight-bg: var(--sebt-gold-light);
+}
+
+[data-bs-theme="dark"] {
+  --bs-body-color: #eef2f4;
+  --bs-body-bg: var(--sebt-teal-darkest);
+  --bs-emphasis-color: #fff;
+  --bs-border-color: #33454a;
+  --bs-secondary-color: var(--sebt-gray-30);
+  --bs-secondary-bg: #1b2528;
+  --bs-tertiary-bg: #162022;
+
+  --bs-primary: var(--sebt-teal-bright);
+  --bs-primary-rgb: 0, 189, 227;
+  --bs-primary-bg-subtle: #16333a;
+  --bs-primary-border-subtle: #2c5f6b;
+  --bs-primary-text-emphasis: var(--sebt-teal-light);
+
+  /* cyan-20 rather than cyan-60v: on a near-black background the vivid mid
+     tone drops below AA, the light tint clears it comfortably. */
+  --bs-link-color: var(--sebt-teal-light);
+  --bs-link-color-rgb: 153, 222, 234;
+  --bs-link-hover-color: #d8f2f7;
+  --bs-link-hover-color-rgb: 216, 242, 247;
+
+  --bs-code-color: var(--sebt-gold-light);
+  --bs-highlight-bg: #4d3c14;
+  --bs-highlight-color: #fff;
+}
+
+/* ---------------------------------------------------------------------------
+ * Focus
+ *
+ * Bootstrap's default focus is a soft box-shadow that disappears against
+ * tinted surfaces. Replaced with the USWDS focus ring the portal apps use.
+ * ------------------------------------------------------------------------- */
+
+:focus-visible,
+.btn:focus-visible,
+.form-control:focus-visible,
+a:focus-visible {
+  outline: var(--sebt-focus-width) solid var(--sebt-focus-color);
+  outline-offset: 0;
+  box-shadow: none;
+}
+
+/* Skip Bootstrap's focus ring when the element also gets ours. */
+.form-control:focus {
+  border-color: var(--sebt-teal);
+  box-shadow: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * Header
+ *
+ * A solid teal bar in both color schemes, so the masthead looks the same
+ * whichever setting the reader is on.
+ * ------------------------------------------------------------------------- */
+
+header.bg-body {
+  background-color: var(--sebt-teal) !important;
+  border-bottom: 0.25rem solid var(--sebt-gold) !important;
+}
+
+header .navbar {
+  padding-block: 0.5rem;
+}
+
+header .navbar-brand,
+header .navbar-brand:hover,
+header .navbar-brand:focus {
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+header .navbar-brand #logo {
+  height: 2rem;
+  width: 2rem;
+  margin-right: 0.5rem;
+}
+
+/* The mobile TOC/nav toggles and the search icon are Bootstrap icon buttons
+   that inherit body color, which is invisible on teal. */
+header .btn,
+header .bi {
+  color: #fff;
+}
+
+header .search .form-control {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+header .search .form-control::placeholder {
+  color: rgba(255, 255, 255, 0.75);
+  opacity: 1;
+}
+
+/* On focus the field flips to a light surface: white-on-translucent-teal is
+   hard to read while typing, and the focus ring needs a stable backdrop. */
+header .search .form-control:focus {
+  background-color: #fff;
+  border-color: #fff;
+  color: var(--sebt-ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * Article typography
+ * ------------------------------------------------------------------------- */
+
+/* Measure.
+ *
+ * The article column is wide enough for about 100 characters per line, and
+ * comfortable reading runs 60 to 75. Capping the running text fixes that
+ * without narrowing the column, so tables, code, and diagrams keep the full
+ * width they need. */
+article p,
+article li,
+article blockquote,
+article > .NOTE,
+article > .TIP,
+article > .IMPORTANT,
+article > .WARNING,
+article > .CAUTION {
+  max-width: 72ch;
+}
+
+/* A table cell holds its own short strings, so the cap would only add ragged
+   wrapping inside the cell. */
+article table p,
+article table li {
+  max-width: none;
+}
+
+article h1,
+article h2,
+article h3,
+article h4,
+article h5 {
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  max-width: 60ch;
+}
+
+/* 40px at weight 700 with a full-width gold rule reads as a banner on every
+   page. Smaller, with the rule only under the text, leaves the emphasis for
+   the content. */
+article > h1 {
+  font-size: 2rem;
+  padding-bottom: 0.375rem;
+  border-bottom: 0.1875rem solid var(--sebt-gold);
+  margin-bottom: 1.25rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+article > h2 {
+  margin-top: 2rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+article h3 {
+  margin-top: 1.75rem;
+}
+
+article p,
+article li {
+  line-height: 1.6;
+}
+
+/* ---------------------------------------------------------------------------
+ * Code
+ * ------------------------------------------------------------------------- */
+
+code:not(pre code) {
+  background-color: var(--bs-secondary-bg);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.125rem; /* USWDS radius-sm */
+  font-size: 0.9375em;
+}
+
+pre {
+  background-color: var(--bs-tertiary-bg);
+  border: 1px solid var(--bs-border-color);
+  border-left: 0.25rem solid var(--sebt-teal-light);
+  border-radius: 0.25rem; /* USWDS radius-md */
+  padding: 1rem;
+}
+
+[data-bs-theme="dark"] pre {
+  border-left-color: var(--sebt-teal-dark);
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tables, the bulk of the API reference
+ * ------------------------------------------------------------------------- */
+
+article table {
+  --bs-table-border-color: var(--bs-border-color);
+  --bs-table-striped-bg: var(--sebt-gray-2);
+  width: 100%;
+}
+
+[data-bs-theme="dark"] article table {
+  --bs-table-striped-bg: #162022;
+}
+
+article table > thead {
+  background-color: var(--bs-secondary-bg);
+}
+
+article table > thead th {
+  border-bottom: 2px solid var(--sebt-teal);
+  font-weight: 700;
+}
+
+article table th,
+article table td {
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+
+/* ---------------------------------------------------------------------------
+ * Callouts
+ *
+ * docfx renders `> [!NOTE]` and friends as either a classed div or a Bootstrap
+ * alert depending on content type, so both are styled. The left-bar treatment
+ * mirrors the USWDS alert component the apps use.
+ * ------------------------------------------------------------------------- */
+
+.NOTE,
+.TIP,
+.IMPORTANT,
+.WARNING,
+.CAUTION,
+article .alert {
+  border: 1px solid var(--bs-border-color);
+  border-left-width: 0.5rem;
+  border-radius: 0.25rem;
+  padding: 1rem 1.25rem;
+  margin-block: 1.25rem;
+  background-color: var(--bs-tertiary-bg);
+}
+
+.NOTE,
+.TIP,
+article .alert-info {
+  border-left-color: var(--sebt-teal);
+}
+
+.IMPORTANT,
+article .alert-primary {
+  border-left-color: var(--sebt-mint);
+}
+
+.WARNING,
+article .alert-warning {
+  border-left-color: var(--sebt-gold-dark);
+}
+
+.CAUTION,
+article .alert-danger {
+  border-left-color: var(--sebt-red);
+}
+
+.NOTE > h5,
+.TIP > h5,
+.IMPORTANT > h5,
+.WARNING > h5,
+.CAUTION > h5 {
+  text-transform: uppercase;
+  font-size: 0.8125rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+article blockquote {
+  border-left: 0.25rem solid var(--sebt-gray-20);
+  padding-left: 1rem;
+  color: var(--bs-secondary-color);
+}
+
+/* ---------------------------------------------------------------------------
+ * Navigation: left TOC and right in-page affix
+ * ------------------------------------------------------------------------- */
+
+.toc li > a {
+  border-radius: 0.125rem;
+}
+
+.toc li > a:hover,
+.toc li > a:focus {
+  color: var(--bs-link-hover-color);
+}
+
+/* docfx marks the current node on the anchor in some layouts and on the list
+   item in others; both are covered so the accent never goes missing. */
+.toc li.active > a,
+.toc li > a.active {
+  color: var(--bs-primary);
+  font-weight: 700;
+  box-shadow: inset 0.1875rem 0 0 var(--sebt-gold);
+  padding-left: 0.5rem;
+}
+
+.toc form.filter > input:focus {
+  border-color: var(--sebt-teal);
+}
+
+/* The API reference has 500-plus entries and needs the filter. A short TOC does
+   not: the box costs more attention than it saves. The test is whether the list
+   runs past 12 entries, which the guides do not and the ADRs do. */
+.toc:not(:has(li:nth-child(12))) form.filter {
+  display: none;
+}
+
+/* Group labels in a multi-guide sidebar. The nested children carry the detail,
+   so the parent reads as a heading rather than as another link. */
+.toc > ul > li > a {
+  font-weight: 600;
+}
+
+.toc > ul > li > ul {
+  margin-bottom: 0.75rem;
+}
+
+.affix h5 {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--bs-secondary-color);
+}
+
+.affix ul li.active > a {
+  color: var(--bs-primary);
+  font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+ * Landing page
+ *
+ * `_layout: landing` hides the TOC, which leaves a wide measure. Capping it
+ * keeps the home page readable.
+ * ------------------------------------------------------------------------- */
+
+body[data-layout="landing"] article {
+  max-width: 60rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Footer and page furniture
+ * ------------------------------------------------------------------------- */
+
+footer {
+  background-color: var(--bs-tertiary-bg);
+  padding-block: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.contribution a.edit-link {
+  color: var(--bs-link-color);
+}
+
+/* Print: the teal masthead wastes toner and the nav is meaningless on paper. */
+@media print {
+  header.bg-body {
+    background-color: transparent !important;
+    border-bottom-color: var(--sebt-gray-30) !important;
+  }
+
+  header .navbar-brand,
+  header .btn,
+  header .bi {
+    color: var(--sebt-ink);
+  }
+}

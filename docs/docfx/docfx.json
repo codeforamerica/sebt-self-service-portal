@@ -1,0 +1,71 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../..",
+          "files": [
+            "apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj",
+            "apps/portal/src/SEBT.Portal.Core/SEBT.Portal.Core.csproj",
+            "apps/portal/src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj",
+            "apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj",
+            "apps/portal/src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj",
+            "apps/portal/src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj",
+            "apps/portal/src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj",
+            "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj",
+            "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj",
+            "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/SEBT.Portal.StatePlugins.CO.CbmsApi.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "filter": "filterConfig.yml",
+      "namespaceLayout": "nested",
+      "memberLayout": "samePage",
+      "allowCompilationErrors": true,
+      "properties": {
+        "TargetFramework": "net10.0",
+        "Configuration": "Debug",
+        "BuildFrontend": "false"
+      }
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": ["**/*.{md,yml}"],
+        "exclude": [
+          "_site/**",
+          "template/**",
+          "README.md",
+          "filterConfig.yml"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": ["img/**"]
+      }
+    ],
+    "output": "_site",
+    "template": ["default", "modern", "template/sebt"],
+    "globalMetadata": {
+      "_appName": "Summer EBT Portal",
+      "_appTitle": "Summer EBT Self-Service Portal: Engineering Documentation",
+      "_appFooter": "Summer EBT Self-Service Portal, built by Code for America with the District of Columbia and the State of Colorado.",
+      "_appLogoPath": "img/logo.svg",
+      "_appFaviconPath": "img/favicon.svg",
+      "_enableSearch": true,
+      "_disableContribution": false,
+      "_gitContribute": {
+        "repo": "https://github.com/codeforamerica/sebt-self-service-portal",
+        "branch": "main"
+      }
+    },
+    "postProcessors": ["ExtractSearchIndex"],
+    "markdownEngineName": "markdig",
+    "keepFileLink": false,
+    "disableGitFeatures": false
+  }
+}

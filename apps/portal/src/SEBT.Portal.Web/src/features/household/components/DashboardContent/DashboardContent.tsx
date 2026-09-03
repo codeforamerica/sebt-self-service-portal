@@ -25,16 +25,12 @@ import { HouseholdSummary } from '../HouseholdSummary'
 import { UserProfileCard } from '../UserProfileCard'
 
 /**
- * Closed taxonomy of dashboard error codes per docs/adr/0015-co-loaded-error-code-taxonomy.md.
+ * Closed taxonomy of dashboard error codes per docs/adr/0029-co-loaded-error-code-taxonomy.md.
  * Adding a new value requires an ADR amendment plus matching updates in the
  * Serilog `OutcomeCode` field on the backend and in the i18n locale keys.
  */
 export type DashboardErrorCode =
-  | 'NOT_FOUND'
-  | 'NO_CHILDREN'
-  | 'AUTH_FAILURE'
-  | 'TECH_ERROR'
-  | 'INVALID_INPUT'
+  'NOT_FOUND' | 'NO_CHILDREN' | 'AUTH_FAILURE' | 'TECH_ERROR' | 'INVALID_INPUT'
 
 // Maps an HTTP failure to one of the analytics taxonomy buckets. NOT_FOUND
 // covers 404 (the connector returned no household for the user); 4xx other

@@ -20,7 +20,7 @@ interface DataLayerTrackFns {
   trackEvent: (name: string, data?: Record<string, unknown>) => void
 }
 
-/** Maps API failures to the shared analytics error_code taxonomy (see ADR 0015). */
+/** Maps API failures to the shared analytics error_code taxonomy (see ADR 0029). */
 export function apiErrorCodeFromUnknown(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401 || error.status === 403) return 'AUTH_FAILURE'

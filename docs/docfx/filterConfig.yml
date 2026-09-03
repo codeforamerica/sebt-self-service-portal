@@ -1,0 +1,14 @@
+# Controls which .NET types reach the generated API reference.
+# Rules are evaluated top to bottom; the first match wins.
+apiRules:
+  # EF Core migrations are generated code. The migration history is in git.
+  - exclude:
+      uidRegex: ^SEBT\.Portal\.Infrastructure\.Migrations
+  # Compiler-generated entry point wrappers for top-level statements.
+  - exclude:
+      uidRegex: ^Program$
+  # All first-party code lives under the SEBT namespace root.
+  - include:
+      uidRegex: ^SEBT\.
+  - exclude:
+      uidRegex: .*

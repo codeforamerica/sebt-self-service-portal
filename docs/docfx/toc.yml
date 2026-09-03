@@ -1,0 +1,8 @@
+- name: Home
+  href: index.md
+- name: Guides
+  href: guides/
+- name: Architecture Decisions
+  href: adr/
+- name: .NET API Reference
+  href: api/

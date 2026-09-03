@@ -53,4 +53,4 @@ These tests use `KiotaJsonSerializer` from `Microsoft.Kiota.Abstractions.Seriali
 ## References
 
 - [Microsoft Kiota documentation](https://learn.microsoft.com/en-us/openapi/kiota/)
-- [ADR-0007 in main repo: Multi-state Plugin Approach](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/adr/0007-multi-state-plugin-approach.md)
+- [ADR-0007 in main repo: Multi-state Plugin Approach](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/adr/0023-multi-state-plugin-approach.md)
