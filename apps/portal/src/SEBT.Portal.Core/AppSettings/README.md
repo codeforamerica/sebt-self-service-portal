@@ -1,1 +1,2 @@
-This directory is a placeholder for adding C# types corresponding to application settings that will be used with the [.NET Options pattern](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options?view=aspnetcore-8.0).
+- This directory is the standard location for adding C# types corresponding to application settings that will be used with the [.NET Options pattern](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options?view=aspnetcore-8.0).
+- Types that are bound from `IConfiguration` sections should implement `IHaveConfigSectionName` for reduced boilerplate.

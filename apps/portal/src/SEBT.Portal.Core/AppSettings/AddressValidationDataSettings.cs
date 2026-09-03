@@ -6,9 +6,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// that vary by state. Empty defaults allow states without these constraints to run
 /// without additional configuration.
 /// </summary>
-public sealed class AddressValidationDataSettings
+public sealed class AddressValidationDataSettings : IHaveConfigSectionName
 {
-    public const string SectionName = "AddressValidationData";
+    public static string SectionName => "AddressValidationData";
 
     /// <summary>
     /// Addresses where the state cannot deliver mail (e.g., government office buildings

@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// <summary>
 /// Configuration for database seeding behavior.
 /// </summary>
-public class SeedingSettings
+public class SeedingSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "Seeding";
+    public static string SectionName => "Seeding";
 
     /// <summary>
     /// Format string for seed user emails. Use {0} as placeholder for the scenario name.

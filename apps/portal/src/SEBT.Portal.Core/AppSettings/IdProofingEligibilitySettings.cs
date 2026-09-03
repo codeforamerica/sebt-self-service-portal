@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// portal household record or with no cases and no applications are blocked from
 /// Socure — same rule as the dashboard empty state.
 /// </summary>
-public class IdProofingEligibilitySettings
+public class IdProofingEligibilitySettings : IHaveConfigSectionName
 {
-    public const string SectionName = "IdProofingEligibility";
+    public static string SectionName => "IdProofingEligibility";
 
     /// <summary>
     /// When true, ID proofing submissions that would call Socure are rejected if

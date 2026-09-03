@@ -7,8 +7,8 @@ Output is written to `output/YYYY-MM-DD.md` (gitignored) so it can be reviewed b
 sharing.
 
 The same script runs in CI via the
-[generate-release-notes workflow](../../.github/workflows/generate-release-notes.yml)
-on both a weekly and a nightly cadence, and (for push-button releases) via
+[weekly-release-notes workflow](../../.github/workflows/weekly-release-notes.yml)
+on a weekly cadence, and (for push-button releases) via
 [resolve-live-sha.sh](./resolve-live-sha.sh) + a per-state `--since-sha` invocation.
 
 ## Prerequisites
@@ -22,13 +22,12 @@ gh auth login
 ## Usage
 
 ```bash
-# From the repo root — date-window mode (nightly/weekly):
+# From the repo root — date-window mode (weekly):
 pnpm release-notes:generate                        # since the last release with this
                                                     # cadence's tag prefix (default: weekly-*);
                                                     # falls back to the last 7 days on that
                                                     # cadence's first-ever run
 pnpm release-notes:generate --days=14              # override the first-run fallback window
-pnpm release-notes:generate --tag-prefix=nightly   # look for nightly-* releases instead
 
 # Exact commit-range mode (push-button releases) — see resolve-live-sha.sh for how
 # --since-sha gets resolved from a state's live /api/build-info:

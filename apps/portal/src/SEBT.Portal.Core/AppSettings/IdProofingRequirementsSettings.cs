@@ -8,9 +8,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// resource+action (e.g. "address+view", "card+write").
 /// See docs/config/ial/README.md for the configuration guide.
 /// </summary>
-public class IdProofingRequirementsSettings
+public class IdProofingRequirementsSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "IdProofingRequirements";
+    public static string SectionName => "IdProofingRequirements";
 
     /// <summary>
     /// Map of config key (e.g. "address+view") to its IAL requirement.

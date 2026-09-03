@@ -6,9 +6,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// Configuration for preferred household ID types used to authorize guardians and link to household data.
 /// The first type that can be resolved from the user is used for lookup.
 /// </summary>
-public class StateHouseholdIdSettings
+public class StateHouseholdIdSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "StateHouseholdId";
+    public static string SectionName => "StateHouseholdId";
 
     /// <summary>
     /// Ordered list of household ID types for authorization/linking.

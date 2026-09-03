@@ -4,13 +4,14 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
@@ -460,20 +461,37 @@ public class OidcExchangeServiceExchangeTests
     {
         // The service resolves the discovery endpoint and client credentials from the step-up
         // config section when isStepUp is true; the callback signing key is shared across flows.
-        var prefix = isStepUp ? "Oidc:StepUp:" : "Oidc:";
-        var settings = new Dictionary<string, string?>
+        // isStepUp routes discovery/client credentials through the step-up settings; the
+        // callback signing key and portal origin are always read from the base Oidc section.
+        var oidcSettings = new OidcSettings
         {
-            [$"{prefix}DiscoveryEndpoint"] = discoveryUrl,
-            ["Oidc:CallbackRedirectUri"] = "https://portal.example.com"
+            CallbackRedirectUri = "https://portal.example.com"
         };
-        if (configured)
+        var stepUpSettings = new OidcStepUpSettings();
+
+        if (isStepUp)
         {
-            settings[$"{prefix}ClientId"] = ClientId;
-            settings[$"{prefix}ClientSecret"] = ClientSecret;
-            settings["Oidc:CompleteLoginSigningKey"] = CallbackSigningKey;
+            stepUpSettings.DiscoveryEndpoint = discoveryUrl;
+        }
+        else
+        {
+            oidcSettings.DiscoveryEndpoint = discoveryUrl;
         }
 
-        var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
+        if (configured)
+        {
+            if (isStepUp)
+            {
+                stepUpSettings.ClientId = ClientId;
+                stepUpSettings.ClientSecret = ClientSecret;
+            }
+            else
+            {
+                oidcSettings.ClientId = ClientId;
+                oidcSettings.ClientSecret = ClientSecret;
+            }
+            oidcSettings.CompleteLoginSigningKey = CallbackSigningKey;
+        }
 
         var factory = Substitute.For<IHttpClientFactory>();
         // Fresh HttpClient per call (token + userinfo), sharing one handler that is not disposed
@@ -481,7 +499,8 @@ public class OidcExchangeServiceExchangeTests
         factory.CreateClient(Arg.Any<string>()).Returns(_ => new HttpClient(handler, disposeHandler: false));
 
         return new OidcExchangeService(
-            config,
+            TestOptions.Snapshot(oidcSettings),
+            TestOptions.Snapshot(stepUpSettings),
             factory,
             logger ?? NullLogger<OidcExchangeService>.Instance,
             Substitute.For<IOidcCallbackFailureLogger>());

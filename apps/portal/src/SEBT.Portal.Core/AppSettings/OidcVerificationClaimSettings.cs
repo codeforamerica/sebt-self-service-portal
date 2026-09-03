@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// ID verification level and date. Defaults match Colorado's PingOne/Socure integration.
 /// States whose IdP uses different claim names can override via <c>Oidc:VerificationClaims</c>.
 /// </summary>
-public class OidcVerificationClaimSettings
+public class OidcVerificationClaimSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "Oidc:VerificationClaims";
+    public static string SectionName => "Oidc:VerificationClaims";
 
     /// <summary>
     /// OIDC claim name whose value indicates the user's verification level.

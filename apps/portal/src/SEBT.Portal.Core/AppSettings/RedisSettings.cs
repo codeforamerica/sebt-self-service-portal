@@ -1,8 +1,8 @@
 namespace SEBT.Portal.Core.AppSettings;
 
-public class RedisSettings
+public class RedisSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "Redis";
+    public static string SectionName => "Redis";
 
     /// <summary>Redis server hostname or IP address.</summary>
     public string? Host { get; set; }

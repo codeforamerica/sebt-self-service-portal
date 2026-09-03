@@ -214,7 +214,7 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 - **Web** — Next.js 16 frontend (React 19, USWDS 3.13, i18next)
 - **EnrollmentChecker.Web** — Next.js enrollment-check standalone app (separate pnpm workspace member)
 - **TestUtilities** — Shared test helpers (Bogus factories, builders)
-- **Tests** / **UseCases.Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL)
+- **Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL); one portal test project covering all layers incl. UseCases handler tests (no separate UseCases.Tests project post-monorepo)
 
 #### Workspace Packages (`packages/`)
 - **design-system** — USWDS design tokens, locale generation scripts, shared content
