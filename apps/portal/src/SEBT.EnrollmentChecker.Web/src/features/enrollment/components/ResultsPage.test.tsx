@@ -7,6 +7,14 @@ import { ResultsPage } from './ResultsPage'
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
+// These tests cover results composition. Applications are open so the apply
+// blocks render; mockApplyHref below is what closes them. Income screening and
+// the apply flag are exercised in their own suites.
+let mockApplyEnabled = true
+vi.mock('@/features/maintenance/hooks/useCheckerFeatures', () => ({
+  useCheckerFeatures: () => ({ data: { apply: { enabled: mockApplyEnabled } } })
+}))
+
 // Flows with a review step collect the household before submitting, so they
 // have no reason to send the visitor back for another child.
 describe('sequential checks', () => {
@@ -296,6 +304,43 @@ describe('ResultsPage', () => {
     })
   })
 
+  // enable_apply covers this season's window. The 2027 link is next season's
+  // application, offered because this season closed, so the flag going off is
+  // exactly when it matters most.
+  describe('With this season’s applications closed', () => {
+    beforeEach(() => {
+      mockApplyEnabled = false
+    })
+
+    afterEach(() => {
+      mockApplyEnabled = true
+    })
+
+    it('still offers the 2027 link on the no-results page', () => {
+      render(
+        <ResultsPage
+          results={noneEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      expect(screen.getByTestId('apply-2027-link')).toHaveAttribute('href', mockApplyHref)
+    })
+
+    it('still offers the numbered 2027 step on a mixed household', () => {
+      render(
+        <ResultsPage
+          results={mixedEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      expect(screen.getByText(nextStepsSectionText)).toBeVisible()
+      expect(screen.getByTestId('next-step-apply-2027')).toBeVisible()
+      expect(screen.getByTestId('apply-2027-link')).toBeVisible()
+    })
+  })
+
   describe('Indeterminate results (No Results shape)', () => {
     beforeEach(() => {
       render(
@@ -385,5 +430,22 @@ describe('single-outcome results', () => {
   it('offers the next check', () => {
     renderResults('Match')
     expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
+  })
+
+  // The portal guidance is a success alert in the design, and the button that
+  // acts on it sits outside so the alert stays informational.
+  it('presents the portal guidance as a success alert', () => {
+    const { container } = renderResults('Match')
+    const alert = container.querySelector('.usa-alert')
+
+    expect(alert).toHaveClass('usa-alert--success')
+    expect(alert?.querySelector('.usa-alert__heading')).toBeInTheDocument()
+    expect(alert?.contains(screen.getByTestId('portal-link'))).toBe(false)
+  })
+
+  // role="alert" is an assertive live region; this is static page content.
+  it('does not announce the alert as a live region', () => {
+    const { container } = renderResults('Match')
+    expect(container.querySelector('.usa-alert')).not.toHaveAttribute('role', 'alert')
   })
 })
