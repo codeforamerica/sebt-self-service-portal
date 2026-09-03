@@ -10,9 +10,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// OWASP Session Management and NIST SP 800-63B (§7.1, IAL2 sessions: ≤30 min idle,
 /// ≤12 hr absolute). The portal's defaults are tighter than the NIST ceiling.
 /// </remarks>
-public class JwtSettings
+public class JwtSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "JwtSettings";
+    public static string SectionName => "JwtSettings";
 
     /// <summary>
     /// The secret key used to sign JWT tokens.

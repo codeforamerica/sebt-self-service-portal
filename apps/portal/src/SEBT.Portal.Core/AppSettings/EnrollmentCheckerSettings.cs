@@ -10,9 +10,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// consumers must read them via <c>IOptionsMonitor&lt;T&gt;</c> so hot-reloaded values
 /// take effect without an app restart.
 /// </summary>
-public class EnrollmentCheckerSettings
+public class EnrollmentCheckerSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "EnrollmentChecker";
+    public static string SectionName => "EnrollmentChecker";
 
     /// <summary>
     /// Maintenance banner configuration for the enrollment checker.

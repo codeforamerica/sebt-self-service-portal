@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -12,6 +11,7 @@ using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.Tests.Helpers;
 using SEBT.Portal.UseCases.Auth.OidcCallback;
 
 namespace SEBT.Portal.Tests.Unit.Api.Controllers.Auth;
@@ -39,7 +39,8 @@ public class OidcControllerCallbackTests
         });
 
         var controller = new OidcController(
-            Substitute.For<IConfiguration>(),
+            TestOptions.Snapshot(new OidcSettings()),
+            TestOptions.Snapshot(new OidcStepUpSettings()),
             NullLogger<OidcController>.Instance,
             Substitute.For<IOidcCallbackFailureLogger>(),
             jwtSettings,

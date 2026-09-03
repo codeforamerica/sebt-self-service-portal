@@ -2,7 +2,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 
-namespace SEBT.Portal.Infrastructure.Configuration;
+namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 
 /// <summary>
 /// Validates SocureSettings at startup.

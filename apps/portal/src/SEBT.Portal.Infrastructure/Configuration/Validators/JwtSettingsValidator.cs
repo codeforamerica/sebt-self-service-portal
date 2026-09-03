@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 
-namespace SEBT.Portal.Infrastructure.Configuration;
+namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 
 /// <summary>
 /// Validates cross-field invariants on <see cref="JwtSettings"/> that data annotations

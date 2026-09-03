@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// <summary>
 /// Configuration settings for enrollment check rate limiting.
 /// </summary>
-public class EnrollmentCheckRateLimitSettings
+public class EnrollmentCheckRateLimitSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "EnrollmentCheckRateLimitSettings";
+    public static string SectionName => "EnrollmentCheckRateLimitSettings";
 
     /// <summary>
     /// Maximum number of enrollment check requests allowed per window per IP address.
