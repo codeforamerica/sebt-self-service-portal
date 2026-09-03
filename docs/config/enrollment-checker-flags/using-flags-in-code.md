@@ -34,6 +34,12 @@ Choose the behavior for each new flag. Write the reason into the hook. A hidden 
 not always the safe result. The season is the example: hidden present-tense text tells
 families that enrollment ended.
 
+One poll feeds all 3 consumers, so a failure applies every row at once. The season shows
+present tense while the apply link disappears: open-season copy with nowhere to apply.
+That pairing is chosen, not accidental. The check still runs and the paper-application
+note still stands, which beats naming the wrong season or publishing a dead link. Read the
+rows together when you add a flag.
+
 ## Deployment order
 
 The checker and the API deploy separately. Make each new field in the features schema
