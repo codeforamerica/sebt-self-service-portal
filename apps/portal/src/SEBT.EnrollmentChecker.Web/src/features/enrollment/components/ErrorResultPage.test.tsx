@@ -29,7 +29,7 @@ describe('ErrorResultPage', () => {
   it('offers the portal step with the portal link', () => {
     render(<ErrorResultPage portalUrl={portalUrl} />)
 
-    expect(screen.getByText(/received their benefits and when they expire/)).toBeInTheDocument()
+    expect(screen.getByText(/will receive their benefits/)).toBeInTheDocument()
     expect(screen.getByTestId('portal-link')).toHaveAttribute('href', portalUrl)
   })
 
