@@ -28,6 +28,11 @@ export interface EnrollmentSeasonState {
  * Fails open: a failed poll, or an API that predates the field, leaves the checker on
  * its open-season copy. The opposite default would let one bad request tell families
  * enrollment had ended.
+ *
+ * `useApplyHref` fails closed on that same poll, so a failure shows open-season copy
+ * with no apply link anywhere. That pairing is chosen, not accidental: the check still
+ * runs and the paper-application note still stands, which beats naming the wrong season
+ * or publishing a dead link.
  */
 export function useEnrollmentSeason(): EnrollmentSeasonState {
   const { apiBaseUrl } = getEnrollmentConfig()
