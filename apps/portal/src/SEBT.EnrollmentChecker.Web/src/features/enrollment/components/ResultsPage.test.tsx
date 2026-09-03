@@ -10,8 +10,9 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 // These tests cover results composition. Applications are open so the apply
 // blocks render; mockApplyHref below is what closes them. Income screening and
 // the apply flag are exercised in their own suites.
+let mockApplyEnabled = true
 vi.mock('@/features/maintenance/hooks/useCheckerFeatures', () => ({
-  useCheckerFeatures: () => ({ data: { apply: { enabled: true } } })
+  useCheckerFeatures: () => ({ data: { apply: { enabled: mockApplyEnabled } } })
 }))
 
 // Flows with a review step collect the household before submitting, so they
@@ -300,6 +301,43 @@ describe('ResultsPage', () => {
       expect(
         portalLink.compareDocumentPosition(closure) & Node.DOCUMENT_POSITION_FOLLOWING
       ).toBeTruthy()
+    })
+  })
+
+  // enable_apply covers this season's window. The 2027 link is next season's
+  // application, offered because this season closed, so the flag going off is
+  // exactly when it matters most.
+  describe('With this season’s applications closed', () => {
+    beforeEach(() => {
+      mockApplyEnabled = false
+    })
+
+    afterEach(() => {
+      mockApplyEnabled = true
+    })
+
+    it('still offers the 2027 link on the no-results page', () => {
+      render(
+        <ResultsPage
+          results={noneEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      expect(screen.getByTestId('apply-2027-link')).toHaveAttribute('href', mockApplyHref)
+    })
+
+    it('still offers the numbered 2027 step on a mixed household', () => {
+      render(
+        <ResultsPage
+          results={mixedEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      expect(screen.getByText(nextStepsSectionText)).toBeVisible()
+      expect(screen.getByTestId('next-step-apply-2027')).toBeVisible()
+      expect(screen.getByTestId('apply-2027-link')).toBeVisible()
     })
   })
 

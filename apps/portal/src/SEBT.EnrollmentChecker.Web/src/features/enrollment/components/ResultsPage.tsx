@@ -1,5 +1,6 @@
 'use client'
 
+import { getApplyHref } from '@/lib/applyHref'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import { allowsSequentialChecks, getFlowConfig } from '@/lib/flowConfig'
 import { useApplyHref } from '@/lib/useApplyHref'
@@ -8,14 +9,14 @@ import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { RichText } from '@sebt/design-system'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ApplicationAvailable } from './ApplicationAvailable'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'
-import { EligibilityAccordion } from './EligibilityAccordion'
 import { ChildResultCard } from './ChildResultCard'
+import { EligibilityAccordion } from './EligibilityAccordion'
 import { EnrolledSection } from './EnrolledSection'
 import { NotEnrolledSection } from './NotEnrolledSection'
-import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ResultsPageProps {
   results: ChildCheckApiResponse[]
@@ -40,25 +41,30 @@ function computeHouseholdEnrollmentResult(
 }
 
 export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
-  const { t } = useTranslation('result')
+  const { t, i18n } = useTranslation('result')
   const { pageTitleText } = getStateConfig(getState())
 
-  // Null when applications are closed — either the enable_apply flag is off or no
-  // destination is configured. The 2027 application link and its wait note degrade
-  // away while the closure line stays. The mixed variant also drops its numbered
-  // next-steps list, since the portal step is then the only actionable one.
+  // This season's application. Null when the enable_apply flag is off or no
+  // destination is configured, and the apply blocks degrade away with it.
   const applyHref = useApplyHref()
+
+  // Next season's application, offered because this season's window has closed,
+  // so enable_apply does not gate it — only a configured destination does. The
+  // link and its wait note degrade away together while the closure line stays.
+  // The mixed variant also drops its numbered next-steps list, since the portal
+  // step is then the only actionable one.
+  const nextSeasonApplyHref = getApplyHref(i18n.language)
 
   // Closure copy plus the optional summer-2027 application link. The wait-note
   // key differs by surface (standalone vs numbered step), so callers pass it.
   const apply2027Block = (noteKey: 'apply2027Note' | 'apply2027StepNote') => (
     <>
       <p>{t('enrollmentClosedBody')}</p>
-      {applyHref && (
+      {nextSeasonApplyHref && (
         <>
           <p>
             <a
-              href={applyHref}
+              href={nextSeasonApplyHref}
               data-analytics-cta="apply_cta"
               data-testid="apply-2027-link"
             >
@@ -206,31 +212,35 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           </div>
         )}
 
-        {summarizesHousehold && householdEnrollmentResult === 'mixedEnrolled' && applyHref && (
-          <section data-testid="next-steps">
-            <h2 className="font-family-sans margin-top-4">
-              {t('streamlinedEnrolledStepsHeading')}
-            </h2>
-            <ol className="usa-process-list  margin-top-1">
-              <li className="usa-process-list__item margin-top-2">{portalNextStep}</li>
-              <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>
-            </ol>
-          </section>
-        )}
+        {summarizesHousehold &&
+          householdEnrollmentResult === 'mixedEnrolled' &&
+          nextSeasonApplyHref && (
+            <section data-testid="next-steps">
+              <h2 className="font-family-sans margin-top-4">
+                {t('streamlinedEnrolledStepsHeading')}
+              </h2>
+              <ol className="usa-process-list  margin-top-1">
+                <li className="usa-process-list__item margin-top-2">{portalNextStep}</li>
+                <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>
+              </ol>
+            </section>
+          )}
 
         {/* Without an application destination the 2027 step would be an
             instruction with nothing to act on, so the portal step stands alone
             (as on the all-enrolled page) and the not-enrolled children get the
             same explanation and closure line as the no-results page. */}
-        {summarizesHousehold && householdEnrollmentResult === 'mixedEnrolled' && !applyHref && (
-          <>
-            <section>{portalNextStep}</section>
-            <section className="margin-top-3">
-              <p>{t('applyForSebtBody2')}</p>
-              {apply2027Block('apply2027Note')}
-            </section>
-          </>
-        )}
+        {summarizesHousehold &&
+          householdEnrollmentResult === 'mixedEnrolled' &&
+          !nextSeasonApplyHref && (
+            <>
+              <section>{portalNextStep}</section>
+              <section className="margin-top-3">
+                <p>{t('applyForSebtBody2')}</p>
+                {apply2027Block('apply2027Note')}
+              </section>
+            </>
+          )}
 
         {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
           <section className="margin-top-3">{apply2027Block('apply2027Note')}</section>
