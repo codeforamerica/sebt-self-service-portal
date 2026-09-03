@@ -1,5 +1,6 @@
 'use client'
 
+import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 
@@ -17,17 +18,20 @@ interface ErrorResultPageProps {
  */
 export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
   const { t } = useTranslation('result')
+  const errorCard = getCheckerAssetPath('errorCard')
 
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-alert-card.svg`}
-          alt=""
-          width={100}
-          height={75}
-          aria-hidden="true"
-        />
+        {errorCard && (
+          <Image
+            src={errorCard}
+            alt=""
+            width={100}
+            height={75}
+            aria-hidden="true"
+          />
+        )}
         <h1 className="font-family-sans text-primary margin-top-1">{t('errorTitle')}</h1>
         <p>{t('errorBody')}</p>
 
