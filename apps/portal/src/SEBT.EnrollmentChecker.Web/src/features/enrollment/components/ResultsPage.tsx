@@ -97,7 +97,8 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     </section>
   )
 
-  const { distinguishNoResults } = getFlowConfig()
+  const { distinguishNoResults, resultsLayout } = getFlowConfig()
+  const summarizesHousehold = resultsLayout === 'household'
 
   const enrolled = results.filter((r) => mapApiStatus(r.status) === 'enrolled')
   const matchFailures = results.filter((r) => mapApiStatus(r.status) === 'notEnrolled')
@@ -113,6 +114,15 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     enrolled.length,
     notEnrolled.length
   )
+
+  // A household summary covers several outcomes at once, so it keeps one
+  // neutral heading and names each child below it. A single-outcome flow has
+  // one answer to give, and that answer is the heading.
+  const titleKey = summarizesHousehold
+    ? 'title'
+    : enrolled.length > 0
+      ? 'streamlinedEnrolledTitle'
+      : 'applyForSebtTitle'
 
   // The outcome-to-artwork mapping is state-specific, so it lives in the asset
   // manifest rather than in filenames chosen here.
@@ -134,15 +144,19 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans ${pageTitleText} margin-top-1`}>{t('title')}</h1>
+        <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>
+          {t(titleKey)}
+        </h1>
 
-        {['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
-          <div className="usa-summary-box">
-            <EnrolledSection results={enrolled} />
-          </div>
-        )}
+        {/* Only a household summary names the children it checked. */}
+        {summarizesHousehold &&
+          ['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
+            <div className="usa-summary-box">
+              <EnrolledSection results={enrolled} />
+            </div>
+          )}
 
-        {householdEnrollmentResult === 'mixedEnrolled' && (
+        {summarizesHousehold && householdEnrollmentResult === 'mixedEnrolled' && (
           <section
             className="margin-top-3"
             data-testid="not-enrolled-inline"
@@ -161,13 +175,13 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           </section>
         )}
 
-        {householdEnrollmentResult === 'noneEnrolled' && (
+        {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
           <div className="usa-summary-box">
             <NotEnrolledSection results={notEnrolled} />
           </div>
         )}
 
-        {householdEnrollmentResult === 'indeterminate' && (
+        {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
           <div
             className="usa-summary-box"
             data-testid="no-info-summary-box"
@@ -190,7 +204,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           </div>
         )}
 
-        {householdEnrollmentResult === 'mixedEnrolled' && applyHref && (
+        {summarizesHousehold && householdEnrollmentResult === 'mixedEnrolled' && applyHref && (
           <section data-testid="next-steps">
             <h2 className="font-family-sans margin-top-4">
               {t('streamlinedEnrolledStepsHeading')}
@@ -206,7 +220,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
             instruction with nothing to act on, so the portal step stands alone
             (as on the all-enrolled page) and the not-enrolled children get the
             same explanation and closure line as the no-results page. */}
-        {householdEnrollmentResult === 'mixedEnrolled' && !applyHref && (
+        {summarizesHousehold && householdEnrollmentResult === 'mixedEnrolled' && !applyHref && (
           <>
             <section>{portalNextStep}</section>
             <section className="margin-top-3">
@@ -216,18 +230,54 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           </>
         )}
 
-        {householdEnrollmentResult === 'noneEnrolled' && (
+        {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
           <section className="margin-top-3">{apply2027Block('apply2027Note')}</section>
         )}
 
-        {householdEnrollmentResult === 'indeterminate' && (
+        {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
           <section className="margin-top-3">
             <p>{t('applyForSebtBody2')}</p>
             {apply2027Block('apply2027Note')}
           </section>
         )}
 
-        {householdEnrollmentResult === 'allEnrolled' && <section>{portalNextStep}</section>}
+        {summarizesHousehold && householdEnrollmentResult === 'allEnrolled' && (
+          <section>{portalNextStep}</section>
+        )}
+
+        {/* One answer for one child: the heading states the outcome and the
+            body explains what it means. An enrolled student then gets the
+            portal, which is where the benefit details live. */}
+        {!summarizesHousehold && (
+          <section className="margin-top-3">
+            <div className="usa-prose">
+              <RichText>
+                {t(enrolled.length > 0 ? 'streamlinedEnrolledBody' : 'applyForSebtBody')}
+              </RichText>
+            </div>
+
+            {enrolled.length > 0 && (
+              <section data-testid="next-step-portal">
+                <h2 className="font-family-sans font-sans-md margin-top-4">
+                  {t('streamlinedEnrolledAlertTitle')}
+                </h2>
+                <div className="usa-prose margin-top-2">
+                  <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
+                  <p>{t('streamlinedEnrolledAlertAction')}</p>
+                </div>
+                <p>
+                  <a
+                    href={portalUrl}
+                    className="usa-button"
+                    data-testid="portal-link"
+                  >
+                    {t('streamlinedEnrolledAction')}
+                  </a>
+                </p>
+              </section>
+            )}
+          </section>
+        )}
 
         {/* Single-child flows finish one child at a time, so the results are
             where the next check begins. */}

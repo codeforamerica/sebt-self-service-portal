@@ -42,7 +42,7 @@ export function ClosedPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className={`font-family-sans ${pageTitleText}`}>{t('closedTitle')}</h1>
+        <h1 className={`font-family-sans font-sans-xl ${pageTitleText}`}>{t('closedTitle')}</h1>
 
         <h2 className="font-family-sans font-sans-md">{t('closedSubtitle')}</h2>
 
