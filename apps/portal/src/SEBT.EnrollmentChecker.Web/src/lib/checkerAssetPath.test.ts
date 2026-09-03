@@ -3,8 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { getCheckerAssetPath } from './checkerAssetPath'
 
 beforeEach(() => {
-  // vitest.config.ts pins NEXT_PUBLIC_STATE=co process-wide and CI may export a
-  // base path; stub both so each case states its own starting conditions.
+  // CI may export a base path; neutralize it so each case sets its own.
   vi.stubEnv('NEXT_PUBLIC_BASE_PATH', '')
 })
 
@@ -54,8 +53,7 @@ describe('getCheckerAssetPath', () => {
   })
 
   describe('optional slots', () => {
-    // DC's landing page goes straight from toolbar to <h1> — its branding lives
-    // in the toolbar logo, so there is no landing lockup to render.
+    // DC's landing page goes straight from toolbar to <h1>.
     it('resolves the landing logo for CO and omits it for DC', () => {
       vi.stubEnv('NEXT_PUBLIC_STATE', 'co')
       expect(getCheckerAssetPath('landingLogo')).toBe('/images/states/co/summer-ebt-logo.svg')
@@ -64,8 +62,8 @@ describe('getCheckerAssetPath', () => {
       expect(getCheckerAssetPath('landingLogo')).toBeUndefined()
     })
 
-    // DC has no alert artwork yet (DC-727 open question); the error screen
-    // renders without a decorative icon rather than borrowing the wrong one.
+    // DC has no alert artwork, so its error screen renders without a decorative
+    // icon rather than borrowing the wrong one.
     it('resolves the error card for CO and omits it for DC', () => {
       vi.stubEnv('NEXT_PUBLIC_STATE', 'co')
       expect(getCheckerAssetPath('errorCard')).toBe('/images/states/co/icon-alert-card.svg')
@@ -76,8 +74,6 @@ describe('getCheckerAssetPath', () => {
   })
 
   describe('per-state results icons', () => {
-    // The outcome-to-artwork mapping is genuinely state-specific: CO leads an
-    // enrolled result with the review card, DC with a checkmark.
     it('maps the enrolled outcome per state', () => {
       vi.stubEnv('NEXT_PUBLIC_STATE', 'co')
       expect(getCheckerAssetPath('resultsEnrolled')).toBe('/images/states/co/icon-review-card.svg')

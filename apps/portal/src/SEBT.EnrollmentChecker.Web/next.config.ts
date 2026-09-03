@@ -2,10 +2,9 @@ import type { NextConfig } from 'next'
 import path from 'path'
 import { CHECKER_DEFAULT_STATE } from './src/lib/checkerState'
 
-// STATE is the single input that selects a build's state. The `env` block below
-// publishes it to browser code as NEXT_PUBLIC_STATE, which means it *overwrites*
-// any NEXT_PUBLIC_STATE already in the environment — set both together, never
-// NEXT_PUBLIC_STATE alone. See src/lib/checkerState.ts.
+// STATE selects the build's state. The `env` block below publishes it as
+// NEXT_PUBLIC_STATE, overwriting any existing value — set both together, never
+// NEXT_PUBLIC_STATE alone.
 const state = process.env.STATE ?? CHECKER_DEFAULT_STATE
 const basePath = process.env.BASE_PATH ?? ''
 
