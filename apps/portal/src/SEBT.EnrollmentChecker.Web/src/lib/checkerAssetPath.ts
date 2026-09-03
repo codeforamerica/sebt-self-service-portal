@@ -21,6 +21,7 @@ export const CHECKER_ASSETS = [
   'reviewCard',
   'resultsEnrolled',
   'resultsNotEnrolled',
+  'resultsNotEnrolledClosed',
   'errorCard'
 ] as const
 
@@ -44,6 +45,9 @@ const checkerAssets: Record<StateCode, Partial<Record<CheckerAsset, string>>> = 
     // carries the review artwork. The alert artwork is reserved for the error
     // screen, where something actually went wrong.
     resultsNotEnrolled: 'icon-review-card.svg',
+    // Once the season has closed there is nothing left to invite, so the same
+    // outcome becomes a warning and takes the alert artwork.
+    resultsNotEnrolledClosed: 'icon-alert-card.svg',
     errorCard: 'icon-alert-card.svg'
   },
   co: {
@@ -52,6 +56,7 @@ const checkerAssets: Record<StateCode, Partial<Record<CheckerAsset, string>>> = 
     reviewCard: 'icon-review-card.svg',
     resultsEnrolled: 'icon-review-card.svg',
     resultsNotEnrolled: 'icon-alert-card.svg',
+    resultsNotEnrolledClosed: 'icon-alert-card.svg',
     errorCard: 'icon-alert-card.svg'
   }
 }

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
+import coResult from '@/content/locales/en/co/result.json'
 import { EnrollmentProvider } from '../context/EnrollmentContext'
 import { ResultsPage } from './ResultsPage'
 
@@ -9,10 +10,12 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
 
 // These tests cover results composition. Applications are open so the apply
 // blocks render; mockApplyHref below is what closes them. Income screening and
-// the apply flag are exercised in their own suites.
-let mockApplyEnabled = true
+// the apply flag are exercised in their own suites. Omitting `enrollment` leaves
+// the season open, which is what every suite but the closed one assumes.
+const OPEN_SEASON_FEATURES = { apply: { enabled: true } }
+let mockFeatures: unknown = OPEN_SEASON_FEATURES
 vi.mock('@/features/maintenance/hooks/useCheckerFeatures', () => ({
-  useCheckerFeatures: () => ({ data: { apply: { enabled: mockApplyEnabled } } })
+  useCheckerFeatures: () => ({ data: mockFeatures })
 }))
 
 // Flows with a review step collect the household before submitting, so they
@@ -309,11 +312,11 @@ describe('ResultsPage', () => {
   // exactly when it matters most.
   describe('With this season’s applications closed', () => {
     beforeEach(() => {
-      mockApplyEnabled = false
+      mockFeatures = { apply: { enabled: false } }
     })
 
     afterEach(() => {
-      mockApplyEnabled = true
+      mockFeatures = OPEN_SEASON_FEATURES
     })
 
     it('still offers the 2027 link on the no-results page', () => {
@@ -447,5 +450,98 @@ describe('single-outcome results', () => {
   it('does not announce the alert as a live region', () => {
     const { container } = renderResults('Match')
     expect(container.querySelector('.usa-alert')).not.toHaveAttribute('role', 'alert')
+  })
+})
+
+// Once the season has closed the check still runs, but it reports on a season
+// that is over: past-tense copy, and no application to send anyone to.
+describe('single-outcome results — closed season', () => {
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+    mockFeatures = { apply: { enabled: true }, enrollment: { enabled: false } }
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    mockFeatures = OPEN_SEASON_FEATURES
+  })
+
+  const oneChild = (status: string): ChildCheckApiResponse[] => [
+    { checkId: '1', firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12', status }
+  ]
+
+  const renderResults = (status: string) =>
+    render(
+      <EnrollmentProvider>
+        <ResultsPage results={oneChild(status)} portalUrl="https://portal.example.gov" />
+      </EnrollmentProvider>
+    )
+
+  const heading = () => screen.getByRole('heading', { level: 1 }).textContent
+
+  it('reports the enrolled outcome in the past tense', () => {
+    renderResults('Match')
+    expect(heading()).toBe('streamlinedEnrolledClosedTitle')
+  })
+
+  it('reports the not-enrolled outcome in the past tense', () => {
+    renderResults('NonMatch')
+    expect(heading()).toBe('applyForSebtClosedTitle')
+  })
+
+  // The heading is the whole answer: there is no application left to explain and
+  // no eligibility left to screen for, so nothing follows it but the next check.
+  it('answers a not-enrolled check with the heading alone', () => {
+    renderResults('NonMatch')
+
+    expect(screen.queryByTestId('application-available')).toBeNull()
+    expect(screen.queryByRole('button', { name: /applyForSebtAccordionTitle/ })).toBeNull()
+    expect(screen.queryByTestId('accordion-apply-link')).toBeNull()
+    expect(screen.queryByTestId('apply-online-link')).toBeNull()
+  })
+
+  // Applications being open cannot resurrect an apply path after the season ends.
+  it('drops the apply paths even while the apply flag is on', () => {
+    renderResults('NonMatch')
+    expect(screen.queryByTestId('apply-online-link')).toBeNull()
+    expect(screen.queryByTestId('accordion-apply-link')).toBeNull()
+  })
+
+  it('still offers the next check, in the season’s wording', () => {
+    renderResults('NonMatch')
+
+    expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
+    expect(screen.getByText('applyForSebtClosedCard2Body')).toBeInTheDocument()
+  })
+
+  // An alert marks something to act on. A closed season's enrolled result is a
+  // record of where benefits already went, so the portal pointer is a plain link.
+  it('drops the success alert and leads with the portal link', () => {
+    const { container } = renderResults('Match')
+
+    expect(container.querySelector('.usa-alert')).toBeNull()
+    expect(screen.getByTestId('portal-alert-link')).toHaveAttribute(
+      'href',
+      'https://portal.example.gov'
+    )
+    // CO ships this row, so it resolves rather than echoing its key. Compare on
+    // collapsed whitespace: the sheet writes a non-breaking space into the copy.
+    const collapse = (value: string) => value.replace(/\s+/g, ' ').trim()
+    expect(collapse(screen.getByTestId('portal-alert-link').textContent ?? '')).toBe(
+      collapse(coResult.streamlinedEnrolledClosedAlertTitle)
+    )
+  })
+
+  it('keeps the portal button on the enrolled result', () => {
+    renderResults('Match')
+    expect(screen.getByTestId('portal-link')).toHaveAttribute(
+      'href',
+      'https://portal.example.gov'
+    )
+  })
+
+  it('explains the enrolled outcome in the past tense', () => {
+    renderResults('Match')
+    expect(screen.getByText('streamlinedEnrolledClosedBody')).toBeInTheDocument()
   })
 })
