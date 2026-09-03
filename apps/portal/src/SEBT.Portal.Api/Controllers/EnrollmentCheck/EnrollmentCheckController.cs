@@ -133,7 +133,7 @@ public class EnrollmentCheckController : ControllerBase
             {
                 Enabled = outagePageEnabled
             },
-            IncomeEligibility = incomeEligibilityEnabled
+            IncomeEligibility = incomeEligibilityEnabled && incomeEligibility.IsConfigured
                 ? new IncomeEligibilityFeature
                 {
                     BaseThreshold = incomeEligibility.BaseThreshold,

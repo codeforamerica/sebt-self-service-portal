@@ -147,6 +147,77 @@ public class EnrollmentCheckerFeaturesEndpointTests
         Assert.Equal(8, response.IncomeEligibility.MaxHouseholdSize);
     }
 
+    private void UseIncomeEligibility(IncomeEligibilitySettings incomeEligibility) =>
+        _settings.CurrentValue.Returns(new EnrollmentCheckerSettings
+        {
+            MaintenanceBanner = new MaintenanceBannerSettings { Message = DefaultMessage },
+            IncomeEligibility = incomeEligibility,
+        });
+
+    [Fact]
+    public async Task GetFeatures_WhenFlagEnabledButFiguresZeroed_OmitsThresholds()
+    {
+        // The shipped defaults are zeroes. Serving them would screen every household
+        // against $0 and offer a size selector with no options.
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility).Returns(true);
+        UseIncomeEligibility(new IncomeEligibilitySettings());
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.Null(response.IncomeEligibility);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenFlagEnabledButMaxHouseholdSizeZero_OmitsThresholds()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility).Returns(true);
+        UseIncomeEligibility(new IncomeEligibilitySettings
+        {
+            BaseThreshold = 28953m,
+            PerMemberIncrement = 10175m,
+            MaxHouseholdSize = 0,
+        });
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.Null(response.IncomeEligibility);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenFlagEnabledButBaseThresholdZero_OmitsThresholds()
+    {
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility).Returns(true);
+        UseIncomeEligibility(new IncomeEligibilitySettings
+        {
+            BaseThreshold = 0m,
+            PerMemberIncrement = 10175m,
+            MaxHouseholdSize = 8,
+        });
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.Null(response.IncomeEligibility);
+    }
+
+    [Fact]
+    public async Task GetFeatures_WhenFlagEnabledAndIncrementZero_ReturnsThresholds()
+    {
+        // A flat threshold that does not rise with household size is a valid
+        // configuration, so only the base and the size cap gate the figures.
+        _featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility).Returns(true);
+        UseIncomeEligibility(new IncomeEligibilitySettings
+        {
+            BaseThreshold = 28953m,
+            PerMemberIncrement = 0m,
+            MaxHouseholdSize = 8,
+        });
+
+        var response = AssertOkResponse(await GetFeatures());
+
+        Assert.NotNull(response.IncomeEligibility);
+        Assert.Equal(0m, response.IncomeEligibility.PerMemberIncrement);
+    }
+
     [Fact]
     public async Task GetFeatures_WhenIncomeEligibilityFlagDisabled_OmitsThresholds()
     {

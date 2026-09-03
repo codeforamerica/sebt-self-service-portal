@@ -46,6 +46,13 @@ public class IncomeEligibilitySettings
     /// Largest household size the selector offers.
     /// </summary>
     public int MaxHouseholdSize { get; set; }
+
+    /// <summary>
+    /// Whether a state has supplied usable figures. The defaults are zeroes, which would
+    /// otherwise screen every household against $0 and offer an empty size selector.
+    /// PerMemberIncrement is excluded: a flat threshold is a valid configuration.
+    /// </summary>
+    public bool IsConfigured => BaseThreshold > 0 && MaxHouseholdSize > 0;
 }
 
 /// <summary>
