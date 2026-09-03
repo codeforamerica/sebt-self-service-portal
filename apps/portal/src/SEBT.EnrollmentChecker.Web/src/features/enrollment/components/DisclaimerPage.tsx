@@ -5,24 +5,35 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
 import { env } from '@/lib/env'
+import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
+  const { pageTitleText } = getStateConfig(getState())
   const router = useRouter()
+  const { season } = useEnrollmentSeason()
+  const isClosed = season === 'closed'
 
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className="font-family-sans text-primary">{t('title')}</h1>
+        <h1 className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
+          {t('title')}
+        </h1>
+        {/* Two paragraphs, each a lead sentence on its own line above the text
+            it introduces — display-block breaks the line without adding a gap.
+            The privacy lead (body3) reads the same in either season, so the
+            content sheet holds no closed variant of it. */}
         <div className="usa-prose">
           <p>
-            <strong>{t('body1')}</strong>{' '}
+            <strong className="display-block">{t(isClosed ? 'closedBody1' : 'body1')}</strong>
+            {t(isClosed ? 'closedBody2' : 'body2')}
           </p>
-          <p>{t('body2')}</p>
-          <p>
-            <strong>{t('body3')}</strong>{' '}
+          <p className="margin-top-3">
+            <strong className="display-block">{t('body3')}</strong>
+            {t(isClosed ? 'closedBody4' : 'body4')}
           </p>
-          <p>{t('body4')}</p>
         </div>
         <div className="margin-top-4">
           <Button

@@ -1,11 +1,18 @@
 import { expect, test } from '@playwright/test'
 
-import { completeCheckFlow, makeResult, mockCheckResults } from './fixtures'
+import { completeCheckFlow, makeResult, mockCheckResults, mockFeatures } from './fixtures'
 
 // Household-level result variants on /results. The API returns per-child
 // statuses (Match | NonMatch | Error); the page aggregates them into
 // all-enrolled / none-enrolled / mixed / indeterminate presentations.
 test.describe('Results page variants', () => {
+  // The apply links need both a configured URL and the enable_apply flag. The dev
+  // server supplies the URL; without this the flag reads false and every apply
+  // block degrades away.
+  test.beforeEach(async ({ page }) => {
+    await mockFeatures(page)
+  })
+
   test('all enrolled: summary box with portal link, no application steps', async ({ page }) => {
     await mockCheckResults(page, [makeResult({ status: 'Match' })])
 

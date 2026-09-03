@@ -1,11 +1,13 @@
 'use client'
 
 import { Button } from '@sebt/design-system'
+import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useEnrollment } from '../context/EnrollmentContext'
 import { ChildReviewCard } from './ChildReviewCard'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ReviewPageProps {
   onSubmit: () => void
@@ -18,9 +20,11 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   // confirmInfo title/body exist only in the CO sheet (DC marks them !N/A!);
   // a DC build renders raw key names on this screen.
   const { t } = useTranslation('confirmInfo')
+  const { pageTitleText } = getStateConfig(getState())
   const { t: tCommon } = useTranslation('common')
   const router = useRouter()
   const { state, setEditingChildId, removeChild } = useEnrollment()
+  const reviewCard = getCheckerAssetPath('reviewCard')
 
   function handleEdit(id: string) {
     setEditingChildId(id)
@@ -30,14 +34,16 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <Image
-          src={`${process.env.NEXT_PUBLIC_BASE_PATH}/images/states/co/icon-review-card.svg`}
-          alt=""
-          width={100}
-          height={75}
-          aria-hidden="true"
-        />
-        <h1 className="font-family-sans margin-top-1 text-primary">{t('title')}</h1>
+        {reviewCard && (
+          <Image
+            src={reviewCard}
+            alt=""
+            width={100}
+            height={75}
+            aria-hidden="true"
+          />
+        )}
+        <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{t('title')}</h1>
         <p className="usa-prose">{t('body')}</p>
 
         <div className="margin-top-3">

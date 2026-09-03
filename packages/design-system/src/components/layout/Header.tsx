@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { LanguageSelector } from './LanguageSelector'
 import type { HeaderProps } from './types'
 
-// Logo dimensions match each state's SVG viewBox so the image renders
-// at its natural aspect ratio. maxh-6 caps the height for states with
-// taller logos (DC), while wider logos (CO) spread horizontally.
+// Logo dimensions match each state's SVG viewBox so the image renders at its
+// natural aspect ratio. maxh-6 caps the height for taller logos (DC); width-auto
+// on the image lets the width follow, so capping scales rather than squashes.
 const logoDimensions: Record<string, { width: number; height: number }> = {
   dc: { width: 122, height: 52 },
   co: { width: 192, height: 28 }
@@ -34,7 +34,7 @@ export function Header({ state = 'dc' }: HeaderProps) {
               width={width}
               height={height}
               priority
-              className="maxw-full height-auto maxh-6"
+              className="maxw-full width-auto height-auto maxh-6"
             />
           </div>
         </div>
