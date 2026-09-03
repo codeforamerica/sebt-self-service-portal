@@ -2,15 +2,18 @@
 
 import { getApplyHref } from '@/lib/applyHref'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
+import { allowsSequentialChecks, getFlowConfig } from '@/lib/flowConfig'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { RichText } from '@sebt/design-system'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
+import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 import { ChildResultCard } from './ChildResultCard'
 import { EnrolledSection } from './EnrolledSection'
 import { NotEnrolledSection } from './NotEnrolledSection'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ResultsPageProps {
   results: ChildCheckApiResponse[]
@@ -36,6 +39,7 @@ function computeHouseholdEnrollmentResult(
 
 export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   const { t, i18n } = useTranslation('result')
+  const { pageTitleText } = getStateConfig(getState())
 
   // Null when no application destination is configured (applications closed,
   // DC-701): the 2027 application link and its wait note degrade away while the
@@ -93,9 +97,17 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     </section>
   )
 
+  const { distinguishNoResults } = getFlowConfig()
+
   const enrolled = results.filter((r) => mapApiStatus(r.status) === 'enrolled')
-  const notEnrolled = results.filter((r) => mapApiStatus(r.status) === 'notEnrolled')
-  const errors = results.filter((r) => mapApiStatus(r.status) === 'error')
+  const matchFailures = results.filter((r) => mapApiStatus(r.status) === 'notEnrolled')
+  const unresolved = results.filter((r) => mapApiStatus(r.status) === 'error')
+
+  // Where a state's backend cannot tell "no match at all" from "found but not
+  // matched", both arrive here as the same real-world answer, so they get the
+  // same treatment rather than a separate screen for an unreachable state.
+  const notEnrolled = distinguishNoResults ? matchFailures : [...matchFailures, ...unresolved]
+  const errors = distinguishNoResults ? unresolved : []
 
   const householdEnrollmentResult = computeHouseholdEnrollmentResult(
     enrolled.length,
@@ -122,7 +134,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className="font-family-sans text-primary margin-top-1">{t('title')}</h1>
+        <h1 className={`font-family-sans ${pageTitleText} margin-top-1`}>{t('title')}</h1>
 
         {['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
           <div className="usa-summary-box">
@@ -180,9 +192,9 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
         {householdEnrollmentResult === 'mixedEnrolled' && applyHref && (
           <section data-testid="next-steps">
-            <h1 className="font-family-sans margin-top-4">
+            <h2 className="font-family-sans margin-top-4">
               {t('streamlinedEnrolledStepsHeading')}
-            </h1>
+            </h2>
             <ol className="usa-process-list  margin-top-1">
               <li className="usa-process-list__item margin-top-2">{portalNextStep}</li>
               <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>
@@ -216,6 +228,14 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
         )}
 
         {householdEnrollmentResult === 'allEnrolled' && <section>{portalNextStep}</section>}
+
+        {/* Single-child flows finish one child at a time, so the results are
+            where the next check begins. */}
+        {allowsSequentialChecks() && (
+          <CheckAnotherChildCard
+            copy={enrolled.length > 0 ? 'streamlinedEnrolledCard2' : 'applyForSebtCard2'}
+          />
+        )}
       </div>
     </div>
   )

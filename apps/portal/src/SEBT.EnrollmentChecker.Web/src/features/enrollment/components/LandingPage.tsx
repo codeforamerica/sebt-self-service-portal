@@ -32,7 +32,7 @@ export function LandingPage() {
   // Undefined for states with no logo above the heading — DC brands this screen
   // through the toolbar logo instead.
   const landingLogo = getCheckerAssetPath('landingLogo')
-  const { programName } = getStateConfig(getState())
+  const { programName, pageTitleText } = getStateConfig(getState())
 
   const { useAccordion } = getLandingConfig()
   const actions = getLandingActions()
@@ -73,7 +73,7 @@ export function LandingPage() {
             priority
           />
         )}
-        <h1 className="font-family-sans text-primary">{t('title')}</h1>
+        <h1 className={`font-family-sans ${pageTitleText}`}>{t('title')}</h1>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>
         </div>

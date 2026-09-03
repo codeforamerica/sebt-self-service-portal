@@ -5,15 +5,17 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
 import { env } from '@/lib/env'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
+  const { pageTitleText } = getStateConfig(getState())
   const router = useRouter()
 
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className="font-family-sans text-primary">{t('title')}</h1>
+        <h1 className={`font-family-sans ${pageTitleText}`}>{t('title')}</h1>
         <div className="usa-prose">
           <p>
             <strong>{t('body1')}</strong>{' '}
