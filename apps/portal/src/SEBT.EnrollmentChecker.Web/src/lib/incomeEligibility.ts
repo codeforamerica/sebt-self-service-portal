@@ -15,9 +15,21 @@ export function incomeThresholdFor(config: IncomeEligibility, size: number): num
   return config.baseThreshold + (size - 1) * config.perMemberIncrement
 }
 
+// US regions for a US benefit in USD. Plain 'es' formats the figure as
+// "69.653 US$", which a US reader can take for sixty-nine dollars.
+const CURRENCY_LOCALES: Record<string, string> = {
+  en: 'en-US',
+  es: 'es-US',
+  am: 'am-ET'
+}
+
 /** Whole-dollar currency, matching how the threshold reads in the content. */
 export function formatThreshold(amount: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
+  const language = locale.split('-')[0] ?? ''
+  // eslint-disable-next-line security/detect-object-injection -- language indexes a static literal map
+  const currencyLocale = CURRENCY_LOCALES[language] ?? 'en-US'
+
+  return new Intl.NumberFormat(currencyLocale, {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0

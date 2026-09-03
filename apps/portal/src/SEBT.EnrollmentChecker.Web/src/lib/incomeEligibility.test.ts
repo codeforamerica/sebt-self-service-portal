@@ -54,6 +54,30 @@ describe('formatThreshold', () => {
   it('rounds away cents rather than showing them', () => {
     expect(formatThreshold(28953.4, 'en')).toBe('$28,953')
   })
+
+  // Plain 'es' renders 69653 as "69.653 US$", which reads as sixty-nine dollars
+  // to a US audience.
+  it('renders Spanish in US conventions', () => {
+    expect(formatThreshold(69653, 'es')).toBe('$69,653')
+  })
+
+  it('renders Amharic with an unambiguous currency prefix', () => {
+    expect(formatThreshold(69653, 'am')).toBe('US$69,653')
+  })
+
+  it('reads the language from a regional locale', () => {
+    expect(formatThreshold(69653, 'es-419')).toBe(formatThreshold(69653, 'es'))
+  })
+
+  it('falls back to US formatting for an unmapped language', () => {
+    expect(formatThreshold(69653, 'fr')).toBe('$69,653')
+  })
+
+  // The hazard is a dot as the thousands separator: it turns a five-figure
+  // threshold into a two-figure one.
+  it.each(['en', 'es', 'am'])('groups thousands with a comma in %s', (lang) => {
+    expect(formatThreshold(69653, lang)).toContain('69,653')
+  })
 })
 
 describe('withThreshold', () => {
