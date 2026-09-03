@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using SEBT.Portal.Api.Middleware;
+using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Middleware;
 
@@ -21,14 +22,17 @@ public class OidcOriginValidationMiddlewareTests
         RequestDelegate next,
         string? callbackRedirectUri = AllowedOrigin + "/callback")
     {
-        var configData = new Dictionary<string, string?>();
+        var settings = new OidcSettings();
         if (callbackRedirectUri != null)
-            configData["Oidc:CallbackRedirectUri"] = callbackRedirectUri;
-        var config = new ConfigurationBuilder().AddInMemoryCollection(configData).Build();
+        {
+            settings.CallbackRedirectUri = callbackRedirectUri;
+        }
+
         return new OidcOriginValidationMiddleware(
             next,
             NullLogger<OidcOriginValidationMiddleware>.Instance,
-            config);
+            TestOptions.Snapshot(settings),
+            TestOptions.Snapshot(new OidcStepUpSettings()));
     }
 
     private static DefaultHttpContext CreateContext(string method, string path, string? origin = null)

@@ -8,6 +8,8 @@ using OpenTelemetry.Trace;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Kernel.Telemetry;
 
+namespace SEBT.Portal.Api.Telemetry;
+
 internal static class OpenTelemetrySetup
 {
     internal const string ServiceName = "sebt-portal-api";

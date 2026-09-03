@@ -1,8 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Services;
@@ -11,7 +9,6 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
-using SEBT.Portal.Kernel.AspNetCore;
 using SEBT.Portal.Kernel.Results;
 using SEBT.Portal.UseCases.Auth;
 
@@ -87,7 +84,7 @@ public class AuthController(
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status302Found)]
     public async Task<IActionResult> Logout(
-        [FromServices] IConfiguration config,
+        [FromServices] IOptionsSnapshot<OidcSettings> oidcSettings,
         [FromServices] IOidcExchangeService oidcExchangeService,
         [FromServices] ITokenDenylist tokenDenylist,
         CancellationToken cancellationToken = default)
@@ -96,9 +93,9 @@ public class AuthController(
 
         AuthCookies.ClearAuthCookie(Response);
 
-        var discoveryEndpoint = config["Oidc:DiscoveryEndpoint"];
-        var clientId = config["Oidc:ClientId"];
-        var callbackRedirectUri = config["Oidc:CallbackRedirectUri"];
+        var discoveryEndpoint = oidcSettings.Value.DiscoveryEndpoint;
+        var clientId = oidcSettings.Value.ClientId;
+        var callbackRedirectUri = oidcSettings.Value.CallbackRedirectUri;
 
         if (!string.IsNullOrEmpty(discoveryEndpoint) && !string.IsNullOrEmpty(clientId)
             && !string.IsNullOrEmpty(callbackRedirectUri))
