@@ -1,4 +1,6 @@
-# ADR 0012: OIDC RP-Initiated Logout
+# 28. OIDC RP-Initiated Logout
+
+Date: 2026-04-24
 
 ## Status
 
