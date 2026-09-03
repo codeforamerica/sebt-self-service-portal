@@ -20,7 +20,7 @@ of Summer 2026 the product is in use by Colorado and Washington, DC.
 
 | Section | What it covers |
 | --- | --- |
-| [Guides](guides/state-connector/index.md) | How to carry out a task against this codebase. Two guides today: build a state connector, and change user-facing text. |
+| [Docs](guides/state-connector/index.md) | How to carry out a task against this codebase. Get started covers building a state connector; Content covers changing user-facing text. |
 | [Architecture Decisions](adr/index.md) | Every ADR in the repository, and why the system is shaped the way it is. |
 | [.NET API Reference](api/index.md) | Types, members, and XML doc comments across the portal's C# projects and the state connector contract. |
 

@@ -47,16 +47,21 @@ though its implementation is not here.
 `api/index.md` is hand-written and survives regeneration, because `docfx metadata` only removes files it generated
 itself.
 
-### Guides and ADRs (copied sections)
+### Docs and ADRs (copied sections)
 
 `scripts/docs/generate-doc-sections.ts` copies each source directory listed in its `SECTIONS` array into the site and
 writes a `toc.yml` listing the files. Adding a section means adding one entry there plus a `toc.yml` nav item. It
 does not read ADR contents: TOC entries carry an `href` and no `name`, and docfx fills the name in from each file's
 H1, rendering any Markdown in that heading. The script exists because docfx TOC files have no glob support.
 
-`adr/index.md` is authored and tracked in git; the generator preserves it while clearing stale copies. Guides have no
-authored index; the nav lists the guides directly. `docs/adr/` remains authoritative, the copies are never edited,
-and stale ones are cleared on each run so renamed or deleted records don't linger.
+Sections with a `parent` share one sidebar, and their `nav` array says where each sits in it. The names are given
+explicitly because the H1 trick only works for entries that point at a file, and a heading node points at nothing.
+Sections that share a leading name share that heading node, so `Get started` holds every guide filed under it.
+The last name in the array labels the section itself, and its pages become that node's children.
+
+`adr/index.md` is authored and tracked in git; the generator preserves it while clearing stale copies. Each guide has
+an authored `index.md` that becomes its section landing page. `docs/adr/` and `docs/guides/` remain authoritative,
+the copies are never edited, and stale ones are cleared on each run so renamed or deleted files don't linger.
 
 The copy is load-bearing. docfx can map an outside directory in with a `src`/`dest` content rule, but a TOC pointing
 at mapped files resolves neither the H1 (all 30 entries render unnamed) nor the output path (hrefs stay `.md`), and
