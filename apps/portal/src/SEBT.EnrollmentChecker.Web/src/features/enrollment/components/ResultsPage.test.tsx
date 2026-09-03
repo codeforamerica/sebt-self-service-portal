@@ -1,10 +1,31 @@
 import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
+import coResult from '@/content/locales/en/co/result.json'
+import { EnrollmentProvider } from '../context/EnrollmentContext'
 import { ResultsPage } from './ResultsPage'
 
 const mockPush = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mockPush }) }))
+
+// These tests cover results composition. Applications are open so the apply
+// blocks render; mockApplyHref below is what closes them. Income screening and
+// the apply flag are exercised in their own suites. Omitting `enrollment` leaves
+// the season open, which is what every suite but the closed one assumes.
+const OPEN_SEASON_FEATURES = { apply: { enabled: true } }
+let mockFeatures: unknown = OPEN_SEASON_FEATURES
+vi.mock('@/features/maintenance/hooks/useCheckerFeatures', () => ({
+  useCheckerFeatures: () => ({ data: mockFeatures })
+}))
+
+// Flows with a review step collect the household before submitting, so they
+// have no reason to send the visitor back for another child.
+describe('sequential checks', () => {
+  it('offers no check-another card in a review-step flow', () => {
+    render(<ResultsPage results={mixedEnrolled} portalUrl="https://portal.example.gov" />)
+    expect(screen.queryByTestId('check-another-child')).not.toBeInTheDocument()
+  })
+})
 
 let mockApplyHref: string | null = 'https://apply.example.gov/?language=en_US'
 vi.mock('@/lib/applyHref', () => ({
@@ -286,6 +307,43 @@ describe('ResultsPage', () => {
     })
   })
 
+  // enable_apply covers this season's window. The 2027 link is next season's
+  // application, offered because this season closed, so the flag going off is
+  // exactly when it matters most.
+  describe('With this season’s applications closed', () => {
+    beforeEach(() => {
+      mockFeatures = { apply: { enabled: false } }
+    })
+
+    afterEach(() => {
+      mockFeatures = OPEN_SEASON_FEATURES
+    })
+
+    it('still offers the 2027 link on the no-results page', () => {
+      render(
+        <ResultsPage
+          results={noneEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      expect(screen.getByTestId('apply-2027-link')).toHaveAttribute('href', mockApplyHref)
+    })
+
+    it('still offers the numbered 2027 step on a mixed household', () => {
+      render(
+        <ResultsPage
+          results={mixedEnrolled}
+          portalUrl={portalUrl}
+        />
+      )
+
+      expect(screen.getByText(nextStepsSectionText)).toBeVisible()
+      expect(screen.getByTestId('next-step-apply-2027')).toBeVisible()
+      expect(screen.getByTestId('apply-2027-link')).toBeVisible()
+    })
+  })
+
   describe('Indeterminate results (No Results shape)', () => {
     beforeEach(() => {
       render(
@@ -317,5 +375,173 @@ describe('ResultsPage', () => {
       expect(screen.queryByTestId('eligibility-accordion')).toBeNull()
       expect(screen.queryByTestId('income-calculator')).toBeNull()
     })
+  })
+})
+
+// A single-outcome flow answers for one child, so the outcome is the heading
+// and there is nobody to name below it.
+//
+// i18n initialises once at import with one state's resources (see
+// vitest.config.ts), so DC keys do not resolve here and i18next echoes the key
+// back. That makes the rendered heading the exact key the component chose,
+// which is the selection this suite is testing; the copy itself comes from the
+// content pipeline.
+describe('single-outcome results', () => {
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  const oneChild = (status: string): ChildCheckApiResponse[] => [
+    { checkId: '1', firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12', status }
+  ]
+
+  // The single-outcome results offer the next check, which reads flow state.
+  const renderResults = (status: string) =>
+    render(
+      <EnrollmentProvider>
+        <ResultsPage results={oneChild(status)} portalUrl="https://portal.example.gov" />
+      </EnrollmentProvider>
+    )
+
+  const heading = () => screen.getByRole('heading', { level: 1 }).textContent
+
+  it('makes the enrolled outcome the heading', () => {
+    renderResults('Match')
+    expect(heading()).toBe('streamlinedEnrolledTitle')
+  })
+
+  it('makes the not-enrolled outcome the heading', () => {
+    renderResults('NonMatch')
+    expect(heading()).toBe('applyForSebtTitle')
+  })
+
+  it('folds an unresolved check into the not-enrolled outcome', () => {
+    renderResults('Error')
+    expect(heading()).toBe('applyForSebtTitle')
+  })
+
+  it('names no children and renders no numbered next steps', () => {
+    const { container } = renderResults('Match')
+    expect(screen.queryByText(/Jane Doe/)).toBeNull()
+    expect(container.querySelector('.usa-process-list')).toBeNull()
+  })
+
+  it('offers the next check', () => {
+    renderResults('Match')
+    expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
+  })
+
+  // The portal guidance is a success alert in the design, and the button that
+  // acts on it sits outside so the alert stays informational.
+  it('presents the portal guidance as a success alert', () => {
+    const { container } = renderResults('Match')
+    const alert = container.querySelector('.usa-alert')
+
+    expect(alert).toHaveClass('usa-alert--success')
+    expect(alert?.querySelector('.usa-alert__heading')).toBeInTheDocument()
+    expect(alert?.contains(screen.getByTestId('portal-link'))).toBe(false)
+  })
+
+  // role="alert" is an assertive live region; this is static page content.
+  it('does not announce the alert as a live region', () => {
+    const { container } = renderResults('Match')
+    expect(container.querySelector('.usa-alert')).not.toHaveAttribute('role', 'alert')
+  })
+})
+
+// Once the season has closed the check still runs, but it reports on a season
+// that is over: past-tense copy, and no application to send anyone to.
+describe('single-outcome results — closed season', () => {
+  beforeEach(() => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+    mockFeatures = { apply: { enabled: true }, enrollment: { enabled: false } }
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    mockFeatures = OPEN_SEASON_FEATURES
+  })
+
+  const oneChild = (status: string): ChildCheckApiResponse[] => [
+    { checkId: '1', firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12', status }
+  ]
+
+  const renderResults = (status: string) =>
+    render(
+      <EnrollmentProvider>
+        <ResultsPage results={oneChild(status)} portalUrl="https://portal.example.gov" />
+      </EnrollmentProvider>
+    )
+
+  const heading = () => screen.getByRole('heading', { level: 1 }).textContent
+
+  it('reports the enrolled outcome in the past tense', () => {
+    renderResults('Match')
+    expect(heading()).toBe('streamlinedEnrolledClosedTitle')
+  })
+
+  it('reports the not-enrolled outcome in the past tense', () => {
+    renderResults('NonMatch')
+    expect(heading()).toBe('applyForSebtClosedTitle')
+  })
+
+  // The heading is the whole answer: there is no application left to explain and
+  // no eligibility left to screen for, so nothing follows it but the next check.
+  it('answers a not-enrolled check with the heading alone', () => {
+    renderResults('NonMatch')
+
+    expect(screen.queryByTestId('application-available')).toBeNull()
+    expect(screen.queryByRole('button', { name: /applyForSebtAccordionTitle/ })).toBeNull()
+    expect(screen.queryByTestId('accordion-apply-link')).toBeNull()
+    expect(screen.queryByTestId('apply-online-link')).toBeNull()
+  })
+
+  // Applications being open cannot resurrect an apply path after the season ends.
+  it('drops the apply paths even while the apply flag is on', () => {
+    renderResults('NonMatch')
+    expect(screen.queryByTestId('apply-online-link')).toBeNull()
+    expect(screen.queryByTestId('accordion-apply-link')).toBeNull()
+  })
+
+  it('still offers the next check, in the season’s wording', () => {
+    renderResults('NonMatch')
+
+    expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
+    expect(screen.getByText('applyForSebtClosedCard2Body')).toBeInTheDocument()
+  })
+
+  // An alert marks something to act on. A closed season's enrolled result is a
+  // record of where benefits already went, so the portal pointer is a plain link.
+  it('drops the success alert and leads with the portal link', () => {
+    const { container } = renderResults('Match')
+
+    expect(container.querySelector('.usa-alert')).toBeNull()
+    expect(screen.getByTestId('portal-alert-link')).toHaveAttribute(
+      'href',
+      'https://portal.example.gov'
+    )
+    // CO ships this row, so it resolves rather than echoing its key. Compare on
+    // collapsed whitespace: the sheet writes a non-breaking space into the copy.
+    const collapse = (value: string) => value.replace(/\s+/g, ' ').trim()
+    expect(collapse(screen.getByTestId('portal-alert-link').textContent ?? '')).toBe(
+      collapse(coResult.streamlinedEnrolledClosedAlertTitle)
+    )
+  })
+
+  it('keeps the portal button on the enrolled result', () => {
+    renderResults('Match')
+    expect(screen.getByTestId('portal-link')).toHaveAttribute(
+      'href',
+      'https://portal.example.gov'
+    )
+  })
+
+  it('explains the enrolled outcome in the past tense', () => {
+    renderResults('Match')
+    expect(screen.getByText('streamlinedEnrolledClosedBody')).toBeInTheDocument()
   })
 })

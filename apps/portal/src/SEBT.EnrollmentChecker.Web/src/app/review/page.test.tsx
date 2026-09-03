@@ -18,6 +18,11 @@ vi.mock('@/lib/stateConfig', () => ({
   getEnrollmentConfig: () => ({ apiBaseUrl: '', portalUrl: 'https://portal.example.gov' })
 }))
 
+// CO's review flow runs in an open season; a payload without `enrollment` says so.
+vi.mock('@/features/maintenance/hooks/useCheckerFeatures', () => ({
+  useCheckerFeatures: () => ({ data: {} })
+}))
+
 const mockedCheckEnrollment = vi.mocked(checkEnrollment)
 
 // Seeds one child so the Submit button is enabled, then renders the page wrapper.

@@ -25,7 +25,8 @@ namespace SEBT.Portal.Api.Controllers.Auth;
 [ApiController]
 [Route("api/auth/oidc")]
 public class OidcController(
-    IConfiguration config,
+    IOptionsSnapshot<OidcSettings> oidcSettings,
+    IOptionsSnapshot<OidcStepUpSettings> oidcStepUpSettings,
     ILogger<OidcController> logger,
     IOidcCallbackFailureLogger callbackFailureLogger,
     IOptions<JwtSettings> jwtSettingsOptions,
@@ -62,10 +63,10 @@ public class OidcController(
             return BadRequest(new ErrorResponse("Unknown or unsupported stateCode."));
         }
 
-        var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
+        var clientId = GetOidcSettings(stepUp).ClientId;
         var redirectUri = stepUp
-            ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
-            : config["Oidc:CallbackRedirectUri"];
+            ? GetOidcSettings(stepUp).RedirectUri ?? oidcSettings.Value.CallbackRedirectUri
+            : oidcSettings.Value.CallbackRedirectUri;
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
             logger.LogError(
@@ -149,10 +150,9 @@ public class OidcController(
             return LocalRedirect(safeReturnUrl ?? "/dashboard");
         }
 
-        var clientId = stepUp ? config["Oidc:StepUp:ClientId"] : config["Oidc:ClientId"];
-        var redirectUri = stepUp
-            ? (config["Oidc:StepUp:RedirectUri"] ?? config["Oidc:CallbackRedirectUri"])
-            : config["Oidc:CallbackRedirectUri"];
+        var clientId = GetOidcSettings(stepUp).ClientId;
+        var redirectUri = GetOidcSettings(stepUp).RedirectUri ?? oidcSettings.Value.CallbackRedirectUri;
+
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(redirectUri))
         {
             logger.LogError(
@@ -192,8 +192,8 @@ public class OidcController(
 
         // Build the authorization URL server-side (mirrors the frontend's buildAuthorizationUrl).
         // Use the language from the query param (set by the frontend based on user choice),
-        // falling back to the configured default.
-        var languageParam = language ?? config["Oidc:LanguageParam"] ?? "en";
+        // falling back to the default.
+        var languageParam = language ?? "en";
         var authUrl = BuildAuthorizationUrl(
             oidcConfig.AuthorizationEndpoint, clientId, redirectUri,
             state, codeChallenge, languageParam);
@@ -428,4 +428,6 @@ public class OidcController(
         return t;
     }
 
+    private IOidcCoreSettings GetOidcSettings(bool stepUp) =>
+        stepUp ? oidcStepUpSettings.Value : oidcSettings.Value;
 }

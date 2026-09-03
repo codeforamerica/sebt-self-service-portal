@@ -23,12 +23,16 @@ export function EnrolledChildren() {
       >
         {t('sectionEnrolledChildrenHeading')}
       </h2>
-      {/* The apply link renders only when applications are open AND the sheet has
-          the link copy authored — the action row was dropped for the closed season
-          (DC-701), and t() with an empty-string default distinguishes a missing
-          key from a raw-key fallback. */}
+      {/* The sheet authors a body row per season. The open-season copy trails off
+          into the apply link ("…you may"), so a closed season cannot reuse it
+          minus the link — it needs its own complete sentence. States without a
+          separate closed season author both rows identically.
+
+          The apply link renders only when applications are open AND the sheet has
+          the link copy authored — CO leaves the action row empty, and t() with an
+          empty-string default distinguishes a missing key from a raw-key fallback. */}
       <p className="margin-bottom-3">
-        {t('sectionEnrolledChildrenBody1')}
+        {applyHref ? t('sectionEnrolledChildrenBody1') : t('closedSectionEnrolledChildrenBody1')}
         {applyHref && t('sectionEnrolledChildrenAction', '') && (
           <>
             {' '}
