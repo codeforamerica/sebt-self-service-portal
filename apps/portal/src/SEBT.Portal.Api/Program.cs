@@ -23,7 +23,6 @@ builder.AddDatabaseConnectionStringsFromEnvironment();
 
 // Caching must be registered before plugins — plugins may depend on HybridCache
 builder.Services.AddCaching(builder.Configuration, builder.Environment);
-builder.Services.AddDistributedLocking(builder.Configuration, builder.Environment);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
 builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);
@@ -47,11 +46,8 @@ builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureM
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
-builder.Services.AddPortalInfrastructureServices(builder.Configuration);
-builder.Services.AddPortalDbContext(builder.Configuration, options => options.ConfigureDevelopmentSeeding());
+builder.Services.AddPortalInfrastructure(builder.Configuration, builder.Environment);
 builder.Services.AddPortalDbHealthCheck(builder.Configuration);
-builder.Services.AddPortalInfrastructureRepositories(builder.Configuration);
-builder.Services.AddPortalInfrastructureAppSettings(builder.Configuration);
 
 builder.Services.AddScoped<ResolveUserFilter>();
 
