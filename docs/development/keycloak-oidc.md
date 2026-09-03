@@ -70,4 +70,4 @@ docker compose --profile keycloak up -d keycloak
 
 - [ADR-0019](../adr/0019-keycloak-local-oidc-stand-in.md): why Keycloak as the local OIDC stand-in
 - [ADR-0008](../adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md): portal OIDC flow
-- [ADR-0012](../adr/0012-oidc-rp-initiated-logout.md): RP-initiated logout
+- [ADR-0012](../adr/0028-oidc-rp-initiated-logout.md): RP-initiated logout
