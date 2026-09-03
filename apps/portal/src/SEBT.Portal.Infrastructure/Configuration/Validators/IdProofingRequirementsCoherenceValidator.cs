@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
 
-namespace SEBT.Portal.Infrastructure.Configuration;
+namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 
 /// <summary>
 /// Validates IdProofingRequirements coherence at startup and on every config reload.

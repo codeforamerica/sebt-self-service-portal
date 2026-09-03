@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Options;
+using SEBT.Portal.Core.AppSettings;
+
 namespace SEBT.Portal.Api.Middleware;
 
 /// <summary>
@@ -32,7 +35,8 @@ public class OidcOriginValidationMiddleware
     public OidcOriginValidationMiddleware(
         RequestDelegate next,
         ILogger<OidcOriginValidationMiddleware> logger,
-        IConfiguration configuration)
+        IOptions<OidcSettings> oidcSettings,
+        IOptions<OidcStepUpSettings> stepUpSettings)
     {
         _next = next;
         _logger = logger;
@@ -40,13 +44,13 @@ public class OidcOriginValidationMiddleware
         // Build the allowed-origins set from CallbackRedirectUri (which contains the portal origin).
         // In production this is e.g. "https://sunbucks.co.gov"; in dev "http://localhost:3000".
         _allowedOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var callbackUri = configuration["Oidc:CallbackRedirectUri"];
+        var callbackUri = oidcSettings.Value.CallbackRedirectUri;
         if (!string.IsNullOrEmpty(callbackUri) && Uri.TryCreate(callbackUri, UriKind.Absolute, out var uri))
         {
             _allowedOrigins.Add(uri.GetLeftPart(UriPartial.Authority));
         }
         // Step-up may have a different redirect URI (though it rarely has a different origin).
-        var stepUpUri = configuration["Oidc:StepUp:RedirectUri"];
+        var stepUpUri = stepUpSettings.Value.RedirectUri;
         if (!string.IsNullOrEmpty(stepUpUri) && Uri.TryCreate(stepUpUri, UriKind.Absolute, out var su))
         {
             _allowedOrigins.Add(su.GetLeftPart(UriPartial.Authority));

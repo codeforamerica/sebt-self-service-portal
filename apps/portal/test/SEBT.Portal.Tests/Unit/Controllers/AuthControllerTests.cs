@@ -3,7 +3,6 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -18,6 +17,7 @@ using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.Results;
+using SEBT.Portal.Tests.Helpers;
 using SEBT.Portal.UseCases.Auth;
 
 namespace SEBT.Portal.Tests.Unit.Controllers;
@@ -320,14 +320,12 @@ public class AuthControllerTests
     public async Task Logout_WithOidcConfigured_ClearsCookieAndRedirectsToIdpEndSessionEndpoint()
     {
         // Arrange
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Oidc:DiscoveryEndpoint"] = "https://auth.pingone.com/.well-known/openid-configuration",
-                ["Oidc:ClientId"] = "test-client-id",
-                ["Oidc:CallbackRedirectUri"] = "https://portal.co.gov/callback"
-            })
-            .Build();
+        var settings = TestOptions.Snapshot(new OidcSettings
+        {
+            DiscoveryEndpoint = "https://auth.pingone.com/.well-known/openid-configuration",
+            ClientId = "test-client-id",
+            CallbackRedirectUri = "https://portal.co.gov/callback"
+        });
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
         var oidcConfig = new OidcDiscoveryInfo
@@ -344,7 +342,7 @@ public class AuthControllerTests
         };
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
+        var result = await _controller.Logout(settings, oidcExchangeService, tokenDenylist);
 
         // Assert
         var redirectResult = Assert.IsType<RedirectResult>(result);
@@ -362,9 +360,7 @@ public class AuthControllerTests
     public async Task Logout_WithoutOidcConfigured_ClearsCookieAndRedirectsToLogin()
     {
         // Arrange
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>())
-            .Build();
+        var settings = TestOptions.Snapshot(new OidcSettings());
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
         var tokenDenylist = Substitute.For<ITokenDenylist>();
@@ -375,7 +371,7 @@ public class AuthControllerTests
         };
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
+        var result = await _controller.Logout(settings, oidcExchangeService, tokenDenylist);
 
         // Assert
         var redirectResult = Assert.IsType<RedirectResult>(result);
@@ -390,14 +386,12 @@ public class AuthControllerTests
     public async Task Logout_WhenDiscoveryFails_ClearsCookieAndRedirectsToLogin()
     {
         // Arrange
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Oidc:DiscoveryEndpoint"] = "https://auth.pingone.com/.well-known/openid-configuration",
-                ["Oidc:ClientId"] = "test-client-id",
-                ["Oidc:CallbackRedirectUri"] = "https://portal.co.gov/callback"
-            })
-            .Build();
+        var settings = TestOptions.Snapshot(new OidcSettings
+        {
+            DiscoveryEndpoint = "https://auth.pingone.com/.well-known/openid-configuration",
+            ClientId = "test-client-id",
+            CallbackRedirectUri = "https://portal.co.gov/callback"
+        });
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
         oidcExchangeService.GetDiscoveryInfoAsync(false, Arg.Any<CancellationToken>())
@@ -410,7 +404,7 @@ public class AuthControllerTests
         };
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
+        var result = await _controller.Logout(settings, oidcExchangeService, tokenDenylist);
 
         // Assert — graceful fallback, don't strand the user
         var redirectResult = Assert.IsType<RedirectResult>(result);
@@ -429,9 +423,7 @@ public class AuthControllerTests
         // JwtTokenService mints only Guid jtis, so a non-Guid value must be skipped rather
         // than denylisted — otherwise a forged, arbitrarily large jti could be written to
         // the shared cache by an unauthenticated caller.
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>())
-            .Build();
+        var settings = TestOptions.Snapshot(new OidcSettings());
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
         var tokenDenylist = Substitute.For<ITokenDenylist>();
@@ -444,7 +436,7 @@ public class AuthControllerTests
             $"{AuthCookies.AuthCookieName}={CreateJwtWithJti("not-a-guid")}";
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
+        var result = await _controller.Logout(settings, oidcExchangeService, tokenDenylist);
 
         // Assert
         Assert.IsType<RedirectResult>(result);
@@ -456,9 +448,7 @@ public class AuthControllerTests
     public async Task Logout_WithPortalIssuedJti_DenylistsTokenUntilItsExpiry()
     {
         // Arrange
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>())
-            .Build();
+        var settings = TestOptions.Snapshot(new OidcSettings());
 
         var oidcExchangeService = Substitute.For<IOidcExchangeService>();
         var tokenDenylist = Substitute.For<ITokenDenylist>();
@@ -478,7 +468,7 @@ public class AuthControllerTests
             $"{AuthCookies.AuthCookieName}={rawToken}";
 
         // Act
-        var result = await _controller.Logout(config, oidcExchangeService, tokenDenylist);
+        var result = await _controller.Logout(settings, oidcExchangeService, tokenDenylist);
 
         // Assert
         Assert.IsType<RedirectResult>(result);
