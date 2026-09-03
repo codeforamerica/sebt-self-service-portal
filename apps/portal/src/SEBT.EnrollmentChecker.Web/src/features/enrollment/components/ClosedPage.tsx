@@ -44,16 +44,20 @@ export function ClosedPage() {
       <div className="grid-container">
         <h1 className={`font-family-sans font-sans-xl ${pageTitleText}`}>{t('closedTitle')}</h1>
 
-        <h2 className="font-family-sans font-sans-md">{t('closedSubtitle')}</h2>
+        {/* The design sets this at the theme's H3, one step down from the H2 the
+            title uses. margin-top-4 replaces the heading's own em-based margin. */}
+        <h2 className="font-family-sans font-sans-lg margin-top-4">{t('closedSubtitle')}</h2>
 
-        <div className="usa-prose">
+        <div className="usa-prose margin-top-3">
           <RichText>{t('closedBody')}</RichText>
         </div>
 
+        {/* The primary action and the translated group each start a new block;
+            further translated actions sit tight together as one group. */}
         {actions.map((action, index) => (
           <div
             key={action.language}
-            className={index === 0 ? 'margin-top-3' : 'margin-top-2'}
+            className={index <= 1 ? 'margin-top-3' : 'margin-top-1'}
           >
             <Button
               // Spread, not `variant={action.variant}` — exactOptionalPropertyTypes
@@ -108,14 +112,14 @@ export function ClosedPage() {
             </div>
           </div>
         ) : (
-          <div className="usa-prose margin-top-4">
+          <div className="usa-prose margin-top-3">
             {/* Two standalone notes. Each is one sentence, which RichText renders
                 inline, so they need their own blocks to read as separate
                 paragraphs rather than running together. */}
             <div>
               <RichText>{t('closedBody2')}</RichText>
             </div>
-            <div className="margin-top-2">
+            <div className="margin-top-3">
               <RichText>{t('closedBody3')}</RichText>
             </div>
           </div>
