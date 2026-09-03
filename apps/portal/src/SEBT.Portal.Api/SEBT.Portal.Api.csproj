@@ -130,6 +130,7 @@
   <ItemGroup>
     <Folder Include="plugins-dc\" />
     <Folder Include="plugins-co\" />
+    <Folder Include="Startup\Services\" />
   </ItemGroup>
 
 </Project>

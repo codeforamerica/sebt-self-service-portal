@@ -1,4 +1,4 @@
-namespace SEBT.Portal.Api.Startup;
+namespace SEBT.Portal.Api.Startup.Guards;
 
 /// <summary>
 /// Validates that the IdentifierHasher secret key is not a default or placeholder value in production.
