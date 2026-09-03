@@ -4,7 +4,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { applyOrder, buildToc, listMarkdown, SECTIONS } from './generate-doc-sections.ts';
+import { parse } from 'yaml';
+import { applyOrder, buildParentToc, buildToc, listMarkdown, SECTIONS } from './generate-doc-sections.ts';
 
 test('toc lists the authored index first when a section has one', () => {
   const toc = buildToc(['0001-first.md', '0002-second.md'], true);
@@ -70,6 +71,67 @@ test("each section's ordered names exist in its source directory", () => {
     for (const name of section.order ?? []) {
       assert.ok(present.includes(name), `${section.source} has no ${name}, so the order entry is stale`);
     }
+  }
+});
+
+test('a nav path becomes nested headings, with the section index as the leaf href', () => {
+  const toc = parse(
+    buildParentToc([{ nav: ['Content', 'Customizing', 'Change user-facing text'], dir: 'content', files: ['index.md', 'add-a-key.md'] }]),
+  );
+
+  assert.deepEqual(toc, [
+    {
+      name: 'Content',
+      items: [
+        {
+          name: 'Customizing',
+          items: [
+            {
+              name: 'Change user-facing text',
+              href: 'content/index.md',
+              items: [{ href: 'content/add-a-key.md' }],
+            },
+          ],
+        },
+      ],
+    },
+  ]);
+});
+
+test('sections that share a leading nav name share one heading node', () => {
+  const toc = parse(
+    buildParentToc([
+      { nav: ['Get started', 'First guide'], dir: 'first', files: ['index.md'] },
+      { nav: ['Get started', 'Second guide'], dir: 'second', files: ['index.md'] },
+    ]),
+  );
+
+  assert.equal(toc.length, 1, `expected one shared heading:\n${JSON.stringify(toc)}`);
+  assert.deepEqual(
+    toc[0].items.map((entry: { name: string }) => entry.name),
+    ['First guide', 'Second guide'],
+  );
+});
+
+test('a section with only an index carries no empty child list', () => {
+  const toc = parse(buildParentToc([{ nav: ['Guides', 'Solo'], dir: 'solo', files: ['index.md'] }]));
+
+  assert.deepEqual(toc[0].items[0], { name: 'Solo', href: 'solo/index.md' });
+});
+
+test('a section without an index leaves its heading unlinked', () => {
+  const toc = parse(buildParentToc([{ nav: ['Guides', 'No landing'], dir: 'none', files: ['first.md'] }]));
+
+  assert.deepEqual(toc[0].items[0], { name: 'No landing', items: [{ href: 'none/first.md' }] });
+});
+
+test('a grouped section without a nav path is rejected', () => {
+  assert.throws(() => buildParentToc([{ nav: [], dir: 'orphan', files: ['index.md'] }]), /nowhere to sit/);
+});
+
+test('every grouped section declares a nav path ending in its own label', () => {
+  for (const section of SECTIONS.filter((s) => s.parent)) {
+    assert.ok(section.nav && section.nav.length > 0, `${section.source} is grouped but declares no nav path`);
   }
 });
 
