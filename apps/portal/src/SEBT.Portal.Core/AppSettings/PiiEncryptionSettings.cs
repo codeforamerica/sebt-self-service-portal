@@ -12,7 +12,7 @@ public class PiiEncryptionSettings
 
     /// <summary>
     /// When true, new and updated PII columns are stored as AES-GCM envelopes. When false, writes persist trimmed plaintext
-    /// (reads still decrypt existing envelopes). Opt in per state/deployment; when true in production, keys are validated (see PiiEncryptionGuard).
+    /// (reads still decrypt existing envelopes). Opt in per state/deployment; when true in production, keys are validated.
     /// </summary>
     public bool EncryptAtRest { get; set; } = false;
 

@@ -186,7 +186,11 @@ public class DependenciesTests
             })
             .Build();
 
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Development");
+
         services.AddSingleton<IConfiguration>(config);
+        services.AddSingleton<IHostEnvironment>(env);
         services.AddLogging();
         services.AddPortalInfrastructureAppSettings(config);
         services.AddPortalInfrastructureServices(config);

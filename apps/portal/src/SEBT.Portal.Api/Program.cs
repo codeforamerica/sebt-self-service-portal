@@ -4,11 +4,9 @@ using Serilog;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Options;
 using SEBT.Portal.Api.Telemetry;
-using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Api.Startup;
-using SEBT.Portal.Api.Startup.Guards;
 using SEBT.Portal.Api.Startup.Setup;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -66,16 +64,6 @@ builder.Services.AddDevelopmentOverrides();
 
 var app = builder.Build();
 
-// Guard against default/placeholder IdentifierHasher key in production
-if (app.Environment.IsProduction())
-{
-    IdentifierHasherGuard.ValidateForProduction(app.Configuration["IdentifierHasher:SecretKey"]);
-
-    var piiEncryptionSettings = app.Configuration.GetSection(PiiEncryptionSettings.SectionName)
-        .Get<PiiEncryptionSettings>();
-    PiiEncryptionGuard.ValidateForProduction(piiEncryptionSettings);
-}
-
 // HMAC-SHA256 requires ≥256-bit (32-byte) key. Fail fast if configured but too short.
 var oidcSigningKey = app.Configuration["Oidc:CompleteLoginSigningKey"];
 if (!string.IsNullOrEmpty(oidcSigningKey) && oidcSigningKey.Length < 32)
@@ -92,15 +80,6 @@ app.UsePortalRequestPipeline();
 
 try
 {
-    var resolvedHouseholdIdTypes = app.Configuration
-        .GetSection("StateHouseholdId:PreferredHouseholdIdTypes")
-        .GetChildren()
-        .Select(c => c.Value)
-        .ToList();
-    Log.Information(
-        "Resolved StateHouseholdId:PreferredHouseholdIdTypes: [{Types}]",
-        string.Join(", ", resolvedHouseholdIdTypes));
-
     Log.Information("SEBT Portal API started successfully");
     app.Run();
 }
