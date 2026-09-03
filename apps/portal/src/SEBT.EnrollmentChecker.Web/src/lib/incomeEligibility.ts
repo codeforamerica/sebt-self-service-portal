@@ -23,3 +23,16 @@ export function formatThreshold(amount: number, locale: string): string {
     maximumFractionDigits: 0
   }).format(amount)
 }
+
+// The figure to swap out of the authored income sentence. Some translations
+// bracket it and some do not; the bracketed branch is first so it takes the
+// brackets with it. Exported so the content test can assert every translation
+// against the same pattern.
+// TODO: Swap out with real i18next interpolation once GSheets source has been updated.
+export const AUTHORED_FIGURE = /\[\s*\$[\d,]+\s*\]|\$[\d,]+/
+
+/** The authored income sentence with its first figure replaced by `threshold`. */
+export function withThreshold(sentence: string, threshold: string): string {
+  // A replacer function, not a string: `$` runs carry meaning in a replacement.
+  return sentence.replace(AUTHORED_FIGURE, () => threshold)
+}

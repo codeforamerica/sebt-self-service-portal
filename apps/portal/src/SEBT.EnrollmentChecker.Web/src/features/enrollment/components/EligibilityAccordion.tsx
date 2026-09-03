@@ -5,21 +5,12 @@ import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { useCheckerFeatures } from '@/features/maintenance/hooks/useCheckerFeatures'
-import { formatThreshold, incomeThresholdFor } from '@/lib/incomeEligibility'
+import { formatThreshold, incomeThresholdFor, withThreshold } from '@/lib/incomeEligibility'
 import { getEnrollmentConfig } from '@/lib/stateConfig'
 
 interface EligibilityAccordionProps {
   /** Application destination, or null when none is configured. */
   applyHref: string | null
-}
-
-// The income sentence is authored with the figure written in, bracketed to mark
-// it as a value to substitute. Swapping on that bracketed run keeps the rest of
-// the sentence — and its translations — under the content team's control.
-const AUTHORED_FIGURE = /\[\s*\$[\d,]+\s*\]/
-
-function withThreshold(sentence: string, threshold: string): string {
-  return sentence.replace(AUTHORED_FIGURE, threshold)
 }
 
 /**
