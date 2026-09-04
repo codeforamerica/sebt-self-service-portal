@@ -80,6 +80,57 @@ follow:
   the number and the later ones moved to 0022-0030 in date order, so numbers already cited elsewhere stayed valid.
   The tradeoff is that 0022-0030 are chronologically out of sequence.
 
+## Provenance, versioning, and search
+
+### Last updated dates
+
+Each copied page carries a "last updated" line below its H1, written by the section generator from
+`git log -1 --format=%cI` on the **source** file. The source matters: the copies under `adr/` and `guides/` are
+git-ignored, so asking git about one returns nothing. A page that is new and uncommitted gets no stamp rather than an
+invented date.
+
+The line is written into the body because docfx discards unknown front matter keys. A `description:` reaches
+`<meta name="description">`, but `updated:` and `keywords:` are dropped, which was confirmed by probing the rendered
+output rather than assumed.
+
+### Versioning
+
+docfx 2.78 has no versioning of its own: no `versions` key in its schema, no version flag on the CLI. So
+`pnpm docs:version` writes two files, both git-ignored and both read at runtime by `template/sebt/public/main.js`:
+
+| File | Purpose |
+| --- | --- |
+| `version.json` | Product version, commit, branch, build time, and whether the tree was dirty. Rendered in the footer. |
+| `versions.json` | The list the version picker reads. Seeded with the current build as its only entry. |
+
+The picker stays hidden while `versions.json` holds fewer than two entries, so it appears only once a release
+snapshot exists. Publishing one means copying `_site` to a versioned path and adding its entry to `versions.json`.
+No CI workflow does this yet, and choosing where snapshots are hosted is a prerequisite.
+
+`dirty: true` is recorded deliberately. A published site should never show it, and stamping it makes an accidental
+publish from a dirty tree visible instead of silent.
+
+### Search indexing
+
+`pnpm docs:index` rewrites `_site/index.json` after the build, fixing two docfx behaviors:
+
+- **Every indexed title ended with the site title**, because the extractor reads `<title>` verbatim. With 553 entries
+  carrying "Summer EBT Self-Service Portal: Engineering Documentation", a search for "portal" or "EBT" matched every
+  document on the field lunr weighs most. The suffix is stripped, anchored to the end so the home page keeps its own
+  title.
+- **The provenance line landed in every summary**, which put a date in each result blurb and made "updated" and
+  "source" match every page. It is removed from the indexed copy only; the rendered page keeps it.
+
+Pages may also declare `keywords:` in front matter. docfx drops the key, and this step appends the terms to the
+indexed summary, which is what lets the content guide be found by "i18n" or "translation". They go at the end because
+lunr scores a term the same wherever it sits, while the search UI shows the front of the summary as the blurb.
+
+The step is idempotent, so running it against an already-processed index changes nothing.
+
+Ranking caveat: 513 of the 553 indexed pages are API reference against 40 conceptual pages, so a conceptual query can
+still surface types ahead of guides. Keywords make a guide appear in results; they do not make it rank first. Field
+boosts live in docfx's client bundle and are not reachable from `index.json`.
+
 ## Styling
 
 `template/sebt/` is a docfx template layered on top of the built-in `default` and `modern` templates. It contains one

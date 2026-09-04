@@ -1,3 +1,8 @@
+---
+description: Build a minimal state connector assembly and confirm the portal loads it.
+keywords: plugin MEF quickstart tutorial scaffold new-state load discovery
+---
+
 # Quickstart
 
 This page tells you how to make a connector that the portal loads. Use New York as the example state. At the end,

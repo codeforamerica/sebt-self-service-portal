@@ -1,3 +1,8 @@
+---
+description: Diagnose a state connector that fails to load or returns the wrong data.
+keywords: debug error plugin not loading MEF discovery startup failure diagnose
+---
+
 # Troubleshooting
 
 ## Start-up failures

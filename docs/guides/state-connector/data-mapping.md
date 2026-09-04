@@ -1,3 +1,8 @@
+---
+description: Convert state-specific records into the portal canonical HouseholdData model.
+keywords: HouseholdData mapping transform canonical model cases applications DTO
+---
+
 # Data mapping
 
 Your connector returns `HouseholdData`. Convert the data of your state to this type at your boundary. Then no
