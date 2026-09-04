@@ -5,7 +5,16 @@ import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
-import { applyOrder, buildParentToc, buildToc, listMarkdown, SECTIONS } from './generate-doc-sections.ts';
+import {
+  applyOrder,
+  buildParentToc,
+  buildToc,
+  formatStampDate,
+  lastCommitDate,
+  listMarkdown,
+  SECTIONS,
+  stampLastUpdated,
+} from './generate-doc-sections.ts';
 
 test('toc lists the authored index first when a section has one', () => {
   const toc = buildToc(['0001-first.md', '0002-second.md'], true);
@@ -140,4 +149,41 @@ test('every configured section outputs inside the docfx site', () => {
     assert.ok(section.output.startsWith('docs/docfx/'), `${section.source} writes outside the site: ${section.output}`);
     assert.ok(!section.source.startsWith('docs/docfx/'), `${section.source} would copy the site into itself`);
   }
+});
+
+test('the last-updated stamp goes directly below the H1', () => {
+  const stamped = stampLastUpdated('# Title\n\nBody text.\n', '2026-09-03T08:54:14-06:00', 'docs/guides/content/index.md');
+  const lines = stamped.split('\n');
+
+  assert.equal(lines[0], '# Title');
+  assert.match(stamped, /<p class="doc-meta">Last updated <time datetime="2026-09-03">September 3, 2026<\/time>/);
+  assert.match(stamped, /docs\/guides\/content\/index\.md/);
+  assert.ok(stamped.endsWith('Body text.\n'), 'body should be preserved');
+});
+
+test('the stamp lands below the H1 even when front matter precedes it', () => {
+  const stamped = stampLastUpdated('---\nkeywords: i18n\n---\n\n# Title\n\nBody.\n', '2026-01-09T00:00:00Z', 'a.md');
+  const lines = stamped.split('\n');
+
+  assert.equal(lines[0], '---', 'front matter must stay first or docfx stops parsing it');
+  assert.ok(lines.indexOf('# Title') < lines.findIndex((l) => l.includes('doc-meta')));
+});
+
+test('a page with no H1 is returned unchanged rather than mangled', () => {
+  const source = 'Just a paragraph.\n';
+
+  assert.equal(stampLastUpdated(source, '2026-09-03T00:00:00Z', 'a.md'), source);
+});
+
+test('the stamp date is read from the string, so no timezone can shift the day', () => {
+  // 23:30 UTC-7 is the next day in UTC. Date parsing would report the 4th.
+  assert.equal(formatStampDate('2026-09-03T23:30:00-07:00'), 'September 3, 2026');
+  assert.equal(formatStampDate('2026-01-01T00:00:00+13:00'), 'January 1, 2026');
+});
+
+test('git reports no date for a path it does not track', () => {
+  const repoRoot = resolve(fileURLToPath(import.meta.url), '../../..');
+
+  assert.equal(lastCommitDate(repoRoot, 'docs/docfx/guides/content/index.md'), null, 'generated copies are git-ignored');
+  assert.match(lastCommitDate(repoRoot, 'docs/guides/content/index.md') ?? '', /^\d{4}-\d{2}-\d{2}T/);
 });

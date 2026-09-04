@@ -1,3 +1,8 @@
+---
+description: The seven service interfaces a state connector implements, and which are required.
+keywords: IStatePlugin interfaces contract API implement services required optional
+---
+
 # The contract
 
 The contract is the project `SEBT.Portal.StatesPlugins.Interfaces`. It holds 7 service interfaces. The .NET API

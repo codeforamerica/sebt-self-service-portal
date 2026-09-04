@@ -1,3 +1,8 @@
+---
+description: Add or change a translated string in the portal and the enrollment checker.
+keywords: i18n i18next translation key namespace CSV locale add change string copy wording
+---
+
 # Add or change a key
 
 ## Change the text of a key that exists

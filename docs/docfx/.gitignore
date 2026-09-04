@@ -16,3 +16,8 @@ adr/toc.yml
 
 # Copies of the docs/guides/ pages and the navigation built from them.
 guides/
+
+# Build provenance, stamped from git on every build. versions.json is written
+# when a release snapshot is published, so neither belongs in git.
+version.json
+versions.json

@@ -1,3 +1,8 @@
+---
+description: Repair a translation key that renders blank or shows its raw name.
+keywords: i18n missing key blank empty raw untranslated debug locale namespace generator
+---
+
 # Troubleshooting content
 
 ## The key shows no text

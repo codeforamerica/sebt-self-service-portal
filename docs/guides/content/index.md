@@ -1,3 +1,8 @@
+---
+description: How user-facing text reaches a family, from the content spreadsheet to the React apps.
+keywords: i18n i18next internationalization localization translation locale copy wording strings Spanish Amharic
+---
+
 # Change user-facing text
 
 Every word that a family reads comes from a content pipeline, not from the source code of a component. A Google

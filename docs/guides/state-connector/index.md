@@ -1,3 +1,8 @@
+---
+description: How a state connector plugs the portal into one state systems of record, and where to start.
+keywords: plugin MEF connector integration state DC Colorado onboarding new-state
+---
+
 # Build a state connector
 
 A state connector is a .NET assembly that connects the portal to the systems of record of one state. The portal has

@@ -485,3 +485,49 @@ footer {
     color: var(--sebt-ink);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Page provenance
+   --------------------------------------------------------------------------- */
+
+/*
+  The "last updated" line the section generator writes under each page's H1.
+  It is a sibling of the heading rather than part of it, so the gold rule under
+  the H1 stays tight to the title.
+*/
+.doc-meta {
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.8125rem;
+  color: var(--bs-secondary-color);
+}
+
+.doc-meta time {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Build stamp appended to the footer by main.js. */
+.build-stamp {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--bs-secondary-color);
+}
+
+/*
+  Version picker, shown only once a second release exists. Sized to sit in the
+  masthead next to the search box without changing the header's height.
+*/
+.version-picker {
+  width: auto;
+  max-width: 12rem;
+  margin-left: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+
+.version-picker option {
+  color: var(--sebt-ink);
+  background-color: #fff;
+}
