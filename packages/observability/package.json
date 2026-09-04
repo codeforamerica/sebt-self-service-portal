@@ -8,10 +8,12 @@
     "./src/*": "./src/*"
   },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "devDependencies": {
     "@types/node": "^25.8.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.2.1",
     "vitest": "^4.1.10"
