@@ -176,7 +176,7 @@ describe('DashboardContent', () => {
       ).toBeInTheDocument()
     })
     expect(
-      screen.getByText('Check each enrolled child here to see when their benefits expire.')
+      screen.getByText('Check each enrolled student here to see when their benefits expire.')
     ).toBeInTheDocument()
   })
 

@@ -156,9 +156,9 @@ describe('ResultsPage', () => {
       expect(steps[1]).toHaveAttribute('data-testid', 'next-step-apply-2027')
     })
 
-    it('shows the portal step with the expiration-aware heading and portal link', () => {
+    it('shows the portal step with the heading and portal link', () => {
       const portalStep = screen.getByTestId('next-step-portal')
-      expect(portalStep).toHaveTextContent('received their benefits and when they expire')
+      expect(portalStep).toHaveTextContent('will receive their benefits')
       const portalLink = screen.getByTestId('portal-link')
       expect(portalLink).toHaveAttribute('href', portalUrl)
     })
