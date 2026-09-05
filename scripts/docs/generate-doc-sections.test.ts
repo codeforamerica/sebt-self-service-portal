@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
 import {
   applyOrder,
+  PARENT_EXTRAS,
   buildParentToc,
   buildToc,
   formatStampDate,
@@ -157,7 +158,8 @@ test('the last-updated stamp goes directly below the H1', () => {
 
   assert.equal(lines[0], '# Title');
   assert.match(stamped, /<p class="doc-meta">Last updated <time datetime="2026-09-03">September 3, 2026<\/time>/);
-  assert.match(stamped, /docs\/guides\/content\/index\.md/);
+  assert.match(stamped, /blob\/main\/docs\/guides\/content\/index\.md">View source/);
+  assert.match(stamped, /commits\/main\/docs\/guides\/content\/index\.md">View changelog/);
   assert.ok(stamped.endsWith('Body text.\n'), 'body should be preserved');
 });
 
@@ -186,4 +188,33 @@ test('git reports no date for a path it does not track', () => {
 
   assert.equal(lastCommitDate(repoRoot, 'docs/docfx/guides/content/index.md'), null, 'generated copies are git-ignored');
   assert.match(lastCommitDate(repoRoot, 'docs/guides/content/index.md') ?? '', /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test('linked TOCs are appended after the sections they sit beside', () => {
+  const toc = parse(
+    buildParentToc([{ nav: ['Get started', 'A guide'], dir: 'g', files: ['index.md'] }], [
+      { name: 'Architecture Decisions', href: '../adr/toc.yml' },
+    ]),
+  );
+
+  assert.equal(toc.length, 2);
+  assert.equal(toc[0].name, 'Get started', 'sections come first');
+  assert.deepEqual(toc[1], { name: 'Architecture Decisions', href: '../adr/toc.yml' });
+});
+
+test('a parent with no extras is unchanged', () => {
+  const withNone = buildParentToc([{ nav: ['A', 'B'], dir: 'd', files: ['index.md'] }]);
+  const withEmpty = buildParentToc([{ nav: ['A', 'B'], dir: 'd', files: ['index.md'] }], []);
+
+  assert.equal(withNone, withEmpty);
+});
+
+test('the guides parent links the ADR and API TOCs by relative path', () => {
+  const extras = PARENT_EXTRAS['docs/docfx/guides'];
+
+  assert.deepEqual(
+    extras.map((e) => e.href),
+    ['../adr/toc.yml', '../api/toc.yml'],
+    'hrefs are relative to docs/docfx/guides/toc.yml',
+  );
 });

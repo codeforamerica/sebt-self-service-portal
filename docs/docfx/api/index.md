@@ -4,6 +4,21 @@ Reference documentation for the portal's C# types, extracted from source by `doc
 branch the site was built from. The prose on each page is the `///` comment from the code. If a type reads as
 undocumented here, it is undocumented in the source.
 
+## One API, two applications
+
+There is no separate enrollment-check service. `SEBT.Portal.Api` serves both front ends, and which one is calling is
+a matter of the route rather than the process:
+
+| Front end | Calls | Handled by |
+| --- | --- | --- |
+| Portal (`SEBT.Portal.Web`) | Authenticated household, card, and address routes | `SEBT.Portal.UseCases` handlers for auth and households |
+| Enrollment Checker (`SEBT.EnrollmentChecker.Web`) | The unauthenticated check route | <xref:SEBT.Portal.Api.Controllers.EnrollmentCheck.EnrollmentCheckController> into <xref:SEBT.Portal.UseCases.EnrollmentCheck> |
+
+Both paths reach the same state connector through the same interfaces, so a connector serves both applications
+without knowing which one asked.
+
+The two front ends themselves are TypeScript and are not in this reference. `docfx metadata` reads C# only.
+
 ## Layers
 
 The portal follows Clean Architecture (see

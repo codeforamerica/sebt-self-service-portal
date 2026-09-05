@@ -1,7 +1,7 @@
 # Engineering documentation site (docfx)
 
-A [docfx](https://dotnet.github.io/docfx/) site that publishes three things from this repository: task-oriented
-guides, the architecture decision records, and the .NET API reference.
+A [docfx](https://dotnet.github.io/docfx/) site that publishes task-oriented guides, the architecture decision
+records, the .NET API reference, release pointers, and the compliance pages.
 
 ## Prerequisites
 
@@ -17,16 +17,16 @@ pnpm docs:build     # generate everything, then render to docs/docfx/_site
 pnpm docs:serve     # render and serve at http://localhost:8080
 ```
 
-`docs:build` runs three steps, each of which can be run on its own while iterating:
+`docs:build` runs four steps, each of which can be run on its own while iterating:
 
 | Step | Command | What it does |
 | --- | --- | --- |
 | Sections | `pnpm docs:sections` | Copies `docs/adr/` and `docs/guides/` into the site and writes each `toc.yml`. |
 | .NET API | `pnpm docs:api` | Runs `docfx metadata` over the C# projects. Takes ~15s. |
 | Render | `docfx build` | Renders the site. |
+| Search index | `pnpm docs:index` | Rewrites `_site/index.json`. See [Search indexing](#search-indexing). |
 
-`pnpm docs:serve` skips the generators and only renders, so run it after a `docs:build`, or on its own when the only
-thing you changed is Markdown or CSS.
+`pnpm docs:serve` runs the full build and then serves the result, so the search index step is not skipped.
 
 ## How each section is wired
 
@@ -80,7 +80,7 @@ follow:
   the number and the later ones moved to 0022-0030 in date order, so numbers already cited elsewhere stayed valid.
   The tradeoff is that 0022-0030 are chronologically out of sequence.
 
-## Provenance, versioning, and search
+## Page dates and search
 
 ### Last updated dates
 
@@ -93,29 +93,16 @@ The line is written into the body because docfx discards unknown front matter ke
 `<meta name="description">`, but `updated:` and `keywords:` are dropped, which was confirmed by probing the rendered
 output rather than assumed.
 
-### Versioning
-
-docfx 2.78 has no versioning of its own: no `versions` key in its schema, no version flag on the CLI. So
-`pnpm docs:version` writes two files, both git-ignored and both read at runtime by `template/sebt/public/main.js`:
-
-| File | Purpose |
-| --- | --- |
-| `version.json` | Product version, commit, branch, build time, and whether the tree was dirty. Rendered in the footer. |
-| `versions.json` | The list the version picker reads. Seeded with the current build as its only entry. |
-
-The picker stays hidden while `versions.json` holds fewer than two entries, so it appears only once a release
-snapshot exists. Publishing one means copying `_site` to a versioned path and adding its entry to `versions.json`.
-No CI workflow does this yet, and choosing where snapshots are hosted is a prerequisite.
-
-`dirty: true` is recorded deliberately. A published site should never show it, and stamping it makes an accidental
-publish from a dirty tree visible instead of silent.
+The site is not versioned. docfx 2.78 has no versioning of its own, with no `versions` key in its schema and no
+version flag on the CLI, so publishing more than one release at a time would mean building the mechanism from
+scratch. The site describes whatever commit last built it.
 
 ### Search indexing
 
 `pnpm docs:index` rewrites `_site/index.json` after the build, fixing two docfx behaviors:
 
 - **Every indexed title ended with the site title**, because the extractor reads `<title>` verbatim. With 553 entries
-  carrying "Summer EBT Self-Service Portal: Engineering Documentation", a search for "portal" or "EBT" matched every
+  carrying "Summer EBT Self-Service Portal Documentation", a search for "portal" or "EBT" matched every
   document on the field lunr weighs most. The suffix is stripped, anchored to the end so the home page keeps its own
   title.
 - **The provenance line landed in every summary**, which put a date in each result blurb and made "updated" and
@@ -147,8 +134,12 @@ No webfont is loaded. The apps use Urbanist (DC) and Atkinson Hyperlegible (CO),
 
 ## What's generated, what's committed
 
-Committed: `docfx.json`, `filterConfig.yml`, `toc.yml`, `index.md`, `api/index.md`, `adr/index.md`, `img/`,
-`template/`, this README.
+Committed: `docfx.json`, `filterConfig.yml`, `toc.yml`, `index.md`, `releases.md`, `compliance/`, `api/index.md`, `adr/index.md`,
+`img/`, `template/`, this README.
+
+`releases.md` and the `compliance/` pages are authored rather than copied, so they carry no "last updated" line. That matches the other authored
+pages. Its dependency figures were measured rather than estimated, and the page says so, because they drift with the
+lockfile.
 
 Generated and git-ignored (see `.gitignore`): `_site/`, `api/*.yml`, `adr/*.md` except `index.md`, `adr/toc.yml`,
 `guides/`.

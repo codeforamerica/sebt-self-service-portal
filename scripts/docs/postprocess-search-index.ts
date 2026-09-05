@@ -45,7 +45,8 @@ export function stripSiteTitle(title: string, siteTitle: string): string {
  * "source" match every page, which is the same problem the site title caused in
  * the title field.
  */
-const DOC_META = /\s*Last updated [A-Z][a-z]+ \d{1,2}, \d{4}\s*(?:·|&middot;)\s*View source\s*/g;
+const SEP = String.raw`\s*(?:·|&middot;)\s*`;
+const DOC_META = new RegExp(String.raw`\s*Last updated [A-Z][a-z]+ \d{1,2}, \d{4}${SEP}View source(?:${SEP}View changelog)?\s*`, 'g');
 
 export function stripDocMeta(summary: string): string {
   return summary.replace(DOC_META, ' ').replace(/\s{2,}/g, ' ').trim();

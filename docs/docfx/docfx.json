@@ -34,7 +34,9 @@
   "build": {
     "content": [
       {
-        "files": ["**/*.{md,yml}"],
+        "files": [
+          "**/*.{md,yml}"
+        ],
         "exclude": [
           "_site/**",
           "template/**",
@@ -45,14 +47,20 @@
     ],
     "resource": [
       {
-        "files": ["img/**", "version.json", "versions.json"]
+        "files": [
+          "img/**"
+        ]
       }
     ],
     "output": "_site",
-    "template": ["default", "modern", "template/sebt"],
+    "template": [
+      "default",
+      "modern",
+      "template/sebt"
+    ],
     "globalMetadata": {
       "_appName": "Summer EBT Portal",
-      "_appTitle": "Summer EBT Self-Service Portal: Engineering Documentation",
+      "_appTitle": "Summer EBT Self-Service Portal Documentation",
       "_appFooter": "Summer EBT Self-Service Portal, built by Code for America with the District of Columbia and the State of Colorado.",
       "_appLogoPath": "img/logo.svg",
       "_appFaviconPath": "img/favicon.svg",
@@ -63,9 +71,19 @@
         "branch": "main"
       }
     },
-    "postProcessors": ["ExtractSearchIndex"],
+    "postProcessors": [
+      "ExtractSearchIndex"
+    ],
     "markdownEngineName": "markdig",
     "keepFileLink": false,
-    "disableGitFeatures": false
+    "disableGitFeatures": false,
+    "fileMetadata": {
+      "_disableAffix": {
+        "index.md": true
+      },
+      "_disableBreadcrumb": {
+        "index.md": true
+      }
+    }
   }
 }

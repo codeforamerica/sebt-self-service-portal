@@ -183,6 +183,21 @@ header .navbar-brand #logo {
   margin-right: 0.5rem;
 }
 
+/* Nav links inherit Bootstrap's body-emphasis color, which reads as muted gray
+   against teal. The current page is marked by weight and a gold underline
+   rather than by a dimmer color, so every link stays white. */
+header .navbar-nav .nav-link,
+header .navbar-nav .nav-link:hover,
+header .navbar-nav .nav-link:focus,
+header .navbar-nav .nav-link.active {
+  color: #fff;
+}
+
+header .navbar-nav .nav-link.active {
+  font-weight: 700;
+  box-shadow: inset 0 -0.1875rem 0 var(--sebt-gold);
+}
+
 /* The mobile TOC/nav toggles and the search icon are Bootstrap icon buttons
    that inherit body color, which is invisible on teal. */
 header .btn,
@@ -506,28 +521,262 @@ footer {
   font-variant-numeric: tabular-nums;
 }
 
-/* Build stamp appended to the footer by main.js. */
-.build-stamp {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
+/* ---------------------------------------------------------------------------
+   Landing page calls to action
+   --------------------------------------------------------------------------- */
+
+.cta-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 2rem 0 2.5rem;
+}
+
+/* Two columns rather than auto-fit: with four cards, auto-fit lands on three
+   across and orphans the fourth on its own row. */
+@media (min-width: 36rem) {
+  .cta-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/*
+  A whole card is one link, so the target is the full block rather than the
+  title alone. The gold edge repeats the masthead rule and gives the grid an
+  anchor on the left of each card.
+*/
+.cta {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--bs-border-color);
+  border-left: 0.25rem solid var(--sebt-gold);
+  border-radius: 0.25rem;
+  background-color: var(--bs-body-bg);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cta:hover,
+.cta:focus {
+  border-color: var(--sebt-teal);
+  border-left-color: var(--sebt-gold);
+  box-shadow: 0 0.125rem 0.5rem rgb(0 0 0 / 10%);
+  text-decoration: none;
+}
+
+/*
+  A tinted disc rather than a bare glyph: at this size a lone icon reads as
+  decoration, while the disc gives each card a consistent visual anchor and
+  survives the switch to dark mode with the rest of the primary scale.
+*/
+.cta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary);
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.cta:hover .cta-icon,
+.cta:focus .cta-icon {
+  background-color: var(--bs-primary);
+  color: var(--bs-body-bg);
+}
+
+.cta-title {
+  font-weight: 700;
+  color: var(--bs-link-color);
+}
+
+.cta:hover .cta-title,
+.cta:focus .cta-title {
+  text-decoration: underline;
+}
+
+.cta-text {
+  font-size: 0.9375rem;
+  line-height: 1.4;
   color: var(--bs-secondary-color);
 }
 
 /*
-  Version picker, shown only once a second release exists. Sized to sit in the
-  masthead next to the search box without changing the header's height.
+  The template marks external links with a pseudo-element. Inside a card the
+  card is a column flex container, so the marker takes a row of its own and
+  reads as a stray glyph. Pinning it to the corner keeps the signal without the
+  extra line.
 */
-.version-picker {
-  width: auto;
-  max-width: 12rem;
-  margin-left: 0.75rem;
-  background-color: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.35);
-  color: #fff;
+.cta::after {
+  position: absolute;
+  top: 1.15rem;
+  right: 1.15rem;
+  color: var(--bs-secondary-color);
 }
 
-.version-picker option {
-  color: var(--sebt-ink);
-  background-color: #fff;
+/* ---------------------------------------------------------------------------
+   Mermaid diagrams
+
+   Mermaid's stock palette is lavender and pale yellow, which belongs to no
+   part of this site. It writes its own styles into a `<style>` block inside
+   each SVG, scoped by the diagram's generated id, so those rules carry an id's
+   specificity and `!important` is what overrides them.
+
+   Every value here is a Bootstrap variable this file already remaps per color
+   scheme, so the diagrams follow the light and dark themes instead of being
+   pinned to one. That is why this is CSS rather than a Mermaid `themeVariables`
+   directive, which would be static.
+   --------------------------------------------------------------------------- */
+
+pre.mermaid .node rect,
+pre.mermaid .node polygon,
+pre.mermaid .node circle,
+pre.mermaid .node path,
+pre.mermaid .node .label-container {
+  fill: var(--bs-primary-bg-subtle) !important;
+  stroke: var(--bs-primary) !important;
+}
+
+pre.mermaid .cluster rect {
+  fill: var(--bs-tertiary-bg) !important;
+  stroke: var(--bs-border-color) !important;
+}
+
+pre.mermaid .nodeLabel,
+pre.mermaid .cluster-label,
+pre.mermaid .edgeLabel {
+  color: var(--bs-body-color) !important;
+  fill: var(--bs-body-color) !important;
+}
+
+/* Edge labels sit on top of the connector they annotate and need to mask it. */
+pre.mermaid .edgeLabel .labelBkg,
+pre.mermaid .edgeLabel rect {
+  background-color: var(--bs-body-bg) !important;
+  fill: var(--bs-body-bg) !important;
+}
+
+pre.mermaid .flowchart-link,
+pre.mermaid .edgePath .path {
+  stroke: var(--bs-primary) !important;
+}
+
+pre.mermaid .marker,
+pre.mermaid .arrowMarkerPath {
+  fill: var(--bs-primary) !important;
+  stroke: var(--bs-primary) !important;
+}
+
+/* Ownership colors on architecture diagrams: default blue is the shared
+   application, gold is the connector a state writes, grey is the state's own
+   systems. These rules are the only place the colors are set. A diagram's
+   `classDef` cannot do it, because mermaid's classDef parser rejects
+   parentheses and so cannot take a `var(--token)` value; it declares the class
+   and the dashed outline, and the color comes from here.
+
+   The extra class in each selector is what beats the generic `.node` rule
+   above, and the shape list mirrors it because a cylinder renders as a path
+   rather than a rect. Color only reinforces: every node is labelled, and the
+   state-owned nodes are dashed, so the distinction survives without it. */
+pre.mermaid .node.stateBuilt rect,
+pre.mermaid .node.stateBuilt polygon,
+pre.mermaid .node.stateBuilt circle,
+pre.mermaid .node.stateBuilt path,
+pre.mermaid .node.stateBuilt .label-container {
+  fill: var(--sebt-gold-light) !important;
+  stroke: var(--sebt-gold-dark) !important;
+  stroke-width: 2px !important;
+}
+
+/* The gold fill is a fixed light tone, so the label cannot follow the body
+   color into dark mode without losing contrast against it. */
+pre.mermaid .node.stateBuilt .nodeLabel {
+  color: var(--sebt-ink) !important;
+  fill: var(--sebt-ink) !important;
+}
+
+pre.mermaid .node.stateOwned rect,
+pre.mermaid .node.stateOwned polygon,
+pre.mermaid .node.stateOwned circle,
+pre.mermaid .node.stateOwned path,
+pre.mermaid .node.stateOwned .label-container {
+  fill: var(--bs-secondary-bg) !important;
+  stroke: var(--bs-secondary-color) !important;
+  stroke-width: 2px !important;
+  stroke-dasharray: 5 4 !important;
+}
+
+/* ---------------------------------------------------------------------------
+   Landing layout
+
+   `.content` is a flex row sized for a sidebar, an article, and an affix rail.
+   The landing layout drops the first and last, so the article stays pinned to
+   the left and the space they would have used sits empty on one side. Centering
+   the remaining child balances the page, and only on that layout, so every
+   other page keeps its three-column alignment.
+   --------------------------------------------------------------------------- */
+
+body[data-layout="landing"] article {
+  margin-inline: auto;
+}
+
+/* ---------------------------------------------------------------------------
+   Intro capabilities
+
+   What a family can do, as part of the opening block rather than a section of
+   its own. No border or fill: chrome here would read as buttons, and these are
+   statements, not links. Stacked in one column so each capability is its own
+   line and the set scans top to bottom rather than as a run-on row.
+   --------------------------------------------------------------------------- */
+
+.intro-capabilities {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intro-capabilities li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  max-width: none;
+  /* Matches the intro paragraph's size and leading. At 15px the strip read as
+     a footnote to the tagline rather than a peer of it. */
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Sized just under the label so the glyph does not outweigh the word it marks,
+   and boxed to a fixed width so glyphs of different widths share one text edge. */
+.intro-capabilities .bi {
+  flex: none;
+  width: 1.25rem;
+  color: var(--bs-primary);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Mermaid renders at the size its layout engine picks, which on a landing page
+   reads as zoomed in. The viewBox lets it scale down cleanly, so cap the height
+   and let width follow. */
+pre.mermaid svg {
+  max-width: 100%;
+  max-height: 24rem;
+  height: auto;
 }

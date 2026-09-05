@@ -77,3 +77,9 @@ test('the provenance line is removed whichever separator survived extraction', (
     assert.equal(stripDocMeta(`Title Last updated January 9, 2026 ${sep} View source Body`), 'Title Body');
   }
 });
+
+test('the provenance line is stripped with the changelog link present', () => {
+  const summary = 'Title Last updated September 3, 2026 · View source · View changelog Body text';
+
+  assert.equal(stripDocMeta(summary), 'Title Body text');
+});

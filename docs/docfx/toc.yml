@@ -2,7 +2,7 @@
   href: index.md
 - name: Docs
   href: guides/
-- name: Architecture Decisions
-  href: adr/
-- name: .NET API Reference
-  href: api/
+- name: Releases
+  href: releases.md
+- name: Compliance
+  href: compliance/

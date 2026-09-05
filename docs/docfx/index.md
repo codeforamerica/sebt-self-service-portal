@@ -1,49 +1,82 @@
 ---
 _layout: landing
+description: Documentation for the Summer EBT (SUN Bucks) Self-Service Portal and Enrollment Checker. Extensible, multi-platform, and multilingual by design.
+keywords: summer EBT SUN Bucks portal enrollment checker documentation onboarding setup state connector extensibility plugin multiplatform multilingual translation compliance security features
 ---
 
-# Summer EBT Self-Service Portal: Engineering Documentation
+# Summer EBT Self-Service Portal
 
-Generated from the [`sebt-self-service-portal`](https://github.com/codeforamerica/sebt-self-service-portal)
-repository: the decisions and interfaces of the Summer EBT Self-Service Portal, for the engineers who maintain it.
+Give families a way to manage their Summer EBT benefits, in their own language, on the platform your state already
+runs. In use today by Colorado and Washington, DC.
 
-The product has two front doors:
+<ul class="intro-capabilities">
+  <li><span class="bi bi-search" aria-hidden="true"></span>Check enrollment, no account</li>
+  <li><span class="bi bi-house-heart" aria-hidden="true"></span>See benefits and card status</li>
+  <li><span class="bi bi-credit-card-2-front" aria-hidden="true"></span>Activate or replace a card</li>
+  <li><span class="bi bi-geo-alt" aria-hidden="true"></span>Update an address</li>
+</ul>
 
-- The **Enrollment Checker** lets families confirm whether a child is already enrolled, without logging in.
-- The **Self-Service Portal** lets families log in to view benefit and card status, check application status, update a
-  mailing address, and request a replacement card.
+<div class="cta-grid">
+  <a class="cta" href="https://github.com/codeforamerica/sebt-self-service-portal#local-environment-set-up">
+    <span class="cta-icon bi bi-terminal" aria-hidden="true"></span>
+    <span class="cta-title">Set up your environment</span>
+    <span class="cta-text">Install, run, and test the portal locally.</span>
+  </a>
+  <a class="cta" href="guides/state-connector/index.md">
+    <span class="cta-icon bi bi-puzzle" aria-hidden="true"></span>
+    <span class="cta-title">Add a new state</span>
+    <span class="cta-text">Build a connector to your state's systems of record.</span>
+  </a>
+  <a class="cta" href="guides/content/index.md">
+    <span class="cta-icon bi bi-translate" aria-hidden="true"></span>
+    <span class="cta-title">Change what families see</span>
+    <span class="cta-text">Update wording in any supported language.</span>
+  </a>
+  <a class="cta" href="compliance/index.md">
+    <span class="cta-icon bi bi-shield-check" aria-hidden="true"></span>
+    <span class="cta-title">Review compliance</span>
+    <span class="cta-text">Licensing, accessibility, security, and identity proofing.</span>
+  </a>
+</div>
 
-Both are served by one ASP.NET Core API, with state-specific behavior supplied by MEF plugins ("state connectors"). As
-of Summer 2026 the product is in use by Colorado and Washington, DC.
+## How the pieces fit
 
-## What's here
+```mermaid
+flowchart TB
+  subgraph apps ["Web apps"]
+    direction LR
+    W["Portal"]
+    E["Enrollment Checker"]
+  end
 
-| Section | What it covers |
-| --- | --- |
-| [Docs](guides/state-connector/index.md) | How to carry out a task against this codebase. Get started covers building a state connector; Content covers changing user-facing text. |
-| [Architecture Decisions](adr/index.md) | Every ADR in the repository, and why the system is shaped the way it is. |
-| [.NET API Reference](api/index.md) | Types, members, and XML doc comments across the portal's C# projects and the state connector contract. |
+  API["Portal API"]
 
-## What's not here (yet)
+  subgraph conn ["State connectors"]
+    direction LR
+    CO["Colorado"]
+    DC["Washington, DC"]
+    NEW["Your state"]
+  end
 
-Not yet covered:
+  SOR[("State systems of record")]
 
-- The REST API surface. Run the API locally and use the Swagger UI it serves at `/swagger` in the Development
-  environment
-- Frontend (Next.js / TypeScript) documentation
-- Local development setup and runbooks. See the repository [README](https://github.com/codeforamerica/sebt-self-service-portal#readme)
-- The design system
-- Test strategy and TDD notes under `docs/tdd/`
+  W --> API
+  E --> API
+  API --> CO
+  API --> DC
+  API --> NEW
+  CO --> SOR
+  DC --> SOR
+  NEW --> SOR
+```
 
-Adding a section is a matter of extending `docs/docfx/docfx.json`; see the
-[site README](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/docfx/README.md) for how the
-build is wired together.
+Everything state-specific lives in the bottom lane. The API above it knows only the interfaces, so a new state is a
+new connector rather than a change to the portal.
 
-## Where the content comes from
+## More
 
-Each section is generated at build time:
-
-- **API reference**, extracted from C# source and XML doc comments by `docfx metadata`. Improving these pages means
-  improving the `///` comments in the code.
-- **ADRs**. The Markdown files in `docs/adr/` are published as-is, and the navigation is generated from the
-  directory listing.
+- [Architecture Decisions](adr/index.md) explain why the system is shaped the way it is.
+- [.NET API Reference](api/index.md) covers every published C# type.
+- [Releases](releases.md) tell you what changed and when.
+- [Repository README](https://github.com/codeforamerica/sebt-self-service-portal#readme) holds installation, local
+  development, and database setup.
