@@ -24,7 +24,7 @@ flowchart TB
 
   WEB["Next.js server"]
   API["Portal API"]
-  DB[("Portal database")]
+  DB[("Portal database")]:::stateOwned
   CONN["State connector"]:::stateBuilt
   SOR[("State systems of record")]:::stateOwned
 
@@ -44,10 +44,10 @@ flowchart TB
 
 Color marks who owns each piece:
 
-- **Blue** is the shared application. Identical in every state, and you adopt it rather than build it.
+- **Blue** is the application itself. Identical in every state, and you adopt it rather than build it.
 - **Gold** is the connector. The one component written per state, against a published contract.
-- **Dashed grey** is the state's own systems. Outside the portal entirely, and the portal reads far more from them
-  than it writes.
+- **Dashed grey** is what the state owns and runs. That includes the portal's own database: the application defines
+  the schema, but the data and the infrastructure holding it are yours.
 
 The connector is the only component that knows anything about a particular state. That is why adding a state is a new
 connector rather than a change to the portal, and why the blue boxes look the same in Denver and in Washington.
@@ -115,11 +115,13 @@ both answers in production today.
 | **Who performs identity proofing**   | The state's own SSO does it, and asserts an assurance level the portal trusts. | The portal does it, calling Socure directly.                         |
 | **Where the connector lives**        | In this repository, alongside the portal, at `apps/connectors/co`.             | In the state's own repository, built against the published contract. |
 | **How it is deployed**               | Containers on AWS ECS.                                                         | IIS on Windows Server.                                               |
-| **How the enrollment checker ships** | The Next.js application in this repository.                                    | A separate application the state already runs.                       |
 
-The identity proofing row is the one that surprises people. Colorado's SSO happens to use the same vendor DC calls
-directly, but the portal never talks to it in Colorado. It reads the assurance level from the sign-in and takes it as
-given. Whether the portal owns proofing or consumes it is a state's decision, not a property of the software.
+The identity proofing row is the one worth pausing on. In Colorado the portal reads an assurance level from the
+sign-in and takes it as given. In DC the portal performs the verification itself. Whether the portal owns proofing or
+consumes it is a state's decision rather than a property of the software.
+
+What they do not differ on is worth saying too. Both states run the same portal and the same enrollment checker, from
+this repository.
 
 ## What varies, and what does not
 

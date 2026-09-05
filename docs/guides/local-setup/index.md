@@ -96,10 +96,10 @@ need both front ends at once, and expect a port clash on the API if you do.
 
 Pick one before you begin. It decides whether you need a second clone.
 
-| State                | Clones needed                                                                      | Applications available locally                                                                                               |
-| -------------------- | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Colorado             | This repository only. The connector is in `apps/connectors/co`.                    | Portal and Enrollment Checker                                                                                                |
-| District of Columbia | This repository, plus `sebt-self-service-portal-dc-connector` as a sibling folder. | Portal. The current DC enrollment checker is a [separate application](https://github.com/codeforamerica/cfa-dc-sebt-portal). |
+| State                | Clones needed                                                                      | Applications available locally |
+| -------------------- | ---------------------------------------------------------------------------------- | ------------------------------ |
+| Colorado             | This repository only. The connector is in `apps/connectors/co`.                    | Portal and Enrollment Checker  |
+| District of Columbia | This repository, plus `sebt-self-service-portal-dc-connector` as a sibling folder. | Portal and Enrollment Checker  |
 
 Colorado is the shorter path, and nothing in this guide is Colorado-specific apart from the clone count. Start there
 unless you are working on DC.
