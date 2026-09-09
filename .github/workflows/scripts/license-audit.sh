@@ -19,10 +19,12 @@ mkdir -p output
 dotnet tool restore
 
 # Get license information for all NuGet packages,
-# output as JSON. Use jq to extract relevant 
+# output as JSON. Use jq to extract relevant
 # attributes and output as a CSV into a file.
+# SEBT.slnx covers the portal plus the in-repo connectors (state, CO), so
+# everything we ship is audited — not just the portal projects.
 dotnet tool run nuget-license \
-  --input SEBT.Portal.sln \
+  --input SEBT.slnx \
   -o json \
   -a $ALLOWED_LICENSES \
   -mapping $LICENSE_MAPPINGS \

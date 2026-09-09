@@ -1,0 +1,288 @@
+import { z } from 'zod'
+
+// Backend enum values map to these strings. The API serializes these enums as integers, so the
+// ordinals below are a contract with SEBT.Portal.Core.Models.Household. Changing either side
+// without the other silently mislabels every household. Backend guard: EnumWireContractTests.
+const APPLICATION_STATUS_MAP: Record<number, string> = {
+  0: 'Unknown',
+  1: 'Pending',
+  2: 'Approved',
+  3: 'Denied',
+  4: 'UnderReview',
+  5: 'Cancelled'
+}
+
+const ISSUANCE_TYPE_MAP: Record<number, string> = {
+  0: 'Unknown',
+  1: 'SummerEbt',
+  2: 'TanfEbtCard',
+  3: 'SnapEbtCard'
+}
+
+const CO_LOADED_COHORT_MAP: Record<number, string> = {
+  0: 'NonCoLoaded',
+  1: 'CoLoadedOnly',
+  2: 'MixedOrApplicantExcluded'
+}
+
+// Preprocess to convert integer enum values from backend to string enum values
+// Unknown numeric values are mapped to 'Unknown' to handle future backend additions gracefully
+export const IssuanceTypeSchema = z.preprocess(
+  (val) =>
+    typeof val === 'number'
+      ? (ISSUANCE_TYPE_MAP[val as keyof typeof ISSUANCE_TYPE_MAP] ?? 'Unknown')
+      : val,
+  z.enum(['Unknown', 'SummerEbt', 'TanfEbtCard', 'SnapEbtCard'])
+)
+
+export type IssuanceType = z.infer<typeof IssuanceTypeSchema>
+
+export const ApplicationStatusSchema = z.preprocess(
+  (val) =>
+    typeof val === 'number'
+      ? (APPLICATION_STATUS_MAP[val as keyof typeof APPLICATION_STATUS_MAP] ?? 'Unknown')
+      : val,
+  z.enum(['Unknown', 'Pending', 'Approved', 'Denied', 'UnderReview', 'Cancelled'])
+)
+
+export type ApplicationStatus = z.infer<typeof ApplicationStatusSchema>
+
+/**
+ * Classification of a household relative to co-loaded benefits. Derived on the
+ * backend and shipped on HouseholdData to drive the analytics dimension.
+ *
+ * `Unknown` is a frontend-only sentinel when the field is absent, null, or not a
+ * recognized backend enum value — so analytics do not collapse that state into
+ * `NonCoLoaded` (which would under-count the excluded cohort if the wire contract breaks).
+ */
+export const CoLoadedCohortSchema = z.preprocess(
+  (val) => {
+    if (val === undefined || val === null) {
+      return 'Unknown'
+    }
+    if (typeof val === 'number') {
+      return CO_LOADED_COHORT_MAP[val as keyof typeof CO_LOADED_COHORT_MAP] ?? 'Unknown'
+    }
+    return val
+  },
+  z.enum(['NonCoLoaded', 'CoLoadedOnly', 'MixedOrApplicantExcluded', 'Unknown'])
+)
+
+export type CoLoadedCohort = z.infer<typeof CoLoadedCohortSchema>
+
+/**
+ * Maps the cohort enum to the standardized snake_case property value used
+ * across analytics events. Kept out of the schema so analytics naming can
+ * evolve independently of the API contract.
+ */
+export function toAnalyticsCohort(cohort: CoLoadedCohort): string {
+  switch (cohort) {
+    case 'NonCoLoaded':
+      return 'non_co_loaded'
+    case 'CoLoadedOnly':
+      return 'co_loaded_only'
+    case 'MixedOrApplicantExcluded':
+      return 'mixed_or_applicant_excluded'
+    case 'Unknown':
+      return 'unknown'
+  }
+}
+
+export const CARD_STATUSES = [
+  'Active',
+  'Damaged',
+  'DeactivatedByState',
+  'Frozen',
+  'Lost',
+  'NotActivated',
+  'Processed',
+  'Stolen',
+  'Undeliverable',
+  'Unknown'
+] as const
+
+export type CardStatus = (typeof CARD_STATUSES)[number]
+
+export const CardStatusSchema = z.enum(CARD_STATUSES).nullable().optional()
+
+/**
+ * UI-facing card statuses displayed to the user.
+ * Multiple backend statuses map to a single UI status
+ * (e.g., Lost/Stolen/Damaged all show as "Inactive").
+ */
+export type UiCardStatus = 'Processed' | 'Active' | 'Inactive' | 'Frozen' | 'Undeliverable'
+
+/**
+ * Maps a backend CardStatus to the user-facing UI status.
+ * The mapping follows the status table in the DC-130 ticket.
+ */
+export function toUiCardStatus(cardStatus: CardStatus): UiCardStatus {
+  switch (cardStatus) {
+    case 'Processed':
+      return 'Processed'
+    case 'Active':
+      return 'Active'
+    case 'Lost':
+    case 'Stolen':
+    case 'Damaged':
+    case 'DeactivatedByState':
+    case 'NotActivated':
+      return 'Inactive'
+    case 'Frozen':
+      return 'Frozen'
+    case 'Undeliverable':
+      return 'Undeliverable'
+    default:
+      return 'Active'
+  }
+}
+
+/**
+ * Determines whether a card with this status is eligible for replacement.
+ * Only cards reported as Lost, Stolen, or Damaged can be replaced.
+ */
+export function isReplacementEligible(cardStatus: CardStatus): boolean {
+  return cardStatus === 'Lost' || cardStatus === 'Stolen' || cardStatus === 'Damaged'
+}
+
+export const ChildSchema = z.object({
+  firstName: z.string(),
+  lastName: z.string(),
+  status: ApplicationStatusSchema.nullable().optional()
+})
+
+export type Child = z.infer<typeof ChildSchema>
+
+export const AddressSchema = z.object({
+  streetAddress1: z.string().nullable().optional(),
+  streetAddress2: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  postalCode: z.string().nullable().optional()
+})
+
+export type Address = z.infer<typeof AddressSchema>
+
+export const SummerEbtCaseSchema = z.object({
+  summerEBTCaseID: z.string().nullable().optional(),
+  applicationId: z.string().nullable().optional(),
+  applicationStudentId: z.string().nullable().optional(),
+  childFirstName: z.string(),
+  childLastName: z.string(),
+  childDateOfBirth: z.string().nullable().optional(),
+  householdType: z.string(),
+  eligibilityType: z.string(),
+  applicationDate: z.string().nullable().optional(),
+  applicationStatus: ApplicationStatusSchema.nullable().optional(),
+  mailingAddress: AddressSchema.nullable().optional(),
+  ebtCaseNumber: z.string().nullable().optional(),
+  caseDisplayNumber: z.string().nullable().optional(),
+  ebtCardLastFour: z.string().nullable().optional(),
+  ebtCardStatus: CardStatusSchema,
+  ebtCardIssueDate: z.string().nullable().optional(),
+  ebtCardBalance: z.number().nullable().optional(),
+  benefitAvailableDate: z.string().nullable().optional(),
+  benefitExpirationDate: z.string().nullable().optional(),
+  eligibilitySource: z.string().nullable().optional(),
+  issuanceType: IssuanceTypeSchema.nullable().optional(),
+  // Cooldown timestamp persisted by the portal: when set, indicates a recent
+  // replacement request and gates the timeline UI in ChildCard.
+  cardRequestedAt: z.string().nullable().optional(),
+  allowAddressChange: z.boolean().optional().default(true),
+  allowCardReplacement: z.boolean().optional().default(true)
+})
+
+export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
+
+export const ApplicationSchema = z.object({
+  applicationNumber: z.string().nullable().optional(),
+  caseNumber: z.string().nullable().optional(),
+  applicationStatus: ApplicationStatusSchema,
+  applicationDate: z.string().nullable().optional(),
+  benefitIssueDate: z.string().nullable().optional(),
+  benefitExpirationDate: z.string().nullable().optional(),
+  children: z.array(ChildSchema),
+  childrenOnApplication: z.number(),
+  issuanceType: IssuanceTypeSchema.nullable().optional()
+})
+
+export type Application = z.infer<typeof ApplicationSchema>
+
+export const UserProfileSchema = z.object({
+  firstName: z.string(),
+  middleName: z.string().nullable().optional(),
+  lastName: z.string().nullable().optional()
+})
+
+export type UserProfile = z.infer<typeof UserProfileSchema>
+
+export const AllowedActionsSchema = z.object({
+  canUpdateAddress: z.boolean(),
+  canRequestReplacementCard: z.boolean(),
+  addressUpdateDeniedMessageKey: z.string().nullable().optional(),
+  cardReplacementDeniedMessageKey: z.string().nullable().optional()
+})
+
+export type AllowedActions = z.infer<typeof AllowedActionsSchema>
+
+export const HouseholdDataSchema = z.object({
+  // email is optional to support IAL authorization where user may not have access to PII
+  email: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  summerEbtCases: z.array(SummerEbtCaseSchema).optional().default([]),
+  applications: z.array(ApplicationSchema),
+  addressOnFile: AddressSchema.nullable().optional(),
+  userProfile: UserProfileSchema.nullable().optional(),
+  benefitIssuanceType: IssuanceTypeSchema.nullable().optional(),
+  allowedActions: AllowedActionsSchema.nullable().optional(),
+  // Missing/null preprocess to Unknown so analytics never collapse broken payloads into NonCoLoaded (PR #208).
+  coLoadedCohort: CoLoadedCohortSchema,
+  // HMAC-SHA256 digest of the SEBT App ID (lowercase hex). Backend emits this
+  // only for states configured to surface it (CO today). Null otherwise.
+  // Whitespace is coerced to null defensively so a future backend change that
+  // forgets the IsNullOrWhiteSpace guard cannot leak a blank string into
+  // analytics. See docs/analytics/hashed-sebt-app-id.md.
+  hashedAppId: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim().length === 0 ? null : v),
+    z.string().nullable().optional()
+  )
+})
+
+export type HouseholdData = z.infer<typeof HouseholdDataSchema>
+
+/**
+ * Formats a US phone number as XXX-XXX-XXXX.
+ * Strips non-digit characters and a leading country code (1) before formatting.
+ * Returns the input unchanged if it does not resolve to exactly 10 digits.
+ */
+export function formatUsPhone(phone: string): string {
+  let digits = phone.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('1')) {
+    digits = digits.slice(1)
+  }
+  if (digits.length !== 10) return phone
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+}
+
+export function formatDate(isoDate: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: '2-digit',
+    day: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC'
+  }).format(new Date(isoDate))
+}
+
+// Matches date placeholders in locale strings: [MM/DD/YYYY] (English) or [DD/MM/YYYY] (Spanish)
+const DATE_PLACEHOLDER = /\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/
+
+// "Requested on [MM/DD/YYYY]" → "Requested on 01/15/2026" or "Requested"
+// "Solicitada el [DD/MM/YYYY]" → "Solicitada el 15/01/2026" or "Solicitada"
+export function interpolateDate(template: string, isoDate: string | null, locale: string): string {
+  if (isoDate) {
+    return template.replace(DATE_PLACEHOLDER, formatDate(isoDate, locale))
+  }
+  // Strip optional preceding connector word (" on", " el") along with the placeholder
+  // eslint-disable-next-line security/detect-non-literal-regexp
+  return template.replace(new RegExp(`(?:\\s+\\S+)?\\s*${DATE_PLACEHOLDER.source}`), '').trim()
+}

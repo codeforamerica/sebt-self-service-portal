@@ -29,7 +29,7 @@ NC='\033[0m'
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-FRONTEND_DIR="$PROJECT_ROOT/src/SEBT.Portal.Web"
+FRONTEND_DIR="$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Web"
 STANDALONE_DIR="$FRONTEND_DIR/.next/standalone"
 
 # Defaults
@@ -111,7 +111,7 @@ package_frontend() {
   mkdir -p "$WEB_DIR"
   rsync -aL "$STANDALONE_DIR/" "$WEB_DIR/"
 
-  # The standalone output nests the app under src/SEBT.Portal.Web/ with a
+  # The standalone output nests the app under apps/portal/src/SEBT.Portal.Web/ with a
   # top-level node_modules/.pnpm virtual store. Hoist all packages from
   # .pnpm/*/node_modules/* into a flat node_modules/ layout so Node.js
   # module resolution works without pnpm's symlink structure.
@@ -149,7 +149,7 @@ package_frontend() {
 
   # Copy static assets (CSS, JS bundles) and public files (favicon, images)
   # into the location server.js expects them.
-  local APP_DIR="$WEB_DIR/src/SEBT.Portal.Web"
+  local APP_DIR="$WEB_DIR/apps/portal/src/SEBT.Portal.Web"
   if [ -d "$APP_DIR" ]; then
     mkdir -p "$APP_DIR/.next"
     cp -r "$FRONTEND_DIR/.next/static" "$APP_DIR/.next/static"
@@ -193,7 +193,7 @@ main() {
   log_success "=== Packaging complete ==="
   log_info "To deploy on the target machine:"
   log_info "  1. Extract sebt-web.zip"
-  log_info "  2. cd sebt-web/src/SEBT.Portal.Web"
+  log_info "  2. cd sebt-web/apps/portal/src/SEBT.Portal.Web"
   log_info "  3. node server.js"
   log_info ""
   log_info "Environment variables:"

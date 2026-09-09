@@ -127,7 +127,7 @@ CO's policy lives in `appsettings.co.json`. See the punch list at `docs/.local/b
 
 Plugins contribute only facts. Each state's `CbmsResponseMapper` (or equivalent) translates the backend's raw card-status string into a `CardStatus` enum value. If a plugin maps a token to `CardStatus.Unknown`, the configured policy decides whether Unknown is allowed — typically it is not, as a safety default.
 
-See `sebt-self-service-portal-co-connector/src/SEBT.Portal.StatePlugins.CO/Cbms/CbmsResponseMapper.cs` for the CO mapping. The mapper logs at information level when a token falls through to `Unknown`, so new CBMS tokens show up in logs and can be mapped without guessing.
+See `apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/Cbms/CbmsResponseMapper.cs` for the CO mapping. The mapper logs at information level when a token falls through to `Unknown`, so new CBMS tokens show up in logs and can be mapped without guessing.
 
 ---
 
@@ -152,8 +152,8 @@ When adding a new state:
 3. Confirm the state's connector maps its backend card-status strings into the shared `CardStatus` enum.
 
 When adding a new enum value to `CardStatus`:
-1. Add to the enum in `sebt-self-service-portal-state-connector` and `sebt-self-service-portal`.
-2. Rebuild the state-connector NuGet package; connectors pick it up on next build.
+1. Add to the contract enum in `apps/connectors/state` and to the portal's canonical model.
+2. Rebuild from the repo root (`dotnet build SEBT.slnx`); the in-repo connectors pick the change up in the same build, and the freshly packed contract package covers the external DC connector.
 3. Each connector maps its new backend token, if applicable.
 4. Each state's `appsettings.{state}.json` reviews its `AllowedCardStatuses` lists and adds the new value if it should be permitted.
 

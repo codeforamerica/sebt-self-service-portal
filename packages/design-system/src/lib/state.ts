@@ -39,6 +39,8 @@ export interface StateConfig {
   actionButtonBg: string
   /** USWDS text color utility class for action buttons */
   actionButtonText: string
+  /** USWDS text color utility class for the `h1` that titles a page */
+  pageTitleText: string
 }
 
 /**
@@ -51,11 +53,12 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     programName: 'DC SUN Bucks',
     siteDisplayName: 'District of Columbia SUN Bucks',
     portalMetadataDescription:
-      'Apply for Summer EBT (SUN Bucks) benefits in District of Columbia. Check eligibility, track your application status, and manage your benefits online.',
+      'Manage your DC SUN Bucks (Summer EBT) benefits online. Check enrollment, benefit expiration, and EBT card status for your students.',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
     supportedLanguages: ['en', 'es', 'am'],
     actionButtonBg: 'bg-secondary',
-    actionButtonText: 'text-ink'
+    actionButtonText: 'text-ink',
+    pageTitleText: 'text-ink'
   },
   co: {
     name: 'Colorado',
@@ -67,7 +70,8 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     languageSelectorClass: 'border-primary radius-md text-primary',
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',
-    actionButtonText: 'text-white'
+    actionButtonText: 'text-white',
+    pageTitleText: 'text-primary'
   }
 }
 

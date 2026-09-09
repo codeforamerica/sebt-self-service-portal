@@ -12,13 +12,24 @@ services:
       - "5280:8080"   # Maps localhost:5280 -> container:8080
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      # Local/CI only; never set on deployed hosts (including public "dev" environments).
+      - Seeding__EnableDevEndpoints=true
       - STATE=${STATE:-dc}
       # Note: TrustServerCertificate=True bypasses TLS certificate validation and should ONLY be used for local development.
       # Do NOT include this in connection strings for deployed environments (UAT, production).
       - ConnectionStrings__DefaultConnection=Server=${MSSQL_SERVER:-mssql},${MSSQL_PORT:-1433};Database=${MSSQL_DATABASE:-SebtPortal};User Id=${MSSQL_USER:-sa};Password=${MSSQL_SA_PASSWORD:-YourStrong@Passw0rd};TrustServerCertificate=True;
       - SmtpClientSettings__SmtpServer=mailpit
+      - Redis__Host=redis
+      - Redis__Port=6380
+      - Redis__Ssl=true
+      - Redis__SslHost=redis
+      # AcceptSelfSignedCertificates bypasses CA trust for our dev cert.
+      # Elasticache presents an AWS-signed cert that .NET trusts without this.
+      - Redis__AcceptSelfSignedCertificates=true
     depends_on:
       mssql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - sebt.portal.api
@@ -35,16 +46,37 @@ services:
     networks:
       - sebt.portal.api
 
-  # Redis Cache (used as distributed cache backing for HybridCache)
+  # Redis Cache (used as distributed cache backing for HybridCache).
+  # Runs with TLS to match AWS Elasticache in-transit encryption.
+  # Plain port 6379 remains available for redis-commander and local dev without compose.
+  # TLS port 6380 is what the portal API connects to when running via compose.
+  # Before first run: ./scripts/dev/gen-redis-certs.sh
   redis:
     image: redis:7-alpine
     container_name: sebt_redis
+    command:
+      - redis-server
+      - --tls-port
+      - "6380"
+      - --port
+      - "6379"
+      - --tls-cert-file
+      - /certs/redis-server.crt
+      - --tls-key-file
+      - /certs/redis-server.key
+      - --tls-ca-cert-file
+      - /certs/redisCA.crt
+      - --tls-auth-clients
+      - "no"
     ports:
-      - "6379:6379"
+      - "6379:6379"   # plain (redis-commander, direct redis-cli)
+      - "6380:6380"   # TLS (portal API via compose)
+    volumes:
+      - ./certs:/certs:ro
     networks:
       - sebt.portal.api
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -97,6 +129,37 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  # Local OIDC IdP for CO development (this will NEVER be used for production).
+  # Docs: docs/development/keycloak-oidc.md
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.2@sha256:4883630ef9db14031cde3e60700c9a9a8eaf1b5c24db1589d6a2d43de38ba2a9
+    container_name: sebt_keycloak
+    profiles:
+      - keycloak
+    command:
+      - start-dev
+      - --import-realm
+      - --hostname=http://localhost:8180
+      - --http-port=8080
+    ports:
+      - "8180:8080"   # Admin UI + OIDC endpoints
+    environment:
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+    volumes:
+      - ./docker/keycloak/sebt-realm.json:/opt/keycloak/data/import/sebt-realm.json:ro
+      - ./docker/keycloak/themes:/opt/keycloak/themes:ro
+    networks:
+      - sebt.portal.api
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 45s
 
 # Define custom networks
 networks:

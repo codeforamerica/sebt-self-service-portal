@@ -18,3 +18,24 @@ data "aws_lambda_function" "datadog" {
 
   function_name = local.datadog_lambda[0]
 }
+
+# Look up the Datadog API key secret created by the Datadog AWS integration
+# CloudFormation stack (tagged with logical-id). Used by the OpenTelemetry
+# collector to forward traces to Datadog APM.
+data "aws_secretsmanager_secrets" "datadog_key" {
+  filter {
+    name   = "tag-key"
+    values = ["aws:cloudformation:logical-id"]
+  }
+
+  filter {
+    name   = "tag-value"
+    values = ["DdApiKeySecret"]
+  }
+}
+
+data "aws_secretsmanager_secret" "datadog_key" {
+  for_each = length(data.aws_secretsmanager_secrets.datadog_key.arns) > 0 ? toset(["this"]) : toset([])
+
+  arn = one(data.aws_secretsmanager_secrets.datadog_key.arns)
+}

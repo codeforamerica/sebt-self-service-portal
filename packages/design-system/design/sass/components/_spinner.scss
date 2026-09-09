@@ -21,12 +21,21 @@ Color follows the per-state primary theme via USWDS tokens.
   box-sizing: border-box;
   animation: usa-spinner-rotate 1s linear infinite;
 
+  // Reduced motion: no rotation, but a frozen three-quarter arc reads as a
+  // rendering glitch rather than activity. Close the ring and pulse opacity
+  // instead; a fade is not a vestibular trigger the way rotation is.
   @media (prefers-reduced-motion: reduce) {
-    animation: none;
+    animation: usa-spinner-pulse 2s ease-in-out infinite;
+    border-bottom-color: color('primary');
   }
 }
 
 @keyframes usa-spinner-rotate {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes usa-spinner-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }

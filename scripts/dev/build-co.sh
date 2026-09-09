@@ -13,7 +13,6 @@ NC='\033[0m' # No Color
 # Script directory (POSIX-compatible)
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-MULTI_PROJECT_ROOT="$(cd "$PROJECT_ROOT/.." && pwd)"
 
 # Parse arguments
 CONFIGURATION="Debug"
@@ -66,16 +65,10 @@ main() {
 
   check_prerequisites
 
-  # Build state connector interfaces
-  cd "$MULTI_PROJECT_ROOT/sebt-self-service-portal-state-connector"
-  dotnet build
-
-  # Build CO plugin
-  cd "$MULTI_PROJECT_ROOT/sebt-self-service-portal-co-connector"
-  dotnet build
-
-  # Build main app
-  cd "$MULTI_PROJECT_ROOT/sebt-self-service-portal"
+  # State connector (contract) and the CO plugin are both in-repo (apps/connectors/*).
+  # Building the monorepo builds them and runs CO's CopyPlugins target, which stages
+  # the CO plugin DLLs into apps/portal/src/SEBT.Portal.Api/plugins-co.
+  cd "$PROJECT_ROOT"
   dotnet build
 }
 

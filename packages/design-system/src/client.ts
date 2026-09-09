@@ -12,6 +12,10 @@ export { Footer } from './components/layout/Footer'
 export { HelpSection } from './components/layout/HelpSection'
 export { LanguageSelector } from './components/layout/LanguageSelector/LanguageSelector'
 
+// Maintenance page body (uses useTranslation from react-i18next)
+export { MaintenancePageContent } from './components/MaintenancePage/MaintenancePageContent'
+export type { MaintenancePageContentProps } from './components/MaintenancePage/MaintenancePageContent'
+
 // Providers
 export { I18nProvider } from './providers/I18nProvider'
 

@@ -1,0 +1,29 @@
+<Solution>
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/connectors/" />
+  <Folder Name="/apps/connectors/co/" />
+  <Folder Name="/apps/connectors/co/src/">
+    <Project Path="apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/SEBT.Portal.StatePlugins.CO.CbmsApi.csproj" />
+    <Project Path="apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.Tests/SEBT.Portal.StatePlugins.CO.Tests.csproj" />
+    <Project Path="apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj" />
+  </Folder>
+  <Folder Name="/apps/connectors/state/" />
+  <Folder Name="/apps/connectors/state/src/">
+    <Project Path="apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces.Tests/SEBT.Portal.StatesPlugins.Interfaces.Tests.csproj" />
+    <Project Path="apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj" />
+  </Folder>
+  <Folder Name="/apps/portal/" />
+  <Folder Name="/apps/portal/src/">
+    <Project Path="apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj" />
+    <Project Path="apps/portal/src/SEBT.Portal.Core/SEBT.Portal.Core.csproj" />
+    <Project Path="apps/portal/src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj" />
+    <Project Path="apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj" />
+    <Project Path="apps/portal/src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj" />
+    <Project Path="apps/portal/src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj" />
+    <Project Path="apps/portal/src/SEBT.Portal.TestUtilities/SEBT.Portal.TestUtilities.csproj" />
+    <Project Path="apps/portal/src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj" />
+  </Folder>
+  <Folder Name="/apps/portal/test/">
+    <Project Path="apps/portal/test/SEBT.Portal.Tests/SEBT.Portal.Tests.csproj" />
+  </Folder>
+</Solution>

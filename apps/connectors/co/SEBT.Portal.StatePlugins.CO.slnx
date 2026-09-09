@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/SEBT.Portal.StatePlugins.CO.CbmsApi/SEBT.Portal.StatePlugins.CO.CbmsApi.csproj" />
+  <Project Path="src/SEBT.Portal.StatePlugins.CO.Tests/SEBT.Portal.StatePlugins.CO.Tests.csproj" />
+  <Project Path="src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj" />
+</Solution>

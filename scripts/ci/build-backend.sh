@@ -116,6 +116,8 @@ restore_dependencies() {
   log_info "Restoring .NET dependencies..."
   cd "$PROJECT_ROOT"
 
+  # Locked-mode enforcement lives in Directory.Build.props (CI-gated on $(CI)), so a
+  # plain restore here still fails on lockfile drift in CI without a shell flag.
   dotnet restore --verbosity minimal
 
   log_success "Dependencies restored"
@@ -123,10 +125,10 @@ restore_dependencies() {
 
 # Build state connector package
 build_state_connector_package() {
-  local state_connector_dir="$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
+  local state_connector_dir="$PROJECT_ROOT/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces"
 
   if [ ! -d "$state_connector_dir" ]; then
-    log_info "Skipping state connector package (state-connector dir not present)"
+    log_info "Skipping state connector package (apps/connectors/state not present)"
     return 0
   fi
 
@@ -175,7 +177,7 @@ show_artifacts() {
   log_info "Build artifacts:"
 
   # Find all bin directories
-  find "$PROJECT_ROOT/src" -type d -name "bin" | while read -r bin_dir; do
+  find "$PROJECT_ROOT/apps" -type d -name "bin" -not -path "*/node_modules/*" | while read -r bin_dir; do
     if [ -d "$bin_dir/$CONFIGURATION" ]; then
       local project_name=$(basename "$(dirname "$bin_dir")")
       local artifact_size=$(du -sh "$bin_dir/$CONFIGURATION" 2>/dev/null | cut -f1 || echo "N/A")

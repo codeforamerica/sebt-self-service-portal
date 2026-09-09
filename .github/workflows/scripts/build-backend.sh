@@ -125,17 +125,17 @@ restore_dependencies() {
 # Build state connector package
 build_state_connector_package() {
   log_info "Building state connector package..."
-  cd "$PROJECT_ROOT/state-connector/src/SEBT.Portal.StatesPlugins.Interfaces"
+  cd "$PROJECT_ROOT/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces"
 
-  if [ -f /.dockerenv ]; then
-    PACKAGE_OUTPUT="/root/nuget-store"
-  elif [ -n "${DOCKER_HOST:-}" ]; then
-    PACKAGE_OUTPUT="/root/nuget-store"
-  elif [ -n "${GITHUB_ACTIONS:-}" ]; then
-    PACKAGE_OUTPUT="$PROJECT_ROOT/../../../nuget-store"
+  # Home-anchored store matches the csproj's RestoreAdditionalProjectSources
+  # ($(HomeDir)/nuget-store) in every environment: /root in containers,
+  # /home/runner on GitHub Actions, ~ locally.
+  if [ -n "${HOME:-}" ]; then
+    PACKAGE_OUTPUT="$HOME/nuget-store"
   else
-    PACKAGE_OUTPUT="./nuget-store"
+    PACKAGE_OUTPUT="$PROJECT_ROOT/nuget-store"
   fi
+  mkdir -p "$PACKAGE_OUTPUT"
 
   dotnet build SEBT.Portal.StatesPlugins.Interfaces.csproj \
     -p:GeneratePackageOnBuild=false \
@@ -145,7 +145,7 @@ build_state_connector_package() {
   dotnet pack SEBT.Portal.StatesPlugins.Interfaces.csproj \
     --no-build \
     --configuration "$CONFIGURATION" \
-    --output $PACKAGE_OUTPUT \
+    --output "$PACKAGE_OUTPUT" \
     --verbosity minimal
 
   log_success "State connector package built"
@@ -171,7 +171,7 @@ show_artifacts() {
   log_info "Build artifacts:"
 
   # Find all bin directories
-  find "$PROJECT_ROOT/src" -type d -name "bin" | while read -r bin_dir; do
+  find "$PROJECT_ROOT/apps" -type d -name "bin" -not -path "*/node_modules/*" | while read -r bin_dir; do
     if [ -d "$bin_dir/$CONFIGURATION" ]; then
       local project_name=$(basename "$(dirname "$bin_dir")")
       local artifact_size=$(du -sh "$bin_dir/$CONFIGURATION" 2>/dev/null | cut -f1 || echo "N/A")

@@ -1,0 +1,58 @@
+// Direct subpath imports avoid the @sebt/design-system barrel export, which
+// re-exports react-i18next-dependent modules. Importing from the barrel in a
+// Server Component would pull react-i18next into the RSC bundle and crash.
+import { CheckerShell } from '@/components/CheckerShell'
+import { headingFont, primaryFont } from '@/design/fonts'
+import { env } from '@/lib/env'
+import { buildRootMetadata } from '@/lib/metadata'
+import { Providers } from '@/providers/Providers'
+import { AmplitudeAnalytics, MetaPixelAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
+import { getState } from '@sebt/design-system/src/lib/state'
+import type { Viewport } from 'next'
+import './globals.css'
+import './styles.scss'
+
+const state = getState()
+
+const amplitudeApiKey = env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+const mixpanelToken = env.NEXT_PUBLIC_MIXPANEL_TOKEN
+const siteImproveId = env.NEXT_PUBLIC_SITEIMPROVE_ID
+const metaPixelId = env.NEXT_PUBLIC_META_PIXEL
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5
+}
+
+export const metadata = buildRootMetadata(state)
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html
+      lang="en"
+      data-state={state}
+      className={`usa-js-loading ${primaryFont.variable} ${headingFont.variable}`}
+    >
+      <head>
+        {process.env.NEXT_PUBLIC_BUILD_SHA && (
+          <meta name="build-sha" content={process.env.NEXT_PUBLIC_BUILD_SHA} />
+        )}
+        {/* Meta Pixel - only rendered when NEXT_PUBLIC_META_PIXEL is configured */}
+        {metaPixelId && <MetaPixelAnalytics pixelId={metaPixelId} />}
+      </head>
+      <body>
+        <Providers>
+          <CheckerShell state={state}>{children}</CheckerShell>
+        </Providers>
+        <script src="/js/uswds-init.min.js" defer />
+      </body>
+      {/* Mixpanel - only rendered when MIXPANEL_TOKEN is configured */}
+      {mixpanelToken && <MixpanelAnalytics token={mixpanelToken} />}
+      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
+      {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
+      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
+      {siteImproveId && <SiteImproveAnalytics siteId={siteImproveId} />}
+    </html>
+  )
+}

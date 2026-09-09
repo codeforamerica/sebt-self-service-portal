@@ -1,0 +1,100 @@
+using Medallion.Threading;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Tests.Helpers;
+using SEBT.Portal.Tests.Integration.Extensions;
+
+namespace SEBT.Portal.Tests.Integration;
+
+/// <summary>
+/// Shared test factory for integration tests that spin up the real HTTP pipeline.
+/// Uses environment variables for configuration because WebApplicationFactory's
+/// ConfigureAppConfiguration can trigger ConfigurationManager disposal races
+/// when multiple IClassFixture test classes share a factory in the same collection.
+/// Env vars are cleaned up in Dispose; the [Collection("Integration")] attribute
+/// serializes test classes so there is no cross-test contamination.
+/// </summary>
+public class PortalWebApplicationFactory : WebApplicationFactory<Program>
+{
+    /// <summary>
+    /// JWT signing key injected into the test host. Tests that mint their own
+    /// tokens (e.g. AuthCookieAuthenticationTests) reference this constant so the
+    /// signature matches what the JwtBearer middleware will validate against.
+    /// </summary>
+    public const string JwtSecretKey = "integration-test-secret-key-at-least-32-chars!";
+
+    private static readonly string[] EnvVarKeys =
+    [
+        "PluginAssemblyPaths__0",
+        "PluginAssemblyPaths__1",
+        "JwtSettings__SecretKey",
+        "STATE",
+        "Oidc__DiscoveryEndpoint",
+        "Oidc__ClientId",
+        "Oidc__CallbackRedirectUri",
+        "Oidc__CompleteLoginSigningKey",
+        "Redis__Host",
+        "ConnectionStrings__Redis",
+        "IdProofingRequirements__household+view__application",
+        "IdProofingRequirements__household+view__coloadedStreamline",
+        "IdProofingRequirements__household+view__streamline",
+        "Oidc__StepUp__DiscoveryEndpoint",
+        "Oidc__StepUp__ClientId",
+        "Oidc__StepUp__ClientSecret",
+        "Oidc__StepUp__RedirectUri"
+    ];
+
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        // Plugin paths — prevent loading DLLs with missing transitive dependencies
+        Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", "plugins-none");
+        Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
+
+        // JWT + OIDC config for auth integration tests
+        Environment.SetEnvironmentVariable("JwtSettings__SecretKey", JwtSecretKey);
+        Environment.SetEnvironmentVariable("STATE", "co");
+        Environment.SetEnvironmentVariable("Oidc__DiscoveryEndpoint", "https://auth.example.com/.well-known/openid-configuration");
+        Environment.SetEnvironmentVariable("Oidc__ClientId", "test-client");
+        Environment.SetEnvironmentVariable("Oidc__CallbackRedirectUri", "http://localhost:3000/callback");
+        Environment.SetEnvironmentVariable("Oidc__CompleteLoginSigningKey", JwtSecretKey);
+
+        // IdProofingRequirements are configured via env vars for integration tests
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
+        Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
+
+        // Prevent developer user-secrets step-up values from tripping IdProofingRequirementsCoherenceValidator.
+        Environment.SetEnvironmentVariable("Oidc__StepUp__DiscoveryEndpoint", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientId", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientSecret", "");
+        Environment.SetEnvironmentVariable("Oidc__StepUp__RedirectUri", "");
+
+        builder.ConfigureServices(services =>
+        {
+            // Replace database services with no-op mocks so startup
+            // doesn't require a real SQL Server instance.
+            services.ReplaceWithMock<IDatabaseMigrator>();
+            services.ReplaceWithMock<IDatabaseSeeder>();
+
+            // Replace the distributed lock provider with an in-process implementation.
+            // Without this, AddDistributedLocking falls back to SqlDistributedSynchronizationProvider
+            // (since Redis is disabled above), which tries to open a real SQL connection on lock
+            // acquisition — failing in CI where no SQL Server is reachable at the default address.
+            var lockDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IDistributedLockProvider));
+            if (lockDescriptor != null)
+                services.Remove(lockDescriptor);
+            services.AddSingleton<IDistributedLockProvider>(new InProcessLockProvider());
+        });
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        foreach (var key in EnvVarKeys)
+            Environment.SetEnvironmentVariable(key, null);
+        base.Dispose(disposing);
+    }
+}

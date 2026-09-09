@@ -4,7 +4,9 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useLayoutEffect, useRef, type ReactNode } from 'react'
 
 import { DataLayer } from './data-layer'
+import { deriveEnvironmentFromHost } from './environment'
 import { CTA_CLICK } from './events'
+import { initWebVitals } from './web-vitals'
 
 export interface PageContext {
   /** Logical page title */
@@ -21,7 +23,11 @@ export type RoutePageContextMap = Record<string, PageContext>
 interface DataLayerProviderProps {
   /** Application identifier set on page.application (e.g., "sebt-portal", "sebt-enrollment-checker") */
   application: string
-  /** Environment name (e.g., "dev", "staging", "production"). Defaults to NEXT_PUBLIC_ENVIRONMENT or "production". */
+  /**
+   * Environment name (e.g., "dev", "staging", "production"). Optional — when omitted,
+   * it falls back to NEXT_PUBLIC_ENVIRONMENT, and then to a value derived from the
+   * hostname at runtime (see {@link deriveEnvironmentFromHost}).
+   */
   environment?: string
   /** Map of pathname to page context. When navigation occurs, matching context is set and pageLoad() fires. */
   routes?: RoutePageContextMap
@@ -58,7 +64,9 @@ export function DataLayerProvider({
     window.digitalData!.page.set('entry_source', application.replace('sebt-', '').replace(/-/g, '_'))
     window.digitalData!.page.set(
       'environment',
-      environment ?? process.env.NEXT_PUBLIC_ENVIRONMENT ?? 'production'
+      environment ??
+        process.env.NEXT_PUBLIC_ENVIRONMENT ??
+        deriveEnvironmentFromHost(window.location.hostname)
     )
   }, [application, environment])
 
@@ -66,6 +74,7 @@ export function DataLayerProvider({
     <>
       <PageTracker routes={routes} />
       <CtaTracker />
+      <WebVitalsTracker />
       {children}
     </>
   )
@@ -138,6 +147,26 @@ function CtaTracker() {
 
     document.addEventListener('click', handleClick)
     return () => document.removeEventListener('click', handleClick)
+  }, [])
+
+  return null
+}
+
+/**
+ * Subscribes Web Vitals reporting once per page lifetime. Subscriptions intentionally live
+ * until the page unloads — CLS/INP only finalize at page-hide — so no cleanup is returned
+ * from the effect. The ref guard keeps StrictMode's double-mount and any provider re-render
+ * from double-subscribing.
+ */
+function WebVitalsTracker() {
+  const subscribed = useRef(false)
+
+  useEffect(() => {
+    if (subscribed.current) return
+    if (typeof window === 'undefined' || !window.digitalData?.initialized) return
+    subscribed.current = true
+
+    initWebVitals(window.digitalData)
   }, [])
 
   return null

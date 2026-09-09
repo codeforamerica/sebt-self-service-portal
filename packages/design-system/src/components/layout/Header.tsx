@@ -2,14 +2,13 @@
 
 import { supportedLanguages } from '../../lib/i18n'
 import Image from 'next/image'
-import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { LanguageSelector } from './LanguageSelector'
 import type { HeaderProps } from './types'
 
-// Logo dimensions match each state's SVG viewBox so the image renders
-// at its natural aspect ratio. maxh-6 caps the height for states with
-// taller logos (DC), while wider logos (CO) spread horizontally.
+// Logo dimensions match each state's SVG viewBox so the image renders at its
+// natural aspect ratio. maxh-6 caps the height for taller logos (DC); width-auto
+// on the image lets the width follow, so capping scales rather than squashes.
 const logoDimensions: Record<string, { width: number; height: number }> = {
   dc: { width: 122, height: 52 },
   co: { width: 192, height: 28 }
@@ -29,21 +28,14 @@ export function Header({ state = 'dc' }: HeaderProps) {
       <div className="display-flex flex-justify flex-align-center width-full padding-y-105 padding-x-2">
         <div className="usa-navbar border-0">
           <div className="usa-logo margin-left-0">
-            <Link
-              href="/"
-              title="Home"
-              aria-label="Home"
-              className="display-flex flex-align-center"
-            >
-              <Image
-                src={`/images/states/${state}/logo.svg`}
-                alt={t('bannerImageAltText')}
-                width={width}
-                height={height}
-                priority
-                className="maxw-full height-auto maxh-6"
-              />
-            </Link>
+            <Image
+              src={`/images/states/${state}/logo.svg`}
+              alt={t('bannerImageAltText')}
+              width={width}
+              height={height}
+              priority
+              className="maxw-full width-auto height-auto maxh-6"
+            />
           </div>
         </div>
 

@@ -1,4 +1,7 @@
 {
+  "env": {
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1"
+  },
   "permissions": {
     "deny": [
       "Bash(rm -rf:*)",
@@ -44,6 +47,7 @@
       "Bash(git rm:*)",
       "Bash(git check-ignore:*)",
       "Bash(dotnet build:*)",
+      "Bash(dotnet build-server shutdown)",
       "Bash(dotnet restore:*)",
       "Bash(dotnet test:*)",
       "Bash(dotnet tool restore:*)",
@@ -60,6 +64,9 @@
       "Bash(pnpm api:build:*)",
       "Bash(pnpm api:test)",
       "Bash(pnpm api:test:*)",
+      "Bash(pnpm claude:api:build)",
+      "Bash(pnpm claude:api:test)",
+      "Bash(pnpm claude:api:test:unit)",
       "Bash(pnpm ci:build)",
       "Bash(pnpm ci:test)",
       "Bash(pnpm prebuild:*)",
@@ -91,9 +98,7 @@
       "mcp__plugin_figma_figma__whoami"
     ],
     "additionalDirectories": [
-      "../sebt-self-service-portal-state-connector",
-      "../sebt-self-service-portal-dc-connector",
-      "../sebt-self-service-portal-co-connector"
+      "../sebt-self-service-portal-dc-connector"
     ]
   },
   "enabledPlugins": {
@@ -136,7 +141,10 @@
     ]
   },
   "sandbox": {
-    "enabled": true,
-    "allowUnsandboxedCommands": false
+    "enabled": false,
+    "allowUnsandboxedCommands": false,
+    "network": {
+      "allowLocalBinding": true
+    }
   }
 }

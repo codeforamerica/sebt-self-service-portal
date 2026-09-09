@@ -52,3 +52,35 @@ output "database_secret_arn" {
   description = "ARN of the Secrets Manager secret with DB admin credentials."
   value       = module.app.database_secret_arn
 }
+
+output "preview_keycloak_hostname" {
+  description = "Public base URL for the shared Keycloak IdP."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].hostname : null
+}
+
+output "preview_keycloak_discovery_endpoint" {
+  description = "OIDC discovery URL for the shared Keycloak IdP."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].discovery_endpoint : null
+}
+
+output "preview_keycloak_admin_secret_arn" {
+  description = "Secrets Manager ARN for the shared Keycloak bootstrap admin credentials."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].admin_secret_arn : null
+  sensitive   = true
+}
+
+output "preview_keycloak_admin_bypass_secret_arn" {
+  description = "Secrets Manager ARN for the ALB /admin* bypass header used by preview scripts."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].admin_bypass_secret_arn : null
+  sensitive   = true
+}
+
+output "preview_keycloak_admin_bypass_secret_name" {
+  description = "Secrets Manager name for the ALB /admin* bypass header."
+  value       = var.enable_preview_keycloak ? module.preview_keycloak[0].admin_bypass_secret_name : null
+}
+
+output "keycloak_repository_url" {
+  description = "ECR repository URL for the shared Keycloak image."
+  value       = data.aws_ecr_repository.keycloak.repository_url
+}

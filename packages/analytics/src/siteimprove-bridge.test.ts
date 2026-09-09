@@ -36,6 +36,19 @@ describe('initSiteImproveBridge', () => {
     })
   })
 
+  it('replays the current page view when the bridge attaches after page_load', () => {
+    // Fresh loads (OIDC callback, dashboard) fire page_load before this bridge
+    // attaches; the shared subscription replays it so the view isn't dropped.
+    new DataLayer('digitalData')
+    window.digitalData!.pageLoad({ name: 'Callback' })
+
+    teardown = initSiteImproveBridge()
+
+    expect(pushSpy).toHaveBeenCalledTimes(1)
+    const [cmd] = pushSpy.mock.calls[0] as [unknown[]]
+    expect(cmd[0]).toBe('trackdynamic')
+  })
+
   it('forwards trackEvent with category derived from page.flow + page.step and event name as action', () => {
     new DataLayer('digitalData')
     window.digitalData!.page.set('flow', 'cards')

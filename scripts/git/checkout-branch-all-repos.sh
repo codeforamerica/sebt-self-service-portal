@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create or check out the same branch name in all four SEBT multi-repo siblings.
+# Create or check out the same branch name in the SEBT repos (monorepo + DC connector).
 #
 # Usage:
 #   ./scripts/git/checkout-branch-all-repos.sh feature/my-branch
@@ -13,10 +13,9 @@ BRANCH="${1:?usage: $0 <branch-name>}"
 
 REPOS_ROOT="${REPOS_ROOT:-$HOME/Projects}"
 
+# state + co connectors are now in-repo (apps/connectors/*); only the DC connector is external.
 REPOS=(
   sebt-self-service-portal
-  sebt-self-service-portal-state-connector
-  sebt-self-service-portal-co-connector
   sebt-self-service-portal-dc-connector
 )
 

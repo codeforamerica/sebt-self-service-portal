@@ -43,6 +43,28 @@ variable "domain" {
   description = "Domain name for the application (e.g. dc.sebt-client-portal.dev.codeforamerica.app)."
 }
 
+variable "certificate_sans" {
+  type        = list(string)
+  description = <<-EOT
+    Additional ACM subject alternative names for the API and public Web
+    certificates. Pass wildcard names such as `["*.dev.co.example.app"]` so
+    ephemeral preview hosts like `pr-N` / `api-pr-N` can terminate TLS on the
+    shared ALBs. Defaults to none.
+    EOT
+  default     = []
+}
+
+variable "cloudfront_extra_aliases" {
+  type        = list(string)
+  description = <<-EOT
+    Additional CloudFront alternate domain names beyond the primary site
+    domain. Pass the same wildcard used in `certificate_sans` (such as
+    `["*.dev.co.example.app"]`) so preview hosts can be served publicly
+    through CloudFront. Defaults to none.
+    EOT
+  default     = []
+}
+
 variable "enable_appconfig" {
   type        = bool
   description = <<-EOT
@@ -110,6 +132,12 @@ variable "project" {
   default     = "sebt-portal"
 }
 
+variable "project_short" {
+  type        = string
+  description = "Abbreviated project name for resource naming."
+  default     = "sebt"
+}
+
 variable "public_subnets" {
   type        = list(string)
   description = "List of public subnet IDs."
@@ -125,6 +153,20 @@ variable "rate_limit_window" {
   type        = number
   description = "Time window, in seconds, for the rate limit. Options are: 60, 120, 300, 600"
   default     = 60
+}
+
+variable "security_agent_user_agent" {
+  type        = string
+  description = <<-EOT
+    User-Agent value used by the AWS Security Agent penetration test. When set in
+    the development environment, requests with this User-Agent are allowed
+    through the WAF and bypass all subsequent rules. Leave empty to disable.
+
+    SECURITY: User-Agent is trivially spoofable and is recorded in WAF/ALB logs,
+    so anyone who learns this value can bypass the WAF. The dev-only guard lives
+    in locals.tf; clear this value once the engagement is complete.
+    EOT
+  default     = "securityagent-0609137"
 }
 
 variable "sender_email" {
@@ -239,5 +281,29 @@ variable "hosted_zone_id" {
   type        = string
   description = "Route 53 hosted zone ID for DNS records. Required when the zone name doesn't exactly match the domain."
   default     = ""
+}
+
+variable "redis_node_type" {
+  type        = string
+  description = "ElastiCache node instance type for the Valkey cache."
+  default     = "cache.t4g.micro"
+}
+
+variable "redis_num_cache_clusters" {
+  type        = number
+  description = "Number of nodes in the Redis replication group (1 primary + N-1 replicas)."
+  default     = 2
+}
+
+variable "redis_multi_az_enabled" {
+  type        = bool
+  description = "Spread the Redis primary and replica across Availability Zones."
+  default     = true
+}
+
+variable "redis_automatic_failover_enabled" {
+  type        = bool
+  description = "Promote a Redis replica to primary automatically on primary failure."
+  default     = true
 }
 

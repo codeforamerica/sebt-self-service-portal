@@ -25,10 +25,23 @@ export { SummaryBox } from './components/ui/SummaryBox'
 export type { SummaryBoxProps } from './components/ui/SummaryBox'
 export { LoadingInterstitial } from './components/ui/LoadingInterstitial'
 export type { LoadingInterstitialProps } from './components/ui/LoadingInterstitial'
+export { Spinner } from './components/ui/Spinner'
+export type { SpinnerProps } from './components/ui/Spinner'
+export { ProcessingFieldset } from './components/ui/ProcessingFieldset'
+export type { ProcessingFieldsetProps } from './components/ui/ProcessingFieldset'
+export { ProcessingIndicator } from './components/ui/ProcessingIndicator'
+export type { ProcessingIndicatorProps } from './components/ui/ProcessingIndicator'
 
 // Rich text rendering (markdown-to-jsx)
 export { RichText } from './components/RichText/RichText'
 export type { RichTextProps } from './components/RichText/RichText'
+
+// Outage redirect choreography. Headless: each app resolves outage state its own way and
+// passes the answer in. Safe for the main barrel — it uses next/navigation, not react-i18next.
+export { OutageGuard, OUTAGE_PATH } from './components/OutageGuard/OutageGuard'
+export type { OutageGuardProps } from './components/OutageGuard/OutageGuard'
+export { createOutageFlagCache } from './lib/outageFlagCache'
+export type { OutageFlagCache } from './lib/outageFlagCache'
 
 // Layout chrome (server-safe — no react-i18next dependency)
 export { SkipNav } from './components/layout/SkipNav'

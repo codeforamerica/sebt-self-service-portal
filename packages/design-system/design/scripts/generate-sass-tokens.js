@@ -14,6 +14,12 @@
  * 2. Extract 'theme' object with USWDS settings
  * 3. Convert to SASS variables ($theme-color-primary: 'mint-cool-60v')
  * 4. Output to design/sass/_uswds-theme-{state}.scss
+ *
+ * Semantic component tokens (SEMANTIC_COMPONENT_TOKENS) are the exception:
+ * USWDS has no settings for them, so they are excluded from the
+ * @use "uswds-core" with (...) map (unknown settings fail the Sass compile)
+ * and emitted instead as plain variables in _uswds-theme-semantic.scss for
+ * component SCSS to consume via color().
  */
 
 import './load-env.js'
@@ -78,11 +84,31 @@ const TOKEN_NAME_MAP = {
 }
 
 /**
+ * Semantic component tokens: state-configurable button colors.
+ * Not USWDS settings: routed to _uswds-theme-semantic.scss instead of the
+ * uswds-core settings map. A state must define all of these or none
+ * (none = buttons not yet token-driven for that state).
+ */
+export const SEMANTIC_COMPONENT_TOKENS = [
+  'theme-button-bg',
+  'theme-button-bg-hover',
+  'theme-button-bg-active',
+  'theme-button-text',
+  'theme-button-outline-bg',
+  'theme-button-outline-border',
+  'theme-button-outline-border-hover',
+  'theme-button-outline-border-active',
+  'theme-button-outline-text',
+  'theme-button-outline-bg-hover',
+  'theme-button-outline-bg-active'
+]
+
+/**
  * Convert token reference to USWDS token string
  * {mint-cool-60v} -> 'mint-cool-60v'
  * {gold-20v} -> 'gold-20v'
  */
-function toUswdsValue(value, type) {
+export function toUswdsValue(value, type) {
   if (typeof value !== 'string') return value
 
   // Handle token references: {mint-cool-5} -> 'mint-cool-5'
@@ -110,13 +136,65 @@ function toUswdsValue(value, type) {
 }
 
 /**
+ * Convert a semantic token's value to a USWDS color() argument.
+ * Values must be token references: {theme-secondary-dark} -> 'secondary-dark',
+ * {gold-20v} -> 'gold-20v'. Raw hex would compile into color('#...') and fail
+ * deep in the Sass build, so it's rejected here with the token named.
+ */
+function toSemanticValue(tokenName, value) {
+  if (typeof value !== 'string' || !/^\{[a-zA-Z0-9-]+\}$/.test(value)) {
+    throw new Error(
+      `Semantic token "${tokenName}" must reference another token ` +
+        `(e.g. {theme-secondary} or {gold-20v}); got: ${JSON.stringify(value)}`
+    )
+  }
+  const ref = value.slice(1, -1)
+  // USWDS color() takes role names without the theme- prefix: 'secondary-dark'
+  const uswdsName = ref.startsWith('theme-') ? ref.slice('theme-'.length) : ref
+  return `'${uswdsName}'`
+}
+
+/**
+ * Extract semantic component tokens from a theme object.
+ * _buttons.scss consumes every one of these variables, so an incomplete set
+ * fails here, naming each missing token, rather than as an undefined-variable
+ * error deep in the Sass compile.
+ */
+export function extractSemanticTokens(themeObj) {
+  const defined = name => {
+    const t = themeObj[name]
+    return t && typeof t === 'object' && '$value' in t
+  }
+  const present = SEMANTIC_COMPONENT_TOKENS.filter(defined)
+  const missing = SEMANTIC_COMPONENT_TOKENS.filter(name => !defined(name))
+
+  if (missing.length > 0) {
+    throw new Error(
+      `State token file defines ${present.length} of ${SEMANTIC_COMPONENT_TOKENS.length} ` +
+        `semantic button tokens; missing: ${missing.join(', ')}`
+    )
+  }
+
+  const variables = present.map(name => ({
+    name: `$${name}`,
+    value: toSemanticValue(name, themeObj[name].$value)
+  }))
+  return { variables, missing }
+}
+
+/**
  * Process theme tokens into SASS variable declarations
  */
-function processThemeTokens(themeObj) {
+export function processThemeTokens(themeObj) {
   const variables = []
 
   for (const [tokenName, tokenData] of Object.entries(themeObj)) {
     if (!tokenData || typeof tokenData !== 'object' || !('$value' in tokenData)) {
+      continue
+    }
+
+    // Semantic component tokens are not USWDS settings; see extractSemanticTokens
+    if (SEMANTIC_COMPONENT_TOKENS.includes(tokenName)) {
       continue
     }
 
@@ -214,10 +292,40 @@ ${otherVars.map(formatSassVariable).join('\n')}
 }
 
 /**
+ * Generate the semantic component token partial.
+ * Plain SASS variables (not USWDS settings) holding USWDS color-token names,
+ * consumed by component SCSS via @use + color().
+ */
+export function generateSemanticContent(state, variables, timestamp) {
+  const body =
+    variables.length > 0
+      ? variables.map(v => `${v.name}: ${v.value};`).join('\n')
+      : '// No semantic component tokens defined for this state yet.'
+
+  return `// ==========================================================================
+// Semantic Component Tokens - ${state.toUpperCase()}
+// ==========================================================================
+//
+// Auto-generated from Figma Tokens Studio
+// Source: design/states/${state}.json
+// Generated: ${timestamp}
+//
+// DO NOT EDIT DIRECTLY - Regenerated from design tokens during build
+//
+// Values are USWDS color-token names for use with color(), e.g.:
+//   @use '../uswds-theme-semantic' as semantic;
+//   background-color: color(semantic.$theme-button-bg);
+// ==========================================================================
+
+${body}
+`
+}
+
+/**
  * Generate USWDS settings file using @use ... with () syntax for SASS modules
  * This is required for USWDS 3.x proper theme configuration
  */
-function generateSettingsContent(state, variables, timestamp) {
+export function generateSettingsContent(state, variables, timestamp) {
   // Build the settings map for @use ... with ()
   const settingsLines = []
 
@@ -313,6 +421,7 @@ function main() {
   const outputDir = join(rootDir, 'design', 'sass')
   const themeOutputPath = join(outputDir, `_uswds-theme-${state}.scss`)
   const settingsOutputPath = join(outputDir, '_uswds-settings.scss')
+  const semanticOutputPath = join(outputDir, '_uswds-theme-semantic.scss')
 
   // Check input exists
   if (!existsSync(inputPath)) {
@@ -339,6 +448,15 @@ function main() {
   const variables = processThemeTokens(stateJson.theme)
   console.log(`✅ Extracted ${variables.length} USWDS theme variables`)
 
+  // Extract semantic component tokens (fails on a partial or malformed set)
+  let semantic
+  try {
+    semantic = extractSemanticTokens(stateJson.theme)
+  } catch (error) {
+    console.error(`❌ ${error.message}`)
+    process.exit(1)
+  }
+
   // Generate and write legacy SASS variables file (for backward compatibility)
   const sassContent = generateSassContent(state, variables)
   writeFileSync(themeOutputPath, sassContent, 'utf8')
@@ -349,7 +467,15 @@ function main() {
   writeFileSync(settingsOutputPath, settingsContent, 'utf8')
   console.log(`✅ Generated: ${rel(settingsOutputPath)}`)
 
+  // Generate and write semantic component token partial
+  const semanticContent = generateSemanticContent(state, semantic.variables, timestamp)
+  writeFileSync(semanticOutputPath, semanticContent, 'utf8')
+  console.log(`✅ Generated: ${rel(semanticOutputPath)} (${semantic.variables.length} semantic tokens)`)
+
   console.log(`✅ ${state.toUpperCase()} SASS theme files generated successfully!`)
 }
 
-main()
+// Only auto-run when invoked as a script, not when imported by tests.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main()
+}

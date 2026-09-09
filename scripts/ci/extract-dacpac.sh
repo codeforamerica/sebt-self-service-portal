@@ -170,8 +170,8 @@ apply_migrations() {
   log_info "Applying EF migrations to temp DB..."
   cd "$PROJECT_ROOT"
   dotnet ef database update \
-    --project src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
-    --startup-project src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
+    --project apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj \
+    --startup-project apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj \
     --connection "$conn"
 
   log_success "Migrations applied"

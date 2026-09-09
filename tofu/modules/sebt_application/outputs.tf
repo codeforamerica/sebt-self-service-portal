@@ -43,6 +43,21 @@ output "web_endpoint_url" {
   value       = module.web.endpoint_url
 }
 
+output "cloudfront_distribution_domain_name" {
+  description = "CloudFront distribution domain name used for the public web site and preview hosts."
+  value       = module.cloudfront_waf.distribution_domain_name
+}
+
+output "cloudfront_distribution_hosted_zone_id" {
+  description = "Route53 hosted zone ID for CloudFront alias records."
+  value       = module.cloudfront_waf.distribution_hosted_zone_id
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for the public web site."
+  value       = module.cloudfront_waf.distribution_id
+}
+
 output "web_repository_url" {
   description = "ECR repository URL for the Web service."
   value       = module.web.repository_url

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj" />
+  <Project Path="src/SEBT.Portal.StatesPlugins.Interfaces.Tests/SEBT.Portal.StatesPlugins.Interfaces.Tests.csproj" />
+</Solution>

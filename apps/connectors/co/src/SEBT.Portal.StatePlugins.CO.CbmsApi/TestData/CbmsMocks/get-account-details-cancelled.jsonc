@@ -1,0 +1,36 @@
+{
+    "stdntEnrollDtls": [
+        {
+            "gurdFstNm": "App",
+            "gurdLstNm": "MockCancelled",
+            "gurdPhnNm": "7207073837",
+            "gurdEmailAddr": "sebt.co+cancelled@codeforamerica.org",
+            "sebtYear": 2026,
+            "sebtAppId": 1198788,
+            "stdFstNm": "Child",
+            "stdLstNm": "Mockington",
+            "stdDob": "2018-11-16",
+            "sebtAppSts": "PI",
+            "stdntEligSts": "OT", 
+            "eligSrc": "PK",
+            "sebtChldId": 1200544,
+            "sebtChldCwin": 10615709,
+            "addrLn1": "8600 S Wadsworth Ct",
+            "addrLn2": "#4",
+            "cty": "Littleton",
+            "staCd": "CO",
+            "zip": "80128",
+            "zip4": "6298",
+            "ebtCardLastFour": "",  //blank because cancelled?
+            "benAvalDt": "", //blank because cancelled?
+            "benExpDt": "", //blank because cancelled?
+            "ebtCardSts": "", //blank because cancelled?
+            "cardIssDt": "",
+            "cardBal": 0, //blank because cancelled?
+            "cbmsCsId": "", //blank because cancelled?
+            "dircEligSrc": ""// blank because applied through PEAK
+        }
+    ],
+    "respCd": "00",
+    "respMsg": "Success"
+}

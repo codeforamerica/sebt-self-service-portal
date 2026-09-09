@@ -65,6 +65,10 @@ mkdir -p "$BUNDLE"
 
 log_info "Staging API"
 cp -R "$API_DIR" "$BUNDLE/api"
+# This is a DC-only bundle. A full-solution build stages every in-repo state's
+# plugins into the API dir (each connector's CopyPlugins target runs on build),
+# and the API publish sweeps plugins-*/ along — prune everything but DC's.
+find "$BUNDLE/api" -maxdepth 1 -type d -name 'plugins-*' ! -name 'plugins-dc' -exec rm -rf {} +
 
 log_info "Staging web (extract zip and rename to web/)"
 mkdir -p "$STAGING/web-extract"

@@ -28,6 +28,7 @@ resource "aws_iam_policy" "github_actions" {
           "ec2:*",
           "ecr:*",
           "ecs:*",
+          "elasticache:*",
           "elasticloadbalancing:*",
           "iam:*",
           "kms:*",
@@ -78,6 +79,16 @@ resource "aws_ecr_repository" "api" {
 
 resource "aws_ecr_repository" "web" {
   name                 = "${var.project}-${var.state}-${var.environment}-web"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+# Shared Keycloak image for non-production OIDC.
+resource "aws_ecr_repository" "keycloak" {
+  name                 = "${var.project}-${var.state}-${var.environment}-keycloak"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {

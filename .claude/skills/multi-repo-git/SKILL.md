@@ -1,23 +1,21 @@
 ---
 name: multi-repo-git
-description: Use when performing git operations (sync, branch, status) across the SEBT multi-repo project — switching branches, pulling latest, creating feature branches, or checking repo state
+description: Use when performing git operations (sync, branch, status) across the SEBT repos — switching branches, pulling latest, creating feature branches, or checking repo state
 allowed-tools: Bash(git -C:*)
 ---
 
 # Multi-Repo Git Operations
 
-Manage git operations across the SEBT portal's four repositories in parallel.
+Manage git operations across the SEBT repositories in parallel. Since the monorepo
+consolidation (ADR 0017), there are two: this monorepo (portal + state contract + CO
+connector) and the external DC connector.
 
 ## Repositories
 
 ```
-# Assumes all four SEBT repos are sibling directories under a common parent
-SEBT_BASE="$(dirname "$(git rev-parse --show-toplevel)")"
-
-portal="$SEBT_BASE/sebt-self-service-portal"
-state_connector="$SEBT_BASE/sebt-self-service-portal-state-connector"
-dc_connector="$SEBT_BASE/sebt-self-service-portal-dc-connector"
-co_connector="$SEBT_BASE/sebt-self-service-portal-co-connector"
+# The DC connector is a sibling checkout of the monorepo.
+monorepo="$(git rev-parse --show-toplevel)"
+dc_connector="$(dirname "$monorepo")/sebt-self-service-portal-dc-connector"
 ```
 
 All git commands MUST use `git -C <repo-path>` to be explicit about the target directory.
@@ -26,7 +24,7 @@ All git commands MUST use `git -C <repo-path>` to be explicit about the target d
 
 ### sync — Checkout main and pull latest
 
-Default: all four repos. User may specify a subset.
+Default: both repos. User may specify a subset.
 
 1. Run `git -C <path> checkout main` on each repo (parallel)
 2. Run `git -C <path> pull` on each repo (parallel)
@@ -43,7 +41,7 @@ Run in parallel across targeted repos. Report results.
 
 ### status — Show state of all repos
 
-Run `git -C <path> status --short --branch` on all four repos in parallel.
+Run `git -C <path> status --short --branch` on both repos in parallel.
 
 Present as a summary table:
 

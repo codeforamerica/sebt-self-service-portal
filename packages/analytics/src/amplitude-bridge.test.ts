@@ -106,6 +106,51 @@ describe('initAmplitudeBridge', () => {
     })
   })
 
+  describe('missed page_load replay', () => {
+    // The auth callback and dashboard landings fire page_load on a fresh page
+    // load, often before Amplitude's bridge attaches. Without a replay those
+    // events never reach Amplitude — breaking the login->callback->dashboard
+    // conversion funnel and dashboard retention. Mirrors the Mixpanel bridge.
+    it('replays a page_load that fired before the bridge attached', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'auth')
+      window.digitalData!.pageLoad({ step: 'callback' })
+
+      initAmplitudeBridge('test-key', amplitudeStub)
+
+      expect(amplitudeStub.track).toHaveBeenCalledTimes(1)
+      expect(amplitudeStub.track).toHaveBeenCalledWith(
+        'page_load',
+        expect.objectContaining({ flow: 'auth', step: 'callback' })
+      )
+    })
+
+    it('does not double-track when the bridge was present for the page_load', () => {
+      new DataLayer('digitalData')
+      initAmplitudeBridge('test-key', amplitudeStub)
+
+      window.digitalData!.pageLoad({ step: 'callback' })
+
+      expect(amplitudeStub.track).toHaveBeenCalledTimes(1)
+    })
+
+    it('replays only the most recent page_load after multiple navigations', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('flow', 'auth')
+      window.digitalData!.pageLoad({ step: 'callback' })
+      window.digitalData!.page.set('flow', 'dashboard')
+      window.digitalData!.pageLoad({ step: 'dashboard' })
+
+      initAmplitudeBridge('test-key', amplitudeStub)
+
+      expect(amplitudeStub.track).toHaveBeenCalledTimes(1)
+      expect(amplitudeStub.track).toHaveBeenCalledWith(
+        'page_load',
+        expect.objectContaining({ flow: 'dashboard', step: 'dashboard' })
+      )
+    })
+  })
+
   describe('error handling', () => {
     it('logs a warning and returns a no-op teardown when amplitude.init throws', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -143,13 +188,13 @@ describe('initAmplitudeBridge', () => {
   })
 
   describe('privacy configuration', () => {
-    it('disables cross-session identity storage', () => {
+    it('uses session storage', () => {
       new DataLayer('digitalData')
       initAmplitudeBridge('test-key', amplitudeStub)
 
       expect(amplitudeStub.init).toHaveBeenCalledWith(
         'test-key',
-        expect.objectContaining({ identityStorage: 'none' })
+        expect.objectContaining({ identityStorage: 'session' })
       )
     })
 

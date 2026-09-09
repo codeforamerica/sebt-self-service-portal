@@ -123,7 +123,7 @@ run_tests() {
   if [ "$COLLECT_COVERAGE" = true ]; then
     log_info "Code coverage collection enabled"
     test_args+=(
-      "--collect:\"XPlat Code Coverage\""
+      "--collect:XPlat Code Coverage"
       "--results-directory" "./TestResults"
     )
   fi
@@ -160,7 +160,7 @@ show_test_summary() {
   log_info "Test summary:"
 
   # Count test projects
-  local test_projects=$(find "$PROJECT_ROOT/test" -name "*.csproj" 2>/dev/null | wc -l)
+  local test_projects=$(find "$PROJECT_ROOT/apps" -name "*.Tests.csproj" -not -path "*/node_modules/*" 2>/dev/null | wc -l)
   log_info "  Test projects: $test_projects"
 
   # Show test results directory if exists

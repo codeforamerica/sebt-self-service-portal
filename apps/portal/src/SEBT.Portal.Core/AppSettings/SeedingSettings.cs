@@ -1,0 +1,62 @@
+using SEBT.Portal.Core.Seeding;
+
+namespace SEBT.Portal.Core.AppSettings;
+
+/// <summary>
+/// Configuration for database seeding behavior.
+/// </summary>
+public class SeedingSettings : IHaveConfigSectionName
+{
+    public static string SectionName => "Seeding";
+
+    /// <summary>
+    /// Format string for seed user emails. Use {0} as placeholder for the scenario name.
+    /// Default: "{0}@example.com" (e.g., "co-loaded@example.com").
+    /// For deployed environments, set to something like "sebt.dc+{0}@codeforamerica.org".
+    /// </summary>
+    public string EmailPattern { get; set; } = "{0}@example.com";
+
+    /// <summary>
+    /// When set (e.g. in appsettings.Development.json), the co-loaded seed user and mock household
+    /// keyed to that user use this email instead of <see cref="EmailPattern"/>.
+    /// Remove or leave empty to use the default pattern. If you already have <c>co-loaded@example.com</c>
+    /// in the database, delete that user or clear seeded data before re-seeding.
+    /// </summary>
+    public string? CoLoadedSeedEmailOverride { get; set; }
+
+    /// <summary>
+    /// When true, database seeding runs even outside the Development environment.
+    /// Default: false (seeding only runs when ASPNETCORE_ENVIRONMENT is Development).
+    /// </summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// When true, exposes local/CI-only diagnostic endpoints such as
+    /// <c>POST /api/dev/seed/reseed/{scenarioName}</c>.
+    /// Default: false. Enable only for localhost and CI; never on deployed hosts,
+    /// including public "dev" environments that still use ASPNETCORE_ENVIRONMENT=Development.
+    /// </summary>
+    public bool EnableDevEndpoints { get; set; }
+
+    /// <summary>
+    /// The state code (e.g., "dc", "co") from the STATE environment variable.
+    /// Used to conditionally seed state-specific scenarios.
+    /// </summary>
+    public string? State { get; set; }
+
+    /// <summary>
+    /// Constructs a full email address from a scenario name using the configured pattern.
+    /// </summary>
+    /// <param name="scenarioName">The scenario name (e.g., "co-loaded", "verified").</param>
+    /// <returns>The full email address.</returns>
+    public string BuildEmail(string scenarioName)
+    {
+        if (!string.IsNullOrWhiteSpace(CoLoadedSeedEmailOverride)
+            && string.Equals(scenarioName, SeedScenarios.CoLoaded.Name, StringComparison.Ordinal))
+        {
+            return CoLoadedSeedEmailOverride.Trim();
+        }
+
+        return string.Format(EmailPattern, scenarioName);
+    }
+}

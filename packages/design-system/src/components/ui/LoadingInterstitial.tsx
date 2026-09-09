@@ -1,3 +1,5 @@
+import { Spinner } from './Spinner';
+
 export interface LoadingInterstitialProps {
   title: string;
   message: string;
@@ -12,7 +14,7 @@ export function LoadingInterstitial({ title, message }: LoadingInterstitialProps
       aria-busy="true"
     >
       <div className="text-center margin-bottom-0">
-        <span className="usa-spinner" aria-hidden="true" />
+        <Spinner />
       </div>
       <h1 className="font-sans-xl text-primary text-center margin-top-1 margin-bottom-4">
         {title}

@@ -59,23 +59,23 @@ check_prerequisites() {
 
 # Main execution
 main() {
-  log_info "=== Backend Build - CO Local Dev ==="
+  log_info "=== Backend Build - DC Local Dev ==="
   log_info "Project Root: $PROJECT_ROOT"
   log_info "Configuration: $CONFIGURATION"
   echo ""
 
   check_prerequisites
 
-  # Build state connector interfaces
-  cd "$MULTI_PROJECT_ROOT/sebt-self-service-portal-state-connector"
-  dotnet build
-
-  # Build DC plugin
+  # State connector (contract) is in-repo at apps/connectors/state.
+  # Build the external DC plugin against the in-repo contract and copy its DLLs
+  # into the portal's plugins-dc folder.
   cd "$MULTI_PROJECT_ROOT/sebt-self-service-portal-dc-connector"
-  dotnet build
+  dotnet build \
+    -p:StateConnectorInterfacesProject="$PROJECT_ROOT/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj" \
+    -p:PluginDestDir="$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Api/plugins-dc"
 
-  # Build main app
-  cd "$MULTI_PROJECT_ROOT/sebt-self-service-portal"
+  # Build the monorepo (portal + in-repo state connector contract).
+  cd "$PROJECT_ROOT"
   dotnet build
 }
 

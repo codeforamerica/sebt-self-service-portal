@@ -4,7 +4,11 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.44"
+      version = "~> 6.0"
+    }
+    doppler = {
+      source  = "dopplerhq/doppler"
+      version = "~> 1.20"
     }
   }
 }

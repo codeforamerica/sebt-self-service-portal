@@ -88,7 +88,6 @@ const CONFIG = {
   outputDir: outDirOverride
     ? path.resolve(process.cwd(), outDirOverride)
     : join(contentDir, 'locales'),
-  hashFile: join(contentDir, '.copy-hash'),
   locales: {
     am: 'Amharic',    
     en: 'English',
@@ -175,6 +174,11 @@ const CONFIG = {
     'bulk order new cards': 'replacementCards',
   },
 };
+
+// The hash lives inside each output directory so every consumer (portal,
+// enrollment checker, package default) caches independently — a shared hash
+// file would let the first app's regeneration silently skip the second's.
+CONFIG.hashFile = join(CONFIG.outputDir, '.copy-hash');
 
 /**
  * Parse CSV content into rows
@@ -426,6 +430,9 @@ function calculateCombinedHash(stateFiles) {
   // Include the script itself so logic changes invalidate the cache
   hash.update(readFileSync(fileURLToPath(import.meta.url), 'utf8'));
 
+  // Include output-shaping CLI args so e.g. a --sections change regenerates
+  hash.update(JSON.stringify({ app: appFilter, sections: allowedSections }));
+
   for (const { state, csvPath } of stateFiles) {
     if (existsSync(csvPath)) {
       const content = readFileSync(csvPath, 'utf8');
@@ -473,6 +480,7 @@ function needsRegeneration(stateFiles) {
  */
 function saveHash(stateFiles) {
   const hash = calculateCombinedHash(stateFiles);
+  mkdirSync(CONFIG.outputDir, { recursive: true });
   writeFileSync(CONFIG.hashFile, hash, 'utf8');
 }
 
@@ -554,7 +562,13 @@ const NAMESPACE_APP = {
   idProofing:             'portal',
   optIn:                  'portal',
   offBoarding:            'portal',
-  outage:                 'portal',
+  outage:                 'all',
+  // Portal-only pages sharing CSV section S9 with the outage page (notification opt-in flow).
+  email:                  'portal',
+  enterEmail:             'portal',
+  language:               'portal',
+  signIn:                 'portal',
+  text:                   'portal',
   dashboard:              'portal',
   edit:                   'portal',
   editContactPreferences: 'portal',
@@ -562,6 +576,13 @@ const NAMESPACE_APP = {
   stepUpDisclaimer:       'portal',
   stepUpFailure:          'portal',
   proto:                  'portal',
+  // S11 error/maintenance pages — namespaces derive from the CSV page names.
+  // No code consumes these yet; classification keeps each app's bundle free of
+  // the other app's page copy.
+  '404Portal':                  'portal',
+  maintenancePortal:            'portal',
+  '404EnrollmentChecker':       'enrollment',
+  maintenanceEnrollmentChecker: 'enrollment',
 }
 
 function isNamespaceForApp(namespace, app) {
@@ -569,6 +590,24 @@ function isNamespaceForApp(namespace, app) {
   // eslint-disable-next-line security/detect-object-injection -- namespace comes from JSON filenames, not user input
   const mapped = NAMESPACE_APP[namespace] ?? 'all'
   return mapped === 'all' || mapped === app
+}
+
+/**
+ * Drop namespaces that belong to another app before validation and JSON emission.
+ * A CSV section can hold pages for multiple apps (e.g. S9 has the shared outage page
+ * alongside portal-only opt-in pages), so section filtering alone would emit orphaned
+ * JSON files the app never imports.
+ */
+function filterStateDataForApp(stateData, app) {
+  if (!app) return stateData
+  const filtered = {}
+  for (const [locale, namespaces] of Object.entries(stateData)) {
+    // eslint-disable-next-line security/detect-object-injection -- locale comes from CONFIG.locales keys
+    filtered[locale] = Object.fromEntries(
+      Object.entries(namespaces).filter(([namespace]) => isNamespaceForApp(namespace, app))
+    )
+  }
+  return filtered
 }
 
 /**
@@ -732,8 +771,8 @@ function main() {
         const rows = parseCSV(csvContent);
         console.log(`   Found ${rows.length - 1} content entries`);
 
-        // Build locale data for this state
-        const stateData = buildStateLocaleData(rows, state);
+        // Build locale data for this state, keeping only this app's namespaces
+        const stateData = filterStateDataForApp(buildStateLocaleData(rows, state), appFilter);
 
         // Validate completeness
         const warnings = validateStateCompleteness(stateData, state);

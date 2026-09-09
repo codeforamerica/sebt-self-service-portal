@@ -1,0 +1,27 @@
+/* SEBT local Keycloak login branding */
+
+/* keycloak.v2 reserves 70%/30% for title vs language switcher at ≥768px,
+   which left-shifts the logo when no language selector is present. */
+@media (min-width: 768px) {
+  div.pf-v5-c-login__main-header {
+    grid-template-columns: 1fr;
+  }
+}
+
+#kc-page-title {
+  text-align: center;
+}
+
+.sebt-login-brand {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 0 0 1rem;
+}
+
+.sebt-login-logo {
+  display: block;
+  margin-inline: auto;
+  width: min(220px, 70vw);
+  height: auto;
+}

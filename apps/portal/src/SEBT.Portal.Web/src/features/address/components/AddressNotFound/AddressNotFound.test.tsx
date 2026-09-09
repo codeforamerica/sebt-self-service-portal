@@ -1,0 +1,375 @@
+import { DataLayer, DataLayerProvider } from '@sebt/analytics'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import i18n from 'i18next'
+import { useEffect } from 'react'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import enCOConfirmInfo from '@/content/locales/en/co/confirmInfo.json'
+import { portalRoutes } from '@/lib/analytics-routes'
+
+import type { AddressUpdateResponse, UpdateAddressRequest } from '../../api/schema'
+import { AddressFlowProvider, useAddressFlow } from '../../context'
+import { AddressNotFound } from './AddressNotFound'
+
+const mockPush = vi.fn()
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush
+  }),
+  usePathname: () => '/profile/address/address-not-found'
+}))
+
+// PageTracker sets page.flow/step inside requestAnimationFrame; stub rAF so jsdom flushes
+// synchronously when tests rely on PageTracker (see @sebt/analytics DataLayerProvider.test.tsx).
+vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+  cb(0)
+  return 0
+})
+vi.stubGlobal('cancelAnimationFrame', vi.fn())
+
+const addressNotFoundPageContext = portalRoutes['/profile/address/address-not-found']!
+
+let mockState = 'dc'
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getState: () => mockState,
+    getStateLinks: (state: string) => ({
+      ...actual.getStateLinks(state as 'dc' | 'co'),
+      help: {
+        contactUs: 'https://sunbucks.dc.gov/page/contact-us',
+        faqs: ''
+      }
+    })
+  }
+})
+
+const TEST_ADDRESS: UpdateAddressRequest = {
+  streetAddress1: '123 Main St NW',
+  streetAddress2: 'Apt 4B',
+  city: 'Washington',
+  state: 'DC',
+  postalCode: '20001'
+}
+
+const TEST_VALIDATION_RESULT: AddressUpdateResponse = {
+  status: 'invalid',
+  reason: 'not-found',
+  message: 'Address not found'
+}
+
+/**
+ * Helper component that populates the AddressFlowContext with test data
+ * before rendering AddressNotFound. The provider starts empty, so this
+ * bridges the gap by calling setValidationResult on mount.
+ */
+function ContextSeeder({
+  enteredAddress,
+  validationResult,
+  includeInspector = false,
+  formPath,
+  continuePath
+}: {
+  enteredAddress: UpdateAddressRequest
+  validationResult: AddressUpdateResponse
+  includeInspector?: boolean
+  formPath?: string
+  continuePath?: string
+}) {
+  const { setValidationResult, setNavigationTargets } = useAddressFlow()
+
+  useEffect(() => {
+    setValidationResult(validationResult, enteredAddress)
+    if (formPath && continuePath) {
+      setNavigationTargets({ formPath, continuePath })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <>
+      <AddressNotFound />
+      {includeInspector && <ContextInspector />}
+    </>
+  )
+}
+
+/**
+ * Renders current context state for test assertions.
+ */
+function ContextInspector() {
+  const { validationResult, address } = useAddressFlow()
+  return (
+    <div data-testid="context-inspector">
+      <span data-testid="has-validation-result">{validationResult ? 'yes' : 'no'}</span>
+      <span data-testid="has-address">{address ? 'yes' : 'no'}</span>
+    </div>
+  )
+}
+
+function renderComponent(
+  enteredAddress: UpdateAddressRequest = TEST_ADDRESS,
+  validationResult: AddressUpdateResponse = TEST_VALIDATION_RESULT,
+  {
+    includeInspector = false,
+    formPath,
+    continuePath
+  }: { includeInspector?: boolean; formPath?: string; continuePath?: string } = {}
+) {
+  const user = userEvent.setup()
+  return {
+    user,
+    ...render(
+      <AddressFlowProvider>
+        <ContextSeeder
+          enteredAddress={enteredAddress}
+          validationResult={validationResult}
+          includeInspector={includeInspector}
+          {...(formPath ? { formPath } : {})}
+          {...(continuePath ? { continuePath } : {})}
+        />
+      </AddressFlowProvider>
+    )
+  }
+}
+
+describe('AddressNotFound', () => {
+  beforeEach(() => {
+    mockPush.mockClear()
+  })
+
+  describe('Content rendering', () => {
+    it('renders the title and body text', () => {
+      renderComponent()
+
+      expect(
+        screen.getByRole('heading', { name: /are you sure this address is correct/i })
+      ).toBeInTheDocument()
+      expect(screen.getByText(/couldn.t find the address you entered/i)).toBeInTheDocument()
+    })
+
+    it('shows entered address in the warning alert', () => {
+      renderComponent()
+
+      expect(screen.getByText(/123 Main St NW/)).toBeInTheDocument()
+      expect(screen.getByText(/Apt 4B/)).toBeInTheDocument()
+      expect(screen.getByText(/Washington, DC 20001/)).toBeInTheDocument()
+    })
+
+    it('shows the alert heading', () => {
+      renderComponent()
+
+      const heading = screen.getByRole('heading', { name: /address you entered/i })
+      expect(heading).toBeInTheDocument()
+      expect(heading.tagName).toBe('H4')
+    })
+  })
+
+  describe('DC state specific', () => {
+    it('DC: shows "Edit the address" button and "Contact us" link', () => {
+      mockState = 'dc'
+      renderComponent()
+
+      expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /contact us/i })).toBeInTheDocument()
+    })
+
+    it('DC: does not show "Use this address"', () => {
+      mockState = 'dc'
+      renderComponent()
+
+      expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+    })
+
+    it('DC: "Contact us" link points to the state help URL and is instrumented for analytics', () => {
+      mockState = 'dc'
+      renderComponent()
+
+      const contactLink = screen.getByRole('link', { name: /contact us/i })
+      expect(contactLink).toHaveAttribute('href', 'https://sunbucks.dc.gov/page/contact-us')
+      expect(contactLink).toHaveAttribute('data-analytics-cta', 'address_not_found_contact_us_cta')
+      expect(contactLink).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
+    })
+
+    it('DC: emits a cta_click with the address-update context when "Contact us" is activated', async () => {
+      mockState = 'dc'
+      new DataLayer('digitalData')
+      const user = userEvent.setup()
+
+      render(
+        <DataLayerProvider
+          application="test"
+          routes={portalRoutes}
+        >
+          <AddressFlowProvider>
+            <ContextSeeder
+              enteredAddress={TEST_ADDRESS}
+              validationResult={TEST_VALIDATION_RESULT}
+            />
+          </AddressFlowProvider>
+        </DataLayerProvider>
+      )
+
+      // Seed page context directly: this test asserts cta_click merges page.flow/step into
+      // the event payload. PageTracker route matching is covered in @sebt/analytics tests;
+      // vi.mock('next/navigation') here does not propagate into that package under Vitest 4.1.8+.
+      window.digitalData!.page.set('flow', addressNotFoundPageContext.flow)
+      window.digitalData!.page.set('step', addressNotFoundPageContext.step)
+
+      await user.click(screen.getByRole('link', { name: /contact us/i }))
+
+      const ctaEvents = window.digitalData!.event.filter((e) => e.eventName === 'cta_click')
+      const ctaEvent = ctaEvents[ctaEvents.length - 1]
+      expect(ctaEvent).toBeDefined()
+      expect(ctaEvent!.eventData).toMatchObject({
+        cta_id: 'address_not_found_contact_us_cta',
+        cta_destination_type: 'external_only',
+        flow: 'address_update',
+        step: 'address_not_found'
+      })
+      expect(ctaEvent!.eventData.cta_target as string).toMatch(/contact us/i)
+    })
+  })
+
+  describe('CO state specific', () => {
+    beforeAll(() => {
+      mockState = 'co'
+      i18n.addResourceBundle('en', 'confirmInfo', enCOConfirmInfo, true, true)
+    })
+
+    it('CO: shows "Edit the address" button and "Use this address" link if not blocked', () => {
+      mockState = 'co'
+      renderComponent()
+
+      expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /use this address/i })).toBeInTheDocument()
+    })
+
+    it('CO: does not show "Contact us"', () => {
+      mockState = 'co'
+      renderComponent()
+
+      expect(screen.queryByRole('link', { name: /contact us/i })).not.toBeInTheDocument()
+    })
+
+    it('CO: does not show "Use this address" for blocked addresses', () => {
+      mockState = 'co'
+      const blockedResult: AddressUpdateResponse = {
+        status: 'invalid',
+        reason: 'blocked',
+        message: 'This address cannot be used for mail delivery.'
+      }
+      renderComponent(TEST_ADDRESS, blockedResult)
+
+      expect(screen.getByRole('button', { name: /edit the address/i })).toBeInTheDocument()
+
+      expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+    })
+
+    it('CO: "Use this address" sets address and navigates to replacement cards', async () => {
+      mockState = 'co'
+      const { user } = renderComponent()
+
+      const useButton = screen.getByRole('button', { name: /use this address/i })
+      await user.click(useButton)
+
+      expect(mockPush).toHaveBeenCalledWith('/profile/address/replacement-cards')
+    })
+
+    it('CO: "Use this address" uses context continuePath when configured', async () => {
+      mockState = 'co'
+      const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
+        formPath: '/cards/replace/address?case=SEBT-001',
+        continuePath: '/cards/replace/confirm?case=SEBT-001'
+      })
+
+      const useButton = screen.getByRole('button', { name: /use this address/i })
+      await user.click(useButton)
+
+      expect(mockPush).toHaveBeenCalledWith('/cards/replace/confirm?case=SEBT-001')
+    })
+
+    it('CO: "Use this address" preserves validationResult in context (prevents FlowGuard race)', async () => {
+      mockState = 'co'
+      const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
+        includeInspector: true
+      })
+
+      const useButton = screen.getByRole('button', { name: /use this address/i })
+      await user.click(useButton)
+
+      // validationResult should still be present (not cleared before navigation)
+      expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
+      expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+    })
+  })
+
+  // --- Navigation ---
+
+  it('"Edit the address" clears validation result and navigates to the address form', async () => {
+    const { user } = renderComponent()
+
+    const editButton = screen.getByRole('button', { name: /edit the address/i })
+    await user.click(editButton)
+
+    expect(mockPush).toHaveBeenCalledWith('/profile/address')
+  })
+
+  it('"Edit the address" uses context formPath when configured', async () => {
+    const { user } = renderComponent(TEST_ADDRESS, TEST_VALIDATION_RESULT, {
+      formPath: '/cards/replace/address?case=SEBT-001',
+      continuePath: '/cards/replace/confirm?case=SEBT-001'
+    })
+
+    const editButton = screen.getByRole('button', { name: /edit the address/i })
+    await user.click(editButton)
+
+    expect(mockPush).toHaveBeenCalledWith('/cards/replace/address?case=SEBT-001')
+  })
+
+  // --- Blocked address ---
+
+  it('shows blocked-specific title when reason is "blocked"', () => {
+    const blockedResult: AddressUpdateResponse = {
+      status: 'invalid',
+      reason: 'blocked',
+      message: 'This address cannot be used for mail delivery.'
+    }
+    renderComponent(TEST_ADDRESS, blockedResult)
+
+    expect(
+      screen.queryByRole('heading', { name: /are you sure this address is correct/i })
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /this address can.t be used/i })).toBeInTheDocument()
+  })
+
+  it('shows blocked-specific body when reason is "blocked"', () => {
+    const blockedResult: AddressUpdateResponse = {
+      status: 'invalid',
+      reason: 'blocked',
+      message: 'This address cannot be used for mail delivery.'
+    }
+    renderComponent(TEST_ADDRESS, blockedResult)
+
+    expect(screen.queryByText(/couldn.t find the address you entered/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/not available for .* card delivery/i)).toBeInTheDocument()
+  })
+
+  // --- Edge case ---
+
+  it('omits the street address line 2 when not provided', () => {
+    const addressWithoutLine2: UpdateAddressRequest = {
+      streetAddress1: '456 Oak Ave',
+      city: 'Denver',
+      state: 'CO',
+      postalCode: '80202'
+    }
+    renderComponent(addressWithoutLine2)
+
+    expect(screen.getByText(/456 Oak Ave/)).toBeInTheDocument()
+    expect(screen.getByText(/Denver, CO 80202/)).toBeInTheDocument()
+    expect(screen.queryByText(/Apt/)).not.toBeInTheDocument()
+  })
+})

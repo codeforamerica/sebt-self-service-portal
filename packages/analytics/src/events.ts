@@ -5,7 +5,31 @@
 
 // Global
 export const PAGE_LOAD = 'page_load'
+/**
+ * Fired when the user clicks any element tagged with `data-analytics-cta` (via the global
+ * CtaTracker delegated listener). Carries:
+ *  - `cta_id` (event): stable, snake_case identifier for the clicked CTA, read from the
+ *    element's `data-analytics-cta` attribute (falls back to the element id). Kept stable
+ *    across copy/markup changes; convention is a trailing `_cta`. Address-update help/support
+ *    examples: `address_form_contact_us_cta`, `address_not_found_contact_us_cta`.
+ *  - `cta_target` (event): human-readable label — the element's `aria-label`, else its
+ *    trimmed text content.
+ *  - `cta_destination_type` (event, optional): from `data-analytics-cta-destination-type`,
+ *    e.g. `external_only` for phone/mailto/third-party links; omitted for internal navigation.
+ *  - `flow` + `step` (page): auto-merged from page context (see lib/analytics-routes.ts); on
+ *    the address-update flow these are `flow: 'address_update'` with the route's step.
+ */
 export const CTA_CLICK = 'cta_click'
+/**
+ * Fired once per Web Vitals metric (ttfb, fcp, lcp, cls, inp) as it finalizes — at most
+ * five per hard page load. Carries `metric_name`, `metric_value` (ms for timing metrics,
+ * unitless 4-decimal for CLS), `metric_rating`, plus `page_instance_id` and `initial_path`,
+ * which pin late-finalizing metrics (CLS/INP report at page-hide) to the page load they
+ * measured even if the user has since soft-navigated.
+ * CLS and INP are cumulative and can grow after they first finalize; the recorded value is the
+ * metric as of the first page-hide — an accepted tradeoff for strict once-per-load semantics.
+ */
+export const WEB_VITALS = 'web_vitals'
 
 // Authentication
 export const OTP_REQUEST = 'otp_request'
@@ -29,10 +53,20 @@ export const HOUSEHOLD_RESULT = 'household_result'
 
 /** Fired when the user enters the address update form. */
 export const ADDRESS_UPDATE_START = 'address_update_start'
-/** Fired when the address update API call completes. Carries `address_update_status` (page). */
+/**
+ * Fired when the address update API call completes. Carries `address_update_status` and
+ * `address_state_category` (page) — the latter classifies the submitted state as `home_state`
+ * or `out_of_state` relative to the deployment's home state.
+ */
 export const ADDRESS_UPDATE_SUBMIT = 'address_update_submit'
 /** Fired when the address update API call fails. Carries `error_code` (page). */
 export const ADDRESS_UPDATE_ERROR = 'address_update_error'
+/**
+ * Fired when local (client-side) form validation blocks the address-update submit before any
+ * backend request — so failures like an over-length street address are still measured. Carries
+ * `error_code` and `field_name` (page); `flow`/`step` ride along from the page context.
+ */
+export const ADDRESS_UPDATE_VALIDATION_ERROR = 'address_update_validation_error'
 /** Fired when the user enters the card replacement flow. */
 export const CARD_REPLACEMENT_START = 'card_replacement_start'
 /** Fired when the card replacement API call completes. Carries `card_replacement_status` (page). */

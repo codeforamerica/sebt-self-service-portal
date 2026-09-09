@@ -1,0 +1,16 @@
+<Project>
+
+  <!--
+    Connector projects (apps/connectors/*) were imported (git subtree) from standalone
+    repos that did not enforce the monorepo's TreatWarningsAsErrors policy. Import the
+    repo-wide defaults (NuGet security auditing, etc.) from the root Directory.Build.props,
+    but relax warnings-as-errors here so the imported code keeps building unchanged.
+    Follow-up: clean connector warnings and remove this override to match the portal.
+  -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

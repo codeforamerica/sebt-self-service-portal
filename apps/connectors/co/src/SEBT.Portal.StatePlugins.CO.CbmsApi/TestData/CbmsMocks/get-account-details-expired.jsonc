@@ -1,0 +1,36 @@
+{
+    "stdntEnrollDtls": [
+        {
+            "gurdFstNm": "Parent",
+            "gurdLstNm": "MockExpired",
+            "gurdPhnNm": "7193564665",
+            "gurdEmailAddr": "sebt.co+expired@codeforamerica.org",
+            "sebtYear": 2026,
+            "sebtAppId": 1198609,
+            "stdFstNm": "TIMMY",
+            "stdLstNm": "TWOCASE",
+            "stdDob": "2013-06-11",
+            "stdntEligSts": "AP",
+            "sebtAppSts": "PI",
+            "eligSrc": "PK",
+            "sebtChldId": 1200268,
+            "sebtChldCwin": 10615256,
+            "addrLn1": "1111 E 17th Ave",
+            "addrLn2": "Apartment 281",
+            "cty": "Denver",
+            "staCd": "CO",
+            "zip": "80218",
+            "zip4": "1522",
+            "ebtCardLastFour": "",
+            "benAvalDt": "",
+            "benExpDt": "",
+            "ebtCardSts": "",
+            "cardIssDt": "",
+            "cardBal": 0,
+            "cbmsCsId": "",
+            "dircEligSrc": ""
+        }
+    ],
+    "respCd": "00",
+    "respMsg": "Success"
+}

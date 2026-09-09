@@ -17,21 +17,30 @@ jobs:
     environment: dev-dc
 
     steps:
+      - name: Get dc-connector access token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: dc-connector-token
+        with:
+          app-id: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID }}
+          private-key: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal-dc-connector
+
       - name: Checkout dc-connector
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: codeforamerica/sebt-self-service-portal-dc-connector
-          token: ${{ secrets.SEBT_CONNECTOR_REPOSITORY_PAT }}
+          token: ${{ steps.dc-connector-token.outputs.token }}
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2
 
       - name: Build and push seed image
         env:
@@ -48,7 +57,7 @@ jobs:
 
     steps:
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
