@@ -319,15 +319,6 @@ Prefer this over `<NoWarn>`, which silences the warning entirely.
 
 ## Branch Strategy 🌿
 
-**State-Specific Development:**
-
-```bash
-deploy/dc-*    # DC-only changes (only DC builds in CI)
-deploy/co-*    # CO-only changes (only CO builds in CI)
-```
-
-**Shared Development:**
-
 ```bash
 feature/*      # Changes for all states (all states build in CI)
 chore/*
