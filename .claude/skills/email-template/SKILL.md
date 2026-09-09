@@ -320,6 +320,57 @@ Same as legal bullet lists but with number text instead of `&#8226;`:
 <td valign="top" style="font-family: 'Source Sans Pro', sans-serif; font-size: 12px; line-height: 1.5; color: #5c5c5c; padding: 0 8px 4px 0;">1.</td>
 ```
 
+**Never use this pattern inside the USDA Non-Discrimination Statement.** See below.
+
+### USDA Non-Discrimination Statement (verbatim — do NOT reflow)
+
+Authoritative source: <https://www.fna.usda.gov/civil-rights/nds>, heading
+**"All Other Programs NDS"**. (The agency is now FNA — Food and Nutrition Administration —
+formerly FNS. Note `WebFetch` times out on that host; plain `curl` works.)
+
+DHS OGC has confirmed the formatting of this section is intentional and prescribed.
+Reproduce the paragraph structure from the markdown input exactly:
+
+- **Keep all four paragraphs separate.** Do not merge them, even where the prose reads
+  continuously. The canonical `PreApprovalNotice.html` reference merges paragraphs 1 and 2
+  — that is pre-OGC drift. Do not copy it.
+- **Keep the complaint-filing methods as inline running text**, exactly as the source
+  writes them: `by: (1) mail: ...; (2) fax: ...; or (3) email: ...`. Do NOT convert the
+  `(1)/(2)/(3)` enumeration into a numbered-list table. The reference does this; it is
+  also pre-OGC drift.
+- **Preserve source capitalization verbatim** — `Federal`, `Agencies`, `State or local
+  Agency`. Do not "correct" it to lowercase.
+- **Preserve the exact hyperlink target and anchor text from the source.** Do not
+  normalize across language variants.
+- **Verify against the authoritative text before shipping.** Strip tags from each
+  paragraph and compare character counts and content to the FNA source. Source Word docs
+  have shipped with copy-paste corruption (a duplicated 145-char fragment mid-sentence in
+  para 1) that reads plausibly and survives visual review.
+
+Render each paragraph with the standard legal-section paragraph pattern:
+
+```html
+<p style="margin: 0 0 12px 0">Paragraph text verbatim from input.</p>
+```
+
+Under the standard legal-section heading:
+
+```html
+<p style="margin: 0 0 8px 0; font-weight: 700; font-size: 13px; color: #1b1b1b;">
+  Non-Discrimination Statement
+</p>
+```
+
+The source Word table wrapping this section is borderless with a white fill — layout
+scaffolding, not a visible box. Do not render a border or background for it. (The
+CONFIDENTIALITY NOTICE row is the exception: it carries `#f5f5f5`, matching the existing
+confidentiality pattern.)
+
+**Non-English variants:** FNA publishes no Spanish NDS. Do not translate this section
+yourself, and do not substitute the department-wide statement at
+`usda.gov/non-discrimination-statement` — it is a different text. Use only a translation
+supplied by OGC.
+
 ### Contact Box (CTA)
 
 Primary-colored box with centered text and links. Uses emoji entities for icons:
