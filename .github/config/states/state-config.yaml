@@ -1,6 +1,10 @@
-# District of Columbia (DC) State Configuration
+# Shared build/test configuration for state-ci.yaml's build-and-test job.
+# Was dc.yaml; renamed because build-and-test no longer matrixes per state
+# (dc/co build config was byte-identical -- see DC-735). If a state's build
+# ever needs to genuinely diverge, reinstate per-state matrixing there instead
+# of splitting this back into per-state files.
 
-state: dc
+state: shared
 version: "1.0.0"  # State-specific version for tracking deployments
 
 infrastructure:
