@@ -1,0 +1,73 @@
+# CO state-backend config — CBMS UAT smoke testing (DC-568 phase 5). TEMPLATE.
+#
+# Copy to statebackend.co.uat.yaml (gitignored) and fill in the real UAT baseUrl, tokenUrl,
+# and clientId. Point StateBackend:ConfigPath at your copy. The client secret never lives in
+# this file — clientSecretRef names a configuration key, resolved at runtime from the
+# (gitignored) appsettings.co.json or the CBMS__CLIENTSECRET environment variable.
+#
+# Field mappings below are SPIKE-SCOPE, not full CbmsResponseMapper parity. Expanding them
+# against real UAT responses is the phase-5 task.
+baseUrl: https://<cbms-uat-host>/<eapi-path>/api
+auth:
+  scheme: client_credentials
+  tokenUrl: https://<cbms-uat-host>/<oauth-app-path>/token
+  clientId: REPLACE_WITH_UAT_CLIENT_ID
+  clientSecretRef: Cbms:ClientSecret
+operations:
+  householdLookup:
+    method: post
+    path: /sebt/get-account-details
+    request:
+      map:
+        phone: PhnNm
+    response:
+      root: $.stdntEnrollDtls
+      fields:
+        summerEBTCaseID:
+          from: sebtChldCwin
+        childFirstName:
+          from: chldNm
+        applicationStatus:
+          from: sebtAppSts
+          enum: applicationStatus
+      disaggregation:
+        rule: valueInSet
+        discriminatorField: eligSrc
+        applicationValues: [CBMS, PK]
+        groupApplicationsBy: sebtAppId
+        caseInclusion: whenApprovedOrNotApplicationBased
+  enrollmentCheck:
+    method: post
+    path: /sebt/check-enrollment
+    callMode: batch
+    request:
+      expand: transposeMonthDay
+      indexField: stdReqInd
+      map:
+        firstName: stdFirstName
+        lastName: stdLastName
+        dob: stdDob
+      mapOptional:
+        schoolIdentifier: StdSchlCd
+    response:
+      root: $.stdntDtls
+      indexField: stdReqInd
+      statusMessageField: sebtEligSts
+      messageField: RespMsg
+      match:
+        strategy: confidenceThreshold
+        scoreField: mtchCnfd
+        threshold: 90
+        field: sebtEligSts
+        valueIn: ["Y"]
+enums:
+  applicationStatus:
+    map:
+      Approved: [AP]
+      Denied: [DE]
+      Pending: [PD, PE]
+    default: Unknown
+# DELIBERATELY OMITTED for UAT smoke: cardReplacement + addressUpdate (they would WRITE to
+# UAT, and the CO write shapes still have known fidelity gaps — per-case fan-out vs single
+# batch PATCH). Undeclared ops throw NotSupportedException by design. Add them back when
+# write-path fidelity work lands.

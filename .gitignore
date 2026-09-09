@@ -34,6 +34,11 @@ apps/portal/src/SEBT.Portal.Api/appsettings.Development.json
 apps/portal/src/SEBT.Portal.Api/appsettings.dc.json
 apps/portal/src/SEBT.Portal.Api/appsettings.co.json
 
+# Local state-backend configs (StateBackend:ConfigPath) carry real per-environment
+# endpoints and client IDs. Keep the .example.yaml templates tracked.
+apps/portal/src/SEBT.Portal.Api/statebackend.*.yaml
+!apps/portal/src/SEBT.Portal.Api/statebackend.*.example.yaml
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
