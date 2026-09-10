@@ -294,9 +294,7 @@ The Next.js web apps (`SEBT.Portal.Web`, `SEBT.EnrollmentChecker.Web`) also emit
 #### State-based CI testing
 
 ```bash
-pnpm ci:test:states   # Test all states
-pnpm ci:test:state:dc # Test DC state
-pnpm ci:test:state:co # Test CO state
+pnpm ci:test:states   # Run the build-and-test job
 
 # Utility commands
 pnpm ci:list          # List all ACT workflows
