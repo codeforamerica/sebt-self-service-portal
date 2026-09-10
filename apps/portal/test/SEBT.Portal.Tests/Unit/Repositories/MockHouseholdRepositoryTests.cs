@@ -397,9 +397,12 @@ public class MockHouseholdRepositoryTests
     [Fact]
     public async Task GetHouseholdByEmailAsync_CoActiveScenario_HasApprovedCaseAndActiveCard()
     {
-        // Tester AC: CO Active persona is the standard happy path — both Update Address
+        // Tester AC: CO Active persona is the standard happy path. Update Address
         // and Request Replacement CTAs should be visible (Active is in CO
-        // CardReplacement.AllowedCardStatuses).
+        // CardReplacement.AllowedCardStatuses). Three children with staggered
+        // expirations (3, 4, and 10 days) so DisableDaysBeforeExpiration can be
+        // verified live; the household CTA stays because Sofia is still outside
+        // a 4-day cutoff.
         var email = "co-active@example.com";
 
         var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
@@ -408,10 +411,26 @@ public class MockHouseholdRepositoryTests
         var app = result.Applications.First();
         Assert.Equal(ApplicationStatus.Approved, app.ApplicationStatus);
         Assert.Equal(IssuanceType.SummerEbt, app.IssuanceType);
-        Assert.Single(result.SummerEbtCases);
-        Assert.Equal(CardStatus.Active, result.SummerEbtCases[0].EbtCardStatus);
-        Assert.Equal(IssuanceType.SummerEbt, result.SummerEbtCases[0].IssuanceType);
-        Assert.Equal("1234", result.SummerEbtCases[0].EbtCardLastFour);
+        Assert.Equal(3, app.Children.Count);
+        Assert.Equal(3, result.SummerEbtCases.Count);
+        Assert.All(result.SummerEbtCases, c =>
+        {
+            Assert.Equal(CardStatus.Active, c.EbtCardStatus);
+            Assert.Equal(IssuanceType.SummerEbt, c.IssuanceType);
+        });
+
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
+        var camila = result.SummerEbtCases.Single(c => c.ChildFirstName == "Camila");
+        Assert.Equal("1234", camila.EbtCardLastFour);
+        Assert.Equal(now.AddDays(3), camila.BenefitExpirationDate);
+
+        var mateo = result.SummerEbtCases.Single(c => c.ChildFirstName == "Mateo");
+        Assert.Equal("2345", mateo.EbtCardLastFour);
+        Assert.Equal(now.AddDays(4), mateo.BenefitExpirationDate);
+
+        var sofia = result.SummerEbtCases.Single(c => c.ChildFirstName == "Sofia");
+        Assert.Equal("3456", sofia.EbtCardLastFour);
+        Assert.Equal(now.AddDays(10), sofia.BenefitExpirationDate);
     }
 
     [Fact]
