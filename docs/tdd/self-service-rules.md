@@ -18,8 +18,8 @@ Future states will have their own policies. The portal needs to enforce these wi
 
 Same split as [Minimum IAL Determination](./minimum-ial-determination.md):
 
-1. **Facts** (reported by state plugins): each `SummerEbtCase` carries an `IssuanceType` enum (SummerEbt, SnapEbtCard, TanfEbtCard, Unknown) and an `EbtCardStatus` string that the plugin maps into the shared `CardStatus` enum. These are objective statements about the case.
-2. **Policy** (owned by Core, configured per state): `SelfServiceRulesSettings` maps each `(action, issuance type)` pair to an `enabled` flag plus an allowlist of `CardStatus` values for which the action is permitted.
+1. **Facts** (reported by state plugins): each `SummerEbtCase` carries an `IssuanceType` enum (SummerEbt, SnapEbtCard, TanfEbtCard, Unknown), an `EbtCardStatus` string that the plugin maps into the shared `CardStatus` enum, and a `BenefitExpirationDate`. These are objective statements about the case.
+2. **Policy** (owned by Core, configured per state): `SelfServiceRulesSettings` maps each `(action, issuance type)` pair to an `enabled` flag plus an allowlist of `CardStatus` values for which the action is permitted. Card replacement may also apply an optional days-before-expiration cutoff (see below).
 
 Plugins never encode policy. The portal's `SelfServiceEvaluator` reads settings and produces a single `AllowedActions` record (household-level aggregate) attached to the household response sent to the frontend. A future enhancement may split this into `HouseholdAllowedActions` + per-case `CaseAllowedActions` (see Open Items below); not in scope for DC-157.
 
@@ -31,9 +31,9 @@ Plugins never encode policy. The portal's `SelfServiceEvaluator` reads settings 
 
 ### Permissive household aggregation
 
-`EvaluateHousehold` returns `true` for an action if *any* case in the household qualifies. This matches the AC: "if the user has a mix of co-loaded and non-co-loaded cases, the user will see the CTA but when they go to select their card they should not be able to select their co-loaded cards." The household-level `true` lets the CTA render; per-case filtering at the selection step blocks the ineligible cards.
+`EvaluateHousehold` returns `true` for an action if *any* case in the household qualifies. This matches the AC: "if the user has a mix of co-loaded and non-co-loaded cases, the user will see the CTA but when they go to select their card they should not be able to select their co-loaded cards." The same pattern applies to the expiration cutoff: a household with one child inside the cutoff and one still outside still sees the household Request-new-cards CTA; only the ineligible cards are omitted from selection.
 
-Per-case filtering in the UI is currently handled by `CardSelection` (hardcoded issuance-type exclusion for SNAP/TANF co-loaded cases). A follow-up may extend `SelfServiceEvaluator` to emit per-case `CaseAllowedActions` so the UI filter becomes config-driven instead of hardcoded.
+Per-case `allowCardReplacement` on the case DTO already carries issuance type, card status, cooldown, and the expiration cutoff. The household CTA stays if any child is still eligible.
 
 ### Hot reload via IOptionsMonitor
 
@@ -45,9 +45,19 @@ Per-case filtering in the UI is currently handled by `CardSelection` (hardcoded 
 
 Every write endpoint (`GetHouseholdDataQueryHandler`, `UpdateAddressCommandHandler`, `RequestCardReplacementCommandHandler`) calls the evaluator before doing work and returns `Result.PreconditionFailed(PreconditionFailedReason.NotAllowed, …)` (HTTP 412) on denial. This matches the Kernel result pattern already established for `NotFound` and `ConcurrencyMismatch` denials. The frontend reads `allowedActions` for UX but cannot bypass the backend. A crafted request from a modified client or curl will 412 with the configured `DisabledMessageKey` as the response body.
 
+### Expiration cutoff (card replacement only)
+
+Optional `CardReplacement.DisableDaysBeforeExpiration` (int, ≥ 0). When set to N, replacement is denied for a case once remaining calendar days until `BenefitExpirationDate` are ≤ N. Example: N = 4 on August 1 denies a card expiring August 5 and still allows one expiring August 7.
+
+"Today" is the state's calendar date in `OutageSchedule:TimeZoneId` (DC `America/New_York`, CO `America/Denver`). An invalid timezone logs an error and falls back to UTC.
+
+The cutoff is independent of `Enabled`: statewide off still denies every card; statewide on still applies the cutoff per case. Omit or null leaves replacement available until other rules deny it (current behavior). A missing expiration date does not trigger the cutoff. Address update is unaffected. The property sits on shared `ActionRuleSettings`, but `SelfServiceEvaluator` applies it only on the card-replacement path.
+
+`N = 0` denies on the expiration date itself.
+
 ### Server-driven UI gating
 
-The portal response includes `allowedActions` at the household level. Frontend components (`ActionButtons`, `HouseholdSummary`) consume those flags directly. `ChildCard` and `CardSelection` currently apply per-case filtering based on issuance type (hardcoded) and cooldown-window checks. There is no client-side policy evaluation — the frontend merely renders what the backend says is allowed. This means policy tuning is config-only; a content change in `DisabledMessageKey` propagates through the i18n system without a component edit.
+The portal response includes household `allowedActions` and per-case `allowCardReplacement`. Frontend components (`ActionButtons`, `HouseholdSummary`) consume the household flags; `ChildCard` and `CardSelection` hide replacement when `allowCardReplacement` is false (server-evaluated, including the cutoff). `/cards/replace` redirects to the dashboard when the deep-linked case is denied. There is no client-side date math. The frontend merely renders what the backend says is allowed. This means policy tuning is config-only; a content change in `DisabledMessageKey` propagates through the i18n system without a component edit.
 
 ---
 
@@ -65,9 +75,8 @@ appsettings.{state}.json   →     overrides merge in via ASP.NET config pipelin
                                         ↓
                            API response (HouseholdData DTO)
                                         ↓
-                  Frontend: ActionButtons, HouseholdSummary
-                  (CardSelection + ChildCard apply per-case filtering
-                   from issuance type + cooldown locally)
+                  Frontend: ActionButtons, HouseholdSummary,
+                  ChildCard, CardSelection (per-case allowCardReplacement)
 ```
 
 ---
@@ -89,6 +98,10 @@ appsettings.{state}.json   →     overrides merge in via ASP.NET config pipelin
   "CardReplacement": {
     "Enabled": true,
     "DisabledMessageKey": "i18nKeyForDenialCopy",
+    // Optional. Deny replacement when remaining calendar days until
+    // BenefitExpirationDate are ≤ this value (state-local date).
+    // Independent of Enabled. Omit for no cutoff.
+    // "DisableDaysBeforeExpiration": 4,
     "ByIssuanceType": {
       "SummerEbt":   { "Enabled": true, "AllowedCardStatuses": ["Lost", "Stolen", "Damaged"] },
       "TanfEbtCard": { "Enabled": false },
@@ -102,6 +115,7 @@ appsettings.{state}.json   →     overrides merge in via ASP.NET config pipelin
 Issuance types not listed in `ByIssuanceType` deny by default.
 `AllowedCardStatuses: []` means any status (subject to `Enabled`).
 `AllowedCardStatuses` is case-insensitive; unparseable statuses deny by default.
+`DisableDaysBeforeExpiration` is optional, card-replacement only, and must be ≥ 0 when set (validated even if `Enabled` is false). Commented examples live in `appsettings.dc.example.json` and `appsettings.co.example.json`; do not set it in base `appsettings.json`.
 
 ---
 
@@ -116,16 +130,18 @@ DC inherits these values from the defaults in `appsettings.json`.
 
 ### CO
 
-- `AddressUpdate`: enabled for `SummerEbt` (any card status). CO has no co-loaded pattern, so `SnapEbtCard` / `TanfEbtCard` entries are mostly irrelevant — they're included for safety.
+- `AddressUpdate`: enabled for `SummerEbt` (any card status). CO has no co-loaded pattern, so `SnapEbtCard` / `TanfEbtCard` entries are mostly irrelevant; they're included for safety.
 - `CardReplacement`: enabled for `SummerEbt` with an allowlist that excludes `DeactivatedByState` and `NotActivated`. "Statused by state no reissue" per the AC is pending PM confirmation (likely synonymous with `DeactivatedByState`).
 
 CO's policy lives in `appsettings.co.json`. See the punch list at `docs/.local/branch-context/DC-157/` for open items pending PM input and CBMS readiness.
+
+Neither state sets `DisableDaysBeforeExpiration` by default; omit it until a state opts in.
 
 ---
 
 ## How Plugins Contribute
 
-Plugins contribute only facts. Each state's `CbmsResponseMapper` (or equivalent) translates the backend's raw card-status string into a `CardStatus` enum value. If a plugin maps a token to `CardStatus.Unknown`, the configured policy decides whether Unknown is allowed — typically it is not, as a safety default.
+Plugins contribute only facts. Each state's `CbmsResponseMapper` (or equivalent) translates the backend's raw card-status string into a `CardStatus` enum value and populates `BenefitExpirationDate`. If a plugin maps a token to `CardStatus.Unknown`, the configured policy decides whether Unknown is allowed; typically it is not, as a safety default. Plugins do not encode the days-before-expiration window.
 
 See `apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/Cbms/CbmsResponseMapper.cs` for the CO mapping. The mapper logs at information level when a token falls through to `Unknown`, so new CBMS tokens show up in logs and can be mapped without guessing.
 
@@ -135,8 +151,8 @@ See `apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/Cbms/CbmsResponseMapper.
 
 See `docs/.local/branch-context/DC-157/testing-summary.md` for the full breakdown. Key points:
 
-- `SelfServiceEvaluatorTests` runs both a DC-shaped and a CO-shaped fixture through every scenario, proving the mechanism responds to config changes.
-- `SelfServiceRulesSettingsValidatorTests` asserts that misconfigurations fail startup.
+- `SelfServiceEvaluatorTests` runs both a DC-shaped and a CO-shaped fixture through every scenario, proving the mechanism responds to config changes. Cutoff coverage includes mixed remaining days, independence from `Enabled`, null expiration (fail open), `N = 0`, address update unchanged, and state-local vs UTC "today".
+- `SelfServiceRulesSettingsValidatorTests` asserts that misconfigurations fail startup, including a negative `DisableDaysBeforeExpiration`.
 - Handler tests cover the 412 path when the evaluator denies.
 - Frontend unit + Playwright tests drive CTAs and selection UI under varied issuance types and permission shapes.
 
@@ -146,9 +162,11 @@ See `docs/.local/branch-context/DC-157/testing-summary.md` for the full breakdow
 
 Policy changes require only a config edit at the source (AppConfig in deployed environments, `appsettings.{state}.json` in dev). Because `SelfServiceEvaluator` uses `IOptionsMonitor`, an AppConfig-pushed change takes effect on the next request. Local file-edit reload works in principle but on macOS may need a manual API restart because of FileSystemWatcher behavior on atomic-rename saves. No code, no migration, no deploy beyond config.
 
+To turn on the expiration cutoff, set `SelfServiceRules:CardReplacement:DisableDaysBeforeExpiration` in the state overlay or AppConfig. Omitting it preserves current behavior.
+
 When adding a new state:
 1. Add `appsettings.{newstate}.json` with the state's `SelfServiceRules` block (or omit to inherit defaults).
-2. Write tests that pair against the existing DC and CO tests — same inputs, expected divergence.
+2. Write tests that pair against the existing DC and CO tests: same inputs, expected divergence.
 3. Confirm the state's connector maps its backend card-status strings into the shared `CardStatus` enum.
 
 When adding a new enum value to `CardStatus`:

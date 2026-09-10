@@ -24,6 +24,11 @@ public class SelfServiceRulesSettingsValidator : IValidateOptions<SelfServiceRul
 
     private static void ValidateActionRule(ActionRuleSettings rule, string actionName, List<string> failures)
     {
+        if (rule.DisableDaysBeforeExpiration is < 0)
+        {
+            failures.Add($"{actionName}:DisableDaysBeforeExpiration must be greater than or equal to 0 when set.");
+        }
+
         if (!rule.Enabled)
         {
             return;
