@@ -39,8 +39,6 @@
     "ci:test:enrollment-checker": "pnpm --filter @sebt/enrollment-checker test run",
     "ci:list": "./act-test.sh list",
     "ci:test:states": "./act-test.sh job build-and-test -W .github/workflows/state-ci.yaml",
-    "ci:test:state:dc": "act workflow_dispatch -W .github/workflows/state-ci.yaml --input state=dc",
-    "ci:test:state:co": "act workflow_dispatch -W .github/workflows/state-ci.yaml --input state=co",
     "ci:test:pr": "./act-test.sh pr",
     "ci:validate": "./act-test.sh dry-run",
     "release-notes:generate": "tsx scripts/release-notes/generate.ts",
@@ -51,9 +49,9 @@
   "devDependencies": {
     "concurrently": "^9.2.1",
     "husky": "^9.1.7",
-    "knip": "^6.32.1",
-    "lint-staged": "^17.3.0",
-    "tsx": "^4.23.12",
+    "knip": "^6.34.0",
+    "lint-staged": "^17.4.1",
+    "tsx": "^4.23.13",
     "yaml": "~2.9.0"
   },
   "engines": {
