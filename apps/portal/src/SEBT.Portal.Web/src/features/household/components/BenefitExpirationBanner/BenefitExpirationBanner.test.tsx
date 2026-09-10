@@ -27,7 +27,7 @@ describe('BenefitExpirationBanner', () => {
       'Summer 2026 DC SUN Bucks were issued beginning in June 2026 and expire 122 days after issuance'
     )
     expect(alert).toHaveTextContent(
-      'Check each enrolled child here to see when their benefits expire.'
+      'Check each enrolled student here to see when their benefits expire.'
     )
   })
 
