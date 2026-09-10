@@ -61,9 +61,8 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   const { season } = useEnrollmentSeason()
   const isClosed = season === 'closed'
 
-  // Closure copy plus the optional summer-2027 application link. The wait-note
-  // key differs by surface (standalone vs numbered step), so callers pass it.
-  const apply2027Block = (noteKey: 'applyForSebtClosedBody4' | 'apply2027StepNote') => (
+  // Closure copy plus the optional summer-2027 application link.
+  const apply2027Block = () => (
     <>
       <p>{t('applyForSebtClosedBody2')}</p>
       {nextSeasonApplyHref && (
@@ -77,7 +76,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
               {t('applyForSebtClosedBody3')}
             </a>
           </p>
-          <RichText>{t(noteKey)}</RichText>
+          <RichText>{t('applyForSebtClosedBody4')}</RichText>
         </>
       )}
     </>
@@ -107,7 +106,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
     <section data-testid="next-step-apply-2027">
       <h2 className="usa-process-list__heading margin-top-4">{t('applyForSebtClosedActionApply')}</h2>
       <p className="margin-top-05">{t('applyForSebtBody2')}</p>
-      {apply2027Block('apply2027StepNote')}
+      {apply2027Block()}
     </section>
   )
 
@@ -249,19 +248,19 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
               <section>{portalNextStep}</section>
               <section className="margin-top-3">
                 <p>{t('applyForSebtBody2')}</p>
-                {apply2027Block('applyForSebtClosedBody4')}
+                {apply2027Block()}
               </section>
             </>
           )}
 
         {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
-          <section className="margin-top-3">{apply2027Block('applyForSebtClosedBody4')}</section>
+          <section className="margin-top-3">{apply2027Block()}</section>
         )}
 
         {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
           <section className="margin-top-3">
             <p>{t('applyForSebtBody2')}</p>
-            {apply2027Block('applyForSebtClosedBody4')}
+            {apply2027Block()}
           </section>
         )}
 

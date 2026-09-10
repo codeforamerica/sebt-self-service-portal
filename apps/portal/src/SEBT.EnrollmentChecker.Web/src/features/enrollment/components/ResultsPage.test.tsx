@@ -172,7 +172,7 @@ describe('ResultsPage', () => {
       expect(applyStep).toHaveTextContent(closedLine)
       const applyLink = screen.getByTestId('apply-2027-link')
       expect(applyLink).toHaveAttribute('href', mockApplyHref)
-      expect(applyStep).toHaveTextContent('You will not hear back about your application')
+      expect(applyStep).toHaveTextContent('After you submit you will hear back about your application')
     })
 
     it('renders no eligibility accordion and no income calculator', () => {
