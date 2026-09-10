@@ -39,8 +39,6 @@
     "ci:test:enrollment-checker": "pnpm --filter @sebt/enrollment-checker test run",
     "ci:list": "./act-test.sh list",
     "ci:test:states": "./act-test.sh job build-and-test -W .github/workflows/state-ci.yaml",
-    "ci:test:state:dc": "act workflow_dispatch -W .github/workflows/state-ci.yaml --input state=dc",
-    "ci:test:state:co": "act workflow_dispatch -W .github/workflows/state-ci.yaml --input state=co",
     "ci:test:pr": "./act-test.sh pr",
     "ci:validate": "./act-test.sh dry-run",
     "release-notes:generate": "tsx scripts/release-notes/generate.ts",

@@ -2,13 +2,10 @@
 // coverage. Used by state-ci.yaml's coverage-comment job via actions/github-script's
 // require() support.
 //
-// dc and co run the identical test suite against the identical solution today (see
-// DC-735), so their uploaded coverage reports are duplicates of each other. Rather
-// than special-case which matrix leg's report to trust, this sums raw covered/total
-// counts across every report found (including both legs' copies) -- doubling both
-// the numerator and denominator by the same factor doesn't change the ratio, so the
-// duplication is harmless to the math. If dc/co coverage ever genuinely diverges,
-// this would need to change to report per-state numbers instead.
+// build-and-test runs once (not once per state, see DC-735), so there's exactly one
+// backend and one frontend coverage report per run. Summing covered/total counts
+// across every report found still works if that ever changes back to multiple
+// reports -- it's just a no-op sum today.
 //
 // Backend coverage is read from ReportGenerator's merged Cobertura.xml, not the raw
 // per-test-project TestResults/*.xml files. Several assemblies (e.g.
@@ -40,8 +37,7 @@ function findFiles(dir, filename) {
 // lives inside <method> elements, and compiler-generated methods (e.g. async state
 // machines) can get their own <class> entries sharing source lines with the "real"
 // class -- hand-summing <line> tags risks silently double-counting. Reading the
-// rate the tool already computed avoids that risk entirely. dc/co upload identical
-// duplicate reports (see DC-735), so each name is recorded only on first sight.
+// rate the tool already computed avoids that risk entirely.
 function backendCoverage(dir) {
   const files = findFiles(dir, 'Cobertura.xml');
   let covered = 0;
