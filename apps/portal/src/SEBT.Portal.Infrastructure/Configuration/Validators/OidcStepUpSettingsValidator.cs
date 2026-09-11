@@ -22,7 +22,10 @@ public class OidcStepUpSettingsValidator(IConfiguration configuration) : IValida
         if (!anyStepUpKey)
             return ValidateOptionsResult.Success;
 
-        var callbackRedirect = configuration["Oidc:CallbackRedirectUri"];
+        // Bound rather than read by key. Binding straight from IConfiguration keeps this off
+        // the options system, so validating one options type cannot pull in another.
+        var callbackRedirect = configuration
+            .GetSection(OidcSettings.SectionName).Get<OidcSettings>()?.CallbackRedirectUri;
         var missing = new List<string>();
         if (!HasValue(options.DiscoveryEndpoint))
             missing.Add("Oidc:StepUp:DiscoveryEndpoint");

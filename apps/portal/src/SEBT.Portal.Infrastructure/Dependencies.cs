@@ -4,6 +4,7 @@ using Medallion.Threading.SqlServer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Extensions;
@@ -45,6 +46,11 @@ public static class Dependencies
     {
         var redisOptions = configuration.ResolveRedisConfigurationOptions(environment);
 
+        // Bound rather than read by key: this runs before the container exists, so
+        // IOptions<OidcSettings> is not resolvable here, but the section still binds and the
+        // property name stays compile-checked.
+        var oidcSettings = configuration?.GetSection(OidcSettings.SectionName).Get<OidcSettings>();
+
         if (redisOptions != null)
         {
             services.AddStackExchangeRedisCache(options =>
@@ -53,7 +59,7 @@ public static class Dependencies
             });
         }
         else if (!environment.IsDevelopment()
-            && !string.IsNullOrEmpty(configuration?["Oidc:DiscoveryEndpoint"]))
+            && !string.IsNullOrWhiteSpace(oidcSettings?.DiscoveryEndpoint))
         {
             // Outside Development, OIDC + no Redis is misconfiguration: pre-auth sessions
             // live in a per-container in-memory cache, so callbacks landing on a different
