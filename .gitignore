@@ -516,3 +516,7 @@ packages/design-system/src/lib/generated-locale-resources.ts
 
 # Generated release notes output (scripts/release-notes/generate.ts)
 scripts/release-notes/output/
+
+# Aspire CLI integration cache, written at the repo root by `aspire add`
+/.aspire/
+.aspire/dist
