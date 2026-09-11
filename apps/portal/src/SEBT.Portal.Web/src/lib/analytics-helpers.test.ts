@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   apiErrorCodeFromUnknown,
   classifyAddressState,
+  syncHouseholdUserData,
   trackAddressUpdateSubmit,
   trackAddressUpdateValidationError,
   trackCardReplacementSubmit
@@ -177,5 +178,53 @@ describe('trackCardReplacementSubmit', () => {
     expect(setPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
     expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_SUBMIT)
     expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
+  })
+})
+
+describe('syncHouseholdUserData', () => {
+  const setUserData = vi.fn()
+
+  const household = {
+    summerEbtCases: [{}, {}],
+    applications: [],
+    coLoadedCohort: 'Unknown',
+    hashedAppId: 'abc123'
+  } as unknown as Parameters<typeof syncHouseholdUserData>[2]
+
+  beforeEach(() => {
+    setUserData.mockClear()
+  })
+
+  function valueFor(path: string) {
+    return setUserData.mock.calls.find(([p]) => p === path)?.[1]
+  }
+
+  // These live on user.* in an in-memory data layer that a full page load wipes,
+  // so every surface holding household data re-syncs them rather than trusting
+  // that the dashboard set them earlier in the session.
+  it('syncs every household-derived user value', () => {
+    syncHouseholdUserData(setUserData, true, household)
+
+    expect(valueFor('household_linked_children')).toBe(2)
+    expect(valueFor('hashed_app_id')).toBe('abc123')
+    expect(valueFor('coloading_status')).toBeDefined()
+    expect(valueFor('co_loaded_cohort')).toBeDefined()
+  })
+
+  it('scopes each value for analytics', () => {
+    syncHouseholdUserData(setUserData, true, household)
+
+    for (const [, , scope] of setUserData.mock.calls) {
+      expect(scope).toContain('analytics')
+    }
+  })
+
+  it('omits hashed_app_id when the API did not supply one', () => {
+    // Null is the documented "do not emit" signal — a state or household with no
+    // application number must not surface an empty value to analytics.
+    syncHouseholdUserData(setUserData, true, { ...household, hashedAppId: undefined })
+
+    expect(setUserData.mock.calls.some(([p]) => p === 'hashed_app_id')).toBe(false)
+    expect(valueFor('household_linked_children')).toBe(2)
   })
 })
