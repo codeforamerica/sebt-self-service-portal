@@ -3,29 +3,60 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { getState, getStateAssetPath, getStateConfig, getStateName } from '@sebt/design-system'
 
 describe('state', () => {
-  const originalEnv = process.env.NEXT_PUBLIC_STATE
+  const originalState = process.env.STATE
+  const originalPublicState = process.env.NEXT_PUBLIC_STATE
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_STATE = originalEnv
+    process.env.STATE = originalState
+    process.env.NEXT_PUBLIC_STATE = originalPublicState
+    delete document.documentElement.dataset.state
   })
 
   describe('getState', () => {
-    it('returns the env value as lowercase StateCode', () => {
-      process.env.NEXT_PUBLIC_STATE = 'co'
+    // The portal ships one artifact for every state, so the browser's only source
+    // is the attribute the server stamped on <html>. It has to outrank the build
+    // env or client components would render the build's state, not the deployment's.
+    it('prefers the data-state attribute the server stamped on <html>', () => {
+      process.env.STATE = 'dc'
+      document.documentElement.dataset.state = 'co'
+      expect(getState()).toBe('co')
+    })
+
+    it('normalizes an uppercase data-state attribute', () => {
+      document.documentElement.dataset.state = 'CO'
+      expect(getState()).toBe('co')
+    })
+
+    it('falls back to STATE when no attribute is present', () => {
+      delete document.documentElement.dataset.state
+      process.env.STATE = 'co'
       expect(getState()).toBe('co')
     })
 
     it('normalizes uppercase env values to lowercase', () => {
-      process.env.NEXT_PUBLIC_STATE = 'CO'
+      delete document.documentElement.dataset.state
+      process.env.STATE = 'CO'
       expect(getState()).toBe('co')
     })
 
-    it('defaults to dc when env is undefined', () => {
+    // The enrollment checker still deploys one static export per state.
+    it('falls back to NEXT_PUBLIC_STATE for per-state builds', () => {
+      delete document.documentElement.dataset.state
+      delete process.env.STATE
+      process.env.NEXT_PUBLIC_STATE = 'co'
+      expect(getState()).toBe('co')
+    })
+
+    it('defaults to dc when nothing is set', () => {
+      delete document.documentElement.dataset.state
+      delete process.env.STATE
       delete process.env.NEXT_PUBLIC_STATE
       expect(getState()).toBe('dc')
     })
 
-    it('defaults to dc when env is empty string', () => {
+    it('defaults to dc when env values are empty strings', () => {
+      delete document.documentElement.dataset.state
+      process.env.STATE = ''
       process.env.NEXT_PUBLIC_STATE = ''
       expect(getState()).toBe('dc')
     })

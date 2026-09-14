@@ -1,5 +1,6 @@
 'use client'
 
+import { useRuntimeConfig } from '@/providers'
 import {
   useId,
   useLayoutEffect,
@@ -57,7 +58,7 @@ export function AddressAutocomplete({
   // This prevents pre-populated form values from triggering autocomplete on load.
   const [hasUserTyped, setHasUserTyped] = useState(false)
 
-  const smartyKey = process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY ?? ''
+  const smartyKey = useRuntimeConfig().smartyEmbeddedKey ?? ''
   const enabled = smartyKey.length > 0
 
   const autocomplete = useAddressAutocomplete({
