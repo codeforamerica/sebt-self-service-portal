@@ -28,14 +28,12 @@ export const env = createEnv({
     // NEXT_PUBLIC_* reference at build time, which pins the value to the build
     // environment and stops one artifact being promoted across environments.
     // These stay server-side and reach the browser at request time via
-    // lib/runtime-config.ts -> RuntimeConfigProvider. See docs/adr/0022.
+    // lib/runtime-config.ts -> RuntimeConfigProvider. See docs/adr/0023-runtime-client-config.md.
     GA_ID: z.string().startsWith('G-').optional(),
     AMPLITUDE_API_KEY: z.string().min(1).optional(),
     MIXPANEL_TOKEN: z.string().min(1).optional(),
     SITEIMPROVE_ID: z.string().min(1).optional(),
-    SOCURE_SDK_KEY: z.string().min(1).optional(),
     SOCURE_DI_SDK_KEY: z.string().min(1).optional(),
-    MOCK_SOCURE: z.enum(['true', 'false']).optional(),
     /**
      * Development only: when `true`, IalGuard still sends users to OIDC step-up even if the portal JWT already has IAL1+.
      * No effect unless NODE_ENV is `development`.
@@ -72,9 +70,7 @@ export const env = createEnv({
     AMPLITUDE_API_KEY: process.env.AMPLITUDE_API_KEY,
     MIXPANEL_TOKEN: process.env.MIXPANEL_TOKEN,
     SITEIMPROVE_ID: process.env.SITEIMPROVE_ID,
-    SOCURE_SDK_KEY: process.env.SOCURE_SDK_KEY,
     SOCURE_DI_SDK_KEY: process.env.SOCURE_DI_SDK_KEY,
-    MOCK_SOCURE: process.env.MOCK_SOCURE,
     DEBUG_REPEAT_OIDC_STEP_UP: process.env.DEBUG_REPEAT_OIDC_STEP_UP,
     SMARTY_EMBEDDED_KEY: process.env.SMARTY_EMBEDDED_KEY,
     STATE: process.env.STATE

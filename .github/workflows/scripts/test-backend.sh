@@ -123,7 +123,7 @@ run_tests() {
   if [ "$COLLECT_COVERAGE" = true ]; then
     log_info "Code coverage collection enabled"
     test_args+=(
-      "--collect:\"XPlat Code Coverage\""
+      "--collect:XPlat Code Coverage"
       "--results-directory" "./TestResults"
     )
   fi

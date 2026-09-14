@@ -26,7 +26,7 @@ export function RuntimeConfigProvider({ config, children }: RuntimeConfigProvide
  * Returning it outside the provider matches useFeatureFlag(), and keeps a
  * component renderable in isolation without a provider wrapper.
  */
-const NO_CONFIG: RuntimeConfig = { mockSocure: false, debugRepeatOidcStepUp: false }
+const NO_CONFIG: RuntimeConfig = { debugRepeatOidcStepUp: false }
 
 /** Reads browser-facing config in a client component. */
 export function useRuntimeConfig(): RuntimeConfig {

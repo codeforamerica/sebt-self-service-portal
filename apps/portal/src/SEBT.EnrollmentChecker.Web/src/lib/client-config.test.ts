@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { getClientConfig } from './client-config'
 
 afterEach(() => {
   delete window.__CHECKER_CONFIG__
+  vi.restoreAllMocks()
 })
 
 describe('getClientConfig', () => {
@@ -36,6 +37,22 @@ describe('getClientConfig', () => {
 
     expect(config.amplitudeApiKey).toBeUndefined()
     expect(config.applicationUrl).toBeUndefined()
+  })
+
+  // config.js is written after the build, so env.ts never validates it. A bad URL
+  // must degrade to "not configured" rather than reach a `new URL()` and throw.
+  it('treats a malformed URL override as not configured', () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    window.__CHECKER_CONFIG__ = {
+      applicationUrl: 'not a url',
+      portalUrl: 'https://portal.production.gov'
+    }
+
+    const config = getClientConfig()
+
+    expect(config.applicationUrl).toBeUndefined()
+    expect(config.portalUrl).toBe('https://portal.production.gov')
+    expect(consoleError).toHaveBeenCalledOnce()
   })
 
   it('accepts booleans as real booleans or as their string forms', () => {

@@ -27,7 +27,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - **Reach for shared design-system components first** (`Button`, `InputField`, `Alert`, … from `@sebt/design-system`) before composing your own from raw HTML + USWDS classes. They already encapsulate ARIA wiring, USWDS class composition, and per-state theming — re-using them keeps behavior consistent and prevents accessibility drift. Use a `<button>` with `usa-button` only when no shared component fits, and consider whether the design system should be extended instead.
 - **When no shared component fits, prefer USWDS component classes** (`usa-button`, `usa-input`, `usa-form-group`, `usa-combo-box__list`, …) before writing custom CSS.
 - **Use USWDS utility classes** (`position-relative`, `margin-bottom-2`, `text-center`, `display-flex`, …) for layout, spacing, and one-off style needs. The full utility set is generated from our design tokens, so utilities stay in sync with the per-state theme.
-- When none of the above fits, add SCSS in a co-located `.scss` file that references USWDS tokens (`@use 'uswds-core' as *;` and the `units()` / `color()` helpers). Don't hardcode colors, spacing, or font sizes.
+- When none of the above fits, add the rule to the design system's theme Sass: `packages/design-system/design/sass/_uswds-theme-custom-styles.scss`, or a partial under its `components/` directory. That Sass compiles into each state's stylesheet with `uswds-core` configured, so it can reference USWDS tokens (`@use 'uswds-core' as *;` and the `units()` / `color()` helpers). A co-located `.scss` in the portal cannot: the portal's Next config does not put `uswds-core` on the Sass load path. Don't hardcode colors, spacing, or font sizes.
 
 ## Getting help
 - If you're confused or having trouble with something, you are strongly encouraged to stop and ask for help. Especially if it's something your human might be better at.
@@ -111,7 +111,7 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 
 ### Browser-facing config
 
-Browser config (analytics keys, Socure/Smarty keys, dev toggles) is served **at request time**, not inlined at build. The variables are deliberately **unprefixed** — `GA_ID`, `AMPLITUDE_API_KEY`, `SMARTY_EMBEDDED_KEY`, and so on — because Next inlines any `NEXT_PUBLIC_*` reference into static chunks during `pnpm build`, which pins it to the build environment. See [docs/adr/0022-runtime-client-config.md](./docs/adr/0022-runtime-client-config.md).
+Browser config (analytics keys, Socure/Smarty keys, dev toggles) is served **at request time**, not inlined at build. The variables are deliberately **unprefixed** — `GA_ID`, `AMPLITUDE_API_KEY`, `SMARTY_EMBEDDED_KEY`, and so on — because Next inlines any `NEXT_PUBLIC_*` reference into static chunks during `pnpm build`, which pins it to the build environment. See [docs/adr/0023-runtime-client-config.md](./docs/adr/0023-runtime-client-config.md).
 
 To add a new browser-facing value:
 
@@ -119,13 +119,15 @@ To add a new browser-facing value:
 2. `src/lib/runtime-config.ts` — add the field to `RuntimeConfig` and read it in `getRuntimeConfig()`.
 3. Read it in client components with `useRuntimeConfig()`; server components can read `getRuntimeConfig()` directly.
 4. If it enables a browser call to a new external domain, add that domain to the CSP in `src/proxy.ts` — and gate it on the same unprefixed variable so the policy widens at runtime too.
-5. Set the value where the process runs: container env (Tofu / ECS task definition) for the Docker path, `web.config`'s `<environmentVariables>` for IIS. **No Dockerfile `ARG` and no `--build-arg` is needed or wanted** — adding one re-freezes the value to build time.
+5. Set the value where the process runs. **No Dockerfile `ARG` and no `--build-arg` is needed or wanted** — adding one re-freezes the value to build time.
+   - Docker / ECS (dev-dc, dev-co): add a `variable` to `tofu/config/{env}/variables.tf`, map it into `state_web_environment_variables` in that config's `main.tf`, and pass `TF_VAR_<name>: ${{ vars.<NAME> }}` in `.github/workflows/plan.yaml` and the matching deploy job in `deploy-ecr.yaml`. Preview stacks clone the dev-co task definition, so they inherit it.
+   - IIS (DC prod): add it to `scripts/ci/templates/web.config`'s `<environmentVariables>`; the host's copy holds the real value.
 
 Only build-identity values stay inlined (`NEXT_PUBLIC_BUILD_SHA`, `NEXT_PUBLIC_DC_CONNECTOR_SHA`) — they describe the artifact rather than the environment.
 
-`STATE` is runtime too, and is also unprefixed. It selects a per-state USWDS stylesheet from `public/themes/` (Sass can only configure `uswds-core` once per compilation, so each state is compiled separately) plus that state's `next/font` faces. The server stamps it onto `<html data-state>`; client code reads it back via `getState()` from `@sebt/design-system`, so **never read `process.env.STATE` directly in a client component**. Adding a state means adding it to the `STATES` list in `generate-theme-css.js` and `generate-fonts.js`.
+`STATE` is runtime too, and is also unprefixed. It selects a per-state USWDS stylesheet from `public/themes/` (Sass can only configure `uswds-core` once per compilation, so each state is compiled separately); that stylesheet also carries the state's `@font-face` rules. The server stamps it onto `<html data-state>`; client code reads it back via `getState()` from `@sebt/design-system`, so **never read `process.env.STATE` directly in a client component**. Adding a state means adding it to the `STATES` list in `generate-theme-css.js`.
 
-The enrollment checker is the exception: it deploys one static export per state to its own bucket, so it keeps `NEXT_PUBLIC_STATE` and `NEXT_PUBLIC_BASE_PATH` as build inputs. Its other browser config comes from a `config.js` in the deployed bucket (see `public/config.js`).
+The enrollment checker is the exception: it deploys one static export per state to its own bucket, so it keeps `NEXT_PUBLIC_STATE` and `NEXT_PUBLIC_BASE_PATH` as build inputs. Its other browser config comes from a `config.js` in the deployed bucket, written at deploy by `scripts/ci/write-checker-config.sh` and read by `src/lib/client-config.ts`. A new checker value needs a field in `client-config.ts`, an entry in that script, and an `env:` line in both write steps of `deploy-enrollment-checker.yaml`.
 
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
@@ -208,7 +210,7 @@ This is a .NET 10 + Next.js 16 application following Clean Architecture. For det
 - **Web** — Next.js 16 frontend (React 19, USWDS 3.13, i18next)
 - **EnrollmentChecker.Web** — Next.js enrollment-check standalone app (separate pnpm workspace member)
 - **TestUtilities** — Shared test helpers (Bogus factories, builders)
-- **Tests** / **UseCases.Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL)
+- **Tests** — xUnit + NSubstitute + Bogus + Testcontainers (MSSQL); one portal test project covering all layers incl. UseCases handler tests (no separate UseCases.Tests project post-monorepo)
 
 #### Workspace Packages (`packages/`)
 - **design-system** — USWDS design tokens, locale generation scripts, shared content

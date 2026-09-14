@@ -29,8 +29,6 @@ export interface RuntimeConfig {
   socureDiSdkKey?: string | undefined
   /** Smarty US Autocomplete Pro embeddable key. Omitted to disable type-ahead. */
   smartyEmbeddedKey?: string | undefined
-  /** Swap the Socure document-verification adapter for the in-browser mock. */
-  mockSocure: boolean
   /**
    * Development only: keep sending users through OIDC step-up even when the
    * portal JWT already carries IAL1+. Ignored outside development.
@@ -59,7 +57,6 @@ export function getRuntimeConfig(): RuntimeConfig {
     siteImproveId: optional(process.env.SITEIMPROVE_ID),
     socureDiSdkKey: optional(process.env.SOCURE_DI_SDK_KEY),
     smartyEmbeddedKey: optional(process.env.SMARTY_EMBEDDED_KEY),
-    mockSocure: process.env.MOCK_SOCURE === 'true',
     debugRepeatOidcStepUp: process.env.DEBUG_REPEAT_OIDC_STEP_UP === 'true'
   }
 }

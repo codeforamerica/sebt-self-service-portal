@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// must re-verify. Expiration is computed dynamically from <c>IdProofingCompletedAt</c>
 /// plus this duration — no baked-in expiration dates are stored.
 /// </summary>
-public class IdProofingValiditySettings
+public class IdProofingValiditySettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "IdProofingValidity";
+    public static string SectionName => "IdProofingValidity";
 
     /// <summary>
     /// How long a completed ID proofing verification remains valid, in days.

@@ -18,9 +18,11 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.restoreAllMocks()
   delete window.__CHECKER_CONFIG__
 })
 
+// The PEAK cases below run under CO, the state vitest pins.
 describe('getApplyHref', () => {
   describe('no configured URL (graceful degradation)', () => {
     // With no application destination configured there is nothing to link to;
@@ -30,6 +32,17 @@ describe('getApplyHref', () => {
       for (const locale of ['en', 'es', 'fr', '']) {
         expect(getApplyHref(locale)).toBeNull()
       }
+    })
+  })
+
+  describe('malformed configured URL', () => {
+    // config.js is written after the build, so a bad applicationUrl is never seen
+    // by env.ts. It must hide the apply link rather than throw from `new URL()`.
+    it('returns null instead of throwing', () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      setApplicationUrl('not a url')
+
+      expect(getApplyHref('en')).toBeNull()
     })
   })
 
@@ -62,7 +75,36 @@ describe('getApplyHref', () => {
     })
   })
 
-  describe('NEXT_PUBLIC_APPLICATION_URL config', () => {
+  describe('states without a PEAK destination', () => {
+    const DC_URL = 'https://apply.dc.example.gov/start'
+
+    beforeEach(() => {
+      vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+    })
+
+    // language and redirectFromEC are PEAK's contract. Sending them to another
+    // state's destination is at best noise and at worst a wrong destination.
+    it('links to the configured URL untouched', () => {
+      setApplicationUrl(DC_URL)
+      const href = getApplyHref('en')
+      expect(href).toBe(DC_URL)
+      expect(href).not.toContain('language=')
+      expect(href).not.toContain('redirectFromEC')
+    })
+
+    it('adds nothing to a URL that already carries params', () => {
+      setApplicationUrl(`${DC_URL}?src=partner`)
+      expect(getApplyHref('es')).toBe(`${DC_URL}?src=partner`)
+    })
+
+    it('still returns null when no URL is configured', () => {
+      for (const locale of ['en', 'es', 'am', '']) {
+        expect(getApplyHref(locale)).toBeNull()
+      }
+    })
+  })
+
+  describe('applicationUrl config', () => {
     it('builds the link from the configured URL', () => {
       setApplicationUrl('https://apply.preprod.example.gov/start')
       expect(getApplyHref('en')).toBe(

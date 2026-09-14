@@ -63,17 +63,25 @@ jobs:
       - name: Write runtime client config
         # Browser config lives in the deployed bucket, not the bundle, so the same
         # export can be promoted between environments by rewriting this one file.
-        run: |
-          cat > apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js <<'EOF'
-          window.__CHECKER_CONFIG__ = {
-            apiBaseUrl: '${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}',
-            portalUrl: '${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}',
-            applicationUrl: '${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }}',
-            amplitudeApiKey: '${{ vars.AMPLITUDE_API_KEY }}',
-            mixpanelToken: '${{ vars.MIXPANEL_TOKEN }}',
-            siteImproveId: '${{ vars.SITEIMPROVE_ID }}'
-          }
-          EOF
+        # A variable left unset is left out of config.js and the checker keeps its
+        # build-time default, so an integration stays off wherever it isn't set.
+        # APPLICATION_URL is intentionally omitted as of Aug 28th while CO Summer EBT
+        # applications are closed. Pass vars.ENROLLMENT_CHECKER_APPLICATION_URL as
+        # APPLICATION_URL here once they reopen.
+        env:
+          API_BASE_URL: ${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}
+          PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
+          AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
+          MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
+          SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
+          META_PIXEL: ${{ vars.ENROLLMENT_CHECKER_META_PIXEL }}
+          META_PIXEL_ACTION: ${{ vars.ENROLLMENT_CHECKER_META_PIXEL_ACTION }}
+          ADENTIFI_PIXEL_LANDING: ${{ vars.ENROLLMENT_CHECKER_ADENTIFI_PIXEL_LANDING }}
+          ADENTIFI_PIXEL_APPLY_NOW: ${{ vars.ENROLLMENT_CHECKER_ADENTIFI_PIXEL_APPLY_NOW }}
+          SHOW_SCHOOL_FIELD: ${{ vars.ENROLLMENT_CHECKER_SHOW_SCHOOL_FIELD }}
+          CHECKER_ENABLED: ${{ vars.ENROLLMENT_CHECKER_ENABLED }}
+          BOT_PROTECTION_ENABLED: ${{ vars.ENROLLMENT_CHECKER_BOT_PROTECTION_ENABLED }}
+        run: bash scripts/ci/write-checker-config.sh apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js
 
       - name: Upload static site artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -99,7 +107,7 @@ jobs:
           path: out/
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -161,27 +169,30 @@ jobs:
           NEXT_PUBLIC_STATE: dc
           # Required by the env schema as a fallback; config.js overrides it at runtime.
           NEXT_PUBLIC_PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
-          # NEXT_PUBLIC_APPLICATION_URL is intentionally omitted as of Aug 24th
-          # while DC Summer EBT applications are closed. Add it back
-          # (NEXT_PUBLIC_APPLICATION_URL: ${{ vars.ENROLLMENT_CHECKER_APPLICATION_URL }})
-          # once applications reopen.
           NEXT_PUBLIC_BUILD_SHA: ${{ github.sha }}
 
       - name: Write runtime client config
         # Browser config lives in the deployed bucket, not the bundle, so the same
         # export can be promoted between environments by rewriting this one file.
-        # applicationUrl stays out while DC applications are closed; add it here
-        # (not as a build arg) when they reopen.
-        run: |
-          cat > apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js <<'EOF'
-          window.__CHECKER_CONFIG__ = {
-            apiBaseUrl: '${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}',
-            portalUrl: '${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}',
-            amplitudeApiKey: '${{ vars.AMPLITUDE_API_KEY }}',
-            mixpanelToken: '${{ vars.MIXPANEL_TOKEN }}',
-            siteImproveId: '${{ vars.SITEIMPROVE_ID }}'
-          }
-          EOF
+        # A variable left unset is left out of config.js and the checker keeps its
+        # build-time default, so an integration stays off wherever it isn't set.
+        # APPLICATION_URL is intentionally omitted as of Aug 24th while DC Summer EBT
+        # applications are closed. Pass vars.ENROLLMENT_CHECKER_APPLICATION_URL as
+        # APPLICATION_URL here once they reopen.
+        env:
+          API_BASE_URL: ${{ vars.ENROLLMENT_CHECKER_API_BASE_URL }}
+          PORTAL_URL: ${{ vars.ENROLLMENT_CHECKER_PORTAL_URL }}
+          AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
+          MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
+          SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
+          META_PIXEL: ${{ vars.ENROLLMENT_CHECKER_META_PIXEL }}
+          META_PIXEL_ACTION: ${{ vars.ENROLLMENT_CHECKER_META_PIXEL_ACTION }}
+          ADENTIFI_PIXEL_LANDING: ${{ vars.ENROLLMENT_CHECKER_ADENTIFI_PIXEL_LANDING }}
+          ADENTIFI_PIXEL_APPLY_NOW: ${{ vars.ENROLLMENT_CHECKER_ADENTIFI_PIXEL_APPLY_NOW }}
+          SHOW_SCHOOL_FIELD: ${{ vars.ENROLLMENT_CHECKER_SHOW_SCHOOL_FIELD }}
+          CHECKER_ENABLED: ${{ vars.ENROLLMENT_CHECKER_ENABLED }}
+          BOT_PROTECTION_ENABLED: ${{ vars.ENROLLMENT_CHECKER_BOT_PROTECTION_ENABLED }}
+        run: bash scripts/ci/write-checker-config.sh apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js
 
       - name: Upload static site artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -207,7 +218,7 @@ jobs:
           path: out/
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

@@ -46,7 +46,6 @@ function withSmartyKey({ children }: { children: ReactNode }) {
     <RuntimeConfigProvider
       config={{
         smartyEmbeddedKey: 'test-embedded-key',
-        mockSocure: false,
         debugRepeatOidcStepUp: false
       }}
     >

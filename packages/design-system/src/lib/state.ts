@@ -39,6 +39,8 @@ export interface StateConfig {
   actionButtonBg: string
   /** USWDS text color utility class for action buttons */
   actionButtonText: string
+  /** USWDS text color utility class for the `h1` that titles a page */
+  pageTitleText: string
 }
 
 /**
@@ -55,7 +57,8 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
     supportedLanguages: ['en', 'es', 'am'],
     actionButtonBg: 'bg-secondary',
-    actionButtonText: 'text-ink'
+    actionButtonText: 'text-ink',
+    pageTitleText: 'text-ink'
   },
   co: {
     name: 'Colorado',
@@ -67,7 +70,8 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     languageSelectorClass: 'border-primary radius-md text-primary',
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',
-    actionButtonText: 'text-white'
+    actionButtonText: 'text-white',
+    pageTitleText: 'text-primary'
   }
 }
 

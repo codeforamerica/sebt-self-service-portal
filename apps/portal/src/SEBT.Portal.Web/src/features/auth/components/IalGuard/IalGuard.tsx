@@ -36,7 +36,7 @@ function startOidcStepUpRedirect(language: string): void {
 /**
  * Colorado OIDC step-up gate: brief “checking” UI, then an explicit challenge screen before redirect.
  * Mount only on routes that need this gate; the authenticated layout does not wrap the whole app.
- * `NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP=true` forces the challenge path in development even when the JWT already has IAL1+.
+ * `DEBUG_REPEAT_OIDC_STEP_UP=true` forces the challenge path in development even when the JWT already has IAL1+.
  */
 export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGuardProps) {
   const { session } = useAuth()

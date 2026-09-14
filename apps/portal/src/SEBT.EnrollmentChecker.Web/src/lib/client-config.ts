@@ -55,6 +55,28 @@ function str(override: unknown, fallback: string | undefined): string | undefine
   return trimmed ? trimmed : undefined
 }
 
+/**
+ * Like `str`, but a value that does not parse as a URL is treated as not configured.
+ *
+ * env.ts validates the build-time fallback, but config.js is written after the
+ * build, so nothing upstream checks it. Rejecting a malformed value here means a
+ * bad deploy degrades the link away and logs, instead of reaching a `new URL()`
+ * in a caller and throwing on every render. The deploy step validates these too,
+ * so this is the backstop for a config.js edited by hand.
+ */
+function url(override: unknown, fallback: string | undefined): string | undefined {
+  const value = str(override, fallback)
+  if (!value) return undefined
+  try {
+    // new URL() rather than URL.canParse(), which does not exist before Safari 17.
+    new URL(value)
+    return value
+  } catch {
+    console.error(`Checker config: ignoring an invalid URL (${value})`)
+    return undefined
+  }
+}
+
 function bool(override: unknown, fallback: boolean): boolean {
   if (typeof override === 'boolean') return override
   if (override === 'true') return true
@@ -70,9 +92,9 @@ function bool(override: unknown, fallback: boolean): boolean {
 export function getClientConfig(): CheckerClientConfig {
   const o = overrides()
   return {
-    apiBaseUrl: str(o.apiBaseUrl, env.NEXT_PUBLIC_API_BASE_URL),
-    portalUrl: str(o.portalUrl, env.NEXT_PUBLIC_PORTAL_URL),
-    applicationUrl: str(o.applicationUrl, env.NEXT_PUBLIC_APPLICATION_URL),
+    apiBaseUrl: url(o.apiBaseUrl, env.NEXT_PUBLIC_API_BASE_URL),
+    portalUrl: url(o.portalUrl, env.NEXT_PUBLIC_PORTAL_URL),
+    applicationUrl: url(o.applicationUrl, env.NEXT_PUBLIC_APPLICATION_URL),
     showSchoolField: bool(o.showSchoolField, env.NEXT_PUBLIC_SHOW_SCHOOL_FIELD),
     checkerEnabled: bool(o.checkerEnabled, env.NEXT_PUBLIC_CHECKER_ENABLED),
     botProtectionEnabled: bool(o.botProtectionEnabled, env.NEXT_PUBLIC_BOT_PROTECTION_ENABLED),

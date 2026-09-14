@@ -55,24 +55,17 @@ describe('getRuntimeConfig', () => {
     expect(getRuntimeConfig().amplitudeApiKey).toBe('amp-key')
   })
 
-  it('exposes the boolean toggles as booleans, defaulting to false', () => {
-    expect(getRuntimeConfig()).toMatchObject({
-      mockSocure: false,
-      debugRepeatOidcStepUp: false
-    })
+  it('exposes the development toggle as a boolean, defaulting to false', () => {
+    expect(getRuntimeConfig().debugRepeatOidcStepUp).toBe(false)
 
-    vi.stubEnv('MOCK_SOCURE', 'true')
     vi.stubEnv('DEBUG_REPEAT_OIDC_STEP_UP', 'true')
 
-    expect(getRuntimeConfig()).toMatchObject({
-      mockSocure: true,
-      debugRepeatOidcStepUp: true
-    })
+    expect(getRuntimeConfig().debugRepeatOidcStepUp).toBe(true)
   })
 
   it('treats any non-"true" toggle value as off', () => {
-    vi.stubEnv('MOCK_SOCURE', 'yes')
+    vi.stubEnv('DEBUG_REPEAT_OIDC_STEP_UP', 'yes')
 
-    expect(getRuntimeConfig().mockSocure).toBe(false)
+    expect(getRuntimeConfig().debugRepeatOidcStepUp).toBe(false)
   })
 })

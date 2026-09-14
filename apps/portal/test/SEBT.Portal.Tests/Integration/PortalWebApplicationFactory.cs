@@ -2,10 +2,10 @@ using Medallion.Threading;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
-using NSubstitute;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.Tests.Helpers;
+using SEBT.Portal.Tests.Integration.Extensions;
 
 namespace SEBT.Portal.Tests.Integration;
 
@@ -77,8 +77,8 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         {
             // Replace database services with no-op mocks so startup
             // doesn't require a real SQL Server instance.
-            ReplaceWithMock<IDatabaseMigrator>(services);
-            ReplaceWithMock<IDatabaseSeeder>(services);
+            services.ReplaceWithMock<IDatabaseMigrator>();
+            services.ReplaceWithMock<IDatabaseSeeder>();
 
             // Replace the distributed lock provider with an in-process implementation.
             // Without this, AddDistributedLocking falls back to SqlDistributedSynchronizationProvider
@@ -89,20 +89,6 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(lockDescriptor);
             services.AddSingleton<IDistributedLockProvider>(new InProcessLockProvider());
         });
-    }
-
-    /// <summary>
-    /// Replaces an existing service registration with a no-op NSubstitute mock.
-    /// </summary>
-    private static void ReplaceWithMock<TService>(IServiceCollection services) where TService : class
-    {
-        var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(TService));
-        if (descriptor != null)
-        {
-            services.Remove(descriptor);
-        }
-
-        services.AddScoped(_ => Substitute.For<TService>());
     }
 
     protected override void Dispose(bool disposing)

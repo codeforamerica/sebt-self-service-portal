@@ -32,7 +32,12 @@ interface EnrollmentState {
 }
 
 interface EnrollmentActions {
-  addChild: (values: ChildFormValues) => void
+  /**
+   * Returns the created child, or null when the cap is already reached.
+   * Flows that submit straight from the form need the record immediately,
+   * before the state update lands.
+   */
+  addChild: (values: ChildFormValues) => Child | null
   updateChild: (id: string, values: ChildFormValues) => void
   removeChild: (id: string) => void
   setEditingChildId: (id: string | null) => void
@@ -136,8 +141,12 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
   }, IDLE_TIMEOUT_MS)
 
   const actions: EnrollmentActions = {
-    addChild: (values) => update(s => {
-      if (s.children.length >= MAX_CHILDREN) return s
+    addChild: (values) => {
+      // Checked against the current render's state rather than inside the
+      // updater: React only evaluates updaters eagerly while the queue is empty,
+      // so a flag set in there is not reliably readable by the time this returns.
+      if (state.children.length >= MAX_CHILDREN) return null
+
       const child: Child = {
         id: uuidv4(),
         firstName: values.firstName,
@@ -147,8 +156,11 @@ export function EnrollmentProvider({ children }: { children: ReactNode }) {
         ...(values.schoolName && { schoolName: values.schoolName }),
         ...(values.schoolCode && { schoolCode: values.schoolCode })
       }
-      return { ...s, children: [...s.children, child] }
-    }),
+      update(s =>
+        s.children.length >= MAX_CHILDREN ? s : { ...s, children: [...s.children, child] }
+      )
+      return child
+    },
     updateChild: (id, values) => update(s => ({
       ...s,
       children: s.children.map(child => {

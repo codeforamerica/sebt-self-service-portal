@@ -14,6 +14,12 @@ vi.mock('@/components/OutageGuard', () => ({
   OUTAGE_PATH: '/outage'
 }))
 
+// These tests cover which chrome the shell renders, not what either guard decides,
+// so both pass their children straight through.
+vi.mock('@/components/SeasonGate', () => ({
+  SeasonGate: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
 vi.mock('@/features/maintenance', () => ({
   MaintenanceBanner: () => <div data-testid="maintenance-banner" />
 }))

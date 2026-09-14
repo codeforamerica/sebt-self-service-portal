@@ -33,17 +33,22 @@ export async function mockCheckResults(page: Page, results: MockCheckResult[]): 
 }
 
 /**
- * Intercepts the checker features poll that drives the maintenance banner and
- * the outage guard. The outage page replaces every checker route while enabled.
+ * Intercepts the checker features poll that drives the maintenance banner, the
+ * outage guard and the apply links. Applications default to open: the dev server
+ * configures an application URL, and the flag is the other half of that pair.
  */
-export async function mockFeatures(page: Page, { outage = false }: { outage?: boolean } = {}): Promise<void> {
+export async function mockFeatures(
+  page: Page,
+  { outage = false, apply = true }: { outage?: boolean; apply?: boolean } = {}
+): Promise<void> {
   await page.route('**/api/enrollment/features*', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
         maintenanceBanner: { enabled: false, message: {} },
-        outagePage: { enabled: outage }
+        outagePage: { enabled: outage },
+        apply: { enabled: apply }
       })
     })
   )

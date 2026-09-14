@@ -12,9 +12,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// deploy failure, never a silently skipped window.
 /// </para>
 /// </summary>
-public sealed class OutageScheduleSettings
+public sealed class OutageScheduleSettings : IHaveConfigSectionName
 {
-    public const string SectionName = "OutageSchedule";
+    public static string SectionName => "OutageSchedule";
 
     /// <summary>
     /// IANA timezone used to interpret each window's local Start/End (e.g. "America/Denver").

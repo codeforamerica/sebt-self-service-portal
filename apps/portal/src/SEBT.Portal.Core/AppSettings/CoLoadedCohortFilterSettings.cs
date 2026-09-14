@@ -11,9 +11,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// Set <see cref="SuppressCoLoadedCasesForExcludedCohort"/> to <c>false</c> in environment-specific
 /// config or AppConfig when ops need the full case list returned for that cohort (e.g., incident response).
 /// </remarks>
-public class CoLoadedCohortFilterSettings
+public class CoLoadedCohortFilterSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "CoLoadedCohortFilter";
+    public static string SectionName => "CoLoadedCohortFilter";
 
     /// <summary>
     /// When <c>true</c> (default), co-loaded cases are stripped from <see cref="HouseholdData.SummerEbtCases"/>

@@ -8,8 +8,8 @@ import amDcValidation from '@/content/locales/am/dc/validation.json'
 import enDcValidation from '@/content/locales/en/dc/validation.json'
 import esDcValidation from '@/content/locales/es/dc/validation.json'
 import type { Address } from '@/features/household/api'
-import { server } from '@/mocks/server'
 import type { RuntimeConfig } from '@/lib/runtime-config'
+import { server } from '@/mocks/server'
 import { RuntimeConfigProvider } from '@/providers'
 import { AnalyticsEvents } from '@sebt/analytics'
 import { i18n } from '@sebt/design-system/client'
@@ -84,7 +84,7 @@ function renderForm(initialAddress: Address | null = null, config: Partial<Runti
   return {
     user,
     ...render(
-      <RuntimeConfigProvider config={{ mockSocure: false, debugRepeatOidcStepUp: false, ...config }}>
+      <RuntimeConfigProvider config={{ debugRepeatOidcStepUp: false, ...config }}>
         <QueryClientProvider client={queryClient}>
           <AddressFlowProvider>
             <AddressForm initialAddress={initialAddress} />
@@ -657,7 +657,6 @@ describe('AddressForm', () => {
         <RuntimeConfigProvider
           config={{
             smartyEmbeddedKey: 'test-embedded-key',
-            mockSocure: false,
             debugRepeatOidcStepUp: false
           }}
         >
