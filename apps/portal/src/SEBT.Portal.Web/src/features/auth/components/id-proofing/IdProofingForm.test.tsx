@@ -119,6 +119,21 @@ const INPUT_LABEL_ITIN = /Enter your Individual Taxpayer ID Number/i
 const INPUT_LABEL_DAY = /Day/i
 const INPUT_LABEL_YEAR = /Year/i
 
+// Mirrors DC_SNAP_TANF_OPTION: the case number asked for after "Yes" to the SNAP/TANF question.
+const TEST_SNAP_TANF_OPTION: IdOption = {
+  value: 'snapAccountId',
+  labelKey: 'optionAccountId',
+  inputLabelKey: 'labelAccountId',
+  inputHelperKey: 'helperAccountId',
+  validation: { digits: [7, 8] }
+}
+// Mirrors DC_ID_OPTIONS: what a user who answers "No" chooses from.
+const TEST_NO_PATH_OPTIONS = TEST_ID_OPTIONS.filter((option) =>
+  ['ssn', 'itin', 'none'].includes(option.value)
+)
+const LABEL_SNAP_QUESTION = /Do you receive SNAP or TANF/
+const INPUT_LABEL_CASE_NUMBER = /Enter your SNAP or TANF case number/i
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -138,6 +153,24 @@ function renderWithProviders(ui: React.ReactElement) {
     ),
     queryClient
   }
+}
+
+async function fillValidDob(user: ReturnType<typeof userEvent.setup>) {
+  await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+  await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+  await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+}
+
+/** Answers the next id-proofing submission as matched and returns a reader for its request body. */
+function captureSubmission(): () => unknown {
+  let body: unknown
+  server.use(
+    http.post('/api/id-proofing', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ result: 'matched' })
+    })
+  )
+  return () => body
 }
 
 describe('IdProofingForm', () => {
@@ -340,10 +373,10 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        // month error is a <span role="alert">, day/year errors are inside InputField's role="alert"
-        // id type error is also a <span role="alert"> since no radio is selected
+        // month error is a <span role="alert">, day/year errors are inside InputField's role="alert".
+        // Choosing an ID option is optional, so leaving the radios blank adds no error.
         const errors = screen.getAllByRole('alert')
-        expect(errors).toHaveLength(4)
+        expect(errors).toHaveLength(3)
       })
     })
 
@@ -360,9 +393,9 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        // day/year errors plus id type error (no radio selected)
+        // day/year errors only; no radio selected is not an error
         const errors = screen.getAllByRole('alert')
-        expect(errors).toHaveLength(3)
+        expect(errors).toHaveLength(2)
       })
     })
   })
@@ -393,8 +426,9 @@ describe('IdProofingForm', () => {
     })
   })
 
-  describe('ID type validation', () => {
-    it('shows an error when the user submits without selecting an ID option', async () => {
+  describe('ID choice is optional', () => {
+    it('submits with no ID when the user selects no ID option', async () => {
+      const readSubmission = captureSubmission()
       const user = userEvent.setup()
       renderWithProviders(
         <IdProofingForm
@@ -403,18 +437,191 @@ describe('IdProofingForm', () => {
         />
       )
 
-      // Fill valid DOB so only the radio error fires
-      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
-      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
-      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
-
+      await fillValidDob(user)
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
-      await waitFor(() => {
-        const errors = screen.getAllByRole('alert')
-        expect(errors.length).toBeGreaterThanOrEqual(1)
-      })
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+      expect(readSubmission()).toMatchObject({ idType: null, idValue: null })
+    })
+
+    it('does not mark the ID question as required', () => {
+      renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_ID_OPTIONS}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+
+      // An exact accessible name proves no required asterisk is appended to the legend.
+      expect(screen.getByRole('group', { name: enDcIdProofing.labelId })).toBeInTheDocument()
+    })
+  })
+
+  describe('SNAP or TANF question', () => {
+    function renderSnapTanfForm() {
+      return renderWithProviders(
+        <IdProofingForm
+          idOptions={TEST_NO_PATH_OPTIONS}
+          snapTanfOption={TEST_SNAP_TANF_OPTION}
+          contactLink={TEST_CONTACT_LINK}
+        />
+      )
+    }
+
+    it('asks the question before showing any ID field', () => {
+      renderSnapTanfForm()
+
+      expect(screen.getByRole('group', { name: LABEL_SNAP_QUESTION })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'Yes' })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: 'No' })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER })
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('radio', { name: LABEL_SSN })).not.toBeInTheDocument()
+    })
+
+    it('shows an optional case number field, and no ID options, after "Yes"', async () => {
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+
+      // Exact name: an optional field carries no required asterisk.
+      expect(
+        screen.getByRole('textbox', { name: enDcIdProofing.labelAccountId })
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('radio', { name: LABEL_SSN })).not.toBeInTheDocument()
+    })
+
+    it('shows the SSN, ITIN and none options, and no case number field, after "No"', async () => {
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await user.click(screen.getByRole('radio', { name: 'No' }))
+
+      expect(screen.getByRole('radio', { name: LABEL_SSN })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: LABEL_ITIN })).toBeInTheDocument()
+      expect(screen.getByRole('radio', { name: LABEL_NONE })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER })
+      ).not.toBeInTheDocument()
+    })
+
+    it('submits the case number as a SNAP/TANF account ID', async () => {
+      const readSubmission = captureSubmission()
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER }), '1234567')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+      expect(readSubmission()).toMatchObject({ idType: 'snapAccountId', idValue: '1234567' })
+    })
+
+    it('submits with no ID when "Yes" is answered but the case number is left blank', async () => {
+      const readSubmission = captureSubmission()
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+      expect(readSubmission()).toMatchObject({ idType: null, idValue: null })
+    })
+
+    it('submits with no ID when the question is left unanswered', async () => {
+      const readSubmission = captureSubmission()
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+      expect(readSubmission()).toMatchObject({ idType: null, idValue: null })
+    })
+
+    it('rejects a case number that is not 7 or 8 digits', async () => {
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER }), '123456')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() =>
+        expect(screen.getByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER })).toHaveAttribute(
+          'aria-invalid',
+          'true'
+        )
+      )
       expect(mockPush).not.toHaveBeenCalled()
+    })
+
+    it('does not carry a case number over into the "No" path', async () => {
+      const readSubmission = captureSubmission()
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER }), '1234567')
+      await user.click(screen.getByRole('radio', { name: 'No' }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+      expect(readSubmission()).toMatchObject({ idType: null, idValue: null })
+    })
+
+    // The helper row is not in the DC sheet yet. Until it lands the field renders without a
+    // hint rather than leaking the raw key; once it lands, the hint appears with no code change.
+    it('shows the case number helper only when its content exists', async () => {
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+
+      expect(screen.queryByText('helperAccountId')).not.toBeInTheDocument()
+
+      const helper = 'Found on your SNAP or TANF notices.'
+      act(() => {
+        i18n.addResource('en', 'idProofing', 'helperAccountId', helper)
+      })
+      try {
+        await user.click(screen.getByRole('radio', { name: 'No' }))
+        await user.click(screen.getByRole('radio', { name: 'Yes' }))
+        expect(
+          screen.getByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER })
+        ).toHaveAccessibleDescription(helper)
+      } finally {
+        i18n.removeResourceBundle('en', 'idProofing')
+        i18n.addResourceBundle('en', 'idProofing', enDcIdProofing)
+      }
+    })
+
+    // A "Yes" answer that fails is a SNAP/TANF lookup miss (no Socure), whatever the session
+    // said about co-loaded status before the attempt.
+    it('tags a failed "Yes" submission as not_found', async () => {
+      server.use(
+        http.post('/api/id-proofing', () =>
+          HttpResponse.json({ result: 'failed', offboardingReason: null })
+        )
+      )
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER }), '1234567')
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalled())
+      expect(mockSetPageData).toHaveBeenCalledWith('idv_primary_reason', 'not_found')
     })
   })
 

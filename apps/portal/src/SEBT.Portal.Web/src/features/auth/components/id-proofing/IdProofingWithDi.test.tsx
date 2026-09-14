@@ -1,15 +1,12 @@
 /**
- * Covers the option-set switching logic: co-loaded users see the narrower
- * co-loaded set; everyone else sees the full option list. Also pins the
- * production DC option arrays so removed entries (medicaidId, snapPersonId)
- * can't quietly come back.
+ * Pins the DC id-proofing wiring: every user answers the SNAP/TANF question, whatever the
+ * session says about co-loaded status, and the option arrays stay limited to the approved
+ * values so removed entries (medicaidId, snapPersonId) can't quietly come back.
  */
-import {
-  DC_ID_OPTIONS,
-  DC_ID_OPTIONS_CO_LOADED
-} from '@/app/(public)/login/id-proofing/dc-id-options'
+import { DC_ID_OPTIONS, DC_SNAP_TANF_OPTION } from '@/app/(public)/login/id-proofing/dc-id-options'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { SessionInfo } from '../../context'
@@ -30,13 +27,10 @@ vi.mock('@/features/auth/context', () => ({
   useAuth: () => mockUseAuth()
 }))
 
-// Helper-text decorated options (snapAccountId) extend the radio's accessible
-// name beyond the bold label, so we match on a regex anchored to the bold label.
+const LABEL_SNAP_QUESTION = /Do you receive SNAP or TANF/
+const INPUT_LABEL_CASE_NUMBER = /Enter your SNAP or TANF case number/
 const LABEL_SSN = /Social Security Number \(SSN\)/
 const LABEL_ITIN = /Individual Taxpayer ID Number \(ITIN\)/
-const LABEL_SNAP_ACCOUNT = /SNAP or TANF account ID/
-const LABEL_SNAP_PERSON = /SNAP or TANF person ID/
-const LABEL_MEDICAID = /^Medicaid ID/
 const LABEL_NONE = /None of the above/
 
 function renderComponent() {
@@ -47,7 +41,7 @@ function renderComponent() {
     <QueryClientProvider client={queryClient}>
       <IdProofingWithDi
         idOptions={DC_ID_OPTIONS}
-        coLoadedIdOptions={DC_ID_OPTIONS_CO_LOADED}
+        snapTanfOption={DC_SNAP_TANF_OPTION}
         contactLink={TEST_CONTACT_LINK}
       />
     </QueryClientProvider>
@@ -70,48 +64,35 @@ function session(isCoLoaded: boolean): SessionInfo {
 
 describe('IdProofingWithDi', () => {
   it('exposes only the approved DC ID option values (regression guard)', () => {
-    expect(DC_ID_OPTIONS.map((o) => o.value)).toEqual(['ssn', 'itin', 'snapAccountId', 'none'])
-    expect(DC_ID_OPTIONS_CO_LOADED.map((o) => o.value)).toEqual(['snapAccountId', 'itin', 'none'])
+    expect(DC_ID_OPTIONS.map((o) => o.value)).toEqual(['ssn', 'itin', 'none'])
+    expect(DC_SNAP_TANF_OPTION.value).toBe('snapAccountId')
+    expect(DC_SNAP_TANF_OPTION.validation).toEqual({ digits: [7, 8] })
   })
 
-  it('renders the co-loaded option set with a divider before "None"', () => {
-    mockUseAuth.mockReturnValue({ session: session(true) })
+  // Co-loaded status is only known after a SNAP/TANF match, so a first-time co-loaded user
+  // arrives with isCoLoaded false. The question is how they identify themselves; the session
+  // must not skip or reshape it.
+  it.each([
+    ['co-loaded', session(true)],
+    ['not co-loaded', session(false)],
+    ['unknown', null]
+  ])('asks the SNAP/TANF question when the session is %s', async (_, currentSession) => {
+    mockUseAuth.mockReturnValue({ session: currentSession })
+    const user = userEvent.setup()
 
     const { container } = renderComponent()
 
-    expect(screen.getByRole('radio', { name: LABEL_SNAP_ACCOUNT })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: LABEL_ITIN })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: LABEL_NONE })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: LABEL_SNAP_QUESTION })).toBeInTheDocument()
     expect(screen.queryByRole('radio', { name: LABEL_SSN })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: LABEL_SNAP_PERSON })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: LABEL_MEDICAID })).not.toBeInTheDocument()
-    expect(container.querySelector('hr')).toBeInTheDocument()
-  })
 
-  it('renders the full option set when session.isCoLoaded is false', () => {
-    mockUseAuth.mockReturnValue({ session: session(false) })
+    await user.click(screen.getByRole('radio', { name: 'Yes' }))
+    expect(screen.getByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER })).toBeInTheDocument()
 
-    const { container } = renderComponent()
-
+    await user.click(screen.getByRole('radio', { name: 'No' }))
+    expect(screen.queryByRole('textbox', { name: INPUT_LABEL_CASE_NUMBER })).not.toBeInTheDocument()
     expect(screen.getByRole('radio', { name: LABEL_SSN })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: LABEL_ITIN })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: LABEL_SNAP_ACCOUNT })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: LABEL_NONE })).toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: LABEL_SNAP_PERSON })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: LABEL_MEDICAID })).not.toBeInTheDocument()
     expect(container.querySelector('hr')).toBeInTheDocument()
-  })
-
-  it('renders the full option set when session is unknown', () => {
-    mockUseAuth.mockReturnValue({ session: null })
-
-    renderComponent()
-
-    expect(screen.getByRole('radio', { name: LABEL_SSN })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: LABEL_ITIN })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: LABEL_SNAP_ACCOUNT })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: LABEL_NONE })).toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: LABEL_SNAP_PERSON })).not.toBeInTheDocument()
-    expect(screen.queryByRole('radio', { name: LABEL_MEDICAID })).not.toBeInTheDocument()
   })
 })

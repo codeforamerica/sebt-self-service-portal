@@ -1,5 +1,12 @@
 import { expect, type Page } from '@playwright/test'
 
+/** Clicks a USWDS tile radio, which clips the native input, through its associated label. */
+async function clickTileRadio(page: Page, name: RegExp) {
+  const radio = page.getByRole('radio', { name })
+  await radio.scrollIntoViewIfNeeded()
+  await page.locator(`label[for="${await radio.getAttribute('id')}"]`).click()
+}
+
 /** Fills the DC id-proofing form and submits; waits for the API response. */
 export async function submitIdProofingForm(
   page: Page,
@@ -15,16 +22,19 @@ export async function submitIdProofingForm(
   await page.locator('[name="dobDay"]').fill(options.day)
   await page.locator('[name="dobYear"]').fill(options.year)
 
-  const idTypeLabels: Record<typeof options.idType, RegExp> = {
-    ssn: /Social Security Number \(SSN\)/i,
-    itin: /Individual Taxpayer ID Number \(ITIN\)/i,
-    snapAccountId: /SNAP or TANF account ID/i,
-    none: /^None of the above$/i
+  // "Do you receive SNAP or TANF?" comes first: "Yes" asks for the case number, "No" opens the
+  // SSN / ITIN / none options.
+  if (options.idType === 'snapAccountId') {
+    await clickTileRadio(page, /^Yes$/i)
+  } else {
+    await clickTileRadio(page, /^No$/i)
+    const idTypeLabels: Record<Exclude<typeof options.idType, 'snapAccountId'>, RegExp> = {
+      ssn: /Social Security Number \(SSN\)/i,
+      itin: /Individual Taxpayer ID Number \(ITIN\)/i,
+      none: /^None of the above$/i
+    }
+    await clickTileRadio(page, idTypeLabels[options.idType])
   }
-  const idTypeRadio = page.getByRole('radio', { name: idTypeLabels[options.idType] })
-  await idTypeRadio.scrollIntoViewIfNeeded()
-  // USWDS tile radios clip the native input; click the associated label instead.
-  await page.locator(`label[for="${await idTypeRadio.getAttribute('id')}"]`).click()
 
   if (options.idValue) {
     await page.locator('[name="idValue"]').fill(options.idValue)
