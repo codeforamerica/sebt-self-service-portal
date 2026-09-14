@@ -130,6 +130,7 @@ export function IdProofingForm({
   // Composite errors that describe the date as a whole (impossible calendar date,
   // future, >120 years ago) belong to the fieldset, not to any single input.
   const [dobFieldsetError, setDobFieldsetError] = useState<Msg | null>(null)
+  const [idTypeError, setIdTypeError] = useState<Msg | null>(null)
   const [idValueError, setIdValueError] = useState<Msg | null>(null)
   const [submitError, setSubmitError] = useState<Msg | null>(null)
   // Covers the full submit flow, not just the mutation. The Socure DI token
@@ -145,6 +146,9 @@ export function IdProofingForm({
 
   const answeredYes = snapTanfOption !== undefined && snapTanfAnswer === 'yes'
   const showIdOptions = snapTanfOption === undefined || snapTanfAnswer === 'no'
+  // The SNAP/TANF question design makes the ID choice optional. Without the question, an ID
+  // choice stays required, with "None of the above" as the explicit opt-out.
+  const idChoiceOptional = snapTanfOption !== undefined
   const selectedOption = answeredYes
     ? snapTanfOption
     : idOptions.find((opt) => opt.value === selectedIdType)
@@ -188,6 +192,11 @@ export function IdProofingForm({
     if (!dobDay) newDobErrors.day = REQUIRED_FIELD_ERROR
     if (!dobYear) newDobErrors.year = REQUIRED_FIELD_ERROR
 
+    let idTypeErr: Msg | null = null
+    if (!idChoiceOptional && selectedIdType === null) {
+      idTypeErr = REQUIRED_FIELD_ERROR
+    }
+
     let idError: Msg | null = null
     if (showIdValueInput && !answeredYes && !idValue.trim()) {
       idError = REQUIRED_FIELD_ERROR
@@ -197,7 +206,8 @@ export function IdProofingForm({
     // already flagged the payload. The schema enforces SSN/ITIN digit count
     // and DOB calendar/range rules; required-ness stays field-local so each
     // field gets its own "This is required" message.
-    const allRequiredFilled = Object.keys(newDobErrors).length === 0 && idError === null
+    const allRequiredFilled =
+      Object.keys(newDobErrors).length === 0 && idTypeErr === null && idError === null
 
     if (allRequiredFilled) {
       const parsed = SubmitIdProofingRequestSchema.safeParse({
@@ -234,10 +244,14 @@ export function IdProofingForm({
 
     setDobErrors(newDobErrors)
     setDobFieldsetError(newDobFieldsetError)
+    setIdTypeError(idTypeErr)
     setIdValueError(idError)
 
     return (
-      Object.keys(newDobErrors).length === 0 && newDobFieldsetError === null && idError === null
+      Object.keys(newDobErrors).length === 0 &&
+      newDobFieldsetError === null &&
+      idTypeErr === null &&
+      idError === null
     )
   }
 
@@ -518,53 +532,68 @@ export function IdProofingForm({
         </fieldset>
       )}
 
-      {/* ID type selection */}
-      {showIdOptions && (
-        <fieldset className="usa-fieldset margin-top-3">
-          <legend className="usa-legend">{t('labelId')}</legend>
+      {/* ID type selection. With the SNAP/TANF question, hidden until "No" is answered; the
+          hidden attribute also takes it out of the accessibility tree. */}
+      <fieldset
+        className="usa-fieldset margin-top-3"
+        hidden={!showIdOptions}
+      >
+        <legend className="usa-legend">
+          {t('labelId')}
+          {!idChoiceOptional && <span className="text-secondary-dark"> *</span>}
+        </legend>
 
-          {idOptions.map((option) => (
-            <div
-              key={option.value}
-              className="margin-top-2"
-            >
-              {option.dividerBefore && (
-                <hr
-                  aria-hidden="true"
-                  className="margin-y-2 border-0 border-top border-base-ink"
-                />
-              )}
-              <div className="usa-radio">
-                <input
-                  className="usa-radio__input usa-radio__input--tile"
-                  type="radio"
-                  id={`${formId}-id-type-${option.value}`}
-                  name="idType"
-                  value={option.value}
-                  checked={selectedIdType === option.value}
-                  onChange={() => {
-                    setSelectedIdType(option.value)
-                    setIdValue('')
-                    setIdValueError(null)
-                  }}
-                />
-                <label
-                  className="usa-radio__label"
-                  htmlFor={`${formId}-id-type-${option.value}`}
-                >
-                  <span className="text-bold">{t(option.labelKey)}</span>
-                  {option.helperKey && (
-                    <span className="usa-radio__label-description">{t(option.helperKey)}</span>
-                  )}
-                </label>
-              </div>
+        {idTypeError && (
+          <span
+            className="usa-error-message"
+            role="alert"
+          >
+            {resolveMsg(idTypeError)}
+          </span>
+        )}
+
+        {idOptions.map((option) => (
+          <div
+            key={option.value}
+            className="margin-top-2"
+          >
+            {option.dividerBefore && (
+              <hr
+                aria-hidden="true"
+                className="margin-y-2 border-0 border-top border-base-ink"
+              />
+            )}
+            <div className="usa-radio">
+              <input
+                className="usa-radio__input usa-radio__input--tile"
+                type="radio"
+                id={`${formId}-id-type-${option.value}`}
+                name="idType"
+                value={option.value}
+                checked={selectedIdType === option.value}
+                onChange={() => {
+                  setSelectedIdType(option.value)
+                  setIdValue('')
+                  setIdTypeError(null)
+                  setIdValueError(null)
+                }}
+              />
+              <label
+                className="usa-radio__label"
+                htmlFor={`${formId}-id-type-${option.value}`}
+              >
+                <span className="text-bold">{t(option.labelKey)}</span>
+                {option.helperKey && (
+                  <span className="usa-radio__label-description">{t(option.helperKey)}</span>
+                )}
+              </label>
             </div>
-          ))}
-        </fieldset>
-      )}
+          </div>
+        ))}
+      </fieldset>
 
       {/* Conditional ID value input */}
-      {showIdValueInput && selectedOption.inputLabelKey && (
+      {showIdValueInput && selectedOption?.inputLabelKey && (
         <div className="margin-top-2">
           <InputField
             label={t(selectedOption.inputLabelKey)}
@@ -577,7 +606,7 @@ export function IdProofingForm({
               // rule's upper bound, so pasted input like "555-44-3333" lands
               // in state as "555443333" (and is clipped to maxLength).
               const raw = e.target.value
-              const next = selectedOption.validation ? raw.replace(/\D/g, '') : raw
+              const next = selectedOption?.validation ? raw.replace(/\D/g, '') : raw
               setIdValue(next)
             }}
             autoComplete="off"

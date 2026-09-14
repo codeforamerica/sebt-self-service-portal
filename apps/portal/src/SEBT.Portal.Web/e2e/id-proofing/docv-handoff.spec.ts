@@ -23,12 +23,11 @@ test.describe('Identity proofing document-verification hand-off', () => {
 
     await page.goto('/login/id-proofing')
 
-    // Adult date of birth, "No" to SNAP/TANF, then "none of the above" for the optional ID.
+    // Adult date of birth + "none of the above" for the optional ID.
     await page.getByLabel(/month/i).first().selectOption('01')
     await page.getByRole('textbox', { name: /day/i }).fill('15')
     await page.getByRole('textbox', { name: /year/i }).fill('1990')
     // USWDS tile radios visually hide the input; click the label text instead.
-    await page.getByText('No', { exact: true }).click()
     await page.getByText('None of the above', { exact: true }).click()
     await page.getByRole('button', { name: /continue/i }).click()
 

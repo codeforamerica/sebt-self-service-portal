@@ -36,7 +36,7 @@ test.describe('DC co-loaded id proofing (full stack)', () => {
     )
 
     await expect(page.locator('#id-proofing-title')).toBeVisible()
-    await expect(page.getByRole('group', { name: /do you receive snap or tanf/i })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /account id/i })).toBeVisible()
   })
 
   test('wrong co-loaded benefit ID routes to co-loaded off-boarding copy', async ({ page }) => {

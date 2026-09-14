@@ -373,10 +373,10 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        // month error is a <span role="alert">, day/year errors are inside InputField's role="alert".
-        // Choosing an ID option is optional, so leaving the radios blank adds no error.
+        // month error is a <span role="alert">, day/year errors are inside InputField's role="alert"
+        // id type error is also a <span role="alert"> since no radio is selected
         const errors = screen.getAllByRole('alert')
-        expect(errors).toHaveLength(3)
+        expect(errors).toHaveLength(4)
       })
     })
 
@@ -393,9 +393,9 @@ describe('IdProofingForm', () => {
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
       await waitFor(() => {
-        // day/year errors only; no radio selected is not an error
+        // day/year errors plus id type error (no radio selected)
         const errors = screen.getAllByRole('alert')
-        expect(errors).toHaveLength(2)
+        expect(errors).toHaveLength(3)
       })
     })
   })
@@ -426,9 +426,8 @@ describe('IdProofingForm', () => {
     })
   })
 
-  describe('ID choice is optional', () => {
-    it('submits with no ID when the user selects no ID option', async () => {
-      const readSubmission = captureSubmission()
+  describe('ID type validation', () => {
+    it('shows an error when the user submits without selecting an ID option', async () => {
       const user = userEvent.setup()
       renderWithProviders(
         <IdProofingForm
@@ -437,23 +436,18 @@ describe('IdProofingForm', () => {
         />
       )
 
-      await fillValidDob(user)
+      // Fill valid DOB so only the radio error fires
+      await user.selectOptions(screen.getByRole('combobox', { name: /month/i }), '01')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_DAY }), '15')
+      await user.type(screen.getByRole('textbox', { name: INPUT_LABEL_YEAR }), '1990')
+
       await user.click(screen.getByRole('button', { name: /continue/i }))
 
-      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
-      expect(readSubmission()).toMatchObject({ idType: null, idValue: null })
-    })
-
-    it('does not mark the ID question as required', () => {
-      renderWithProviders(
-        <IdProofingForm
-          idOptions={TEST_ID_OPTIONS}
-          contactLink={TEST_CONTACT_LINK}
-        />
-      )
-
-      // An exact accessible name proves no required asterisk is appended to the legend.
-      expect(screen.getByRole('group', { name: enDcIdProofing.labelId })).toBeInTheDocument()
+      await waitFor(() => {
+        const errors = screen.getAllByRole('alert')
+        expect(errors.length).toBeGreaterThanOrEqual(1)
+      })
+      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 
@@ -467,6 +461,29 @@ describe('IdProofingForm', () => {
         />
       )
     }
+
+    it('submits with no ID when "No" is answered and no ID option is chosen', async () => {
+      const readSubmission = captureSubmission()
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('radio', { name: 'No' }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/dashboard'))
+      expect(readSubmission()).toMatchObject({ idType: null, idValue: null })
+    })
+
+    it('does not mark the ID question as required after "No"', async () => {
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await user.click(screen.getByRole('radio', { name: 'No' }))
+
+      // An exact accessible name proves no required asterisk is appended to the legend.
+      expect(screen.getByRole('group', { name: enDcIdProofing.labelId })).toBeInTheDocument()
+    })
 
     it('asks the question before showing any ID field', () => {
       renderSnapTanfForm()

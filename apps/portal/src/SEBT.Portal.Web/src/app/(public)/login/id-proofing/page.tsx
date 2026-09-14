@@ -4,7 +4,12 @@ import { IdProofingWithDi } from '@/features/auth/components/id-proofing/IdProof
 import { getState, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
-import { DC_ID_OPTIONS, DC_SNAP_TANF_OPTION } from './dc-id-options'
+import {
+  DC_ID_OPTIONS,
+  DC_ID_OPTIONS_AFTER_NO,
+  DC_ID_OPTIONS_CO_LOADED,
+  DC_SNAP_TANF_OPTION
+} from './dc-id-options'
 
 export default function IdProofingPage() {
   const state = getState()
@@ -29,6 +34,8 @@ export default function IdProofingPage() {
 
           <IdProofingWithDi
             idOptions={DC_ID_OPTIONS}
+            coLoadedIdOptions={DC_ID_OPTIONS_CO_LOADED}
+            snapTanfIdOptions={DC_ID_OPTIONS_AFTER_NO}
             snapTanfOption={DC_SNAP_TANF_OPTION}
             contactLink={links.external.contactUsAssistance}
           />
