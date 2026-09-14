@@ -27,7 +27,7 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - **Reach for shared design-system components first** (`Button`, `InputField`, `Alert`, … from `@sebt/design-system`) before composing your own from raw HTML + USWDS classes. They already encapsulate ARIA wiring, USWDS class composition, and per-state theming — re-using them keeps behavior consistent and prevents accessibility drift. Use a `<button>` with `usa-button` only when no shared component fits, and consider whether the design system should be extended instead.
 - **When no shared component fits, prefer USWDS component classes** (`usa-button`, `usa-input`, `usa-form-group`, `usa-combo-box__list`, …) before writing custom CSS.
 - **Use USWDS utility classes** (`position-relative`, `margin-bottom-2`, `text-center`, `display-flex`, …) for layout, spacing, and one-off style needs. The full utility set is generated from our design tokens, so utilities stay in sync with the per-state theme.
-- When none of the above fits, add SCSS in a co-located `.scss` file that references USWDS tokens (`@use 'uswds-core' as *;` and the `units()` / `color()` helpers). Don't hardcode colors, spacing, or font sizes.
+- When none of the above fits, add the rule to the design system's theme Sass: `packages/design-system/design/sass/_uswds-theme-custom-styles.scss`, or a partial under its `components/` directory. That Sass compiles into each state's stylesheet with `uswds-core` configured, so it can reference USWDS tokens (`@use 'uswds-core' as *;` and the `units()` / `color()` helpers). A co-located `.scss` in the portal cannot: the portal's Next config does not put `uswds-core` on the Sass load path. Don't hardcode colors, spacing, or font sizes.
 
 ## Getting help
 - If you're confused or having trouble with something, you are strongly encouraged to stop and ask for help. Especially if it's something your human might be better at.
@@ -109,29 +109,25 @@ We follow a test-driven development (TDD) approach: write tests first to fail, t
 - The portal enforces a strict CSP via `apps/portal/src/SEBT.Portal.Web/src/proxy.ts`. When adding **any browser-side call to a new external domain** (API, SDK, analytics, fonts), add the domain to the appropriate CSP directive (`connect-src`, `script-src`, `style-src`, `font-src`, etc.).
 - This is easy to miss because CSP is not enforced in local dev or in tests (MSW intercepts network calls). A missing entry means the feature silently fails in production — the browser blocks the request, and error-handling code gracefully degrades as if the service is down.
 
-### Client-side env vars (`NEXT_PUBLIC_*`)
-Next.js inlines `NEXT_PUBLIC_*` references into the client bundle at **build time**, not runtime. Setting them at runtime (e.g. in IIS `web.config`'s `<environmentVariables>`, or container env vars on a server already-built) has **no effect on browser code** — the empty value is already baked into static JS chunks. The only place that matters is the environment of the `pnpm build` step.
+### Browser-facing config
 
-Adding a new client-exposed var requires wire-ups across **both** deployment paths:
+Browser config (analytics keys, Socure/Smarty keys, dev toggles) is served **at request time**, not inlined at build. The variables are deliberately **unprefixed** — `GA_ID`, `AMPLITUDE_API_KEY`, `SMARTY_EMBEDDED_KEY`, and so on — because Next inlines any `NEXT_PUBLIC_*` reference into static chunks during `pnpm build`, which pins it to the build environment. See [docs/adr/0023-runtime-client-config.md](./docs/adr/0023-runtime-client-config.md).
 
-**Shared:**
-1. `apps/portal/src/SEBT.Portal.Web/src/env.ts` — declare in the `client` schema and `runtimeEnv` pass-through.
+To add a new browser-facing value:
 
-**Docker / ECR path (DC dev, CO):**
-2. `apps/portal/src/SEBT.Portal.Web/Dockerfile` — add `ARG NEXT_PUBLIC_FOO=""` (BuildKit auto-exposes named ARGs as env vars to subsequent RUN steps; no explicit `ENV` bridge needed).
-3. `.github/workflows/deploy-ecr.yaml` — add `--build-arg NEXT_PUBLIC_FOO=${{ vars.FOO }}` to **both** the DC and CO docker build steps.
+1. `apps/portal/src/SEBT.Portal.Web/src/env.ts` — declare it in the **`server`** schema and `runtimeEnv` (no prefix).
+2. `src/lib/runtime-config.ts` — add the field to `RuntimeConfig` and read it in `getRuntimeConfig()`.
+3. Read it in client components with `useRuntimeConfig()`; server components can read `getRuntimeConfig()` directly.
+4. If it enables a browser call to a new external domain, add that domain to the CSP in `src/proxy.ts` — and gate it on the same unprefixed variable so the policy widens at runtime too.
+5. Set the value where the process runs. **No Dockerfile `ARG` and no `--build-arg` is needed or wanted** — adding one re-freezes the value to build time.
+   - Docker / ECS (dev-dc, dev-co): add a `variable` to `tofu/config/{env}/variables.tf`, map it into `state_web_environment_variables` in that config's `main.tf`, and pass `TF_VAR_<name>: ${{ vars.<NAME> }}` in `.github/workflows/plan.yaml` and the matching deploy job in `deploy-ecr.yaml`. Preview stacks clone the dev-co task definition, so they inherit it.
+   - IIS (DC prod): add it to `scripts/ci/templates/web.config`'s `<environmentVariables>`; the host's copy holds the real value.
 
-**IIS path (DC prod):**
-4. `.github/workflows/release-iis-dc.yaml` — add `NEXT_PUBLIC_FOO: ${{ vars.FOO }}` under the `env:` block of the `Build and package frontend` step. The IIS build runs `pnpm build` on the runner directly (no Docker), so the var must be in the runner's process env when that script executes.
-5. The `scripts/ci/templates/web.config` runtime env block is **not** the right place — it only affects the Node.js process at runtime, and `NEXT_PUBLIC_*` references in browser code are already inlined by then. Don't add it there.
+Only build-identity values stay inlined (`NEXT_PUBLIC_BUILD_SHA`, `NEXT_PUBLIC_DC_CONNECTOR_SHA`) — they describe the artifact rather than the environment.
 
-**GitHub Variables — required for both paths:**
-6. Set `vars.FOO` on the appropriate per-environment scope (admin, out-of-band):
-   - Docker/ECR DC dev: `dev-dc` environment in `deploy-ecr.yaml`'s deploy-dc job.
-   - Docker/ECR CO: `dev-co` environment in `deploy-ecr.yaml`'s deploy-co job.
-   - IIS DC prod: `prod-dc` environment on `release-iis-dc.yaml`'s build job for `workflow_dispatch` + `release/dc-v*` tag push. PR runs bind to `prod-dc-test`, populated with non-empty sentinel values (e.g. `SMARTY_EMBEDDED_KEY=PR-VALIDATION-SENTINEL`). This means every PR artifact validates the var-threading pipeline end-to-end without exposing real prod keys.
+`STATE` is runtime too, and is also unprefixed. It selects a per-state USWDS stylesheet from `public/themes/` (Sass can only configure `uswds-core` once per compilation, so each state is compiled separately); that stylesheet also carries the state's `@font-face` rules. The server stamps it onto `<html data-state>`; client code reads it back via `getState()` from `@sebt/design-system`, so **never read `process.env.STATE` directly in a client component**. Adding a state means adding it to the `STATES` list in `generate-theme-css.js`.
 
-Local dev reads from `.env`/`.env.local` and bypasses this whole pipeline, so the gap only surfaces in deployed environments. To verify a deployed bundle, inspect the workflow artifact: client values that were inlined as empty show up as `"NEXT_PUBLIC_FOO": ""` in `.next/required-server-files.json` (for vars threaded through `next.config.ts`'s `env:` block) or as missing entirely from `.next/static/chunks/*.js` (for vars Next.js auto-inlined and tree-shook). A PR-run IIS artifact should show the `prod-dc-test` sentinel values for every plumbed var — if any are empty, the wiring is broken.
+The enrollment checker is the exception: it deploys one static export per state to its own bucket, so it keeps `NEXT_PUBLIC_STATE` and `NEXT_PUBLIC_BASE_PATH` as build inputs. Its other browser config comes from a `config.js` in the deployed bucket, written at deploy by `scripts/ci/write-checker-config.sh` and read by `src/lib/client-config.ts`. A new checker value needs a field in `client-config.ts`, an entry in that script, and an `env:` line in both write steps of `deploy-enrollment-checker.yaml`.
 
 ### Data boundary enforcement
 - Enforce access control at the data boundary (the API endpoint that returns the data), not at the UI layer. Client-side guards are UX conveniences, not security controls.
