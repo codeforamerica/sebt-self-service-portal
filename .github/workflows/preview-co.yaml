@@ -237,7 +237,7 @@ jobs:
 
       - name: Post preview URL on PR
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           PREVIEW_URL: ${{ steps.deploy.outputs.preview_url }}
           DOMAIN: ${{ vars.DOMAIN }}
