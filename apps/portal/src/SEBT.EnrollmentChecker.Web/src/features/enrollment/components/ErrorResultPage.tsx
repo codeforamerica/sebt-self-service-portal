@@ -11,7 +11,8 @@ import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 
 interface ErrorResultPageProps {
-  portalUrl: string
+  /** Undefined on a misconfigured deployment; the CTA is hidden rather than dead. */
+  portalUrl: string | undefined
 }
 
 /**
@@ -49,16 +50,21 @@ export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
         <section data-testid="next-step-portal">
           {isClosed ? (
             /* Past season: the portal pointer is a link at the head of the
-               explanation rather than a heading above it. */
+               explanation rather than a heading above it. Without a portal URL
+               the pointer still reads, it just isn't a dead link. */
             <div className="usa-prose margin-top-4">
               <p>
-                <a
-                  href={portalUrl}
-                  className="text-bold"
-                  data-testid="portal-alert-link"
-                >
-                  {t(alertKey('AlertTitle'))}
-                </a>
+                {portalUrl ? (
+                  <a
+                    href={portalUrl}
+                    className="text-bold"
+                    data-testid="portal-alert-link"
+                  >
+                    {t(alertKey('AlertTitle'))}
+                  </a>
+                ) : (
+                  <strong>{t(alertKey('AlertTitle'))}</strong>
+                )}
               </p>
               <RichText>{t(alertKey('AlertBody'))}</RichText>
             </div>
@@ -70,15 +76,17 @@ export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
               </div>
             </>
           )}
-          <p>
-            <a
-              href={portalUrl}
-              className="usa-button"
-              data-testid="portal-link"
-            >
-              {t('streamlinedEnrolledAction')}
-            </a>
-          </p>
+          {portalUrl && (
+            <p>
+              <a
+                href={portalUrl}
+                className="usa-button"
+                data-testid="portal-link"
+              >
+                {t('streamlinedEnrolledAction')}
+              </a>
+            </p>
+          )}
         </section>
 
         {/* A failed check in a closed season is otherwise a dead end — there is no

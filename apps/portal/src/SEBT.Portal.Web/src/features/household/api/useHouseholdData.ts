@@ -6,6 +6,8 @@ import { useEffect, useMemo } from 'react'
 
 import { ApiError, apiFetch } from '@/api'
 import { useAuth } from '@/features/auth'
+import { syncHouseholdUserData } from '@/lib/analytics-helpers'
+import { useDataLayer } from '@sebt/analytics'
 
 import { mergeHouseholdCardDetails } from './mergeHouseholdCardDetails'
 import { householdCardDetailsQueryKey, householdDataQueryKey } from './queryKeys'
@@ -61,6 +63,7 @@ export function useHouseholdData({
   const router = useRouter()
   const queryClient = useQueryClient()
   const { session } = useAuth()
+  const { setUserData } = useDataLayer()
   const userId = session?.userId
 
   const query = useQuery({
@@ -117,6 +120,19 @@ export function useHouseholdData({
       mergeHouseholdCardDetails(query.data, cardDetailsQuery.data)
     )
   }, [query.data, cardDetailsQuery.data, queryClient, userId])
+
+  // Record the household's analytics identity wherever its data lands, not just on
+  // the dashboard. These values live on `user.*` in an in-memory data layer that any
+  // full page load wipes, so a visitor who refreshes or opens a link mid-flow would
+  // otherwise submit without them. Writes are idempotent, so repeating them per
+  // consumer costs nothing.
+  useEffect(() => {
+    if (!data) {
+      return
+    }
+
+    syncHouseholdUserData(setUserData, session?.isCoLoaded, data)
+  }, [data, session?.isCoLoaded, setUserData])
 
   const requiresProofing =
     query.error instanceof ApiError &&

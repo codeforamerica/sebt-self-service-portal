@@ -173,20 +173,13 @@ jobs:
         env:
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
           ECR_WEB_REPOSITORY_URL: ${{ secrets.ECR_WEB_REPOSITORY_URL }}
-          NEXT_PUBLIC_AMPLITUDE_API_KEY: ${{ vars.AMPLITUDE_API_KEY }}
-          NEXT_PUBLIC_MIXPANEL_TOKEN: ${{ vars.MIXPANEL_TOKEN }}
-          NEXT_PUBLIC_SITEIMPROVE_ID: ${{ vars.SITEIMPROVE_ID }}
-          NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: ${{ vars.SMARTY_EMBEDDED_KEY }}
+        # Only the build identity goes in as a build arg. STATE and browser-facing
+        # config are read at request time from the task definition, which the
+        # preview deploy clones from dev-co.
         run: |
           docker build \
             --platform linux/amd64 \
             -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=co \
-            --build-arg NEXT_PUBLIC_MOCK_SOCURE=true \
-            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY="${NEXT_PUBLIC_AMPLITUDE_API_KEY}" \
-            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN="${NEXT_PUBLIC_MIXPANEL_TOKEN}" \
-            --build-arg NEXT_PUBLIC_SITEIMPROVE_ID="${NEXT_PUBLIC_SITEIMPROVE_ID}" \
-            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY="${NEXT_PUBLIC_SMARTY_EMBEDDED_KEY}" \
             --build-arg NEXT_PUBLIC_BUILD_SHA="$(git rev-parse HEAD)" \
             -t "${ECR_WEB_REPOSITORY_URL}:${IMAGE_TAG}" \
             .

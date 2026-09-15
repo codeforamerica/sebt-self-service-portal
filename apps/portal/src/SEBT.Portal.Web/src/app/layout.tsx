@@ -1,14 +1,16 @@
 import { AppShell } from '@/components/AppShell'
-import { headingFont, primaryFont } from '@/design/fonts'
+import fontManifest from '@/design/font-manifest.json'
 import { SessionIdentityCacheSync } from '@/features/auth/components/SessionIdentityCacheSync'
 import { portalRoutes } from '@/lib/analytics-routes'
+import { getRuntimeConfig } from '@/lib/runtime-config'
 import {
   AuthProvider,
   AxeProvider,
   DataLayerProvider,
   FeatureFlagsProvider,
   I18nProvider,
-  QueryProvider
+  QueryProvider,
+  RuntimeConfigProvider
 } from '@/providers'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { AmplitudeAnalytics, MixpanelAnalytics, SiteImproveAnalytics } from '@sebt/analytics'
@@ -22,21 +24,13 @@ import {
 import type { Metadata, Viewport } from 'next'
 import { headers } from 'next/headers'
 import './globals.css'
-import './styles.scss'
 
-const state = getState()
-const stateName = getStateName(state)
-const siteDisplayName = getSiteDisplayName(state)
-const portalMetadataDescription = getPortalMetadataDescription(state)
-const portalTitle = `${siteDisplayName} Self-Service Portal`
+// Resolved per call rather than at module scope: one artifact serves every state,
+// so STATE is only known from the server process environment at request time.
 
-function getDefaultBaseUrl() {
+function getDefaultBaseUrl(state: string) {
   return process.env.NEXT_PUBLIC_BASE_URL ?? `https://sebt.${state}.gov`
 }
-const gaId = process.env.NEXT_PUBLIC_GA_ID
-const mixpanelToken = process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
-const amplitudeApiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
-const siteImproveId = process.env.NEXT_PUBLIC_SITEIMPROVE_ID
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -48,7 +42,12 @@ export async function generateMetadata(): Promise<Metadata> {
   const h = await headers()
   const host = h.get('host')
   const proto = h.get('x-forwarded-proto') ?? 'http'
-  const baseUrl = host ? `${proto}://${host}` : getDefaultBaseUrl()
+  const state = getState()
+  const stateName = getStateName(state)
+  const siteDisplayName = getSiteDisplayName(state)
+  const portalMetadataDescription = getPortalMetadataDescription(state)
+  const portalTitle = `${siteDisplayName} Self-Service Portal`
+  const baseUrl = host ? `${proto}://${host}` : getDefaultBaseUrl(state)
 
   return {
     title: {
@@ -96,14 +95,45 @@ export default async function RootLayout({
 }>) {
   // Get nonce from proxy for CSP-compliant script loading
   const nonce = (await headers()).get('x-nonce') ?? undefined
+  // Resolved per request so a config change takes effect on release, not rebuild.
+  const state = getState()
+  // The theme sits outside Next's asset pipeline, so it has no content hash to
+  // bust caches on deploy. Key it to the build instead, or a returning visitor
+  // can be served the previous release's stylesheet.
+  const themeCacheKey = process.env.NEXT_PUBLIC_BUILD_SHA
+    ? `?v=${process.env.NEXT_PUBLIC_BUILD_SHA}`
+    : ''
+  const runtimeConfig = getRuntimeConfig()
+  const { gaId, mixpanelToken, amplitudeApiKey, siteImproveId } = runtimeConfig
 
   return (
     <html
       lang="en"
       data-state={state}
-      className={`usa-js-loading ${primaryFont.variable} ${headingFont.variable}`}
+      className="usa-js-loading"
     >
       <head>
+        {/* The USWDS theme is per state and cannot be bundled: Sass configures
+            uswds-core once per compilation, so each state is compiled to its own
+            stylesheet (public/themes/) and linked once STATE is known at request
+            time. A visitor downloads one theme, not every state's. */}
+        {/* Preload only this state's faces. They are declared as @font-face in the
+            theme stylesheet above, so without this the browser would not discover
+            them until the stylesheet parses. */}
+        {(fontManifest[state as keyof typeof fontManifest] ?? []).map((href) => (
+          <link
+            key={href}
+            rel="preload"
+            as="font"
+            type="font/woff2"
+            href={href}
+            crossOrigin="anonymous"
+          />
+        ))}
+        <link
+          rel="stylesheet"
+          href={`/themes/theme-${state}.css${themeCacheKey}`}
+        />
         {/* Build SHA exposed for identifying the deployed commit per environment.
             Inlined at build time from NEXT_PUBLIC_BUILD_SHA (set to the GitHub
             commit SHA in CI); absent in local/dev builds. */}
@@ -119,7 +149,8 @@ export default async function RootLayout({
           application="sebt-portal"
           routes={portalRoutes}
         >
-          <QueryProvider>
+          <RuntimeConfigProvider config={runtimeConfig}>
+            <QueryProvider>
             <AuthProvider>
               <SessionIdentityCacheSync />
               <FeatureFlagsProvider>
@@ -136,7 +167,8 @@ export default async function RootLayout({
                 </I18nProvider>
               </FeatureFlagsProvider>
             </AuthProvider>
-          </QueryProvider>
+            </QueryProvider>
+          </RuntimeConfigProvider>
         </DataLayerProvider>
         {/* USWDS initialization script - uses nonce for CSP compliance */}
         {/* suppressHydrationWarning: nonce changes per request, mismatch is expected */}
@@ -162,9 +194,9 @@ export default async function RootLayout({
           {...(nonce ? { nonce } : {})}
         />
       )}
-      {/* Amplitude - only rendered when NEXT_PUBLIC_AMPLITUDE_API_KEY is configured */}
+      {/* Amplitude - only rendered when AMPLITUDE_API_KEY is configured */}
       {amplitudeApiKey && <AmplitudeAnalytics apiKey={amplitudeApiKey} />}
-      {/* SiteImprove — only rendered when NEXT_PUBLIC_SITEIMPROVE_ID is configured */}
+      {/* SiteImprove — only rendered when SITEIMPROVE_ID is configured */}
       {siteImproveId && (
         <SiteImproveAnalytics
           siteId={siteImproveId}

@@ -14,20 +14,17 @@ describe('ial-guard-config', () => {
 
     it('is false when NODE_ENV is not development', () => {
       vi.stubEnv('NODE_ENV', 'test')
-      vi.stubEnv('NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP', 'true')
-      expect(isDebugRepeatOidcStepUp()).toBe(false)
+      expect(isDebugRepeatOidcStepUp(true)).toBe(false)
     })
 
-    it('is false when flag is not true', () => {
+    it('is false when the flag is off', () => {
       vi.stubEnv('NODE_ENV', 'development')
-      vi.stubEnv('NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP', 'false')
-      expect(isDebugRepeatOidcStepUp()).toBe(false)
+      expect(isDebugRepeatOidcStepUp(false)).toBe(false)
     })
 
-    it('is true only in development with flag true', () => {
+    it('is true only in development with the flag on', () => {
       vi.stubEnv('NODE_ENV', 'development')
-      vi.stubEnv('NEXT_PUBLIC_DEBUG_REPEAT_OIDC_STEP_UP', 'true')
-      expect(isDebugRepeatOidcStepUp()).toBe(true)
+      expect(isDebugRepeatOidcStepUp(true)).toBe(true)
     })
   })
 })
