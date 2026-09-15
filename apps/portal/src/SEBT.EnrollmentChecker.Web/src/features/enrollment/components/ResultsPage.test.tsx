@@ -156,9 +156,9 @@ describe('ResultsPage', () => {
       expect(steps[1]).toHaveAttribute('data-testid', 'next-step-apply-2027')
     })
 
-    it('shows the portal step with the expiration-aware heading and portal link', () => {
+    it('shows the portal step with the heading and portal link', () => {
       const portalStep = screen.getByTestId('next-step-portal')
-      expect(portalStep).toHaveTextContent('received their benefits and when they expire')
+      expect(portalStep).toHaveTextContent('will receive their benefits')
       const portalLink = screen.getByTestId('portal-link')
       expect(portalLink).toHaveAttribute('href', portalUrl)
     })
@@ -172,7 +172,7 @@ describe('ResultsPage', () => {
       expect(applyStep).toHaveTextContent(closedLine)
       const applyLink = screen.getByTestId('apply-2027-link')
       expect(applyLink).toHaveAttribute('href', mockApplyHref)
-      expect(applyStep).toHaveTextContent('You will not hear back about your application')
+      expect(applyStep).toHaveTextContent('After you submit you will hear back about your application')
     })
 
     it('renders no eligibility accordion and no income calculator', () => {
