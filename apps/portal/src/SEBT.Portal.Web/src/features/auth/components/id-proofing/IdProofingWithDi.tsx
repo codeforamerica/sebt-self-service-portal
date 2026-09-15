@@ -2,6 +2,7 @@
 
 import { useDeviceIntelligence } from '@/features/auth/components/device-intelligence'
 import { useAuth } from '@/features/auth/context'
+import { useRuntimeConfig } from '@/providers'
 
 import { IdProofingForm, type IdOption } from './IdProofingForm'
 
@@ -16,7 +17,7 @@ export function IdProofingWithDi({
   coLoadedIdOptions,
   contactLink
 }: IdProofingWithDiProps) {
-  const diSdkKey = process.env.NEXT_PUBLIC_SOCURE_DI_SDK_KEY
+  const diSdkKey = useRuntimeConfig().socureDiSdkKey
   const { getToken } = useDeviceIntelligence(diSdkKey)
   const { session } = useAuth()
   const options = session?.isCoLoaded ? coLoadedIdOptions : idOptions

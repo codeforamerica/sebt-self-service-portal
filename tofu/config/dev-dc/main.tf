@@ -183,6 +183,16 @@ module "app" {
 
   state_web_environment_variables = {
     ENROLLMENT_CHECKER_ORIGIN = "https://dev.dc.sebt-enrollment.codeforamerica.app"
+
+    # Browser-facing config: the Next server reads these per request and serves
+    # them to the client, so they are set on the container rather than baked into
+    # the image (docs/adr/0023-runtime-client-config.md). An empty value leaves
+    # that integration off.
+    AMPLITUDE_API_KEY   = var.amplitude_api_key
+    MIXPANEL_TOKEN      = var.mixpanel_token
+    SITEIMPROVE_ID      = var.siteimprove_id
+    SMARTY_EMBEDDED_KEY = var.smarty_embedded_key
+    SOCURE_DI_SDK_KEY   = var.socure_di_sdk_key
   }
   state_web_environment_secrets = {}
 }
