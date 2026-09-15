@@ -2,4 +2,5 @@
 # so there is no file list for a script to discover. Entries carry an href and
 # no name, and docfx takes each name from the target page's H1.
 - href: index.md
+- href: security.md
 - href: licensing.md

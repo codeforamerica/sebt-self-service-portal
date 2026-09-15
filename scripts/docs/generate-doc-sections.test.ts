@@ -186,7 +186,7 @@ test('the stamp date is read from the string, so no timezone can shift the day',
 test('git reports no date for a path it does not track', () => {
   const repoRoot = resolve(fileURLToPath(import.meta.url), '../../..');
 
-  assert.equal(lastCommitDate(repoRoot, 'docs/docfx/guides/content/index.md'), null, 'generated copies are git-ignored');
+  assert.equal(lastCommitDate(repoRoot, 'docs/docfx/docs/content/index.md'), null, 'generated copies are git-ignored');
   assert.match(lastCommitDate(repoRoot, 'docs/guides/content/index.md') ?? '', /^\d{4}-\d{2}-\d{2}T/);
 });
 
@@ -209,12 +209,16 @@ test('a parent with no extras is unchanged', () => {
   assert.equal(withNone, withEmpty);
 });
 
-test('the guides parent links the ADR and API TOCs by relative path', () => {
-  const extras = PARENT_EXTRAS['docs/docfx/guides'];
+test('no parent borrows another tree, so every nav entry has one home', () => {
+  assert.deepEqual(PARENT_EXTRAS, {}, 'the ADRs and the API reference are both top-level nav now');
+});
 
-  assert.deepEqual(
-    extras.map((e) => e.href),
-    ['../adr/toc.yml', '../api/toc.yml'],
-    'hrefs are relative to docs/docfx/guides/toc.yml',
+test('an extras href is relative to the parent TOC it is written into', () => {
+  // Guards the convention for the next entry added to PARENT_EXTRAS: the path
+  // resolves from the parent's own toc.yml, not from the repo root.
+  const toc = parse(
+    buildParentToc([{ nav: ['Guides', 'A guide'], dir: 'g', files: ['index.md'] }], [{ name: 'Borrowed', href: '../adr/toc.yml' }]),
   );
+
+  assert.deepEqual(toc.at(-1), { name: 'Borrowed', href: '../adr/toc.yml' });
 });

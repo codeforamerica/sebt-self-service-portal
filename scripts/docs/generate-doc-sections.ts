@@ -21,6 +21,7 @@ import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stringify } from 'yaml';
+import { CARDS_FILE, writeAdrCards } from './adr-index.ts';
 
 /** The one file in an output directory that is authored rather than copied. */
 const AUTHORED_PAGE = 'index.md';
@@ -77,36 +78,68 @@ export interface DocSection {
 export const SECTIONS: DocSection[] = [
   { source: 'docs/adr', output: 'docs/docfx/adr', hasIndex: true },
   {
-    source: 'docs/guides/architecture',
-    output: 'docs/docfx/guides/architecture',
+    source: 'docs/guides/overview',
+    output: 'docs/docfx/docs/overview',
+    hasIndex: false,
+    order: ['index.md', 'user-flows.md', 'data-flows.md', 'connector.md'],
+    parent: 'docs/docfx/docs',
+    nav: ['Overview'],
+  },
+  {
+    source: 'docs/guides/plan',
+    output: 'docs/docfx/docs/plan',
     hasIndex: false,
     order: ['index.md'],
-    parent: 'docs/docfx/guides',
-    nav: ['How it works'],
+    parent: 'docs/docfx/docs',
+    nav: ['Administration', 'Plan your program'],
   },
   {
     source: 'docs/guides/local-setup',
-    output: 'docs/docfx/guides/local-setup',
+    output: 'docs/docfx/docs/local-setup',
     hasIndex: false,
     order: ['index.md'],
-    parent: 'docs/docfx/guides',
-    nav: ['Get started', 'Set up your environment'],
+    parent: 'docs/docfx/docs',
+    nav: ['Development', 'Set up your environment'],
   },
   {
     source: 'docs/guides/state-connector',
-    output: 'docs/docfx/guides/state-connector',
+    output: 'docs/docfx/docs/state-connector',
     hasIndex: false,
     order: ['index.md', 'quickstart.md', 'contract.md', 'data-mapping.md', 'troubleshooting.md'],
-    parent: 'docs/docfx/guides',
-    nav: ['Get started', 'Build a state connector'],
+    parent: 'docs/docfx/docs',
+    nav: ['Development', 'Build a state connector'],
   },
   {
     source: 'docs/guides/content',
-    output: 'docs/docfx/guides/content',
+    output: 'docs/docfx/docs/content',
     hasIndex: false,
     order: ['index.md', 'add-a-key.md', 'troubleshooting.md'],
-    parent: 'docs/docfx/guides',
-    nav: ['Content', 'Customizing', 'Change user-facing text'],
+    parent: 'docs/docfx/docs',
+    nav: ['Customizing', 'Change user-facing text'],
+  },
+  {
+    source: 'docs/guides/branding',
+    output: 'docs/docfx/docs/branding',
+    hasIndex: false,
+    order: ['index.md'],
+    parent: 'docs/docfx/docs',
+    nav: ['Customizing', 'Change how the portal looks'],
+  },
+  {
+    source: 'docs/guides/build',
+    output: 'docs/docfx/docs/build',
+    hasIndex: false,
+    order: ['index.md'],
+    parent: 'docs/docfx/docs',
+    nav: ['Deployment', 'Build the portal'],
+  },
+  {
+    source: 'docs/guides/deploy',
+    output: 'docs/docfx/docs/deploy',
+    hasIndex: false,
+    order: ['index.md', 'database.md'],
+    parent: 'docs/docfx/docs',
+    nav: ['Deployment'],
   },
 ];
 
@@ -121,18 +154,15 @@ export function applyOrder(files: string[], order: string[] = []): string[] {
  * Nav entries appended to a parent TOC that are not copied sections.
  *
  * A TOC entry whose `href` names another `toc.yml` pulls that whole tree in as
- * its children. That is what puts the ADR records and the API reference inside
- * the Docs sidebar rather than giving each its own top-level nav item.
+ * its children, which is how a tree generated elsewhere can be nested inside a
+ * sidebar here.
  *
- * `api/toc.yml` is written by `docfx metadata`, which runs after this script.
- * The reference resolves at build time, so the ordering is not a problem.
+ * Empty today, deliberately. Both trees that could use it are top-level entries
+ * in `docs/docfx/toc.yml` instead: the API reference because it is generated
+ * from source rather than authored, and the ADRs because they have a landing
+ * page of their own that a nested sidebar entry would bury.
  */
-export const PARENT_EXTRAS: Record<string, { name: string; href: string }[]> = {
-  'docs/docfx/guides': [
-    { name: 'Architecture Decisions', href: '../adr/toc.yml' },
-    { name: '.NET API Reference', href: '../api/toc.yml' },
-  ],
-};
+export const PARENT_EXTRAS: Record<string, { name: string; href: string }[]> = {};
 
 /** A grouped section, with the nav path it occupies in the parent TOC. */
 export interface DocGroup {
@@ -328,6 +358,11 @@ function main(): void {
     writeFileSync(join(parentDir, 'toc.yml'), buildParentToc(entries, extras));
     console.log(`Wrote ${parent}/toc.yml nesting ${entries.length} section(s) plus ${extras.length} linked TOC(s).`);
   }
+
+  // Must follow the loop above. Assembling a section clears its output
+  // directory of everything but the authored page, which would take the card
+  // list with it if this ran first.
+  console.log(`Wrote ${CARDS_FILE} covering ${writeAdrCards(repoRoot)} ADR(s).`);
 }
 
 // Only run when invoked directly, so the helpers can be unit tested.

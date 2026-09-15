@@ -1,7 +1,11 @@
 - name: Home
   href: index.md
 - name: Docs
-  href: guides/
+  href: docs/
+- name: Decisions
+  href: adr/
+- name: API
+  href: api/
 - name: Releases
   href: releases.md
 - name: Compliance

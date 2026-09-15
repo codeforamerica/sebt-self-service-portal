@@ -33,16 +33,16 @@ test('returns nothing rather than throwing on malformed front matter', () => {
 });
 
 test('maps a source markdown path to the href docfx produces', () => {
-  assert.equal(hrefFor('guides/content/add-a-key.md'), 'guides/content/add-a-key.html');
+  assert.equal(hrefFor('docs/content/add-a-key.md'), 'docs/content/add-a-key.html');
 });
 
 test('keywords are appended, so they are indexed without showing in the blurb', () => {
   const index: Record<string, SearchEntry> = {
-    'guides/content/index.html': { href: 'guides/content/index.html', title: 'Change user-facing text', summary: 'Every word' },
+    'docs/content/index.html': { href: 'docs/content/index.html', title: 'Change user-facing text', summary: 'Every word' },
   };
 
-  assert.equal(applyKeywords(index, 'guides/content/index.html', ['i18n', 'locale']), true);
-  assert.equal(index['guides/content/index.html'].summary, 'Every word i18n locale');
+  assert.equal(applyKeywords(index, 'docs/content/index.html', ['i18n', 'locale']), true);
+  assert.equal(index['docs/content/index.html'].summary, 'Every word i18n locale');
 });
 
 test('a page with no index entry is skipped rather than creating one', () => {

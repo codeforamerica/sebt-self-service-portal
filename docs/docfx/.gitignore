@@ -15,4 +15,4 @@ adr/*.md
 adr/toc.yml
 
 # Copies of the docs/guides/ pages and the navigation built from them.
-guides/
+docs/

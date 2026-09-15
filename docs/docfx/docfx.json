@@ -41,7 +41,8 @@
           "_site/**",
           "template/**",
           "README.md",
-          "filterConfig.yml"
+          "filterConfig.yml",
+          "adr/_cards.md"
         ]
       }
     ],
@@ -78,11 +79,11 @@
     "keepFileLink": false,
     "disableGitFeatures": false,
     "fileMetadata": {
-      "_disableAffix": {
-        "index.md": true
-      },
       "_disableBreadcrumb": {
         "index.md": true
+      },
+      "_disableToc": {
+        "adr/index.md": true
       }
     }
   }
