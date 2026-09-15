@@ -1,13 +1,6 @@
 import bundleAnalyzer from '@next/bundle-analyzer'
 import type { NextConfig } from 'next'
-import path from 'path'
 import { getRouteHeaders } from './src/lib/route-headers'
-
-const state = process.env.STATE || 'dc'
-
-// @sebt/design-system is a workspace dependency installed into this package's node_modules.
-// __dirname here is src/SEBT.Portal.Web/.
-const designSystemPath = path.resolve(__dirname, 'node_modules/@sebt/design-system')
 
 // Bundle analyzer configuration
 const withBundleAnalyzer = bundleAnalyzer({
@@ -21,56 +14,14 @@ const nextConfig: NextConfig = {
   // createContext() where it doesn't exist. The design-system barrel is split
   // into server-safe (index.ts) and client (client.ts) entry points instead.
   reactCompiler: true,
-  env: {
-    NEXT_PUBLIC_STATE: state,
-    NEXT_PUBLIC_SMARTY_EMBEDDED_KEY: process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY || ''
-  },
   experimental: {
     // @typescript/typescript6 (aliased as `typescript`) exposes tsc6, not tsc.
     // Next's default CLI mode looks for typescript/bin/tsc; use the TS 6 API until
     // typescript-eslint supports TS 7.1. CI `pnpm typecheck` still uses TS 7 via @typescript/native.
     useTypeScriptCli: false,
-    // Use our custom sass-loader configuration instead of built-in
-    turbopackUseBuiltinSass: false,
     // Tree-shake the design-system barrel so importing a single export
     // doesn't pull in unrelated modules
     optimizePackageImports: ['@sebt/design-system']
-  },
-  /* SASS Configuration for USWDS
-   * sass-loader 16 + sass-embedded uses the modern Sass API, which honors `loadPaths` only.
-   * `includePaths` is legacy-API-only and is ignored — without loadPaths, `@use "uswds-core"` fails under webpack. */
-  sassOptions: {
-    implementation: 'sass-embedded',
-    quietDeps: true,
-    loadPaths: [
-      path.join(designSystemPath, 'design/sass'),
-      path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
-      path.join(__dirname, 'node_modules')
-    ]
-  },
-  /* Turbopack configuration for USWDS SASS imports */
-  turbopack: {
-    rules: {
-      '*.scss': {
-        loaders: [
-          {
-            loader: 'sass-loader',
-            options: {
-              implementation: 'sass-embedded',
-              sassOptions: {
-                quietDeps: true,
-                loadPaths: [
-                  path.join(designSystemPath, 'design/sass'),
-                  path.join(__dirname, 'node_modules/@uswds/uswds/packages'),
-                  path.join(__dirname, 'node_modules')
-                ]
-              }
-            }
-          }
-        ],
-        as: '*.css'
-      }
-    }
   },
   // Standalone output for Docker/CI deployments only (set BUILD_STANDALONE=true)
   // Local dev uses standard output so `next start` serves public/ and static/ correctly

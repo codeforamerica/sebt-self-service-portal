@@ -7,12 +7,23 @@ packages:
 # package.json's `pnpm.overrides`) because pnpm 11 no longer honors that location.
 overrides:
   ws: '>=8.21.0' # CVE-2026-48779 — memory-exhaustion DoS from tiny fragments/chunks (also covers prior uninitialized-memory CVE)
-  postcss: '>=8.5.10' # CVE — XSS via unescaped `</style>`
+  # One floor covers all four postcss advisories: the sourceMappingURL file-read family
+  # (GHSA-6g55-p6wh-862q, -r28c-9q8g-f849, -fxqj-rqcc-2cmp) and the earlier `</style>` XSS.
+  postcss: '>=8.5.23'
   vite: '>=8.0.16' # CVEs — path traversal, dev-server WS arbitrary read, server.fs.deny bypass; Dependabot alerts #156 #157
-  '@lhci/utils>js-yaml': '>=3.15.0 <4.0.0' # CVE — quadratic-complexity DoS via merge key repeated aliases; Dependabot alert #170
+  # Two entries because js-yaml patches its maintained lines separately: @lhci/utils needs
+  # the pre-4.0 API, everything else is on 4.x. Upper bounds keep both off the 5.x rewrite.
+  '@lhci/utils>js-yaml': '>=3.15.1 <4.0.0' # GHSA-5p4m-2wfm-xmqj — O(n^2) key scan in !!omap resolution; Dependabot alerts #170 #242
+  js-yaml: '>=4.3.1 <5.0.0' # same advisory on the 4.x line; Dependabot alerts #173 #243
+  # Split by line like js-yaml above: minimatch 3 pulls the 1.x line, minimatch 10 the 5.x.
+  # Each floor is the later of the two DoS advisories, so it covers GHSA-mh99-v99m-4gvg too.
+  'minimatch@3>brace-expansion': '>=1.1.18 <2.0.0' # GHSA-rgw5-rvv9-x895 — unbounded intermediate arrays; Dependabot alerts #227 #228
+  brace-expansion: '>=5.0.9 <6.0.0' # same advisory on the 5.x line; Dependabot alerts #226 #229
+  browserslist: '>=4.28.7' # GHSA-c83g-rgw3-j3cx unbounded query cache, GHSA-73wf-gq98-2v4g normalizeStats crash on a poisoned browserslist-stats.json; Dependabot alerts #248 #249
   tmp: '>=0.2.6' # CVE-2026-44705 — path traversal via unsanitized prefix/postfix (also covers prior symlink-write CVE)
   uuid: '>=11.1.1' # CVE — missing buffer bounds check
-  shell-quote: '>=1.8.4' # CVE-2026-9277 — quote() does not escape newlines in object .op values
+  ip-address: '>=10.3.1' # GHSA-mwp4-54f8-5fhr — Address4 reads a leading-zero octet as decimal while resolvers read it as octal, so an SSRF guard passes a host that resolves internally; floor also covers the CIDR-suffix and NAT64 misclassifications; Dependabot alerts #239 #240 #241
+  shell-quote: '>=1.9.0' # GHSA-395f-4hp3-45gv O(n^2) concat-in-reduce in parse(); floor also covers the earlier quote() newline-escaping CVE-2026-9277; Dependabot alerts #150 #174
 
 # [SECURITY] Enforce minimum package age. Consult Security Team before updating.
 minimumReleaseAge: 10080 # 7 days (minutes)
@@ -20,8 +31,5 @@ minimumReleaseAge: 10080 # 7 days (minutes)
 # [SECURITY] Version-pinned exemptions to the cooldown above. Each entry must
 # reference a specific package@version, so the exemption ages out automatically
 # on the next version bump. Justify each addition with a CVE or ticket link.
-minimumReleaseAgeExclude:
-  # Dependabot alert #170: CVE — quadratic-complexity DoS in merge key handling via repeated aliases.
-  # js-yaml 3.15.0 (the patch) was published 2026-06-26, within the 7-day cooldown.
-  # Remove once minimumReleaseAge naturally allows 3.15.0 (after 2026-07-03).
-  - js-yaml@3.15.0
+# Empty: every current override resolves to a release already past the cooldown.
+minimumReleaseAgeExclude: []

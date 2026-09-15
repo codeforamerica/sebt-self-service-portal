@@ -4,6 +4,7 @@
  * Define mock API responses for testing.
  * These handlers mock the backend API for unit and integration tests.
  */
+import { getState } from '@sebt/design-system/src/lib/state'
 import { delay, http, HttpResponse } from 'msw'
 
 import type { RequestOtpRequest } from '@/features/auth/api/request-otp/schema'
@@ -239,7 +240,7 @@ export const handlers = [
   // reads it from the pre-auth session. We only check code + stateCode here.
   http.post('/api/auth/oidc/callback', async ({ request }) => {
     const body = (await request.json()) as { code?: string; stateCode?: string }
-    const currentState = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'dc').toLowerCase()
+    const currentState = getState()
     if (!body?.code || body?.stateCode !== currentState) {
       return HttpResponse.json(
         { error: 'Missing or invalid code or stateCode (must match current state).' },

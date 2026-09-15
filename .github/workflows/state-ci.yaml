@@ -1,6 +1,7 @@
 # State-based CI Workflow
-# Automatically discovers and builds for all configured states
-# Each state can specify Docker or native builds via config files
+# build-and-test runs once (not once per state -- see DC-735); Playwright E2E
+# and the enrollment-checker job remain genuinely state-specific elsewhere.
+# State config can specify Docker or native builds via config files.
 
 name: State CI
 
@@ -13,11 +14,6 @@ on:
   pull_request:
     branches: ["main"]
   workflow_dispatch:
-    inputs:
-      state:
-        description: "Specific state to build (leave empty for all)"
-        required: false
-        type: string
 
 jobs:
   # Detect which areas a PR touches so portal-only changes skip connector/backend
@@ -88,59 +84,13 @@ jobs:
             echo "enrollment=${ENROLLMENT:-false}" >> "$GITHUB_OUTPUT"
           fi
 
-  discover-states:
-    name: Discover States
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Discover state configurations
-        id: set-matrix
-        env:
-          REF_NAME: ${{ github.ref_name }}
-          INPUT_STATE: ${{ github.event.inputs.state }}
-        run: |
-          BRANCH="$REF_NAME"
-
-          # Priority 1: Manual workflow_dispatch with specific state
-          if [ -n "$INPUT_STATE" ]; then
-            if [[ ! "$INPUT_STATE" =~ ^[a-z]{2}$ ]]; then
-              echo "::error::Invalid state code: $INPUT_STATE"
-              exit 1
-            fi
-            echo "Manual trigger for state: $INPUT_STATE"
-            echo "matrix={\"state\":[\"${INPUT_STATE}\"]}" >> $GITHUB_OUTPUT
-
-          # Priority 2: Branch name pattern (deploy/STATE or deploy/STATE-feature)
-          elif [[ "$BRANCH" =~ ^deploy/([a-z]{2})(-.*)?$ ]]; then
-            STATE="${BASH_REMATCH[1]}"
-            echo "Branch-based trigger for state: $STATE"
-            echo "matrix={\"state\":[\"$STATE\"]}" >> $GITHUB_OUTPUT
-
-          # Priority 3: Default (main branch, feature branches, PRs) = all states
-          else
-            echo "Building all states (branch: $BRANCH)"
-            STATES=$(find .github/config/states -name "*.yaml" ! -name "_template.yaml" -exec basename {} .yaml \; | jq -R -s -c 'split("\n")[:-1]')
-            echo "matrix={\"state\":$STATES}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Show discovered states
-        run: |
-          echo "Building for states: ${{ steps.set-matrix.outputs.matrix }}"
-
   build-and-test:
-    name: ${{ matrix.state }} - Build & Test
-    # No job-level `if:` — "co"/"dc - Build & Test" are required checks by this
-    # matrix-expanded name; skipping the whole job means they never post. Gate
-    # individual steps below instead.
-    needs: [discover-states, changes]
+    name: Build & Test
+    # No job-level `if:` — "Build & Test" is a required check by this exact
+    # name; skipping the whole job means it never posts. Gate individual
+    # steps below instead.
+    needs: [changes]
     runs-on: ubuntu-latest
-    strategy:
-      matrix: ${{ fromJson(needs.discover-states.outputs.matrix) }}
-      fail-fast: false # Continue other states even if one fails
 
     steps:
       - name: Checkout code
@@ -154,7 +104,11 @@ jobs:
       - name: Load state configuration
         id: config
         run: |
-          CONFIG_FILE=".github/config/states/${{ matrix.state }}.yaml"
+          # dc/co build config was byte-identical (see DC-735), so this job no
+          # longer matrixes per state and reads one shared reference instead.
+          # If a state's build ever needs to genuinely diverge, reinstate a
+          # matrix here (see the removed discover-states job in git history).
+          CONFIG_FILE=".github/config/states/state-config.yaml"
 
           if [ ! -f "$CONFIG_FILE" ]; then
             echo "Error: Configuration file not found: $CONFIG_FILE"
@@ -173,7 +127,6 @@ jobs:
 
       - name: Show configuration
         run: |
-          echo "State: ${{ matrix.state }}"
           echo "Use Docker: ${{ steps.config.outputs.use_docker }}"
           echo "Node: ${{ steps.config.outputs.node_version }}"
           echo "pnpm: ${{ steps.config.outputs.pnpm_version }}"
@@ -286,26 +239,22 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ matrix.state }}-build-artifacts
+          name: build-artifacts
           path: |
             apps/portal/src/SEBT.Portal.Web/.next/standalone
             apps/portal/src/**/bin/${{ steps.config.outputs.build_config }}
             output/backend-dependencies.csv
           retention-days: 7
 
-      # Coverage is PR-only (see ticket): --coverage above is only passed for
+      # Coverage is PR-only: --coverage above is only passed for
       # pull_request events, so these uploads would find nothing to attach on
       # push/dispatch runs anyway. The explicit event_name check keeps that
       # intent visible here too, rather than relying solely on the flag upstream.
-      #
-      # dc/co run the same tests against the same solution (see DC-735), so these
-      # two reports are near-identical duplicates today. Both are uploaded per
-      # matrix leg; the PR summary step combines both (see post-coverage-comment.js).
       - name: Upload backend coverage report
         if: github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true' && steps.config.outputs.skip_tests != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ matrix.state }}-backend-coverage
+          name: backend-coverage
           path: |
             TestResults/
             CoverageReport/
@@ -315,16 +264,15 @@ jobs:
         if: github.event_name == 'pull_request' && needs.changes.outputs.frontend == 'true' && steps.config.outputs.skip_tests != 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ matrix.state }}-frontend-coverage
+          name: frontend-coverage
           path: |
             apps/portal/src/SEBT.Portal.Web/coverage
             packages/*/coverage
           retention-days: 7
 
-  # Posts a single PR comment summarizing backend + frontend coverage. Runs after
-  # the full matrix so it can pick up whichever legs' coverage artifacts exist;
-  # always() so a failure in one state's tests doesn't also swallow the summary
-  # for coverage that did get collected elsewhere.
+  # Posts a single PR comment summarizing backend + frontend coverage. always()
+  # so a failure in build-and-test's tests doesn't also swallow the summary for
+  # coverage that was already collected.
   coverage-comment:
     name: Post coverage summary
     needs: build-and-test
@@ -337,24 +285,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
-      # merge-multiple is deliberately omitted: dc/co upload coverage at identical
-      # relative paths (e.g. packages/observability/coverage/coverage-summary.json),
-      # so merging would let one state's files silently overwrite the other's.
-      # Without it, each matched artifact lands in its own name-prefixed
-      # subdirectory instead, and post-coverage-comment.js's recursive file search
-      # picks up both regardless of nesting.
-      - name: Download backend coverage reports
+      - name: Download backend coverage report
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         continue-on-error: true
         with:
-          pattern: "*-backend-coverage"
+          name: backend-coverage
           path: coverage-artifacts/backend
 
-      - name: Download frontend coverage reports
+      - name: Download frontend coverage report
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         continue-on-error: true
         with:
-          pattern: "*-frontend-coverage"
+          name: frontend-coverage
           path: coverage-artifacts/frontend
 
       - name: Post coverage summary to PR

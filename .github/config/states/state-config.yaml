@@ -1,6 +1,10 @@
-# Colorado (CO) State Configuration
+# Shared build/test configuration for state-ci.yaml's build-and-test job.
+# Was dc.yaml; renamed because build-and-test no longer matrixes per state
+# (dc/co build config was byte-identical -- see DC-735). If a state's build
+# ever needs to genuinely diverge, reinstate per-state matrixing there instead
+# of splitting this back into per-state files.
 
-state: co
+state: shared
 version: "1.0.0"  # State-specific version for tracking deployments
 
 infrastructure:
@@ -10,8 +14,8 @@ infrastructure:
     network_mode: "bridge"
     build_args: {}
   native:
-    install_path: "/opt/sebt-co"
-    cache_dir: "/var/cache/sebt-co"
+    install_path: "/opt/sebt-dc"
+    cache_dir: "/var/cache/sebt-dc"
 
 versions:
   node: "24"
@@ -25,9 +29,9 @@ build:
   skip_tests: false
 
 environment:
-  API_BASE_URL: "https://co.sebt.gov/api"
+  API_BASE_URL: "https://dc.sebt.gov/api"
   features:
-    multi_language: false
+    multi_language: true
     advanced_search: true
     experimental_ui: false
 

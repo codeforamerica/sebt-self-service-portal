@@ -21,7 +21,9 @@ export const env = createEnv({
     NEXT_PUBLIC_SHOW_SCHOOL_FIELD: boolEnv(false),
     NEXT_PUBLIC_CHECKER_ENABLED: boolEnv(true),
     NEXT_PUBLIC_BOT_PROTECTION_ENABLED: boolEnv(false),
-    NEXT_PUBLIC_PORTAL_URL: z.string().url(),
+    // Optional at build time: the deployed config.js supplies the real value.
+    // Kept here so local dev and tests can still set it via .env.
+    NEXT_PUBLIC_PORTAL_URL: z.string().url().optional(),
     // Optional since DC-701: with applications closed a deployment may have no
     // application destination; apply link blocks hide when it is unset.
     NEXT_PUBLIC_APPLICATION_URL: z.string().url().optional(),

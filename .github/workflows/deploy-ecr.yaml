@@ -250,6 +250,13 @@ jobs:
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
       TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+      # Browser-facing web config, set on the container at request time rather than
+      # passed to the image build (docs/adr/0023-runtime-client-config.md).
+      TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
+      TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
+      TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
+      TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
+      TF_VAR_socure_di_sdk_key: ${{ vars.SOCURE_DI_SDK_KEY }}
 
     steps:
       - name: Checkout
@@ -276,21 +283,15 @@ jobs:
         uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
 
       - name: Build Web image
+        # State-agnostic: STATE is supplied by the ECS task definition at runtime,
+        # so this image is identical for every state and can be promoted between them.
         run: |
           docker build \
             --platform linux/amd64 \
             -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=dc \
-            --build-arg NEXT_PUBLIC_SOCURE_SDK_KEY=${{ vars.SOCURE_SDK_KEY }} \
-            --build-arg NEXT_PUBLIC_SOCURE_DI_SDK_KEY=${{ vars.SOCURE_DI_SDK_KEY }} \
-            --build-arg NEXT_PUBLIC_MOCK_SOCURE=${{ vars.MOCK_SOCURE }} \
-            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
-            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
-            --build-arg NEXT_PUBLIC_SITEIMPROVE_ID=${{ vars.SITEIMPROVE_ID }} \
-            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
             --build-arg NEXT_PUBLIC_DC_CONNECTOR_SHA=${{ needs.build.outputs.dc_connector_sha }} \
-            -t sebt-portal-web-dc:${{ needs.build.outputs.image_tag }} \
+            -t sebt-portal-web:${{ needs.build.outputs.image_tag }} \
             .
 
       - name: Push images to ECR
@@ -300,7 +301,7 @@ jobs:
           WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
 
           docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
-          docker tag sebt-portal-web-dc:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}
@@ -371,6 +372,12 @@ jobs:
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
       TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+      # Browser-facing web config, set on the container at request time rather than
+      # passed to the image build (docs/adr/0023-runtime-client-config.md).
+      TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
+      TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
+      TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
+      TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
 
     steps:
       - name: Checkout
@@ -397,17 +404,14 @@ jobs:
         uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
 
       - name: Build Web image
+        # State-agnostic: STATE is supplied by the ECS task definition at runtime,
+        # so this image is identical for every state and can be promoted between them.
         run: |
           docker build \
             --platform linux/amd64 \
             -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
-            --build-arg STATE=co \
-            --build-arg NEXT_PUBLIC_AMPLITUDE_API_KEY=${{ vars.AMPLITUDE_API_KEY }} \
-            --build-arg NEXT_PUBLIC_MIXPANEL_TOKEN=${{ vars.MIXPANEL_TOKEN }} \
-            --build-arg NEXT_PUBLIC_SITEIMPROVE_ID=${{ vars.SITEIMPROVE_ID }} \
-            --build-arg NEXT_PUBLIC_SMARTY_EMBEDDED_KEY=${{ vars.SMARTY_EMBEDDED_KEY }} \
             --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
-            -t sebt-portal-web-co:${{ needs.build.outputs.image_tag }} \
+            -t sebt-portal-web:${{ needs.build.outputs.image_tag }} \
             .
 
       - name: Push images to ECR
@@ -417,7 +421,7 @@ jobs:
           WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
 
           docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
-          docker tag sebt-portal-web-co:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
+          docker tag sebt-portal-web:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
 
           docker push ${API_REPO}:${IMAGE_TAG}
           docker push ${WEB_REPO}:${IMAGE_TAG}

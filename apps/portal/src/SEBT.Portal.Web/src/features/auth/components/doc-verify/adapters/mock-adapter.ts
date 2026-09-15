@@ -5,7 +5,7 @@ import type { DocVAdapter, DocVAdapterConfig } from './types'
  *
  * Simulates the Socure DocV SDK lifecycle without loading any external scripts.
  * Renders a placeholder UI into the container and fires onSuccess after a
- * configurable delay. Controlled by NEXT_PUBLIC_MOCK_SOCURE=true.
+ * configurable delay.
  */
 
 const DEFAULT_DELAY_MS = 1500

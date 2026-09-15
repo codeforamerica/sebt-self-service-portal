@@ -218,6 +218,16 @@ module "app" {
     OIDC_DISCOVERY_ENDPOINT   = var.oidc_discovery_endpoint
     OIDC_REDIRECT_URI         = "https://${var.domain}/callback"
     OIDC_LANGUAGE_PARAM       = "en"
+
+    # Browser-facing config: the Next server reads these per request and serves
+    # them to the client, so they are set on the container rather than baked into
+    # the image (docs/adr/0023-runtime-client-config.md). An empty value leaves
+    # that integration off. Preview stacks clone this task definition, so they
+    # inherit these too.
+    AMPLITUDE_API_KEY   = var.amplitude_api_key
+    MIXPANEL_TOKEN      = var.mixpanel_token
+    SITEIMPROVE_ID      = var.siteimprove_id
+    SMARTY_EMBEDDED_KEY = var.smarty_embedded_key
   }
 
   state_web_environment_secrets = {
