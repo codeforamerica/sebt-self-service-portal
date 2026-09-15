@@ -8,17 +8,38 @@
 # extensionless-route rewrites and MIME maps.
 #
 # Usage:
-#   ./scripts/ci/package-enrollment-checker-iis.sh --version <ver> [--output <zip>]
+#   API_BASE_URL=https://portal.example.gov PORTAL_URL=https://portal.example.gov \
+#     ./scripts/ci/package-enrollment-checker-iis.sh --version <ver> [--output <zip>]
 #
 # Options:
 #   --version <ver>   Version label for the bundle (required)
 #   --output <path>   Output zip path (default: output/sebt-enrollment-checker-dc-iis-<ver>.zip)
 #   --out-dir <path>  Static export directory (default: the checker's out/)
 #
+# Environment config:
+#   Browser config is NOT inlined at build. The export is environment-neutral and
+#   carries a config.js that assigns window.__CHECKER_CONFIG__, loaded from <head>
+#   before the app bundle. This script regenerates that file from the environment
+#   via write-checker-config.sh, so the same export can be packaged for each
+#   environment by re-running with different values. See ADR 0023.
+#
+#   Recognized variables, all optional and all passed straight through:
+#     API_BASE_URL, PORTAL_URL, APPLICATION_URL
+#     AMPLITUDE_API_KEY, MIXPANEL_TOKEN, SITEIMPROVE_ID
+#     META_PIXEL, META_PIXEL_ACTION
+#     ADENTIFI_PIXEL_LANDING, ADENTIFI_PIXEL_APPLY_NOW
+#     SHOW_SCHOOL_FIELD, CHECKER_ENABLED, BOT_PROTECTION_ENABLED
+#
+#   A blank variable is left out of config.js, which falls the checker back to the
+#   value baked in at build. Clearing a value therefore has to happen at build
+#   time, not here — notably APPLICATION_URL, which governs the next-season apply
+#   link.
+#
 # Prerequisites:
-#   The checker must already be built with BUILD_STATIC=true. Because
-#   NEXT_PUBLIC_* values are inlined at build time, this script cannot change
-#   them — verify them in the export before packaging.
+#   The checker must already be built with BUILD_STATIC=true, and its SSR-only
+#   route handlers under src/app/api removed first: output:'export' cannot emit
+#   them and the build fails collecting page data. STATE and BASE_PATH select
+#   build-time output, so they are fixed in the export and cannot be changed here.
 
 set -euo pipefail
 
@@ -81,24 +102,47 @@ if [ ! -f "$WEB_CONFIG" ]; then
   exit 1
 fi
 
-# NEXT_PUBLIC_* values are frozen into the JS chunks at build time, so this is
-# the last point at which a wrong environment can be caught. Print them rather
-# than validate: the correct values differ per environment.
-report_baked_values() {
-  log_info "Baked-in client configuration (cannot be changed after build):"
-  grep -rhoE 'NEXT_PUBLIC_(STATE|BASE_PATH|API_BASE_URL|PORTAL_URL|APPLICATION_URL)"?:"[^"]*"' \
-    "$OUT_DIR"/_next/static/chunks/*.js 2>/dev/null | sort -u | sed 's/^/     /' || true
+WRITE_CONFIG="$SCRIPT_DIR/write-checker-config.sh"
+if [ ! -f "$WRITE_CONFIG" ]; then
+  log_error "Missing config writer: $WRITE_CONFIG"
+  exit 1
+fi
 
-  # A trailing slash yields a double slash once the client appends its path,
-  # which stops matching both the portal's CORS check and its API proxy route.
-  if grep -rqE 'NEXT_PUBLIC_API_BASE_URL"?:"[^"]*/"' "$OUT_DIR"/_next/static/chunks/*.js 2>/dev/null; then
-    log_warning "NEXT_PUBLIC_API_BASE_URL ends in '/' — requests will contain '//api/...' and fail. Rebuild without it."
-  fi
+# STATE and BASE_PATH select build-time output and cannot be changed here, so a
+# wrong one means the whole export is wrong. Every other value now comes from
+# config.js, which this script regenerates.
+report_build_inputs() {
+  log_info "Fixed at build time (cannot be changed by this script):"
+  grep -rhoE 'NEXT_PUBLIC_(STATE|BASE_PATH)"?:"[^"]*"' \
+    "$OUT_DIR"/_next/static/chunks/*.js 2>/dev/null | sort -u | sed 's/^/     /' || true
 
   # An absolute-rooted export cannot be served from a virtual directory.
   if grep -rqE 'NEXT_PUBLIC_BASE_PATH"?:""' "$OUT_DIR"/_next/static/chunks/*.js 2>/dev/null; then
     log_info "BASE_PATH is empty — this bundle must be served from a site ROOT, not a virtual directory."
   fi
+
+  # A build that still carries an apply URL resurfaces the next-season apply link
+  # wherever config.js omits applicationUrl, and no config.js can clear it.
+  if grep -rqE 'NEXT_PUBLIC_APPLICATION_URL"?:"https?://' "$OUT_DIR"/_next/static/chunks/*.js 2>/dev/null; then
+    log_warning "The export has a build-time APPLICATION_URL fallback. The apply link will show unless config.js overrides it."
+  fi
+}
+
+# A trailing slash yields a double slash once the client appends its path, which
+# stops matching both the portal's CORS check and its API proxy route.
+check_api_base_url() {
+  case "${API_BASE_URL:-}" in
+    */) log_error "API_BASE_URL ends in '/' — requests would contain '//api/...' and fail."
+        exit 1 ;;
+  esac
+}
+
+write_runtime_config() {
+  local site_dir="$1"
+  log_info "Writing config.js for this environment..."
+  bash "$WRITE_CONFIG" "$site_dir/config.js"
+  log_info "config.js contents:"
+  grep -v '^\s*//' "$site_dir/config.js" | sed 's/^/     /'
 }
 
 package() {
@@ -113,6 +157,9 @@ package() {
 
   cp "$WEB_CONFIG" "$SITE_DIR/web.config"
   log_success "web.config added"
+
+  # Overwrites the empty placeholder copied from public/.
+  write_runtime_config "$SITE_DIR"
 
   # Strip macOS metadata that confuses Windows tooling.
   find "$SITE_DIR" -name '.DS_Store' -delete 2>/dev/null || true
@@ -135,7 +182,8 @@ main() {
   log_info "Version: $VERSION"
   echo ""
 
-  report_baked_values
+  check_api_base_url
+  report_build_inputs
   echo ""
   package
 
