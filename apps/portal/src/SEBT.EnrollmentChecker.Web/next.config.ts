@@ -1,7 +1,11 @@
 import type { NextConfig } from 'next'
 import path from 'path'
+import { CHECKER_DEFAULT_STATE } from './src/lib/checkerState'
 
-const state = process.env.STATE ?? 'co'
+// STATE selects the build's state. The `env` block below publishes it as
+// NEXT_PUBLIC_STATE, overwriting any existing value — set both together, never
+// NEXT_PUBLIC_STATE alone.
+const state = process.env.STATE ?? CHECKER_DEFAULT_STATE
 const basePath = process.env.BASE_PATH ?? ''
 
 // @sebt/design-system is a workspace dependency installed into this package's local node_modules.

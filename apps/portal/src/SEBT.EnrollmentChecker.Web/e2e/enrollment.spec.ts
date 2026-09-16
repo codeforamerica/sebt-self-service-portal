@@ -1,52 +1,36 @@
 import { expect, test } from '@playwright/test'
 
+import { completeCheckFlow, fillChildForm, makeResult, mockCheckResults, startCheckFlow } from './fixtures'
+
 test.describe('Enrollment checker happy path', () => {
-  test('navigates from landing to results', async ({ page }) => {
-    // Mock the enrollment check API so we don't need a live backend
-    await page.route('**/api/enrollment/check', route =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          results: [{ checkId: '1', firstName: 'Jane', lastName: 'Doe', dateOfBirth: '2015-04-12', status: 'Match' }]
-        })
-      })
-    )
+  test('navigates from landing to enrolled results', async ({ page }) => {
+    await mockCheckResults(page, [makeResult({ status: 'Match' })])
 
-    await page.goto('/')
+    await completeCheckFlow(page)
 
-    // Landing page — click "Apply now"
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-    await page.getByRole('button', { name: /apply now/i }).click()
+    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+    // The enrolled child appears in the results summary with a portal link to
+    // manage their benefits.
+    await expect(page.getByText(/Jane/)).toBeVisible()
+    await expect(page.getByTestId('portal-link')).toBeVisible()
+  })
 
-    // Disclaimer page
-    await expect(page.url()).toContain('/disclaimer')
+  test('review page shows the entered child before submit', async ({ page }) => {
+    await mockCheckResults(page, [makeResult()])
+
+    await startCheckFlow(page)
+    await fillChildForm(page, { firstName: 'Jane', lastName: 'Doe', month: '4', day: '12', year: '2015' })
     await page.getByRole('button', { name: /continue/i }).click()
 
-    // Check page — fill three-field birthdate
-    await expect(page.url()).toContain('/check')
-    await page.getByRole('textbox', { name: /first name/i }).fill('Jane')
-    await page.getByRole('textbox', { name: /last name/i }).fill('Doe')
-    await page.getByLabel(/month/i).selectOption('4')
-    await page.getByRole('textbox', { name: /day/i }).fill('12')
-    await page.getByRole('textbox', { name: /year/i }).fill('2015')
-    await page.getByRole('button', { name: /continue/i }).click()
-
-    // Review page
-    await expect(page.url()).toContain('/review')
+    await page.waitForURL('**/review')
     await expect(page.getByText(/Jane Doe/i)).toBeVisible()
-    await expect(page.getByText(/April, 12 2015/i)).toBeVisible()
-    await page.getByRole('button', { name: /submit/i }).click()
-
-    // Results page
-    await expect(page.url()).toContain('/results')
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(page.getByText(/April 12, 2015/i)).toBeVisible()
   })
 
   test('back button returns from disclaimer to landing', async ({ page }) => {
     await page.goto('/disclaimer')
     await page.getByRole('button', { name: /back/i }).click()
-    await expect(page.url()).toMatch(/\/$/)
+    await expect(page).toHaveURL(/\/$/)
   })
 
   test('/closed page renders', async ({ page }) => {

@@ -2,9 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SEBT.Portal.Core.AppSettings;
 
-public class EmailOtpSenderServiceSettings
+public class EmailOtpSenderServiceSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "EmailOtpSenderServiceSettings";
+    public static string SectionName => "EmailOtpSenderServiceSettings";
 
     /// <summary>
     /// The email address that OTP emails will be sent from.

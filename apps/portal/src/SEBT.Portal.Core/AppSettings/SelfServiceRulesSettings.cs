@@ -23,9 +23,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// </code>
 /// </example>
 /// </summary>
-public class SelfServiceRulesSettings
+public class SelfServiceRulesSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "SelfServiceRules";
+    public static string SectionName => "SelfServiceRules";
 
     /// <summary>
     /// Rules for portal address update actions.
@@ -54,6 +54,18 @@ public class ActionRuleSettings
     /// The frontend maps this key to a localized string via the translation system.
     /// </summary>
     public string? DisabledMessageKey { get; set; }
+
+    /// <summary>
+    /// Optional. When set, card replacement is denied for a case once today (the
+    /// state's <c>OutageSchedule:TimeZoneId</c> calendar date) is within this many
+    /// days of <c>BenefitExpirationDate</c>, inclusive: remaining days ≤ this value.
+    /// Null or omitted leaves replacement available until other rules deny it.
+    /// Independent of <see cref="Enabled"/>: a statewide off still denies every card,
+    /// and this cutoff still applies when statewide is on. Applied only to card
+    /// replacement, not address update. A missing expiration date does not trigger
+    /// this cutoff.
+    /// </summary>
+    public int? DisableDaysBeforeExpiration { get; set; }
 
     /// <summary>
     /// Per-issuance-type rules. Keys are <see cref="IssuanceType"/> enum names

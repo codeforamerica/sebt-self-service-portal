@@ -15,6 +15,31 @@ export const checkerFeaturesSchema = z.object({
     .object({
       enabled: z.boolean()
     })
+    .optional(),
+  // Absent when the income-screening flag is off, and optional for the same
+  // deploy-order reason as outagePage. Either way the checker withdraws the
+  // screening tool rather than screening against figures it doesn't have.
+  incomeEligibility: z
+    .object({
+      baseThreshold: z.number(),
+      perMemberIncrement: z.number(),
+      maxHouseholdSize: z.number().int().positive()
+    })
+    .nullish(),
+  // Optional for the same deploy-order reason as outagePage. Missing reads as
+  // closed, so an API that doesn't send it yet can't surface a dead apply link.
+  apply: z
+    .object({
+      enabled: z.boolean()
+    })
+    .optional(),
+  // Optional for the same deploy-order reason, but missing reads the other way —
+  // as an open season. An API that predates the field must not put the checker
+  // into past-tense copy telling families enrollment has ended.
+  enrollment: z
+    .object({
+      enabled: z.boolean()
+    })
     .optional()
 })
 

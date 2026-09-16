@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// <summary>
 /// Configuration settings for OTP rate limiting.
 /// </summary>
-public class OtpRateLimitSettings
+public class OtpRateLimitSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "OtpRateLimitSettings";
+    public static string SectionName => "OtpRateLimitSettings";
 
     /// <summary>
     /// Maximum number of OTP requests allowed per window.

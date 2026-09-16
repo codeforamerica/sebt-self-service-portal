@@ -906,10 +906,11 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[coDeactivatedByStateEmail] = coDeactivatedByState;
         IndexByPhone(coDeactivatedByState);
 
-        // Scenario CO-5: Approved SummerEbt with Active card (standard CO happy path).
-        // Tester AC: Both Update Address and Request Replacement CTAs visible
-        // (Active is in both CO AddressUpdate.AllowedCardStatuses [empty=any] and
-        // CO CardReplacement.AllowedCardStatuses).
+        // Scenario CO-5: Approved SummerEbt with Active cards and mixed benefit
+        // expiration dates so DisableDaysBeforeExpiration can be verified live:
+        // two children inside the cutoff, one still outside. N=4 with remaining
+        // 3, 4, and 10 days. Household Request Replacement CTA stays visible
+        // because Sofia is still eligible (Active is in CO CardReplacement.AllowedCardStatuses).
         var coActiveEmail = _settings.BuildEmail(SeedScenarios.CoActive.Name);
         var coActive = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
         {
@@ -922,7 +923,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                 app.BenefitExpirationDate = now.AddDays(65);
                 app.Children = new List<Child>
                 {
-                    new Child { FirstName = "Camila", LastName = "Ortiz" }
+                    new Child { FirstName = "Camila", LastName = "Ortiz" },
+                    new Child { FirstName = "Mateo", LastName = "Ortiz" },
+                    new Child { FirstName = "Sofia", LastName = "Ortiz" }
                 };
             }
             h.AddressOnFile = new Address
@@ -939,6 +942,21 @@ public class MockHouseholdRepository : IHouseholdRepository
                     c.IssuanceType = IssuanceType.SummerEbt;
                     c.EbtCardStatus = CardStatus.Active;
                     c.EbtCardLastFour = "1234";
+                    c.BenefitExpirationDate = now.AddDays(3);
+                }),
+                HouseholdFactory.CreateSummerEbtCase("Mateo", "Ortiz", "NSLP", c =>
+                {
+                    c.IssuanceType = IssuanceType.SummerEbt;
+                    c.EbtCardStatus = CardStatus.Active;
+                    c.EbtCardLastFour = "2345";
+                    c.BenefitExpirationDate = now.AddDays(4);
+                }),
+                HouseholdFactory.CreateSummerEbtCase("Sofia", "Ortiz", "NSLP", c =>
+                {
+                    c.IssuanceType = IssuanceType.SummerEbt;
+                    c.EbtCardStatus = CardStatus.Active;
+                    c.EbtCardLastFour = "3456";
+                    c.BenefitExpirationDate = now.AddDays(10);
                 })
             };
         });
@@ -951,7 +969,9 @@ public class MockHouseholdRepository : IHouseholdRepository
         // DC-only SummerEbt scenarios 13-14 and Simple scenarios 1-7 below are seeded only when STATE=dc.
         if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
         {
-            // Scenario 13: SummerEbt user with Active card (eligible for address update per DC self-service rules)
+            // Scenario 13: SummerEbt household with mixed benefit expiration dates so
+            // DisableDaysBeforeExpiration can be verified live: two children inside the
+            // cutoff, one still outside. N=4 with remaining 3, 4, and 10 days.
             var summerActiveEmail = _settings.BuildEmail(SeedScenarios.SummerActive.Name);
             var summerActive = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
             {
@@ -964,8 +984,9 @@ public class MockHouseholdRepository : IHouseholdRepository
                     app.BenefitExpirationDate = now.AddDays(65);
                     app.Children = new List<Child>
                     {
-                    new Child { FirstName = "Noah", LastName = "Reyes" },
-                    new Child { FirstName = "Mia", LastName = "Reyes" }
+                        new Child { FirstName = "Noah", LastName = "Reyes" },
+                        new Child { FirstName = "Mia", LastName = "Reyes" },
+                        new Child { FirstName = "Luna", LastName = "Reyes" }
                     };
                 }
                 h.AddressOnFile = new Address
@@ -980,10 +1001,17 @@ public class MockHouseholdRepository : IHouseholdRepository
                     HouseholdFactory.CreateSummerEbtCase("Noah", "Reyes", "NSLP", c =>
                     {
                         c.IssuanceType = IssuanceType.SummerEbt;
+                        c.BenefitExpirationDate = now.AddDays(3);
                     }),
                     HouseholdFactory.CreateSummerEbtCase("Mia", "Reyes", "NSLP", c =>
                     {
                         c.IssuanceType = IssuanceType.SummerEbt;
+                        c.BenefitExpirationDate = now.AddDays(4);
+                    }),
+                    HouseholdFactory.CreateSummerEbtCase("Luna", "Reyes", "NSLP", c =>
+                    {
+                        c.IssuanceType = IssuanceType.SummerEbt;
+                        c.BenefitExpirationDate = now.AddDays(10);
                     })
                 };
             });

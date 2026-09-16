@@ -36,6 +36,14 @@ jobs:
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
       TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+      # Browser-facing web config, set on the container at request time. These are
+      # the same variables the image build used to take as --build-arg inputs. A
+      # config that does not declare one (dev-co has no Socure DI) ignores it.
+      TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
+      TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
+      TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
+      TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
+      TF_VAR_socure_di_sdk_key: ${{ vars.SOCURE_DI_SDK_KEY }}
     outputs:
       plan: ${{ steps.plan.outputs.stdout }}${{ steps.plan.outputs.stderr }}
     steps:
@@ -43,7 +51,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

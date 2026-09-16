@@ -59,4 +59,29 @@ public static class FeatureFlags
     /// checker polls the enrollment features endpoint, so no checker redeploy is required.
     /// </summary>
     public const string CheckerOutagePageEnabled = "checker_outage_page_enabled";
+
+    /// <summary>
+    /// When enabled, applications are open: the portal and the enrollment checker may
+    /// show apply links. Both also need an apply destination configured; off hides the
+    /// apply UI regardless. Unset reads as disabled, so applications stay closed unless
+    /// a state opens them.
+    /// </summary>
+    public const string EnableApply = "enable_apply";
+
+    /// <summary>
+    /// When enabled, the season is still enrolling. Off switches the enrollment checker to
+    /// past-tense copy ("was your student enrolled?") and drops every apply path. Wider than
+    /// <see cref="EnableApply"/>, which covers only the application window inside a season —
+    /// a state can pause applications while it keeps enrolling. Set true in the base
+    /// appsettings so an unset flag cannot close a state's season.
+    /// </summary>
+    public const string EnableEnrollment = "enable_enrollment";
+
+    /// <summary>
+    /// When enabled, the enrollment checker offers income screening on its not-enrolled
+    /// result. Thresholds come from EnrollmentChecker:IncomeEligibility (see
+    /// <see cref="IncomeEligibilitySettings"/>). Disabling withdraws the tool rather than
+    /// screening against stale figures.
+    /// </summary>
+    public const string EnableCheckerIncomeEligibility = "enable_checker_income_eligibility";
 }

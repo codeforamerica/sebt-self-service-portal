@@ -6,6 +6,10 @@ using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure;
+using SEBT.Portal.Infrastructure.Configuration;
+using SEBT.Portal.Infrastructure.Extensions;
+using SEBT.Portal.Infrastructure.Repositories;
+using SEBT.Portal.Infrastructure.Services;
 using SEBT.Portal.StatesPlugins.Interfaces.Services;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure;
@@ -72,7 +76,7 @@ public class DependenciesTests
         var env = Substitute.For<IHostEnvironment>();
         env.EnvironmentName.Returns("Development");
 
-        var options = Dependencies.ResolveRedisConfigurationOptions(config, env);
+        var options = config.ResolveRedisConfigurationOptions(env);
 
         Assert.NotNull(options);
         Assert.Contains(options.EndPoints, ep => ep.ToString()!.Contains("structured-host"));
@@ -164,7 +168,7 @@ public class DependenciesTests
             .AddInMemoryCollection(configData)
             .Build();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddPortalInfrastructureRepositories(configuration);
+        services.AddRepositories();
         var provider = services.BuildServiceProvider();
 
         // Act & Assert
@@ -175,7 +179,7 @@ public class DependenciesTests
     }
 
     [Fact]
-    public void ResolveIHMACHSHA256Hasher_ResolvesFromAddPortalInfrastructureServices()
+    public void ResolveIHMACHSHA256Hasher_ResolvesFromAddServices()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -186,10 +190,14 @@ public class DependenciesTests
             })
             .Build();
 
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Development");
+
         services.AddSingleton<IConfiguration>(config);
+        services.AddSingleton<IHostEnvironment>(env);
         services.AddLogging();
-        services.AddPortalInfrastructureAppSettings(config);
-        services.AddPortalInfrastructureServices(config);
+        services.AddAppSettings(config);
+        services.AddServices(config);
 
         var provider = services.BuildServiceProvider();
 
@@ -218,8 +226,8 @@ public class DependenciesTests
 
         services.AddSingleton<IConfiguration>(config);
         services.AddLogging();
-        services.AddPortalInfrastructureAppSettings(config);
-        services.AddPortalInfrastructureServices(config);
+        services.AddAppSettings(config);
+        services.AddServices(config);
 
         var provider = services.BuildServiceProvider(new ServiceProviderOptions
         {

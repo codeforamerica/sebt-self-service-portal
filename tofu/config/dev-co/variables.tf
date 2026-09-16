@@ -81,3 +81,27 @@ variable "vpc_cidr" {
   type        = string
   description = "IPv4 CIDR block for the VPC."
 }
+
+variable "amplitude_api_key" {
+  type        = string
+  description = "Amplitude browser SDK key served to the web tier at request time. Empty leaves Amplitude off."
+  default     = ""
+}
+
+variable "mixpanel_token" {
+  type        = string
+  description = "Mixpanel project token served to the web tier at request time. Empty leaves Mixpanel off."
+  default     = ""
+}
+
+variable "siteimprove_id" {
+  type        = string
+  description = "SiteImprove site ID served to the web tier at request time. Empty leaves SiteImprove off."
+  default     = ""
+}
+
+variable "smarty_embedded_key" {
+  type        = string
+  description = "Smarty embeddable key for address type-ahead, served to the web tier at request time. Empty disables autocomplete."
+  default     = ""
+}

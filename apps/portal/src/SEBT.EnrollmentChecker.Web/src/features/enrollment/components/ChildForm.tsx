@@ -87,7 +87,7 @@ export function ChildForm({
       noValidate
     >
       <InputField
-        label={tCommon('labelFirstName')}
+        label={t('labelFirstName')}
         value={values.firstName ?? ''}
         maxLength={35}
         onChange={(e) => set('firstName', e.target.value)}
@@ -96,13 +96,13 @@ export function ChildForm({
         hint={nameHint}
       />
       <InputField
-        label={tCommon('labelMiddleName')}
+        label={t('labelMiddleName')}
         value={values.middleName ?? ''}
         onChange={(e) => set('middleName', e.target.value)}
         hint={tCommon('optional')}
       />
       <InputField
-        label={tCommon('labelLastName')}
+        label={t('labelLastName')}
         value={values.lastName ?? ''}
         maxLength={40}
         onChange={(e) => set('lastName', e.target.value)}

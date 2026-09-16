@@ -116,6 +116,14 @@ public class EnrollmentCheckController : ControllerBase
 
         var outagePageEnabled = (await outagePageStateResolver.ResolveAsync(OutageTarget.EnrollmentChecker)).IsActive;
 
+        var incomeEligibilityEnabled =
+            await featureManager.IsEnabledAsync(FeatureFlags.EnableCheckerIncomeEligibility);
+        var incomeEligibility = settings.CurrentValue.IncomeEligibility;
+
+        var applyEnabled = await featureManager.IsEnabledAsync(FeatureFlags.EnableApply);
+
+        var enrollmentEnabled = await featureManager.IsEnabledAsync(FeatureFlags.EnableEnrollment);
+
         return Ok(new EnrollmentCheckerFeaturesResponse
         {
             MaintenanceBanner = new MaintenanceBannerFeature
@@ -126,6 +134,22 @@ public class EnrollmentCheckController : ControllerBase
             OutagePage = new OutagePageFeature
             {
                 Enabled = outagePageEnabled
+            },
+            IncomeEligibility = incomeEligibilityEnabled && incomeEligibility.IsConfigured
+                ? new IncomeEligibilityFeature
+                {
+                    BaseThreshold = incomeEligibility.BaseThreshold,
+                    PerMemberIncrement = incomeEligibility.PerMemberIncrement,
+                    MaxHouseholdSize = incomeEligibility.MaxHouseholdSize
+                }
+                : null,
+            Apply = new ApplyFeature
+            {
+                Enabled = applyEnabled
+            },
+            Enrollment = new EnrollmentFeature
+            {
+                Enabled = enrollmentEnabled
             }
         });
     }

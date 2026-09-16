@@ -5,11 +5,9 @@ import { useEffect, useRef } from 'react'
 
 import { useAuth } from '@/features/auth'
 import { useHouseholdData } from '@/features/household'
-import { syncColoadingStatus } from '@/lib/analytics-helpers'
 
 type FlowStartEvent =
-  | typeof AnalyticsEvents.ADDRESS_UPDATE_START
-  | typeof AnalyticsEvents.CARD_REPLACEMENT_START
+  typeof AnalyticsEvents.ADDRESS_UPDATE_START | typeof AnalyticsEvents.CARD_REPLACEMENT_START
 
 /**
  * Fires a flow-start analytics event once household data is available.
@@ -27,7 +25,6 @@ export function useFlowStartAnalytics(eventName: FlowStartEvent, enabled = true)
     const raf = requestAnimationFrame(() => {
       if (tracked.current) return
       tracked.current = true
-      syncColoadingStatus(setUserData, session?.isCoLoaded, data)
       trackEvent(eventName)
     })
 

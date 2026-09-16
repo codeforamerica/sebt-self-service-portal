@@ -9,9 +9,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// enrollment-check partition would let a few tabs behind one NAT (school computer lab,
 /// library) drain the per-IP budget that real enrollment checks need.
 /// </summary>
-public class CheckerFeaturesRateLimitSettings
+public class CheckerFeaturesRateLimitSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "CheckerFeaturesRateLimitSettings";
+    public static string SectionName => "CheckerFeaturesRateLimitSettings";
 
     /// <summary>
     /// Maximum number of features requests allowed per window per IP address.

@@ -244,6 +244,9 @@ PublishScripts/
 # except our top-level pnpm workspace packages directory (not a NuGet packages dir)
 !/packages/
 !/packages/**
+# Vitest/v8 coverage output within pnpm workspace packages, re-ignored after the
+# blanket re-inclusion above
+/packages/*/coverage/
 # Uncomment if necessary however generally it will be regenerated when needed
 #!**/[Pp]ackages/repositories.config
 # NuGet v3's project.json files produces more ignorable files

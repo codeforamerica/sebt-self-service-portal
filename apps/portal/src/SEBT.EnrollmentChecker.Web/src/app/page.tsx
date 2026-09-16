@@ -1,2 +1,2 @@
-import { LandingPage } from '@/features/enrollment/components/LandingPage'
-export default function Page() { return <LandingPage /> }
+import { LandingRoute } from '@/features/enrollment/components/LandingRoute'
+export default function Page() { return <LandingRoute /> }

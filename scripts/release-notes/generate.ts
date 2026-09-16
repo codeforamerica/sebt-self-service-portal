@@ -89,8 +89,7 @@ interface PreviousRelease {
 // every existing weekly-* release is still a draft, even ones from weeks ago), so
 // filtering to published-only would mean weekly never finds a previous run and never
 // benefits from "since last run" below. Returns null on the very first run of a given
-// cadence (e.g. nightly-* the day this ships), which callers treat as "no prior run
-// to diff against yet".
+// tag prefix, which callers treat as "no prior run to diff against yet".
 function getPreviousRelease(tagPrefix: string): PreviousRelease | null {
   try {
     const raw = execSync('gh release list --json tagName,createdAt --limit 20', {
@@ -188,11 +187,9 @@ async function main(): Promise<void> {
   const gitDir = parseFlag(argv, 'git-dir') ?? '.'
   const daysArgRaw = parseFlag(argv, 'days')
   const stateFilterArg = parseFlag(argv, 'state-filter')
-  // Only meaningful in date-window mode — generate-release-notes.yml runs both the
-  // weekly and nightly cadence through this same script/job, and each cadence tags
-  // its own release differently (weekly-YYYY-MM-DD vs nightly-YYYY-MM-DD). Without
-  // this, the "Full Changelog" link would always reference a weekly-* tag even on a
-  // nightly run, pointing at a tag that was never created.
+  // Only meaningful in date-window mode. Configurable rather than hardcoded so the
+  // "Full Changelog" link always references the tag prefix this run actually uses,
+  // instead of a tag that was never created.
   const tagPrefix = parseFlag(argv, 'tag-prefix') ?? 'weekly'
 
   if (sinceSha && daysArgRaw) {

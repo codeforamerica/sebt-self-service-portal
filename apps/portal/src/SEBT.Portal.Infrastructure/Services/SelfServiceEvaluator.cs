@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Household;
@@ -9,13 +10,17 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// Evaluates self-service action permissions from <see cref="SelfServiceRulesSettings"/>.
 /// Uses permissive aggregation: if any application in the household is eligible, the action is allowed.
 /// </summary>
-public class SelfServiceEvaluator(IOptionsMonitor<SelfServiceRulesSettings> optionsMonitor) : ISelfServiceEvaluator
+public class SelfServiceEvaluator(
+    IOptionsMonitor<SelfServiceRulesSettings> optionsMonitor,
+    TimeProvider timeProvider,
+    IOptionsMonitor<OutageScheduleSettings> outageSchedule,
+    ILogger<SelfServiceEvaluator> logger) : ISelfServiceEvaluator
 {
     public AllowedActions Evaluate(SummerEbtCase summerEbtCase)
     {
         var settings = optionsMonitor.CurrentValue;
         var canUpdateAddress = IsActionAllowedForCase(settings.AddressUpdate, summerEbtCase);
-        var canReplace = IsActionAllowedForCase(settings.CardReplacement, summerEbtCase);
+        var canReplace = IsCardReplacementAllowed(settings.CardReplacement, summerEbtCase);
 
         return BuildResult(settings, canUpdateAddress, canReplace);
     }
@@ -32,7 +37,7 @@ public class SelfServiceEvaluator(IOptionsMonitor<SelfServiceRulesSettings> opti
         foreach (var summerEbtCase in summerEbtCases)
         {
             canUpdateAddress |= IsActionAllowedForCase(settings.AddressUpdate, summerEbtCase);
-            canReplace |= IsActionAllowedForCase(settings.CardReplacement, summerEbtCase);
+            canReplace |= IsCardReplacementAllowed(settings.CardReplacement, summerEbtCase);
             if (canUpdateAddress && canReplace)
             {
                 break;
@@ -40,6 +45,47 @@ public class SelfServiceEvaluator(IOptionsMonitor<SelfServiceRulesSettings> opti
         }
 
         return BuildResult(settings, canUpdateAddress, canReplace);
+    }
+
+    private bool IsCardReplacementAllowed(ActionRuleSettings rule, SummerEbtCase summerEbtCase)
+    {
+        if (!IsActionAllowedForCase(rule, summerEbtCase))
+        {
+            return false;
+        }
+
+        if (rule.DisableDaysBeforeExpiration is not int days
+            || summerEbtCase.BenefitExpirationDate is not { } expirationDateTime)
+        {
+            return true;
+        }
+
+        var today = TodayInStateTimeZone();
+        var expiration = DateOnly.FromDateTime(expirationDateTime);
+        return today < expiration.AddDays(-days);
+    }
+
+    /// <summary>
+    /// Calendar date in the state's <see cref="OutageScheduleSettings.TimeZoneId"/>.
+    /// Card-replacement cutoff is a calendar-day rule, same zone as outage windows.
+    /// </summary>
+    private DateOnly TodayInStateTimeZone()
+    {
+        var utcNow = timeProvider.GetUtcNow().UtcDateTime;
+        var timeZoneId = outageSchedule.CurrentValue.TimeZoneId;
+        try
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            return DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(utcNow, timeZone));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Invalid OutageSchedule TimeZoneId '{TimeZoneId}'; using UTC date for card-replacement cutoff",
+                timeZoneId);
+            return DateOnly.FromDateTime(utcNow);
+        }
     }
 
     private static bool IsActionAllowedForCase(ActionRuleSettings rule, SummerEbtCase summerEbtCase)

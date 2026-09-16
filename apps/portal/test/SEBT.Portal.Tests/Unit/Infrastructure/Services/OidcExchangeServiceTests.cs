@@ -1,10 +1,11 @@
 using System.Net;
 using System.Text;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.Tests.Helpers;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
@@ -25,15 +26,12 @@ public class OidcExchangeServiceTests
     {
         await using var idp = await LocalOidcDiscoveryServer.StartAsync();
 
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Oidc:DiscoveryEndpoint"] = idp.DiscoveryUrl
-            })
-            .Build();
+        var oidcSettings = TestOptions.Snapshot(new OidcSettings { DiscoveryEndpoint = idp.DiscoveryUrl });
+        var oidcStepUpSettings = TestOptions.Snapshot(new OidcStepUpSettings());
 
         var service = new OidcExchangeService(
-            config,
+            oidcSettings,
+            oidcStepUpSettings,
             Substitute.For<IHttpClientFactory>(),
             NullLogger<OidcExchangeService>.Instance,
             Substitute.For<IOidcCallbackFailureLogger>());
@@ -47,9 +45,12 @@ public class OidcExchangeServiceTests
     [Fact]
     public async Task GetDiscoveryConfigAsync_throws_when_discovery_endpoint_missing()
     {
-        var config = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        var oidcSettings = TestOptions.Snapshot(new OidcSettings());
+        var oidcStepUpSettings = TestOptions.Snapshot(new OidcStepUpSettings());
+
         var service = new OidcExchangeService(
-            config,
+            oidcSettings,
+            oidcStepUpSettings,
             Substitute.For<IHttpClientFactory>(),
             NullLogger<OidcExchangeService>.Instance,
             Substitute.For<IOidcCallbackFailureLogger>());

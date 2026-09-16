@@ -6,9 +6,9 @@ namespace SEBT.Portal.Core.AppSettings;
 /// Configuration for the identifier hasher.
 /// The secret key should be stored in configuration and/or secrets manager.
 /// </summary>
-public class IdentifierHasherSettings
+public class IdentifierHasherSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "IdentifierHasher";
+    public static string SectionName => "IdentifierHasher";
 
     /// <summary>
     /// The secret key for HMAC-SHA256 hashing of stored identifiers

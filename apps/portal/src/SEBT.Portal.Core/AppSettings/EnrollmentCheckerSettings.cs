@@ -10,14 +10,49 @@ namespace SEBT.Portal.Core.AppSettings;
 /// consumers must read them via <c>IOptionsMonitor&lt;T&gt;</c> so hot-reloaded values
 /// take effect without an app restart.
 /// </summary>
-public class EnrollmentCheckerSettings
+public class EnrollmentCheckerSettings : IHaveConfigSectionName
 {
-    public static readonly string SectionName = "EnrollmentChecker";
+    public static string SectionName => "EnrollmentChecker";
 
     /// <summary>
     /// Maintenance banner configuration for the enrollment checker.
     /// </summary>
     public MaintenanceBannerSettings MaintenanceBanner { get; set; } = new();
+
+    /// <summary>
+    /// Income screening thresholds for the enrollment checker.
+    /// </summary>
+    public IncomeEligibilitySettings IncomeEligibility { get; set; } = new();
+}
+
+/// <summary>
+/// Income screening thresholds for the checker's not-enrolled result. Toggled by the
+/// <see cref="FeatureFlags.EnableCheckerIncomeEligibility"/> flag; this section carries
+/// the figures. They track federal poverty guidelines, which are reissued annually.
+/// </summary>
+public class IncomeEligibilitySettings
+{
+    /// <summary>
+    /// Annual gross income threshold for a household of one.
+    /// </summary>
+    public decimal BaseThreshold { get; set; }
+
+    /// <summary>
+    /// Added to the threshold for each household member beyond the first.
+    /// </summary>
+    public decimal PerMemberIncrement { get; set; }
+
+    /// <summary>
+    /// Largest household size the selector offers.
+    /// </summary>
+    public int MaxHouseholdSize { get; set; }
+
+    /// <summary>
+    /// Whether a state has supplied usable figures. The defaults are zeroes, which would
+    /// otherwise screen every household against $0 and offer an empty size selector.
+    /// PerMemberIncrement is excluded: a flat threshold is a valid configuration.
+    /// </summary>
+    public bool IsConfigured => BaseThreshold > 0 && MaxHouseholdSize > 0;
 }
 
 /// <summary>

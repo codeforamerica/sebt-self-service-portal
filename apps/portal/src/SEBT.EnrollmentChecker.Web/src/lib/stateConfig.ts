@@ -1,3 +1,4 @@
+import { getClientConfig } from './client-config'
 import { env } from './env'
 
 export interface EnrollmentStateConfig {
@@ -5,7 +6,11 @@ export interface EnrollmentStateConfig {
   showSchoolField: boolean
   checkerEnabled: boolean
   botProtectionEnabled: boolean
-  portalUrl: string
+  /**
+   * Absent only on a misconfigured deployment: config.js supplies it in every
+   * environment. Callers hide the portal CTA rather than render a dead link.
+   */
+  portalUrl: string | undefined
   /** Absent when no application destination is configured (applications closed, DC-701). */
   applicationUrl: string | undefined
   /** SSG: portal Node server URL. SSR: '' (same-origin /api routes). */
@@ -13,13 +18,16 @@ export interface EnrollmentStateConfig {
 }
 
 export function getEnrollmentConfig(): EnrollmentStateConfig {
+  // state stays build-time (it selects per-state assets); everything else is
+  // resolved at runtime so one artifact serves every environment.
+  const config = getClientConfig()
   return {
     state: env.NEXT_PUBLIC_STATE,
-    showSchoolField: env.NEXT_PUBLIC_SHOW_SCHOOL_FIELD,
-    checkerEnabled: env.NEXT_PUBLIC_CHECKER_ENABLED,
-    botProtectionEnabled: env.NEXT_PUBLIC_BOT_PROTECTION_ENABLED,
-    portalUrl: env.NEXT_PUBLIC_PORTAL_URL,
-    applicationUrl: env.NEXT_PUBLIC_APPLICATION_URL,
-    apiBaseUrl: env.NEXT_PUBLIC_API_BASE_URL ?? ''
+    showSchoolField: config.showSchoolField,
+    checkerEnabled: config.checkerEnabled,
+    botProtectionEnabled: config.botProtectionEnabled,
+    portalUrl: config.portalUrl,
+    applicationUrl: config.applicationUrl,
+    apiBaseUrl: config.apiBaseUrl ?? ''
   }
 }

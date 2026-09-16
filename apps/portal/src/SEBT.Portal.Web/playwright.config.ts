@@ -59,7 +59,12 @@ export default defineConfig({
       ? [
           {
             name: 'chromium-integration-dc',
-            testMatch: '**/integration/**/*.spec.ts',
+            testMatch: '**/integration/dc/**/*.spec.ts',
+            use: { ...devices['Desktop Chrome'] }
+          },
+          {
+            name: 'chromium-integration-co',
+            testMatch: '**/integration/co/**/*.spec.ts',
             use: { ...devices['Desktop Chrome'] }
           }
         ]

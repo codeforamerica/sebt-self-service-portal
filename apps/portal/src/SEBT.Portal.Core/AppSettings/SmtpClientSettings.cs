@@ -1,8 +1,8 @@
 namespace SEBT.Portal.Core.AppSettings
 {
-    public class SmtpClientSettings
+    public class SmtpClientSettings : IHaveConfigSectionName
     {
-        public static readonly string SectionName = "SmtpClientSettings";
+        public static string SectionName => "SmtpClientSettings";
 
         public required string SmtpServer { get; set; }
         public required int SmtpPort { get; set; }
