@@ -310,22 +310,13 @@ To let a specific warning code through, change it back to a warning in the appli
 
 Use this property, and not `<NoWarn>`, which silences the warning entirely.
 
-## Branch Strategy 🌿
-
-**State-Specific Development:**
+## Branch Strategy 
 
 ```bash
-deploy/dc-*    # DC-only changes (only DC builds in CI)
-deploy/co-*    # CO-only changes (only CO builds in CI)
-```
-
-**Shared Development:**
-
-```bash
-feature/*      # Changes for all states (all states build in CI)
-chore/*
-fix/*
-main           # Production source for all states
+feature/*      # new product feature or enhancement
+chore/*        # maintenance tasks that aren't user-facing - e.g., package or security updates, refactors
+fix/*          # bug fixes
+main           # production code 
 ```
 
 See [labeler.yml](.github/labeler.yml) for a complete list of possible branch prefixes.
