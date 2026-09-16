@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Api.Services;
 using SEBT.Portal.Api.Startup.Setup.Options;
+using SEBT.Portal.Core.AppSettings;
 
 namespace SEBT.Portal.Api.Startup.Setup;
 
@@ -15,8 +16,13 @@ internal static class AuthenticationSetup
         // everything else (no STATE, no Oidc block) produces an empty allowlist and all
         // OIDC routes reject all stateCode inputs. This prevents the route parameter
         // from being used as a tenant escape.
+        // Bound rather than read by key: this runs before the container exists, so
+        // IOptions<OidcSettings> is not resolvable here, but the section still binds and the
+        // property name stays compile-checked.
+        var oidcSettings = configuration.GetSection(OidcSettings.SectionName).Get<OidcSettings>();
+
         var allowedOidcStates = new List<string>();
-        if (!string.IsNullOrWhiteSpace(configuration["Oidc:DiscoveryEndpoint"]))
+        if (!string.IsNullOrWhiteSpace(oidcSettings?.DiscoveryEndpoint))
         {
             var currentState = Environment.GetEnvironmentVariable("STATE");
             if (!string.IsNullOrWhiteSpace(currentState))

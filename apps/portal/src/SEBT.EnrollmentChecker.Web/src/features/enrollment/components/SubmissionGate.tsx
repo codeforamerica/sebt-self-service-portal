@@ -10,7 +10,8 @@ import { ErrorResultPage } from './ErrorResultPage'
 
 interface SubmissionGateProps {
   submission: EnrollmentSubmit
-  portalUrl: string
+  /** Undefined on a misconfigured deployment; the error page hides its portal CTA. */
+  portalUrl: string | undefined
   children: ReactNode
 }
 
