@@ -68,7 +68,7 @@ Other configuration files live in the repository root: `pnpm-workspace.yaml`, `p
 - Infrastructure as code with OpenTofu (Terraform). See [tofu](./tofu/)
 - Docker with [docker-compose](https://docs.docker.com/compose/) for local development
 
-## Local development environment set up
+## Local development environment setup
 
 > **Note:** These steps are for macOS using [Homebrew package manager](https://brew.sh/). Steps may differ on a different operating system.
 
