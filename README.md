@@ -84,7 +84,7 @@ Other configuration files live in the repository root: `pnpm-workspace.yaml`, `p
   - `brew install node`
 - [pnpm](https://pnpm.io/installation/) for frontend package management and development scripts
   - `brew install pnpm`
-- [Docker](https://www.docker.com/) Desktop to run and manage local containers (including MSSQL db, Redis).
+- [Docker](https://www.docker.com/) Desktop to run and manage local containers (including MSSQL db, Redis, and keycloak).
 
 ### 2. Clone the repository
 
