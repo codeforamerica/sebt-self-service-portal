@@ -173,7 +173,7 @@ Once all dependencies are installed and running, you can use these start command
 `pnpm dev:co-enroll` # to start the CO Enrollment Checker
 ```
 
-To open the app, go in your browser to <https://localhost:3000>.
+To view the running app, go to <https://localhost:3000> in your browser.
 
 ## Development
 
