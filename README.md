@@ -238,7 +238,7 @@ Before you run Redis the first time, use this script to generate the local TLS c
 ./scripts/dev/gen-redis-certs.sh
 ```
 
-The script writes self-signed certificates to `certs/` (gitignored). It is idempotent and does not write over existing certificates . If Redis TLS stops, run the script again. The certificates expire after one year.
+The script writes self-signed certificates to `certs/` (gitignored). It is idempotent and does not write over existing certificates. If Redis TLS stops, run the script again. The certificates expire after one year.
 
 Then run `docker compose up -d redis`.
 
