@@ -80,7 +80,7 @@ Other configuration files live in the repository root: `pnpm-workspace.yaml`, `p
 - [Git](https://git-scm.com/install/)
 - [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for the backend
   - To install it with Homebrew, run `brew install dotnet`
-- The latest version of [nodeJS](https://nodejs.org/en)
+- [nodeJS](https://nodejs.org/en) 24
   - `brew install node`
 - [pnpm](https://pnpm.io/installation/) for frontend package management and development scripts
   - `brew install pnpm`
@@ -106,7 +106,7 @@ The current DC enrollment checker is a standalone app, in a [separate repository
 
 ### 3. Configure your local environment
 
-This project uses **`.env` files** to set environment variables (for example, local database configurations). This is a preferred pattern for [12-factor Apps](https://www.12factor.net/config). The variables are also set to fallback to a generic default.
+This project uses **`.env` files** to set environment variables (for example, local database configurations). This is a preferred pattern for [12-factor Apps](https://www.12factor.net/config). The variables are also set to fall back to a generic default.
 
 To create your local `.env` file with configurations for the database and the API, you can start with the `.env.example` file. Run this command from the root of the repository:
 
@@ -200,7 +200,7 @@ pnpm api:test         # Run all backend tests
 pnpm api:test:unit    # Run backend unit tests only
 ```
 
-#### Run rontend tests: portal
+#### Run frontend tests: portal
 
 ```bash
 # from within SEBT.Portal.Web:
@@ -357,7 +357,7 @@ Include only the sections that you want to override. The other settings come fro
 
 ### OIDC support
 
-States can use an external [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) provider for sign-in.  OIDC is configured in the API under flat `Oidc` keys: `DiscoveryEndpoint`, `ClientId`, and `CallbackRedirectUri`. The portal uses generic endpoints and configuration, rather than state-specific auth code paths. Code exchange and id_token validation run in the Next.js server. The .NET API does the "complete-login" step. It validates a short-lived callback token and returns a portal JWT that includes IdP claims, e.g., phone number and name.
+States can use an external [OpenID Connect (OIDC)](https://openid.net/developers/how-connect-works/) provider for sign-in. OIDC is configured in the API under flat `Oidc` keys: `DiscoveryEndpoint`, `ClientId`, and `CallbackRedirectUri`. The portal uses generic endpoints and configuration, rather than state-specific auth code paths. Code exchange and id_token validation run in the Next.js server. The .NET API does the "complete-login" step. It validates a short-lived callback token and returns a portal JWT that includes IdP claims, e.g., phone number and name.
 
 For a deployment that uses OIDC, set these values in `.env.local` under `SEBT.Portal.Web`:
 
