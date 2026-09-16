@@ -459,6 +459,7 @@ CLAUDE.local.md
 docs/.local/
 .claude-figma-verify/
 screenshots/
+.playwright-mcp/
 
 # output files
 output
@@ -503,6 +504,9 @@ packages/design-system/design/sass/_uswds-settings.scss
 
 # JetBrains IDE configuration
 .idea/
+
+# Email template verification screenshots
+email-templates/_snapshots/
 
 # Generated design-system locale output (app reads from Web's gitignored copy)
 packages/design-system/content/locales/
