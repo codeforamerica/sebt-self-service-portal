@@ -122,8 +122,9 @@ public class CbmsSandboxTests(CbmsSandboxFixture fixture)
     /// Live PATCH <c>update-std-dtls</c> with a real CBMS-shaped body (two array elements — UAT may accept or reject duplicates).
     /// Run: <c>dotnet test --filter "FullyQualifiedName~UpdateStdDtls_ReturnsSuccess_WhenUatAcceptsExampleBody"</c>
     /// with <c>Cbms:ClientId</c> / <c>Cbms:ClientSecret</c> and without <c>Cbms:UseMockResponses</c>.
+    /// Temporarily skipped: CBMS UAT is returning <c>respCd 01</c> (<c>Index: 0, Size: 0</c>) for a previously accepted payload.
     /// </summary>
-    [SkippableFact]
+    [SkippableFact(Skip = "CBMS UAT update-std-dtls is currently broken (respCd 01: Index: 0, Size: 0). Re-enable when the API is healthy.")]
     public async Task UpdateStdDtls_ReturnsSuccess_WhenUatAcceptsExampleBody()
     {
         Skip.If(!fixture.CredentialsConfigured, SkipReason);

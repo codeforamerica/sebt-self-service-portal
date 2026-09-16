@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -15,6 +16,18 @@ public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHa
 {
     // Refresh before actual expiry to avoid a token lapsing in flight.
     private static readonly TimeSpan ExpiryLeeway = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Used when the token response omits <c>expires_in</c> or sends 0.  A zero TTL will
+    /// make the cache born-expired and refetch on every call; this is a safety net for
+    /// backends that don't return an expiration time.
+    /// </summary>
+    internal const int DefaultExpiresInSeconds = 3600;
+
+    private static readonly JsonSerializerOptions TokenJsonOptions = new()
+    {
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+    };
 
     private readonly StateBackendOAuthClientCredentialsAuthScheme _scheme;
     private readonly IStateBackendSecretResolver _secretResolver;
@@ -44,15 +57,44 @@ public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHa
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
     {
-        string token = await GetTokenAsync(cancellationToken).ConfigureAwait(false);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        // Buffer content up front so a 401 retry can resend the same body.
+        if (request.Content is not null)
+        {
+            byte[] bytes = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            var buffered = new ByteArrayContent(bytes);
+            foreach (KeyValuePair<string, IEnumerable<string>> header in request.Content.Headers)
+            {
+                buffered.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
 
-        return await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            request.Content = buffered;
+        }
+
+        await AttachBearerAsync(request, forceRefresh: false, cancellationToken).ConfigureAwait(false);
+        HttpResponseMessage response = await base.SendAsync(request, cancellationToken).ConfigureAwait(false);
+
+        if (response.StatusCode != HttpStatusCode.Unauthorized)
+        {
+            return response;
+        }
+
+        // Upstream rejected the bearer token — drop the cache and retry once with a fresh one.
+        response.Dispose();
+        HttpRequestMessage retry = await CloneAsync(request, cancellationToken).ConfigureAwait(false);
+        await AttachBearerAsync(retry, forceRefresh: true, cancellationToken).ConfigureAwait(false);
+        return await base.SendAsync(retry, cancellationToken).ConfigureAwait(false);
     }
 
-    private async Task<string> GetTokenAsync(CancellationToken cancellationToken)
+    private async Task AttachBearerAsync(
+        HttpRequestMessage request, bool forceRefresh, CancellationToken cancellationToken)
     {
-        if (_cachedToken is not null && _timeProvider.GetUtcNow() < _tokenExpiresAt)
+        string token = await GetTokenAsync(forceRefresh, cancellationToken).ConfigureAwait(false);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    }
+
+    private async Task<string> GetTokenAsync(bool forceRefresh, CancellationToken cancellationToken)
+    {
+        if (!forceRefresh && _cachedToken is not null && _timeProvider.GetUtcNow() < _tokenExpiresAt)
         {
             return _cachedToken;
         }
@@ -60,15 +102,24 @@ public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHa
         await _tokenLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_cachedToken is not null && _timeProvider.GetUtcNow() < _tokenExpiresAt)
+            if (!forceRefresh && _cachedToken is not null && _timeProvider.GetUtcNow() < _tokenExpiresAt)
             {
                 return _cachedToken;
             }
 
             TokenResponse tokenResponse = await FetchTokenAsync(cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(tokenResponse.AccessToken))
+            {
+                throw new InvalidOperationException("Token endpoint returned no access_token.");
+            }
+
+            int expiresIn = tokenResponse.ExpiresInSeconds is > 0
+                ? tokenResponse.ExpiresInSeconds.Value
+                : DefaultExpiresInSeconds;
+
             _cachedToken = tokenResponse.AccessToken;
             _tokenExpiresAt = _timeProvider.GetUtcNow()
-                + TimeSpan.FromSeconds(tokenResponse.ExpiresInSeconds) - ExpiryLeeway;
+                + TimeSpan.FromSeconds(expiresIn) - ExpiryLeeway;
 
             return _cachedToken;
         }
@@ -107,19 +158,47 @@ public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHa
             .ReadAsStreamAsync(cancellationToken)
             .ConfigureAwait(false);
         TokenResponse? tokenResponse = await JsonSerializer
-            .DeserializeAsync<TokenResponse>(stream, cancellationToken: cancellationToken)
+            .DeserializeAsync<TokenResponse>(stream, TokenJsonOptions, cancellationToken)
             .ConfigureAwait(false);
 
         return tokenResponse
             ?? throw new InvalidOperationException("Token endpoint returned an empty response.");
     }
 
+    private static async Task<HttpRequestMessage> CloneAsync(
+        HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        var clone = new HttpRequestMessage(request.Method, request.RequestUri)
+        {
+            Version = request.Version,
+        };
+
+        foreach (KeyValuePair<string, IEnumerable<string>> header in request.Headers)
+        {
+            clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
+        }
+
+        if (request.Content is not null)
+        {
+            byte[] bytes = await request.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            var content = new ByteArrayContent(bytes);
+            foreach (KeyValuePair<string, IEnumerable<string>> header in request.Content.Headers)
+            {
+                content.Headers.TryAddWithoutValidation(header.Key, header.Value);
+            }
+
+            clone.Content = content;
+        }
+
+        return clone;
+    }
+
     private sealed record TokenResponse
     {
         [JsonPropertyName("access_token")]
-        public string AccessToken { get; init; } = string.Empty;
+        public string? AccessToken { get; init; }
 
         [JsonPropertyName("expires_in")]
-        public int ExpiresInSeconds { get; init; }
+        public int? ExpiresInSeconds { get; init; }
     }
 }
