@@ -45,8 +45,9 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Fails loud at load when a <c>fromContext</c> entry references an unknown context name, or a
-    /// token field is sourced from both a response column and caller context.
+    /// Fails loud at load when a <c>fromContext</c> entry references an unknown context name, packs
+    /// <c>householdIdentifier</c> (PII), or a token
+    /// field is sourced from both a response column and caller context.
     /// </summary>
     internal static void ValidateCaseIdCompositions(StateBackendConfiguration configuration)
     {
@@ -72,6 +73,36 @@ internal static class StateBackendResponseMapper
                         $"caseId token field '{routingName}' is sourced from both a response " +
                         "column (fields) and caller context (fromContext) — pick one.");
                 }
+
+                if (string.Equals(contextName, "householdIdentifier", StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "caseId fromContext must not pack 'householdIdentifier' — that value is always going to be PII " +
+                        "(email, phone, or SSN depending on the state) and the token is client-visible. " +
+                        "Bind it from the write request envelope as 'householdIdentifier'.");
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Fails loud at load when <c>valueInSet</c> is missing a non-empty <c>applicationValues</c>
+    /// list. Otherwise every row would silently classify as not application-based.
+    /// </summary>
+    internal static void ValidateDisaggregation(StateBackendConfiguration configuration)
+    {
+        foreach (StateBackendResponseMapping mapping in ResponseMappings(configuration))
+        {
+            if (mapping.Disaggregation is not { } disaggregation)
+            {
+                continue;
+            }
+
+            if (disaggregation.Rule == DisaggregationRule.ValueInSet
+                && disaggregation.ApplicationValues is not { Count: > 0 })
+            {
+                throw new InvalidOperationException(
+                    "Disaggregation rule 'valueInSet' requires a non-empty applicationValues list.");
             }
         }
     }
@@ -238,7 +269,7 @@ internal static class StateBackendResponseMapper
             DisaggregationRule.ValueInSet =>
                 discriminator is not null
                 && disaggregation.ApplicationValues is { } values
-                && values.Contains(discriminator, StringComparer.Ordinal),
+                && values.Contains(discriminator, StringComparer.OrdinalIgnoreCase),
             _ => throw new NotSupportedException(
                 $"Disaggregation rule '{disaggregation.Rule}' is not supported by the response mapper."),
         };
@@ -325,7 +356,7 @@ internal static class StateBackendResponseMapper
         switch (fieldTarget.Kind)
         {
             case FieldKind.String:
-                fieldTarget.SetString!(target, value.GetString() ?? string.Empty);
+                fieldTarget.SetString!(target, JsonRead.AsString(value) ?? string.Empty);
                 break;
 
             case FieldKind.DateTime:
@@ -333,7 +364,7 @@ internal static class StateBackendResponseMapper
                 break;
 
             case FieldKind.Enum:
-                fieldTarget.SetEnum!(target, enumResolvers[canonicalField].Resolve(value.GetString()));
+                fieldTarget.SetEnum!(target, enumResolvers[canonicalField].Resolve(JsonRead.AsString(value)));
                 break;
 
             default:
@@ -344,7 +375,7 @@ internal static class StateBackendResponseMapper
 
     private static DateTime ParseDate(string canonicalField, FieldMapping fieldMapping, JsonElement value)
     {
-        string? raw = value.GetString();
+        string? raw = JsonRead.AsString(value);
         if (fieldMapping.Format is not { } format)
         {
             throw new InvalidOperationException(
@@ -437,6 +468,16 @@ internal static class StateBackendResponseMapper
             List<string> keywords = keywordRules.Map.TryGetValue(ourValue, out List<string>? mapped)
                 ? mapped
                 : new List<string>();
+
+            foreach (string keyword in keywords)
+            {
+                if (string.IsNullOrWhiteSpace(keyword))
+                {
+                    throw new InvalidOperationException(
+                        $"Field '{canonicalField}' keywordRules map for '{ourValue}' contains an empty keyword.");
+                }
+            }
+
             ordered.Add((parsed, keywords));
         }
 

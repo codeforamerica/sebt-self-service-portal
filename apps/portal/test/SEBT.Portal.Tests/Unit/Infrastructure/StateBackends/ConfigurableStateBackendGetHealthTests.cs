@@ -60,4 +60,20 @@ public class ConfigurableStateBackendGetHealthTests
         // Assert
         Assert.False(health.IsHealthy);
     }
+
+    [Fact]
+    public async Task GetHealthAsync_Timeout_ReportsUnhealthy()
+    {
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Get, "http://backend.test/health")
+            .Throw(new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout"));
+
+        var httpClient = mockHttp.ToHttpClient();
+        var backend = new ConfigurableStateBackend(BuildConfiguration(), httpClient);
+
+        StateBackendHealth health = await backend.GetHealthAsync();
+
+        Assert.False(health.IsHealthy);
+    }
 }

@@ -7,7 +7,11 @@ public interface ICardReplacementBackend
 }
 
 /// <summary>
-/// A card-replacement request routed by opaque case tokens; the household identifier rides inside
-/// them. Cooldown, persistence, and hashing stay portal-side.
+/// A card-replacement request routed by opaque case tokens. The household identifier rides inside
+/// this envelope. Cooldown, persistence, and hashing stay portal-side.
 /// </summary>
-public sealed record CardReplacementRequest(IReadOnlyList<string> CaseIds);
+public sealed record CardReplacementRequest(IReadOnlyList<string> CaseIds)
+{
+    /// <summary>The identifier the write binds as <c>householdIdentifier</c>; optional when the backend keys only on case tokens.</summary>
+    public string? HouseholdIdentifier { get; init; }
+}
