@@ -13,7 +13,7 @@ public class ConfigurableStateBackendUpdateAddressTests
 {
     private const string FixedIdempotencyKey = "22222222-2222-2222-2222-222222222222";
 
-    // DC: the household email is SHARED across every decoded caseId; address scalars bind via the map.
+    // DC: household identifier binds from the write envelope; address scalars bind via the map.
     private static AddressUpdateOperationConfig DcAddressUpdate() =>
         new()
         {
@@ -25,13 +25,9 @@ public class ConfigurableStateBackendUpdateAddressTests
                 {
                     ["source"] = "portal",
                 },
-                // One household identifier resolved across all caseIds; fails loud on disagreement.
-                Shared = new Dictionary<string, string>
-                {
-                    ["householdEmail"] = "householdIdentifier",
-                },
                 Map = new Dictionary<string, string>
                 {
+                    ["householdIdentifier"] = "householdIdentifier",
                     ["line1"] = "address.line1",
                     ["city"] = "address.city",
                     ["state"] = "address.state",
@@ -92,6 +88,27 @@ public class ConfigurableStateBackendUpdateAddressTests
             StateBackendTestConfig.Base().WithAddressUpdate(addressUpdate),
             mockHttp.ToHttpClient(),
             () => FixedIdempotencyKey);
+
+
+    // Token-shared household field: used to pin the disagreement fail-loud path.
+    private static AddressUpdateOperationConfig SharedHouseholdAddressUpdate() =>
+        DcAddressUpdate() with
+        {
+            Request = DcAddressUpdate().Request! with
+            {
+                Shared = new Dictionary<string, string>
+                {
+                    ["householdEmail"] = "householdIdentifier",
+                },
+                Map = new Dictionary<string, string>
+                {
+                    ["line1"] = "address.line1",
+                    ["city"] = "address.city",
+                    ["state"] = "address.state",
+                    ["zip"] = "address.zip",
+                },
+            },
+        };
 
     private static AddressUpdateAddress SampleAddress() =>
         new()
@@ -343,11 +360,36 @@ public class ConfigurableStateBackendUpdateAddressTests
 
         var mockHttp = new MockHttpMessageHandler();
         // No backend call is registered: binding must fail loud before any request.
-        var backend = BuildBackend(mockHttp, DcAddressUpdate());
+        var backend = BuildBackend(mockHttp, SharedHouseholdAddressUpdate());
 
         // Act + Assert
         InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => backend.UpdateAddressAsync(new AddressUpdateRequest("family@example.test", caseIds, SampleAddress())));
         Assert.Contains("householdEmail", ex.Message);
+    }
+
+    [Fact]
+    public async Task UpdateAddressAsync_Dc_AllowsEmptyCaseIds_WhenBindingUsesEnvelope()
+    {
+        string? capturedBody = null;
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/households/address")
+            .With(message =>
+            {
+                capturedBody = message.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                return true;
+            })
+            .Respond("application/json", """{ "resultCode": "OK" }""");
+
+        var backend = BuildBackend(mockHttp, DcAddressUpdate());
+
+        WriteResult result = await backend.UpdateAddressAsync(
+            new AddressUpdateRequest("family@example.test", Array.Empty<string>(), SampleAddress()));
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(capturedBody);
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        Assert.Equal("family@example.test", document.RootElement.GetProperty("householdIdentifier").GetString());
     }
 }

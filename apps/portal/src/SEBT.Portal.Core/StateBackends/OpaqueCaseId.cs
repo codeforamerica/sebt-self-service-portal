@@ -8,8 +8,9 @@ namespace SEBT.Portal.Core.StateBackends;
 /// it. Fixed here so both integration paths share one token namespace.
 /// </summary>
 /// <remarks>
-/// Opaque, not encrypted — it carries only routing identifiers the backend already returned.
-/// Insertion order is preserved, so a fixed field order yields byte-identical tokens; callers rely on that.
+/// Opaque, not encrypted — it carries only backend-issued routing identifiers the lookup
+/// already returned (case keys, application ids). It must not pack PII such as email, phone,
+/// or SSN; writes bind those from the request envelope. Insertion order is preserved.
 /// </remarks>
 public static class OpaqueCaseId
 {

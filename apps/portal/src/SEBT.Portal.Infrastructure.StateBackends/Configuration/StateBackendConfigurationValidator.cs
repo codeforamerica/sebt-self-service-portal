@@ -17,8 +17,14 @@ internal static class StateBackendConfigurationValidator
         StateBackendResponseMapper.ValidateFieldMappings(configuration);
         StateBackendResponseMapper.ValidateEnumTables(configuration);
         StateBackendResponseMapper.ValidateCaseIdCompositions(configuration);
+        StateBackendResponseMapper.ValidateDisaggregation(configuration);
 
         StateBackendOperations operations = configuration.Operations;
+
+        RejectIncompleteWrite(operations.CardReplacement, "cardReplacement");
+        RejectIncompleteWrite(operations.AddressUpdate, "addressUpdate");
+        RejectIncompleteEnrollment(operations.EnrollmentCheck);
+        RejectIncompleteLookup(operations.HouseholdLookup);
 
         if (operations.CardReplacement?.Result is { } cardReplacementClassifier)
         {
@@ -34,7 +40,6 @@ internal static class StateBackendConfigurationValidator
         RejectMapOptional(operations.CardReplacement?.Request, "cardReplacement");
         RejectMapOptional(operations.AddressUpdate?.Request, "addressUpdate");
 
-        // A partially modeled enrollment op is caught by the dispatch path's not-supported guards.
         if (operations.EnrollmentCheck is { Request: { } binding, Response: { } mapping } enrollment)
         {
             EnrollmentOperationValidator.Validate(enrollment.CallMode, binding, mapping);
@@ -47,6 +52,63 @@ internal static class StateBackendConfigurationValidator
         {
             throw new InvalidOperationException(
                 $"mapOptional is not supported on write operations ({operationName}).");
+        }
+    }
+
+    private static void RejectIncompleteWrite(StateBackendOperationConfig? operation, string operationName)
+    {
+        if (operation is null)
+        {
+            return;
+        }
+
+        RequestBinding? request = operation switch
+        {
+            CardReplacementOperationConfig card => card.Request,
+            AddressUpdateOperationConfig address => address.Request,
+            _ => null,
+        };
+        ResultClassifier? result = operation switch
+        {
+            CardReplacementOperationConfig card => card.Result,
+            AddressUpdateOperationConfig address => address.Result,
+            _ => null,
+        };
+
+        if (request is null || result is null)
+        {
+            throw new InvalidOperationException(
+                $"Operation '{operationName}' is incomplete: both 'request' and 'result' are required " +
+                "when the operation is declared. Omit the operation entirely to disable the feature.");
+        }
+    }
+
+    private static void RejectIncompleteEnrollment(EnrollmentCheckOperationConfig? enrollment)
+    {
+        if (enrollment is null)
+        {
+            return;
+        }
+
+        if (enrollment.Request is null || enrollment.Response is null)
+        {
+            throw new InvalidOperationException(
+                "Operation 'enrollmentCheck' is incomplete: both 'request' and 'response' are required " +
+                "when the operation is declared. Omit the operation entirely to disable the feature.");
+        }
+    }
+
+    private static void RejectIncompleteLookup(HouseholdLookupOperationConfig? lookup)
+    {
+        if (lookup is null)
+        {
+            return;
+        }
+
+        if (lookup.Response is null)
+        {
+            throw new InvalidOperationException(
+                "Operation 'householdLookup' is incomplete: 'response' is required when the operation is declared.");
         }
     }
 }
