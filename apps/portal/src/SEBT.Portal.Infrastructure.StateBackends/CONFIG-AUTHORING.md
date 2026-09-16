@@ -169,16 +169,11 @@ A write (card replacement, address update) has to route its call, but the portal
         fields:
           caseId: SummerEBTCaseID
           applicationId: ApplicationId
-        fromContext:
-          householdEmail: householdIdentifier
 ```
 
-On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8). The portal and UI treat the token as opaque throughout — a malformed token fails fast on decode.
+On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8), **alongside** the write envelope's `householdIdentifier`. The portal and UI treat the token as opaque throughout — a malformed token fails fast on decode.
 
-- `fields` — token field → the response record property whose value it carries.
-- `fromContext` — token field → a **named caller-context value** from the lookup itself, for routing identifiers a write needs but the response never echoes (most lookups don't echo the identifier the portal searched with). Context names are a **closed vocabulary resolved in fixed code** — today only `householdIdentifier`, the identifier value the lookup searched by. No expressions, no fallbacks; a new context value means a new name in code.
-
-A token field may come from `fields` or `fromContext`, never both — the loader fails fast on a collision, and on an unknown context name. An unset context value packs as empty, exactly like an absent response column.
+Do **not** pack PII (email, phone, SSN) into the token — it is client-visible. Writes bind `householdIdentifier` from the request envelope. `fromContext` is reserved for non-PII caller context; packing `householdIdentifier` fails at load.
 
 ## Step 8: Writes — request binding and result classification
 
@@ -189,31 +184,34 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 The binding vocabulary:
 
 - `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
-- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. The binder rejects an input that resolves to no value.
+- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus the write envelope (`householdIdentifier`) plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. The binder rejects an input that resolves to no value.
 - `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing fast. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
 
 The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid` (`ic` is a case identifier used by D.C.), plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
 
-DC card replacement — a scalar `map` whose left-hand names are the decoded `caseId` fields:
+DC card replacement — a scalar `map` whose left-hand names are the decoded `caseId` fields plus the envelope `householdIdentifier`:
 
 ```yaml
     request:
       map:
         caseId: summerEbtCaseId
-        householdEmail: householdEmail
+        householdIdentifier: householdEmail
 ```
+
+Card replacement also has `callMode`: `perCase` (default — one call per token, DC) or `batch` (one call collecting every token, CO).
 
 Address update spans every case a household owns, so it adds two **batch shapes**:
 
-- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **refuses the request if the decoded caseIds disagree** on the value. DC resolves one shared household identifier this way:
+- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **refuses the request if the decoded caseIds disagree** on the value.
+
+DC binds the household identifier from the write envelope instead, so a zero-case household can still update:
 
 ```yaml
     request:
       constants:
         source: portal
-      shared:
-        householdEmail: householdIdentifier
       map:
+        householdIdentifier: householdIdentifier
         line1: address.line1
         city: address.city
         state: address.state
@@ -360,9 +358,12 @@ Config validates at **load** via `StateBackendConfigurationValidator`, immediate
 
 - A response field mapping that targets an unknown canonical field, or a date-typed field without an exact `format`.
 - An enum table that doesn't exist, is referenced by a non-enum field, has a canonical key that isn't a real enum member, or lists an ambiguous state token under two canonical values.
-- A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, or that names a non-member (including its `default`).
+- A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, that names a non-member (including its `default`), or that lists an empty keyword.
 - A result classifier condition that isn't exactly one of `statusIn` / `valueIn` / `messageContains`, or a `valueIn` without `field`, or a `messageContains` without `messageField`.
-- A `caseId` composition whose `fromContext` names an unknown context name, or that sources one token field from both `fields` and `fromContext`.
+- A `caseId` composition whose `fromContext` names an unknown context name, packs `householdIdentifier` (PII), or that sources one token field from both `fields` and `fromContext`.
+- A `valueInSet` disaggregation missing a non-empty `applicationValues` list.
+- A declared write/enrollment/lookup operation missing its request and result/response mappings — listing the path is not enough to advertise the feature.
+- An unmatched YAML property (unknown keys fail at load, they are not ignored).
 - A `mapOptional` on a write op (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so it's rejected rather than silently ignored.
 - An incoherent enrollment op: `batch` missing an `indexField` on either side, `perChild` that sets one, `perChild` combined with `expand`, a match strategy missing its required params (`anyRowValueIn` without `field` + `valueIn`, `confidenceThreshold` without `scoreField` + `threshold`), or a `confidenceThreshold` eligibility check with `field` or `valueIn` alone — they come together or not at all.
 

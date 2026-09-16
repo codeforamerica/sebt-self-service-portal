@@ -53,14 +53,12 @@ operations:
         caseInclusion: all
       # The case's id is an OPAQUE, self-describing token composed from the routing fields a write
       # needs. Config lists WHICH fields; encode/decode is a fixed platform primitive.
+      # Do not pack PII (email, phone, SSN) here — the token is client-visible. Writes bind
+      # householdIdentifier from the request envelope instead.
       caseId:
         fields:
           caseId: SummerEBTCaseID
           applicationId: ApplicationId
-        # The lookup response never echoes the household email DC's writes bind, so it packs from
-        # the lookup's caller context. Context names are a closed set — today only householdIdentifier.
-        fromContext:
-          householdEmail: householdIdentifier
   cardReplacement:
     method: post
     path: /card-replacements
@@ -70,7 +68,7 @@ operations:
       # contract carries no replacement reason, so the wrapper's `reason` key is unbound (SQL NULL).
       map:
         caseId: summerEbtCaseId
-        householdEmail: householdEmail
+        householdIdentifier: householdEmail
     result:
       # Ordered, first-match-wins. Each condition is EXACTLY ONE of three closed kinds:
       # statusIn / valueIn(field) / messageContains(messageField). NO combinators, NO nesting.
@@ -91,12 +89,10 @@ operations:
     request:
       constants:
         source: portal
-      # Batch shape: one household identifier resolved across ALL decoded caseIds; the binder fails
-      # loud if the cases disagree. LHS is a decoded routing field; RHS is the write-body path.
-      shared:
-        householdEmail: householdIdentifier
-      # Scalar address fields bind through the same map vocabulary as other writes.
+      # Household identifier comes from the write envelope, not from decoded tokens, so a
+      # zero-case household can still update. LHS is the envelope input name.
       map:
+        householdIdentifier: householdIdentifier
         line1: address.line1
         city: address.city
         state: address.state
