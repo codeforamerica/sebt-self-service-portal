@@ -161,7 +161,7 @@ To start the Mailpit Docker container, run `docker compose up -d mailpit`. Once 
 #### Other services for local dev in Docker
 
 - Redis (caching). See below
-- Jaegar (telemetry). See below
+- Jaeger (telemetry). See below
 
 ### 6. Build and run the app
 
