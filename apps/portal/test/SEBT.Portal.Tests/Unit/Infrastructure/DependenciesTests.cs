@@ -99,6 +99,32 @@ public class DependenciesTests
         Assert.Equal("MemoryDistributedCache", cacheDescriptor.ImplementationType?.Name);
     }
 
+    // The CO integration e2e stack loads appsettings.co.example.json, which configures TLS Redis, and
+    // sets Redis__Host to blank to run on in-memory stores instead.
+    [Fact]
+    public void AddCaching_WithBlankHostOverConfiguredRedisSection_RegistersMemoryDistributedCache()
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Redis:Host"] = "",
+                ["Redis:Port"] = "6380",
+                ["Redis:Ssl"] = "true",
+                ["Redis:SslHost"] = "redis",
+                ["Redis:AcceptSelfSignedCertificates"] = "true"
+            })
+            .Build();
+        var env = Substitute.For<IHostEnvironment>();
+        env.EnvironmentName.Returns("Development");
+
+        services.AddCaching(config, env);
+
+        var cacheDescriptor = services.FirstOrDefault(d => d.ServiceType == typeof(IDistributedCache));
+        Assert.NotNull(cacheDescriptor);
+        Assert.Equal("MemoryDistributedCache", cacheDescriptor.ImplementationType?.Name);
+    }
+
     [Fact]
     public void AddCaching_WithoutAnyRedisConfig_NonDevelopmentWithOidc_ThrowsInvalidOperationException()
     {

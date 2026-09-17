@@ -110,27 +110,26 @@ public class RedisSettingsValidatorTests
         Assert.Contains("Redis:Ssl", result.FailureMessage);
     }
 
-    public static TheoryData<RedisSettings> RedisValuesWithoutHost() =>
-        new()
+    // Blanking the host over a state file that configures TLS Redis turns Redis off; the CO integration
+    // e2e stack does exactly this over appsettings.co.example.json. The leftover values are ignored,
+    // so they must not fail the boot, even outside Development.
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Validate_BlankHostWithLeftoverRedisValues_Succeeds(string host)
+    {
+        var settings = new RedisSettings
         {
-            new RedisSettings { Password = "auth-token" },
-            new RedisSettings { Ssl = true },
-            new RedisSettings { SslHost = "cluster.cache.amazonaws.com" },
-            new RedisSettings { Ssl = true, AcceptSelfSignedCertificates = true },
-            new RedisSettings { Port = 6380 },
-            new RedisSettings { Host = "   ", Ssl = true }
+            Host = host,
+            Port = 6380,
+            Ssl = true,
+            SslHost = "redis",
+            AcceptSelfSignedCertificates = true
         };
 
-    // Without a Host the section is ignored and caching falls back to memory, so a section that sets
-    // anything else is a Host that went missing rather than a deliberate choice.
-    [Theory]
-    [MemberData(nameof(RedisValuesWithoutHost))]
-    public void Validate_RedisValuesWithoutHost_Fails(RedisSettings settings)
-    {
-        var result = Validator(Environments.Development).Validate(null, settings);
+        var result = Validator(Environments.Production).Validate(null, settings);
 
-        Assert.True(result.Failed);
-        Assert.Contains("Redis:Host", result.FailureMessage);
+        Assert.True(result.Succeeded);
     }
 
     // One boot should tell an operator everything to fix.

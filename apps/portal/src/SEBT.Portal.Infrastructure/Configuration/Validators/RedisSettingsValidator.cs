@@ -8,9 +8,10 @@ namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 /// Rejects a Redis section that is incomplete, contradictory, or unsafe for the environment.
 ///
 /// Redis is optional: without <c>Redis:Host</c> the portal falls back to in-memory caching and SQL
-/// Server locks. That fallback is silent, so a section that sets anything else without a host is
-/// treated as a host that went missing. Once a host is set, the TLS values have to agree with each
-/// other, and certificate validation may only be skipped in Development.
+/// Server locks. Blanking the host over a state file that configures TLS Redis is how a
+/// single-instance stack turns Redis off, so a section without a host is not checked. Once a host is
+/// set, the TLS values have to agree with each other, and certificate validation may only be skipped
+/// in Development.
 ///
 /// <c>ResolveRedisConfigurationOptions</c> runs this too: it reads the section while services are still
 /// being registered, before validate-on-start can see it.
@@ -22,17 +23,7 @@ public class RedisSettingsValidator(IHostEnvironment environment) : IValidateOpt
     {
         if (!options.IsConfigured)
         {
-            var setsOtherValues = !string.IsNullOrWhiteSpace(options.Password)
-                || options.Ssl
-                || !string.IsNullOrWhiteSpace(options.SslHost)
-                || options.AcceptSelfSignedCertificates
-                || options.Port != new RedisSettings().Port;
-
-            return setsOtherValues
-                ? ValidateOptionsResult.Fail(
-                    "Redis:Host is required when other Redis settings are present. Without it the section is " +
-                    "ignored and caching silently falls back to memory. Set Redis:Host, or remove the Redis section.")
-                : ValidateOptionsResult.Success;
+            return ValidateOptionsResult.Success;
         }
 
         // Collected rather than returned one at a time so a single boot tells an operator everything to fix.
