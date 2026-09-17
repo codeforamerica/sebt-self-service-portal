@@ -32,5 +32,6 @@ public class PluginAssemblyScannerTests
         var caseService = provider.GetService<ISummerEbtCaseService>();
         Assert.NotNull(caseService);
         Assert.Contains("Default", caseService.GetType().Name);
+        Assert.NotNull(provider.GetKeyedService<ISummerEbtCaseService>(StatePluginKeys.Connector));
     }
 }

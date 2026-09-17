@@ -274,4 +274,21 @@ public class FeatureFlagServiceTests
         // Assert
         Assert.False(result[FeatureFlags.CheckerOutagePageEnabled]);
     }
+
+    [Fact]
+    public async Task GetFeatureFlagsAsync_WhenConfigurableStateBackendFlagConfigured_ShouldOmitFromResponse()
+    {
+        _featureManager.GetFeatureNamesAsync()
+            .Returns(new[] { FeatureFlags.UseConfigurableStateBackend, "other_feature" }.ToAsyncEnumerable());
+        _featureManager.IsEnabledAsync(FeatureFlags.UseConfigurableStateBackend).Returns(true);
+        _featureManager.IsEnabledAsync("other_feature").Returns(false);
+
+        var service = CreateService();
+
+        var result = await service.GetFeatureFlagsAsync();
+
+        Assert.False(result.ContainsKey(FeatureFlags.UseConfigurableStateBackend));
+        Assert.True(result.ContainsKey("other_feature"));
+        Assert.False(result["other_feature"]);
+    }
 }

@@ -52,4 +52,14 @@ public static class FeatureFlags
     /// checker polls the enrollment features endpoint, so no checker redeploy is required.
     /// </summary>
     public const string CheckerOutagePageEnabled = "checker_outage_page_enabled";
+
+    /// <summary>
+    /// When enabled, household lookup, card replacement, address update, enrollment check,
+    /// and state-backend health go through <c>ConfigurableStateBackend</c> instead of the
+    /// MEF state plugins. Defaults to false (plugins remain the live path). Requires
+    /// <c>StateBackend:ConfigPath</c> to point at a valid YAML bundle; enabling the flag
+    /// without that path fails the request. Toggle at runtime via AWS AppConfig.
+    /// This is a backend dark-launch switch, not a UI flag.
+    /// </summary>
+    public const string UseConfigurableStateBackend = "use_configurable_state_backend";
 }
