@@ -74,6 +74,17 @@ Other repo-wide config lives at the root: `pnpm-workspace.yaml`, `package.json`,
 
 > **On Windows:** you'll want to enable long paths (`git config core.longpaths true`), since the nested `apps/portal/...` paths can exceed the legacy 260-char limit.
 
+### Quick start (macOS)
+
+After cloning, one command does steps 1 through 5 below: it installs any missing .NET 10, Node.js or pnpm with Homebrew, clones the DC connector beside this repository, creates your local config files with generated secrets, installs dependencies, builds, and starts MSSQL, Mailpit and Redis in Docker. Docker Desktop must already be installed and running.
+
+```bash
+./scripts/dev/setup-local.sh              # both states
+./scripts/dev/setup-local.sh --state co   # one state
+```
+
+It is safe to re-run and never overwrites an existing config file. When it finishes, it prints the command to start the app and lists any placeholder values (client IDs and secrets) you may still need to fill in. To set things up by hand instead, follow the steps below.
+
 ### Local development
 
 ### 1. Make sure you have downloaded and installed prerequisite software
