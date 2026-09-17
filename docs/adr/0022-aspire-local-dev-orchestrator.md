@@ -90,7 +90,7 @@ The Aspire path does not use Jaeger. The dashboard reads OTLP data. For Redis, a
 | `pnpm api:build-dc` as a manual step                         | `dc-plugin-build`. The API waits for it.                              |
 | `dev:kill-port`, which uses `lsof` and `kill`                | Aspire controls the processes                                         |
 | `concurrently -n API,Web`                                    | The resource graph                                                    |
-| `pnpm dev:co-enroll` as a separate command                   | The checker is part of the CO graph                                   |
+| `pnpm dev:co-enroll` / `dev:dc-enroll` as a separate command | The checker is part of every state's graph                            |
 | `docker compose logs -f` and `docker compose down`           | The dashboard, `aspire logs <resource>`, and `aspire stop`            |
 
 For DC, the daily start changes from 3 commands in 2 directories to 1 command.

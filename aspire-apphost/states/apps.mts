@@ -18,8 +18,8 @@ import type { SharedResources } from "./shared.mjs";
 export interface WebApps {
   /** The portal itself. */
   web: NextJsAppResource;
-  /** CO-only public enrollment checker. */
-  checker?: NextJsAppResource;
+  /** The public enrollment checker, which every state deploys. */
+  checker: NextJsAppResource;
 }
 
 export async function addApi(
@@ -32,7 +32,10 @@ export async function addApi(
   const api = await builder
     .addProject(
       "api",
-      resolve(repoRoot, "apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj"),
+      resolve(
+        repoRoot,
+        "apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj",
+      ),
       { launchProfileOrOptions: "http" },
     )
     .withEnvironment("STATE", config.state)
@@ -61,23 +64,43 @@ export async function addWebApps(
 
   // withPnpm runs `pnpm dev`, so the package's own predev hook still generates design
   // tokens and locale files — the same inner loop as `pnpm web:dev`.
+  //
+  // STATE is unprefixed on purpose: Next inlines every NEXT_PUBLIC_* reference at build
+  // time, so the portal keeps the state server-side and stamps it onto <html data-state>
+  // per request. See docs/adr/0023-runtime-client-config.md.
   const web = await builder
     .addNextJsApp("web", resolve(repoRoot, "apps/portal/src/SEBT.Portal.Web"))
     .withPnpm()
-    .withEnvironment("NEXT_PUBLIC_STATE", config.state)
+    .withEnvironment("STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
     .waitFor(api);
 
-  if (config.state !== "co") {
-    return { web };
-  }
-
+  // deploy-enrollment-checker.yaml builds and ships a static export for DC as well as
+  // CO, so the checker belongs to every state's graph rather than CO's alone.
+  //
+  // Deployed, the checker reads window.__CHECKER_CONFIG__ from a config.js written into
+  // its bucket at deploy time. That file only accompanies a static export, so here,
+  // where the checker runs `next dev`, lib/client-config.ts falls back to the build-time
+  // env set below. The remaining flags (school field, bot protection, analytics keys)
+  // keep their schema defaults; a developer who needs one can set it in the app's
+  // .env.local, which Next still reads because these values take precedence over it.
+  //
+  // NEXT_PUBLIC_API_BASE_URL is deliberately unset: without it the browser calls the
+  // checker's own /api/enrollment/* route handlers, which proxy to BACKEND_URL. Those
+  // routes are stripped from the static export, where the deployed apiBaseUrl points at
+  // the portal instead.
+  //
+  // STATE and NEXT_PUBLIC_STATE are set together because the checker's next.config.ts
+  // derives the latter from the former and overwrites whatever was passed in: STATE
+  // alone decides the build, and NEXT_PUBLIC_STATE alone would be discarded, quietly
+  // yielding CO's checker.
   const checker = await builder
     .addNextJsApp(
       "enrollment-checker",
       resolve(repoRoot, "apps/portal/src/SEBT.EnrollmentChecker.Web"),
     )
     .withPnpm()
+    .withEnvironment("STATE", config.state)
     .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
     .waitFor(api);
