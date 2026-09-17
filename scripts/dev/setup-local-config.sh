@@ -22,9 +22,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 STATES=""
 
+usage_error() {
+  echo "Usage: $0 [--state dc|co]... [--root DIR]" >&2
+  exit 2
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --root)
+      [ -n "${2:-}" ] || usage_error
       ROOT="$2"
       shift 2
       ;;
@@ -38,18 +44,18 @@ while [ "$#" -gt 0 ]; do
       esac
       shift 2
       ;;
-    *)
-      echo "Usage: $0 [--state dc|co]... [--root DIR]" >&2
-      exit 2
-      ;;
+    *) usage_error ;;
   esac
 done
 STATES="${STATES:-dc co}"
 
 API="$ROOT/apps/portal/src/SEBT.Portal.Api"
 WEB="$ROOT/apps/portal/src/SEBT.Portal.Web"
-# Compose falls back to this password when .env does not set one.
-COMPOSE_DEFAULT_DB_PASSWORD="YourStrong@Passw0rd"
+
+# Reads one value from an env file; empty when the file or the key is missing.
+env_file_value() {
+  grep "^$2=" "$1" 2> /dev/null | cut -d= -f2- || true
+}
 
 # Copies an example to its real name unless that file already exists. Succeeds only when it created
 # the file, so callers fill in values on new files and never on a developer's own.
@@ -72,8 +78,9 @@ replace_placeholder() {
 copy_example "$ROOT/.env.example" "$ROOT/.env" || true
 copy_example "$WEB/.env.example" "$WEB/.env.local" || true
 
-db_password="$(grep '^MSSQL_SA_PASSWORD=' "$ROOT/.env" | cut -d= -f2- || true)"
-db_password="${db_password:-$COMPOSE_DEFAULT_DB_PASSWORD}"
+# An existing .env may not set the password; .env.example carries the one compose also defaults to.
+db_password="$(env_file_value "$ROOT/.env" MSSQL_SA_PASSWORD)"
+db_password="${db_password:-$(env_file_value "$ROOT/.env.example" MSSQL_SA_PASSWORD)}"
 
 api_settings=""
 for name in Development $STATES; do

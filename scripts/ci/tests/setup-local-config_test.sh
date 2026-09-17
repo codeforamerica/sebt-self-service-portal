@@ -103,4 +103,24 @@ if bash "$SCRIPT" --root "$WORK/root" --state tx > "$WORK/out.txt" 2>&1; then
 fi
 echo "[setup-local-config_test] case 5: OK"
 
+# --- Test 6: an existing .env without a database password falls back to .env.example's ---
+echo "[setup-local-config_test] case 6: falls back to the example's database password"
+new_checkout
+sed -i.bak 's/^MSSQL_SA_PASSWORD=.*/MSSQL_SA_PASSWORD=Example-Only-Pa55word/' "$WORK/root/.env.example"
+grep -v '^MSSQL_SA_PASSWORD=' "$WORK/root/.env.example" > "$WORK/root/.env"
+bash "$SCRIPT" --root "$WORK/root" --state co > "$WORK/out.txt"
+assert_contains "$WORK/root/$API/appsettings.Development.json" "Password=Example-Only-Pa55word;"
+echo "[setup-local-config_test] case 6: OK"
+
+# --- Test 7: --root without a directory shows usage instead of an unbound-variable crash ---
+echo "[setup-local-config_test] case 7: --root needs a value"
+set +e
+bash "$SCRIPT" --root > "$WORK/out.txt" 2>&1
+status=$?
+set -e
+assert_eq "$status" "2"
+assert_contains "$WORK/out.txt" "Usage:"
+assert_not_contains "$WORK/out.txt" "unbound variable"
+echo "[setup-local-config_test] case 7: OK"
+
 echo "setup-local-config_test: OK"
