@@ -39,7 +39,7 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
     /// Flags are read from FeatureManager, which already has merged values from IConfiguration
     /// based on provider priority order configured at startup in Program.cs.
     /// Only flags that are explicitly configured (enabled or disabled) are returned.
-    /// Unknown flags are not included in the response.
+    /// Unknown flags and backend-only flags are not included in the response.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A dictionary of feature flag names to their enabled state.</returns>
@@ -51,23 +51,27 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         {
             await foreach (var featureName in _featureManager.GetFeatureNamesAsync().WithCancellation(cancellationToken))
             {
-                if (IsValidFeatureFlagName(featureName))
-                {
-                    try
-                    {
-                        var isEnabled = await _featureManager.IsEnabledAsync(featureName);
-                        flags[featureName] = isEnabled;
-                        _logger.LogDebug("Feature flag {FeatureName}: {Value}", featureName, isEnabled);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to check feature flag {FeatureName}, skipping", featureName);
-                        // Continue with other flags
-                    }
-                }
-                else
+                if (!IsValidFeatureFlagName(featureName))
                 {
                     _logger.LogWarning("Invalid feature flag name '{FeatureName}', skipping", featureName);
+                    continue;
+                }
+
+                if (!IsClientExposedFeatureFlag(featureName))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var isEnabled = await _featureManager.IsEnabledAsync(featureName);
+                    flags[featureName] = isEnabled;
+                    _logger.LogDebug("Feature flag {FeatureName}: {Value}", featureName, isEnabled);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to check feature flag {FeatureName}, skipping", featureName);
+                    // Continue with other flags
                 }
             }
         }
@@ -128,5 +132,14 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         // Allow alphanumeric characters and underscores only to follow AppConfig FF format
         // See: https://docs.aws.amazon.com/appconfig/latest/userguide/appconfig-agent-how-to-use-local-development-samples.html
         return name.All(c => char.IsLetterOrDigit(c) || c == '_');
+    }
+
+    /// <summary>
+    /// Backend dark-launch switches stay out of <c>GET /api/features</c> so the UI
+    /// contract is not coupled to adapter routing.
+    /// </summary>
+    private static bool IsClientExposedFeatureFlag(string name)
+    {
+        return name != FeatureFlags.UseConfigurableStateBackend;
     }
 }

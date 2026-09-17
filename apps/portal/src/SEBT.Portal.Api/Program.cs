@@ -25,6 +25,7 @@ using SEBT.Portal.Infrastructure.Seeding.Services;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.UseCases.Auth.SessionLifetime;
 using SEBT.Portal.Infrastructure;
+using SEBT.Portal.Infrastructure.StateBackends;
 using SEBT.Portal.Api.Startup;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -144,6 +145,7 @@ builder.Services.AddDistributedLocking(builder.Configuration, builder.Environmen
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
 builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddConfigurableStateBackend(builder.Configuration, builder.Environment.ContentRootPath);
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -161,6 +163,7 @@ builder.Services.AddSwaggerGen(); // Configured by ConfigureSwaggerGenOptions, w
 
 // Add Feature Management
 builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
+builder.Services.AddFeatureGatedStateBackendRouting(builder.Configuration);
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();
