@@ -58,16 +58,17 @@ STATES="co:5280:3000:localhost dc:5281:3002:dc.localhost"
 API_PROJECT="apps/portal/src/SEBT.Portal.Api"
 WEB_DIR="apps/portal/src/SEBT.Portal.Web"
 
-# Reads one value from .env; compose applies the same defaults when a value is missing.
+# Reads one value from .env, then from .env.example, which carries the defaults compose applies.
 env_value() {
   local value
   value="$(grep "^$1=" "$ROOT/.env" 2> /dev/null | cut -d= -f2- || true)"
-  echo "${value:-$2}"
+  [ -n "$value" ] || value="$(grep "^$1=" "$ROOT/.env.example" 2> /dev/null | cut -d= -f2- || true)"
+  echo "${value:-${2:-}}"
 }
 
 db_port="$(env_value MSSQL_PORT 1433)"
 db_user="$(env_value MSSQL_USER sa)"
-db_password="$(env_value MSSQL_SA_PASSWORD 'YourStrong@Passw0rd')"
+db_password="$(env_value MSSQL_SA_PASSWORD)"
 # The dry run shows commands on screen, so it never prints the real password.
 if [ "$DRY_RUN" = true ]; then
   db_password='***'
