@@ -4,7 +4,7 @@ Date: 2026-07-31
 
 ## Status
 
-Proposed — the adapter is not yet wired into the composition root. The intended dark-launch seam is `FeatureManagement:use_configurable_state_backend` plus `StateBackend:ConfigPath`; those settings land in a later stack. It is unproven against production traffic.
+Proposed. The adapter is wired behind `FeatureManagement:use_configurable_state_backend` (default off) plus `StateBackend:ConfigPath`. MEF plugins serve traffic until the flag is enabled. It is unproven against production traffic.
 
 ## Context
 
@@ -53,7 +53,7 @@ We make every state backend speak JSON over HTTP, and we drive all of them throu
 ## Consequences
 
 - **Unproven against production traffic.** Phase-5 real-backend validation is in progress; test green is still substantially mock-based. "Proposed" means exactly that.
-- **Dual-path coexistence.** MEF plugins remain the default and serve all traffic until the flag and config path are wired. Two integration paths will coexist until the plugins delete (~19k LOC of eventual deletion). Until then, both paths carry maintenance and drift risk.
+- **Dual-path coexistence.** MEF plugins remain the default and serve all traffic until `use_configurable_state_backend` is enabled. Two integration paths coexist until the plugins delete (~19k LOC of eventual deletion). Until then, both paths carry maintenance and drift risk.
 - **Config types currently live in Core.** `StateBackends/Configuration/` carries HTTP concepts (`BaseUrl`, auth schemes) that ADR-0002 keeps out of Core. They move into `Infrastructure.StateBackends` as a follow-up.
 - **Promotion rules.** A real need no primitive covers means a *new named primitive* in code, with tests — never operators in the YAML. Promote a bespoke concern to a primitive only when a **third** state exhibits the *same shape* — the same shape, not the same concern. The trap is dressing a one-off up as config: DC's date-presence card status looks parameterizable but is a semantic choice, not a mapping table.
 - **The documented limit.** Multi-signal fuzzy matching is irreducibly state-specific. We don't pretend it into config. It belongs across the wire, on the state's side of the lookup.
