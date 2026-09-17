@@ -33,6 +33,11 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DRY_RUN=false
 
+usage_error() {
+  echo "Usage: $0 [--dry-run] [--root DIR]" >&2
+  exit 2
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --dry-run)
@@ -40,13 +45,11 @@ while [ "$#" -gt 0 ]; do
       shift
       ;;
     --root)
+      [ -n "${2:-}" ] || usage_error
       ROOT="$2"
       shift 2
       ;;
-    *)
-      echo "Usage: $0 [--dry-run] [--root DIR]" >&2
-      exit 2
-      ;;
+    *) usage_error ;;
   esac
 done
 

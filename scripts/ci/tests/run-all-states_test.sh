@@ -89,4 +89,15 @@ assert_contains "$WORK/co-api.txt" "Server=localhost,1433;"
 assert_contains "$WORK/co-api.txt" "User Id=sa;"
 echo "[run-all-states_test] case 4: OK"
 
+# --- Test 5: --root without a directory shows usage instead of an unbound-variable crash ---
+echo "[run-all-states_test] case 5: --root needs a value"
+set +e
+bash "$SCRIPT" --dry-run --root > "$WORK/out.txt" 2>&1
+status=$?
+set -e
+assert_eq "$status" "2"
+assert_contains "$WORK/out.txt" "Usage:"
+assert_not_contains "$WORK/out.txt" "unbound variable"
+echo "[run-all-states_test] case 5: OK"
+
 echo "run-all-states_test: OK"
