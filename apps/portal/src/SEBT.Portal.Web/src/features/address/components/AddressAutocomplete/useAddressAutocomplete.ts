@@ -1,3 +1,4 @@
+import { useRuntimeConfig } from '@/providers'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import { fetchAutocompleteSuggestions, formatSelected } from './smartyAutocompleteClient'
@@ -86,7 +87,7 @@ export function useAddressAutocomplete({
   // Track the original search term for secondary lookups
   const searchAtSelectionRef = useRef('')
 
-  const key = process.env.NEXT_PUBLIC_SMARTY_EMBEDDED_KEY ?? ''
+  const key = useRuntimeConfig().smartyEmbeddedKey ?? ''
   const enabled = key.length > 0
   // eslint-disable-next-line security/detect-object-injection -- stateCode values come from the portal config, not user input
   const preferStates = STATE_PREFER_STATES[stateCode] ?? ''

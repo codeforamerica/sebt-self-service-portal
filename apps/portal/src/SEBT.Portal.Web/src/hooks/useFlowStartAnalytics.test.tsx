@@ -3,7 +3,6 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HouseholdData } from '@/features/household'
-import { syncColoadingStatus } from '@/lib/analytics-helpers'
 
 import { useFlowStartAnalytics } from './useFlowStartAnalytics'
 
@@ -31,14 +30,6 @@ vi.mock('@/features/household', () => ({
   useHouseholdData: () => mockUseHouseholdData()
 }))
 
-vi.mock('@/lib/analytics-helpers', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/analytics-helpers')>()
-  return {
-    ...actual,
-    syncColoadingStatus: vi.fn()
-  }
-})
-
 const mockHouseholdData = {
   summerEbtCases: [],
   applications: []
@@ -51,7 +42,6 @@ describe('useFlowStartAnalytics', () => {
   beforeEach(() => {
     mockSetUserData.mockClear()
     mockTrackEvent.mockClear()
-    vi.mocked(syncColoadingStatus).mockClear()
     rafCallback = null
 
     mockUseAuth.mockReturnValue({
@@ -81,11 +71,6 @@ describe('useFlowStartAnalytics', () => {
 
     flushAnimationFrame()
 
-    expect(vi.mocked(syncColoadingStatus)).toHaveBeenCalledWith(
-      mockSetUserData,
-      true,
-      mockHouseholdData
-    )
     expect(mockTrackEvent).toHaveBeenCalledTimes(1)
     expect(mockTrackEvent).toHaveBeenCalledWith(AnalyticsEvents.ADDRESS_UPDATE_START)
   })
@@ -95,7 +80,6 @@ describe('useFlowStartAnalytics', () => {
 
     flushAnimationFrame()
 
-    expect(vi.mocked(syncColoadingStatus)).not.toHaveBeenCalled()
     expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 
@@ -106,7 +90,6 @@ describe('useFlowStartAnalytics', () => {
 
     flushAnimationFrame()
 
-    expect(vi.mocked(syncColoadingStatus)).not.toHaveBeenCalled()
     expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 

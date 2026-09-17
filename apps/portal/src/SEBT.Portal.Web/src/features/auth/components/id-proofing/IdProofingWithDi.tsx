@@ -3,6 +3,7 @@
 import { useDeviceIntelligence } from '@/features/auth/components/device-intelligence'
 import { useAuth } from '@/features/auth/context'
 import { useFeatureFlag, useFeatureFlagsStatus } from '@/features/feature-flags'
+import { useRuntimeConfig } from '@/providers'
 
 import { IdProofingForm, type IdOption } from './IdProofingForm'
 
@@ -23,7 +24,7 @@ export function IdProofingWithDi({
   snapTanfOption,
   contactLink
 }: IdProofingWithDiProps) {
-  const diSdkKey = process.env.NEXT_PUBLIC_SOCURE_DI_SDK_KEY
+  const diSdkKey = useRuntimeConfig().socureDiSdkKey
   const { getToken } = useDeviceIntelligence(diSdkKey)
   const { session } = useAuth()
   const askSnapTanfQuestion = useFeatureFlag('enable_socure_snap_tanf_question')

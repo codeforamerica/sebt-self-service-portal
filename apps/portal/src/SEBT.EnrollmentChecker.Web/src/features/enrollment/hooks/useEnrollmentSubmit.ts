@@ -4,6 +4,7 @@ import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 
+import { getClientConfig } from '@/lib/client-config'
 import { getEnrollmentConfig } from '@/lib/stateConfig'
 import { checkEnrollment } from '../api/checkEnrollment'
 import type { Child } from '../context/EnrollmentContext'
@@ -42,8 +43,9 @@ export function useEnrollmentSubmit(): EnrollmentSubmit {
     setErrorKind(null)
     setIsSubmitting(true)
     try {
-      if (window.fbq && process.env.NEXT_PUBLIC_META_PIXEL && process.env.NEXT_PUBLIC_META_PIXEL_ACTION) {
-        window.fbq('trackSingleCustom', process.env.NEXT_PUBLIC_META_PIXEL, process.env.NEXT_PUBLIC_META_PIXEL_ACTION)
+      const { metaPixel, metaPixelAction } = getClientConfig()
+      if (window.fbq && metaPixel && metaPixelAction) {
+        window.fbq('trackSingleCustom', metaPixel, metaPixelAction)
       }
       const response = await checkEnrollment(children, config.apiBaseUrl)
       // Pass results via sessionStorage (avoids URL length limits and keeps data off URL)

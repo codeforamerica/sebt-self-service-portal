@@ -60,7 +60,7 @@ Install once per IIS server. None of these runtime prerequisites are bundled in 
 2. **Review the target layout** after extraction. The IIS site root should point to `<root>\web` and the API application should point to `<root>\api`.
 3. **Configure the API.** Copy `api\appsettings.prod.example.json` to `api\appsettings.Production.json` and replace every `YOUR_*` placeholder before go-live. The example file covers the required production-only values.
 4. **Confirm file system permissions.** Grant the IIS app pool identity **Modify** permission on `api\logs\` and `web\logs\`.
-5. **Confirm the web tier settings.** In `web\web.config`, verify that `BACKEND_URL` points to the correct API binding. Leave `NEXT_PUBLIC_STATE=dc` unchanged.
+5. **Confirm the web tier settings.** In `web\web.config`, verify that `BACKEND_URL` points to the correct API binding and that `STATE` is `dc`. Browser-facing config (`SMARTY_EMBEDDED_KEY`, `SOCURE_DI_SDK_KEY`, `SITEIMPROVE_ID`, and any analytics keys) is read from this same block at request time and ships empty — fill in this environment's values, or that integration stays switched off.
 6. **Update IIS paths.** Point the existing IIS site to `<root>\web` and the `/api` application to `<root>\api`, or create them if this is the first deployment.
 7. **Restart or recycle** the affected IIS application pool(s) after the path change.
 8. **Verify** `https://<host>/` and `https://<host>/api/health` before declaring the deployment complete.
