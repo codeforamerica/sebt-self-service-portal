@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
   // createContext() where it doesn't exist. The design-system barrel is split
   // into server-safe (index.ts) and client (client.ts) entry points instead.
   reactCompiler: true,
+  // One dev server per state can run side by side (scripts/dev/run-all-states.sh): Next refuses to
+  // start a second dev server on a build directory that is already in use.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   experimental: {
     // @typescript/typescript6 (aliased as `typescript`) exposes tsc6, not tsc.
     // Next's default CLI mode looks for typescript/bin/tsc; use the TS 6 API until
