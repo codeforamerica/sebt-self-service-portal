@@ -621,9 +621,9 @@ describe('IdProofingForm', () => {
       }
     })
 
-    // A "Yes" answer that fails is a SNAP/TANF lookup miss (no Socure), whatever the session
-    // said about co-loaded status before the attempt.
-    it('tags a failed "Yes" submission as not_found', async () => {
+    // A submitted case number that fails is a SNAP/TANF lookup miss (no Socure), whatever the
+    // session said about co-loaded status before the attempt.
+    it('tags a failed "Yes" submission with a case number as not_found', async () => {
       server.use(
         http.post('/api/id-proofing', () =>
           HttpResponse.json({ result: 'failed', offboardingReason: null })
@@ -639,6 +639,26 @@ describe('IdProofingForm', () => {
 
       await waitFor(() => expect(mockPush).toHaveBeenCalled())
       expect(mockSetPageData).toHaveBeenCalledWith('idv_primary_reason', 'not_found')
+    })
+
+    // A "Yes" with the case number left blank submits no ID, so a non-co-loaded user goes to
+    // Socure and a failure there is a Socure failure, not a SNAP/TANF lookup miss.
+    it('tags a failed "Yes" submission with a blank case number as socure_fail', async () => {
+      server.use(
+        http.post('/api/id-proofing', () =>
+          HttpResponse.json({ result: 'failed', offboardingReason: null })
+        )
+      )
+      const user = userEvent.setup()
+      renderSnapTanfForm()
+
+      await fillValidDob(user)
+      await user.click(screen.getByRole('radio', { name: 'Yes' }))
+      await user.click(screen.getByRole('button', { name: /continue/i }))
+
+      await waitFor(() => expect(mockPush).toHaveBeenCalled())
+      expect(mockSetPageData).toHaveBeenCalledWith('idv_primary_reason', 'socure_fail')
+      expect(mockSetPageData).not.toHaveBeenCalledWith('idv_primary_reason', 'not_found')
     })
   })
 

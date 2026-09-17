@@ -291,12 +291,14 @@ export function IdProofingForm({
         if (response.offboardingReason === 'noQualifyingHousehold') {
           setPageData('idv_primary_reason', 'no_qualifying_household')
         } else {
-          // Co-loaded users, and anyone who answered "Yes" to SNAP/TANF, reach "failed" only via
+          // Co-loaded users, and anyone who submitted a SNAP/TANF case number, reach "failed" only via
           // SNAP/TANF + DOB mismatch (no Socure), or when the backend classified the household as
-          // co-loaded-only.
+          // co-loaded-only. A "Yes" with a blank case number submits no ID and can still fail in Socure.
           setPageData(
             'idv_primary_reason',
-            isCoLoaded || answeredYes || response.offboardingReason === 'coLoadedOnly'
+            isCoLoaded ||
+              (answeredYes && idTypeToSubmit !== null) ||
+              response.offboardingReason === 'coLoadedOnly'
               ? 'not_found'
               : 'socure_fail'
           )
