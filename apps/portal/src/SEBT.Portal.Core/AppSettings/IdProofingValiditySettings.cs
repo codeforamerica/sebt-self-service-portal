@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
@@ -14,5 +16,6 @@ public class IdProofingValiditySettings : IHaveConfigSectionName
     /// Default: 1826 days (~5 years). Use a low value in test environments to
     /// facilitate expiration testing.
     /// </summary>
+    [Range(1, int.MaxValue, ErrorMessage = "IdProofingValidity:ValidityDays must be at least 1; a lower value expires every verification immediately.")]
     public int ValidityDays { get; set; } = 1826;
 }
