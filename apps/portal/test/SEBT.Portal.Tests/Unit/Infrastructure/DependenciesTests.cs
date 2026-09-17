@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
@@ -142,7 +143,7 @@ public class DependenciesTests
 
         if (!shouldSucceed)
         {
-            Assert.Throws<InvalidOperationException>(() => services.AddCaching(config, env));
+            Assert.Throws<OptionsValidationException>(() => services.AddCaching(config, env));
         }
         else
         {
