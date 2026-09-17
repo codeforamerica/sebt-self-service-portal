@@ -112,7 +112,9 @@ internal static class ServiceCollectionPluginExtensions
                 var instance = ActivatorUtilities.CreateInstance(tempProvider, pluginType);
                 Log.Debug("Constructed health check plugin: {PluginType}", pluginType.FullName);
 
-                ((IStateHealthCheckService)instance).ConfigureHealthChecks(healthChecksBuilder);
+                ((IStateHealthCheckService)instance).ConfigureHealthChecks(
+                    new FeatureGatedPluginHealthChecksBuilder(healthChecksBuilder));
+                services.AddKeyedSingleton(pluginInterface, StatePluginKeys.Connector, instance);
                 services.AddSingleton(pluginInterface, instance);
             }
             else
@@ -121,13 +123,15 @@ internal static class ServiceCollectionPluginExtensions
                 // resolve using the *real* service provider. This gives plugins access
                 // to any DI-registered service via constructor injection.
                 var capturedType = pluginType; // avoid closure over loop variable
-                services.AddSingleton(pluginInterface, sp =>
+                services.AddKeyedSingleton(pluginInterface, StatePluginKeys.Connector, (sp, _) =>
                 {
                     var logger = sp.GetRequiredService<ILoggerFactory>()
                         .CreateLogger("SEBT.Portal.Api.Composition");
                     logger.LogDebug("Constructing plugin: {PluginType}", capturedType.FullName);
                     return ActivatorUtilities.CreateInstance(sp, capturedType);
                 });
+                services.AddSingleton(pluginInterface, sp =>
+                    sp.GetRequiredKeyedService(pluginInterface, StatePluginKeys.Connector));
             }
         }
 
@@ -152,14 +156,23 @@ internal static class ServiceCollectionPluginExtensions
         }
 
         // Register in-process defaults only for services no connector plugin provided.
-        services.TryAddSingleton<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>();
-        services.TryAddSingleton<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>();
-        services.TryAddSingleton<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>();
-        services.TryAddSingleton<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>();
-        services.TryAddSingleton<IAddressUpdateService, Defaults.DefaultAddressUpdateService>();
-        services.TryAddSingleton<ICardReplacementService, Defaults.DefaultCardReplacementService>();
+        TryAddKeyedPluginDefault<IStateAuthenticationService, Defaults.DefaultStateAuthenticationService>(services);
+        TryAddKeyedPluginDefault<IStateHealthCheckService, Defaults.DefaultStateHealthCheckService>(services);
+        TryAddKeyedPluginDefault<ISummerEbtCaseService, Defaults.DefaultSummerEbtCaseService>(services);
+        TryAddKeyedPluginDefault<IEnrollmentCheckService, Defaults.DefaultEnrollmentCheckService>(services);
+        TryAddKeyedPluginDefault<IAddressUpdateService, Defaults.DefaultAddressUpdateService>(services);
+        TryAddKeyedPluginDefault<ICardReplacementService, Defaults.DefaultCardReplacementService>(services);
 
         return services;
+    }
+
+    private static void TryAddKeyedPluginDefault<TService, TImplementation>(IServiceCollection services)
+        where TService : class
+        where TImplementation : class, TService
+    {
+        services.TryAddKeyedSingleton<TService, TImplementation>(StatePluginKeys.Connector);
+        services.TryAddSingleton<TService>(sp =>
+            sp.GetRequiredKeyedService<TService>(StatePluginKeys.Connector));
     }
 }
 

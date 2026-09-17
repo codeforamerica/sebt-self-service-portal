@@ -4,6 +4,8 @@ A state config bundle is a single YAML file. It tells the portal how to talk to 
 
 The two worked examples throughout are [`dc.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml) (District of Columbia, API-key auth) and [`co.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml) (Colorado, OAuth client-credentials auth). Every YAML fragment below is copied from one of those files.
 
+To point the portal at a bundle, set `StateBackend:ConfigPath` (absolute, or relative to the API content root). YAML loads and validates at startup. Traffic stays on the MEF plugins until `FeatureManagement:use_configurable_state_backend` is `true`. Enabling the flag without a path fails the request.
+
 ## Step 1: Base URL and authentication
 
 Set `baseUrl` to the root of the state backend. Then declare an `auth` scheme. There are exactly two schemes.
