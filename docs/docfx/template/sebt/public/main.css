@@ -471,9 +471,13 @@ article blockquote {
  * Footer and page furniture
  * ------------------------------------------------------------------------- */
 
+/* `padding-block` matches the `gap` in `.site-footer`, so the badge carries the
+   same amount of space above it, below it, and to its right. Its left edge is
+   left to the container gutter, which is what keeps it aligned with the header
+   logo and the page content above. */
 footer {
   background-color: var(--bs-tertiary-bg);
-  padding-block: 1.25rem;
+  padding-block: 1.5rem;
   font-size: 0.875rem;
 }
 
@@ -513,6 +517,53 @@ footer {
 
 .doc-meta time {
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------------------
+   Footer
+
+   The Summer EBT Potatoes seal sits beside the attribution, with the badge
+   drawn as a background image rather than an `<img>`. The footer comes from
+   the `_appFooter` metadata string, which the template inserts raw and does
+   not prefix with `{{_rel}}` the way it does the header logo, so a relative
+   `src` there would resolve correctly only on pages at the site root. A
+   stylesheet always loads from `public/`, so a path relative to this file is
+   right at every depth.
+
+   The seal repeats the wording of the attribution next to it, so it is
+   decorative and carries no alternative text.
+   --------------------------------------------------------------------------- */
+
+.site-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.site-footer-badge {
+  flex: none;
+  width: 10rem;
+  height: 10rem;
+  background-image: url("../img/potato-sebt.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.site-footer p {
+  margin-bottom: 0;
+}
+
+/* Stacked rather than in a row. `align-items` keeps each link's target to the
+   width of its own text, since a stretched column item would otherwise make
+   the whole line clickable. */
+.site-footer-links {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
 }
 
 /* ---------------------------------------------------------------------------

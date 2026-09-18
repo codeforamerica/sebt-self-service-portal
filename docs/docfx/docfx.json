@@ -62,7 +62,7 @@
     "globalMetadata": {
       "_appName": "Summer EBT Portal",
       "_appTitle": "Summer EBT Self-Service Portal Documentation",
-      "_appFooter": "Summer EBT Self-Service Portal, built by Code for America with the District of Columbia and the State of Colorado.",
+      "_appFooter": "<div class=\"site-footer\"><span class=\"site-footer-badge\" aria-hidden=\"true\"></span><div><p>Summer EBT Self-Service Portal, built by Code for America with the District of Columbia and the State of Colorado.</p><p class=\"site-footer-links\"><a href=\"https://github.com/codeforamerica/sebt-self-service-portal\">GitHub repository</a><a href=\"https://codeforamerica.org/resources/summer-ebt-playbook/\">Summer EBT Playbook</a><a href=\"https://codeforamerica.org\">Code for America</a></p></div></div>",
       "_appLogoPath": "img/logo.svg",
       "_appFaviconPath": "img/favicon.svg",
       "_enableSearch": true,
