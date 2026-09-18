@@ -208,9 +208,12 @@ decision and the trade-offs.
    [step 2](#2-clone-the-repository). If your checkout is in a different location, set
    `DC_CONNECTOR_PATH`.
 
-4. Keep your `appsettings.{state}.json` files. Aspire gives the infrastructure
-   configuration, such as the connection strings and the ports. Aspire does not replace
-   those files. If the files are absent, the API stops.
+4. You do not need to copy the `appsettings` files for this path. The AppHost gives every
+   value that the API needs at startup. It gives the connection strings, the ports, the
+   plugin directory of the state, and a generated JWT signing key. If you keep the files,
+   the values from the AppHost win, because an environment variable has a higher priority
+   than a JSON file. The Compose path still needs those files. Read
+   [step 3](#3-configure-your-local-environment).
 
 ### Start the app
 

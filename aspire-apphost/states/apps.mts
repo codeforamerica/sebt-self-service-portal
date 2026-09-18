@@ -27,6 +27,17 @@ export async function addApi(
   config: AppHostConfig,
   shared: SharedResources,
 ): Promise<ProjectResource> {
+  // JwtSettings.SecretKey ships empty in appsettings.json, and it is [Required] with a
+  // 32-character minimum, so the API fails options validation at startup unless the
+  // gitignored appsettings.Development.json supplies it. Generated rather than written
+  // here, so no signing key is committed. Tokens issued before a restart stop validating
+  // after it, which is harmless locally: they already expire in 15 minutes.
+  const jwtSecret = await builder.addParameterWithGeneratedValue(
+    "jwt-secret",
+    { minLength: 64, lower: true, upper: true, numeric: true },
+    { secret: true },
+  );
+
   // The `http` launch profile supplies ASPNETCORE_ENVIRONMENT and
   // Seeding__EnableDevEndpoints, so they are not repeated here.
   const api = await builder
@@ -40,6 +51,12 @@ export async function addApi(
     )
     .withEnvironment("STATE", config.state)
     .withEnvironment("ConnectionStrings__DefaultConnection", shared.portalDb)
+    .withEnvironment("JwtSettings__SecretKey", jwtSecret)
+    // Where the state's plugin DLLs are staged, relative to the API's content root. The
+    // key is absent from appsettings.json and lives only in the gitignored state file, so
+    // the API cannot load plugins on a fresh checkout. Derived from the state so a new
+    // state module needs no extra wiring; the API binds it as an array, hence `__0`.
+    .withEnvironment("PluginAssemblyPaths__0", `plugins-${config.state}`)
     .withOtlpExporter()
     // Log export is opt-in: appsettings.json ships `Otel:UseLogExporter=console`, under
     // which the API registers no OpenTelemetry log provider and Serilog keeps
@@ -88,6 +105,11 @@ export async function addWebApps(
     .withPnpm()
     .withEnvironment("STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
+    // instrumentation.node.ts calls startOtel, but packages/observability resolves every
+    // signal to 'none' unless OTEL_EXPORTER_OTLP_ENDPOINT is set, so the SDK never starts
+    // and the app stays dark. withOtlpExporter supplies that address. See
+    // docs/adr/0018-web-tier-opentelemetry.md.
+    .withOtlpExporter()
     .withBrowserLogs()
     .waitFor(api);
 
@@ -119,6 +141,8 @@ export async function addWebApps(
     .withEnvironment("STATE", config.state)
     .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
+    // Same reason as the portal: the checker registers startOtel too.
+    .withOtlpExporter()
     .withBrowserLogs()
     .waitFor(api);
 
