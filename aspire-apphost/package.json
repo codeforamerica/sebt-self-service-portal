@@ -15,12 +15,12 @@
     "aspire:status": "aspire describe",
     "aspire:build": "tsc -p tsconfig.apphost.json",
     "aspire:dev": "tsc --watch -p tsconfig.apphost.json",
-    "lint": "npm run aspire:lint",
-    "predev": "npm run aspire:lint",
-    "dev": "npm run aspire:start",
-    "prebuild": "npm run aspire:lint",
-    "build": "npm run aspire:build",
-    "watch": "npm run aspire:dev"
+    "lint": "pnpm run aspire:lint",
+    "predev": "pnpm run aspire:lint",
+    "dev": "pnpm run aspire:start",
+    "prebuild": "pnpm run aspire:lint",
+    "build": "pnpm run aspire:build",
+    "watch": "pnpm run aspire:dev"
   },
   "dependencies": {
     "vscode-jsonrpc": "^8.2.0"

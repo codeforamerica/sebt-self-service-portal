@@ -41,15 +41,27 @@ export async function addApi(
     .withEnvironment("STATE", config.state)
     .withEnvironment("ConnectionStrings__DefaultConnection", shared.portalDb)
     .withOtlpExporter()
+    // Log export is opt-in: appsettings.json ships `Otel:UseLogExporter=console`, under
+    // which the API registers no OpenTelemetry log provider and Serilog keeps
+    // writeToProviders false, leaving the dashboard's structured logs empty. Only the
+    // gitignored appsettings.Development.json turns it on, so without this the dashboard
+    // depends on a file each developer edits by hand. LoggingSetup reads the value from
+    // configuration, which includes this variable, so it also flips writeToProviders.
+    //
+    // The destination needs no override here: the log exporter takes its address from the
+    // standard OTEL_EXPORTER_OTLP_* variables that withOtlpExporter already sets.
+    .withEnvironment("Otel__UseLogExporter", "otlp")
     .waitFor(shared.portalDb);
 
   // withOtlpExporter sets the standard OTEL_EXPORTER_OTLP_ENDPOINT, but
   // OpenTelemetrySetup binds OtlpExporterOptions from the `Otel:OtlpExporter` config
   // section, and appsettings.json sets that to the old Jaeger address. Config wins, so
   // without this override traces and metrics are exported to a port nothing listens on.
-  const otlpEndpoint = process.env.ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL;
-  if (otlpEndpoint) {
-    await api.withEnvironment("Otel__OtlpExporter__Endpoint", otlpEndpoint);
+  if (config.dashboardOtlpEndpoint) {
+    await api.withEnvironment(
+      "Otel__OtlpExporter__Endpoint",
+      config.dashboardOtlpEndpoint,
+    );
   }
 
   return api;
@@ -68,11 +80,15 @@ export async function addWebApps(
   // STATE is unprefixed on purpose: Next inlines every NEXT_PUBLIC_* reference at build
   // time, so the portal keeps the state server-side and stamps it onto <html data-state>
   // per request. See docs/adr/0023-runtime-client-config.md.
+  // withBrowserLogs tracks a browser Aspire launches itself, so its console output and
+  // screenshots reach the dashboard alongside the server-side telemetry. It uses an
+  // Aspire-managed Chromium user data directory, never the developer's own profile.
   const web = await builder
     .addNextJsApp("web", resolve(repoRoot, "apps/portal/src/SEBT.Portal.Web"))
     .withPnpm()
     .withEnvironment("STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
+    .withBrowserLogs()
     .waitFor(api);
 
   // deploy-enrollment-checker.yaml builds and ships a static export for DC as well as
@@ -103,6 +119,7 @@ export async function addWebApps(
     .withEnvironment("STATE", config.state)
     .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
+    .withBrowserLogs()
     .waitFor(api);
 
   // The portal returns CORS headers for the checker's origin and the checker links back

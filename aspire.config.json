@@ -19,6 +19,7 @@
     "Aspire.Hosting.JavaScript": "13.5.4",
     "Aspire.Hosting.SqlServer": "13.5.4",
     "Aspire.Hosting.Redis": "13.5.4",
-    "Aspire.Hosting.Keycloak": "13.5.4-preview.1.26464.4"
+    "Aspire.Hosting.Keycloak": "13.5.4-preview.1.26464.4",
+    "Aspire.Hosting.Browsers": "13.5.4-preview.1.26464.4"
   }
 }

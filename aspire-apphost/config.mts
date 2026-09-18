@@ -30,6 +30,12 @@ export interface AppHostConfig {
   redisPassword: string;
   /** Checkout of the out-of-tree DC connector, holding Dockerfile.seed and scripts/sql. */
   dcConnectorPath: string;
+  /**
+   * Where the dashboard accepts OTLP. Aspire sets this from the launch profile in
+   * aspire.config.json, so it is absent when the AppHost runs without one — hence
+   * optional rather than defaulted, since a wrong address is worse than none.
+   */
+  dashboardOtlpEndpoint: string | undefined;
 }
 
 function resolveState(): SupportedState {
@@ -68,5 +74,6 @@ export function loadConfig(): AppHostConfig {
     sqlPassword: process.env.MSSQL_SA_PASSWORD ?? "YourStrong@Passw0rd",
     redisPassword: process.env.REDIS_PASSWORD ?? "LocalDevRedis1!",
     dcConnectorPath: resolveDcConnectorPath(state),
+    dashboardOtlpEndpoint: process.env.ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL,
   };
 }

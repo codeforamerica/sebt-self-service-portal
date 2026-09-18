@@ -147,9 +147,17 @@ export async function addCoResources(
     // Step 4. The realm's fixture users only resolve to a household when seeding mints
     // the addresses they sign in with, so signing in against Keycloak and reading real
     // CBMS data are mutually exclusive. This graph picks the Keycloak pairing.
+    //
+    // The pattern is what makes the two halves meet: SeedingSettings.BuildEmail formats
+    // it with the scenario name, and the realm's three users carry the addresses that
+    // produces (co-loaded, verified, non-co-loaded).
     .withEnvironment("Seeding__EmailPattern", "sebt.co+{0}@codeforamerica.org")
     .withEnvironment("Seeding__State", "co")
     .withEnvironment("UseMockHouseholdData", "true")
+    // Same hazard as the phone override: this one renames the co-loaded seed user's
+    // address, so a value left in a developer's appsettings.Development.json would break
+    // exactly one of the three Keycloak logins and leave the other two working.
+    .withEnvironment("Seeding__CoLoadedSeedEmailOverride", "")
     .waitFor(keycloak);
 
   return { redis, keycloak };
