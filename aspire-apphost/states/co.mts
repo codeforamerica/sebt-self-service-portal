@@ -8,6 +8,7 @@ import { EndpointProperty, refExpr } from "../.aspire/modules/aspire.mjs";
 import type {
   DistributedApplicationBuilder,
   KeycloakResource,
+  NextJsAppResource,
   ProjectResource,
   RedisResource,
 } from "../.aspire/modules/aspire.mjs";
@@ -28,11 +29,15 @@ const keycloakPort = 8180;
 const realm = "sebt";
 
 /**
- * The only redirect URI the realm's two clients register, so the portal has to be
- * reachable here for a login to complete. Kept as a literal to stay in step with
- * sebt-realm.json rather than following the portal's allocated port.
+ * Placeholder the realm's clients use for the portal's origin.
+ *
+ * sebt-realm.json writes `${SEBT_PORTAL_ORIGIN}` into each client's redirect URI, web
+ * origin, and post-logout URI, and Keycloak resolves it from the environment while
+ * importing. That is what lets the portal keep an Aspire-allocated port: the realm learns
+ * the real origin at import instead of registering a fixed one. compose sets the same
+ * variable to localhost:3000, where it always serves the portal.
  */
-const portalCallbackUrl = "http://localhost:3000/callback";
+const portalOriginVariable = "SEBT_PORTAL_ORIGIN";
 
 export interface CoResources {
   /** Distributed cache backing the CBMS household cache. */
@@ -132,7 +137,6 @@ export async function addCoResources(
     .withEnvironment("Oidc__DiscoveryEndpoint", discoveryEndpoint)
     .withEnvironment("Oidc__ClientId", "sebt-portal")
     .withEnvironment("Oidc__ClientSecret", "sebt-portal-dev-secret")
-    .withEnvironment("Oidc__CallbackRedirectUri", portalCallbackUrl)
     .withEnvironment("Oidc__StepUp__DiscoveryEndpoint", discoveryEndpoint)
     .withEnvironment("Oidc__StepUp__ClientId", "sebt-portal-stepup")
     .withEnvironment("Oidc__StepUp__ClientSecret", "sebt-portal-stepup-dev-secret")
@@ -140,7 +144,35 @@ export async function addCoResources(
     // that does not belong to the signed-in user, which reads as a data bug rather than a
     // configuration one.
     .withEnvironment("DevelopmentPhoneOverride__Phone", "")
+    // Step 4. The realm's fixture users only resolve to a household when seeding mints
+    // the addresses they sign in with, so signing in against Keycloak and reading real
+    // CBMS data are mutually exclusive. This graph picks the Keycloak pairing.
+    .withEnvironment("Seeding__EmailPattern", "sebt.co+{0}@codeforamerica.org")
+    .withEnvironment("Seeding__State", "co")
+    .withEnvironment("UseMockHouseholdData", "true")
     .waitFor(keycloak);
 
   return { redis, keycloak };
+}
+
+/**
+ * Closes the loop between the portal and Keycloak once the portal's endpoint exists.
+ *
+ * Both sides need the same origin and neither may hardcode it: Keycloak resolves it into
+ * the realm's redirect URIs at import, and the API sends it as the callback it expects
+ * back. Separated from {@link addCoResources} only because the portal is added after the
+ * state modules run.
+ */
+export async function wireCoPortalCallback(
+  api: ProjectResource,
+  co: CoResources,
+  web: NextJsAppResource,
+): Promise<void> {
+  const portalEndpoint = await web.getEndpoint("http");
+
+  await co.keycloak.withEnvironment(portalOriginVariable, portalEndpoint);
+  await api.withEnvironment(
+    "Oidc__CallbackRedirectUri",
+    refExpr`${portalEndpoint}/callback`,
+  );
 }

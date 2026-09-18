@@ -13,7 +13,8 @@
 import { createBuilder } from "./.aspire/modules/aspire.mjs";
 import { loadConfig } from "./config.mjs";
 import { addApi, addWebApps } from "./states/apps.mjs";
-import { addCoResources } from "./states/co.mjs";
+import { addCoResources, wireCoPortalCallback } from "./states/co.mjs";
+import type { CoResources } from "./states/co.mjs";
 import { addDcResources } from "./states/dc.mjs";
 import { addSharedResources } from "./states/shared.mjs";
 
@@ -26,15 +27,23 @@ const shared = await addSharedResources(builder, config);
 const api = await addApi(builder, config, shared);
 
 // State modules attach their own API environment and waits to the resource above.
+let co: CoResources | undefined;
+
 switch (config.state) {
   case "dc":
     await addDcResources(builder, config, shared, api);
     break;
   case "co":
-    await addCoResources(builder, config, api);
+    co = await addCoResources(builder, config, api);
     break;
 }
 
-await addWebApps(builder, config, api);
+const apps = await addWebApps(builder, config, api);
+
+// Last because it is the one piece of state wiring that reads the portal's endpoint:
+// CO's realm redirects back to it, so neither side can hardcode a port.
+if (co) {
+  await wireCoPortalCallback(api, co, apps.web);
+}
 
 await builder.build().run();
