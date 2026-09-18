@@ -24,6 +24,8 @@ export interface DcResources {
   dcSourceDb: SqlServerDatabaseResource;
   /** One-shot seed job. Gate consumers on it with waitForCompletion. */
   dcSourceSeed: ContainerResource;
+  /** One-shot registering ~/nuget-store, which the plugin build may restore from. */
+  nugetStore: ExecutableResource;
   /** One-shot build staging the DC plugin DLLs into plugins-dc. */
   pluginBuild: ExecutableResource;
   /** SMTP sink for email OTP. */
@@ -74,8 +76,29 @@ export async function addDcResources(
     // A finished one-shot otherwise sits in the dashboard looking like a failure.
     .withHiddenOnCompletion();
 
+  // The connector's csproj resolves the plugin contract as a ProjectReference when it can
+  // see this repo as a sibling, and falls back to the SEBT.Portal.StatesPlugins.Interfaces
+  // package otherwise. That fallback is reachable from here: DC_CONNECTOR_PATH may point
+  // at a checkout that is not a sibling, and the connector derives the contract path from
+  // its own location, not from ours. The package then has to come from ~/nuget-store.
+  //
+  // Runs the connector's own setup.sh rather than reimplementing it, the same reasoning as
+  // dc-source-seed reusing its Dockerfile.seed. The script is idempotent: it creates the
+  // directory with mkdir -p and updates the NuGet source when one is already registered.
+  // Note it writes to the user's global NuGet configuration, the only part of this graph
+  // that touches state outside the two repositories.
+  const nugetStore = await builder
+    .addExecutable(
+      "dc-nuget-store",
+      resolve(connectorPath, "setup.sh"),
+      connectorPath,
+      [],
+    )
+    .withHiddenOnCompletion();
+
   // The DC connector builds out of tree, so its plugin DLLs must be staged into
-  // plugins-dc before the API loads plugins at startup.
+  // plugins-dc before the API loads plugins at startup. Gated on the store above so a
+  // restore that needs the package finds the source registered.
   const pluginBuild = await builder
     .addExecutable(
       "dc-plugin-build",
@@ -83,6 +106,7 @@ export async function addDcResources(
       repoRoot,
       [],
     )
+    .waitForCompletion(nugetStore)
     .withHiddenOnCompletion();
 
   // Health check paths follow CommunityToolkit's MailPit integration. The image tag is
@@ -119,5 +143,5 @@ export async function addDcResources(
     .waitForCompletion(pluginBuild)
     .waitFor(mailpit);
 
-  return { dcSourceSql, dcSourceDb, dcSourceSeed, pluginBuild, mailpit };
+  return { dcSourceSql, dcSourceDb, dcSourceSeed, nugetStore, pluginBuild, mailpit };
 }
