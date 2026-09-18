@@ -28,15 +28,15 @@ ECR_KEYCLOAK_REPOSITORY_URL=<ecr-repo-url> ./scripts/preview/build-keycloak.sh
 https://auth.<DOMAIN>/realms/sebt/.well-known/openid-configuration
 ```
 
-5. If this Keycloak instance already had a `sebt` realm before `sebt-preview-deploy` was added to the realm JSON, seed the deploy client once (import does not overwrite existing realms). Pick **one** of:
+5. If this Keycloak instance already had a `sebt` realm before `sebt-preview-deploy` was added to the realm JSON, seed the deploy client (import does not overwrite existing realms). **Preview deploy and destroy do this automatically** when `client_credentials` fails, using the bootstrap admin secret. You can also seed it ahead of time:
 
-**A. Bootstrap script** (preferred when bootstrap admin works):
+**A. Bootstrap script** (optional; same helper preview deploy already runs):
 
 ```bash
 ./scripts/preview/bootstrap-keycloak-deploy-client.sh
 ```
 
-Uses the bootstrap admin secret in Secrets Manager (`…-keycloak-admin`). If admin login returns 401, admin credentials have drifted from the live Keycloak DB — use B or C instead.
+Uses the bootstrap admin secret in Secrets Manager (`…-keycloak-admin`). If admin login returns 401, admin credentials have drifted from the live Keycloak DB — use B or C instead. Preview deploys will fail until one of A–C succeeds.
 
 **B. Manual Admin Console** (when bootstrap admin is broken but you can still reach `/admin` with a working user):
 
@@ -61,7 +61,7 @@ curl -sS -X POST "https://auth.<DOMAIN>/realms/sebt/protocol/openid-connect/toke
 
 **C. Recreate the Keycloak database** (last resort): destroy/recreate the Keycloak RDS (or otherwise empty the DB), rebuild/push the image with the updated realm JSON, and force a new ECS deployment so `--import-realm` imports a fresh `sebt` realm including `sebt-preview-deploy`.
 
-Until one of A–C succeeds, Preview (CO) deploys will fail when registering redirect URIs and login will keep returning `Invalid parameter: redirect_uri`.
+Until the deploy client can obtain a token, Preview (CO) deploys fail when registering redirect URIs and login keeps returning `Invalid parameter: redirect_uri`.
 
 ### Preview stacks
 
@@ -69,7 +69,7 @@ Preview deploy scripts point OIDC at this Keycloak automatically. OTP bypass rem
 
 Keycloak 26 only allows path-trailing wildcards in Valid Redirect URIs (`https://host.example/*`), not hostname wildcards (`https://*.example/*`). Because each preview uses a distinct `pr-N.<DOMAIN>` host, `deploy-co.sh` registers that host on the shared `sebt-portal` and `sebt-portal-stepup` clients via the Keycloak Admin API after Route53 aliases are created (so the preview URL still resolves if Keycloak is temporarily unreachable), and `destroy-co.sh` removes it. Helpers live in `scripts/preview/keycloak.sh`. Registration remains required for a successful deploy; without it, OIDC login will fail.
 
-Preview scripts authenticate with the dedicated `sebt-preview-deploy` client (`client_credentials`), not the bootstrap admin user. Defaults match the baked realm secret; override with `PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID` / `PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET`, or `PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID` pointing at Secrets Manager JSON `{ "clientId", "clientSecret" }`. If those overrides are wrong or the live client was never seeded, token errors name the client and point back to the bootstrap / manual steps above.
+Preview scripts authenticate with the dedicated `sebt-preview-deploy` client (`client_credentials`), not the bootstrap admin user. If that grant fails (client missing or secret mismatch), they seed or repair the client via bootstrap admin, then retry. Defaults match the baked realm secret; override with `PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID` / `PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET`, or `PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID` pointing at Secrets Manager JSON `{ "clientId", "clientSecret" }`. If bootstrap admin is also broken, token errors still point at the manual steps above.
 
 ## Fixture users
 
@@ -98,5 +98,5 @@ Baked realm redirect URIs cover the long-lived host and localhost only. Ephemera
 - Do **not** use this IdP for production.
 - Bootstrap admin credentials remain in Secrets Manager (`…-keycloak-admin`) for break-glass / one-time bootstrap only.
 - `/admin*` is blocked at the ALB by default. Preview scripts read `…-keycloak-admin-bypass` (override with `PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID` or `PREVIEW_KEYCLOAK_ADMIN_BYPASS_HEADER`). Optional CIDR allowlist: `keycloak_admin_ingress_cidrs`.
-- After realm or theme changes: rebuild/push the image, then force a new ECS deployment for the Keycloak service. Note that `--import-realm` does not overwrite an existing realm in the Postgres database; use `bootstrap-keycloak-deploy-client.sh` or the Admin API when you need live client changes beyond what preview deploy already manages.
+- After realm or theme changes: rebuild/push the image, then force a new ECS deployment for the Keycloak service. Note that `--import-realm` does not overwrite an existing realm in the Postgres database; preview deploy/destroy seed `sebt-preview-deploy` when needed, and `bootstrap-keycloak-deploy-client.sh` can do the same manually. Use the Admin API for other live client changes.
 - When the environment domain changes, update the long-lived entries in `sebt-realm.preview.json` and rebuild the image.
