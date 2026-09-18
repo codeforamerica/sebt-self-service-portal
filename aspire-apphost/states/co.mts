@@ -178,7 +178,15 @@ export async function wireCoPortalCallback(
 ): Promise<void> {
   const portalEndpoint = await web.getEndpoint("http");
 
-  await co.keycloak.withEnvironment(portalOriginVariable, portalEndpoint);
+  // Keycloak is a container, so an endpoint reference handed to it resolves to the
+  // container network's view of the portal, `http://aspire.dev.internal:<port>`. The realm
+  // would register a redirect URI that the browser never sends, and Keycloak answers
+  // "Invalid parameter: redirect_uri". The browser consumes this value, not Keycloak, so
+  // the host stays localhost while the port still comes from the allocated endpoint.
+  await co.keycloak.withEnvironment(
+    portalOriginVariable,
+    refExpr`http://localhost:${await portalEndpoint.property(EndpointProperty.Port)}`,
+  );
   await api.withEnvironment(
     "Oidc__CallbackRedirectUri",
     refExpr`${portalEndpoint}/callback`,
