@@ -175,6 +175,73 @@ Once all dependencies are installed and running, you can use these start command
 
 To view the running app, go to <https://localhost:3000> in your browser.
 
+## Local development with Aspire
+
+Aspire is a second way to run the app on your machine. One command starts all the resources
+for one state. The command starts the databases, the containers, the API, the portal, and
+the enrollment checker. Aspire replaces `docker compose up`, the connector build, and
+`pnpm dev`. It gives you one process and one dashboard.
+
+The Compose path above continues to work. No workflow in CI uses Aspire. Use the path that
+you prefer. Read [ADR-0022](./docs/adr/0022-aspire-local-dev-orchestrator.md) for the
+decision and the trade-offs.
+
+### Do these steps one time
+
+1. Install the Aspire CLI.
+
+   ```bash
+   dotnet tool install -g Aspire.Cli
+   ```
+
+2. Trust the local developer certificate.
+
+   ```bash
+   aspire certs trust
+   ```
+
+   Aspire gives Redis a TLS endpoint. If no trusted certificate is available, Aspire gives
+   a plain endpoint, and it shows no error. This command needs a person, so CI cannot run
+   it.
+
+3. Start Docker. Make sure that the DC connector repository is beside this repository. Read
+   [step 2](#2-clone-the-repository). If your checkout is in a different location, set
+   `DC_CONNECTOR_PATH`.
+
+4. You do not need to copy the `appsettings` files for this path. The AppHost gives every
+   value that the API needs at startup. It gives the connection strings, the ports, the
+   plugin directory of the state, and a generated JWT signing key. If you keep the files,
+   the values from the AppHost win, because an environment variable has a higher priority
+   than a JSON file. The Compose path still needs those files. Read
+   [step 3](#3-configure-your-local-environment).
+
+### Start the app
+
+| Command | Result |
+| ------- | ------ |
+| `pnpm aspire:dc` | Start DC: the portal database, `DcSource`, its seed job, the DC plugin build, and Mailpit |
+| `pnpm aspire:co` | Start CO: the portal database, Redis with 2 user interfaces, and Keycloak |
+| `pnpm aspire:status` | Show the graph and the address of each resource |
+| `pnpm aspire:stop` | Stop all the resources |
+
+Each state starts only its own resources. Each state also starts the API, the portal, and
+the enrollment checker. The dashboard shows the console logs, the structured logs, the
+traces, and the address of each resource.
+
+### The limits of this path
+
+- Aspire selects the host ports for each run. Read the address from the dashboard, because
+  a saved link does not work. Keycloak is an exception. Keycloak stays at
+  <http://localhost:8180>, because its realm holds that address.
+- The API has no hot reload. After you change C# code, run `aspire resource api rebuild`.
+  The 2 Next.js applications keep hot reload from their own development servers.
+- To control one resource, run `aspire resource <name> stop`, `start`, or `rebuild`. The
+  other resources continue to run.
+- CO uses Keycloak for the login, not MyColorado. The AppHost gives the OIDC client. The
+  AppHost also makes the seed data agree with the fixture users of the realm. Therefore CO
+  gives mock household data on this path. Read the
+  [Keycloak guide](./docs/development/keycloak-oidc.md) for the users and the passwords.
+
 ## Development
 
 ### Useful commands

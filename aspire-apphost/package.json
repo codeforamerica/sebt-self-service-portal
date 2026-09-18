@@ -1,0 +1,36 @@
+{
+  "name": "aspire-apphost",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
+  "scripts": {
+    "aspire:lint": "eslint apphost.mts config.mts \"states/**/*.mts\"",
+    "aspire:start": "aspire run",
+    "aspire:dc": "STATE=dc aspire run",
+    "aspire:co": "STATE=co aspire run",
+    "aspire:stop": "aspire stop",
+    "aspire:status": "aspire describe",
+    "aspire:build": "tsc -p tsconfig.apphost.json",
+    "aspire:dev": "tsc --watch -p tsconfig.apphost.json",
+    "lint": "pnpm run aspire:lint",
+    "predev": "pnpm run aspire:lint",
+    "dev": "pnpm run aspire:start",
+    "prebuild": "pnpm run aspire:lint",
+    "build": "pnpm run aspire:build",
+    "watch": "pnpm run aspire:dev"
+  },
+  "dependencies": {
+    "vscode-jsonrpc": "^8.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^10.0.3",
+    "nodemon": "^3.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.57.1"
+  }
+}
