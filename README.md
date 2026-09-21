@@ -80,10 +80,10 @@ Other configuration files live in the repository root: `pnpm-workspace.yaml`, `p
 - [Git](https://git-scm.com/install/)
 - [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for the backend
   - To install it with Homebrew, run `brew install dotnet`
-- [nodeJS](https://nodejs.org/en) 24
-  - `brew install node`
+- [nodeJS](https://nodejs.org/en) 25
+  - `nvm install && nvm use` — the version is in `.nvmrc`. The Aspire AppHost does not start on Node 24.
 - [pnpm](https://pnpm.io/installation/) for frontend package management and development scripts
-  - `brew install pnpm`
+  - `brew install pnpm` — `packageManager` in `package.json` pins the version, and pnpm changes to it.
 - [Docker](https://www.docker.com/) Desktop to run and manage local containers (including MSSQL db, Redis, and keycloak).
 
 ### 2. Clone the repository
@@ -208,7 +208,14 @@ decision and the trade-offs.
    [step 2](#2-clone-the-repository). If your checkout is in a different location, set
    `DC_CONNECTOR_PATH`.
 
-4. You do not need to copy the `appsettings` files for this path. The AppHost gives every
+4. Install the dependencies. The AppHost does not do this step for you.
+
+   ```bash
+   pnpm install
+   dotnet build SEBT.slnx
+   ```
+
+5. You do not need to copy the `appsettings` files for this path. The AppHost gives every
    value that the API needs at startup. It gives the connection strings, the ports, the
    plugin directory of the state, and a generated JWT signing key. If you keep the files,
    the values from the AppHost win, because an environment variable has a higher priority
