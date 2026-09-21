@@ -99,13 +99,29 @@ export async function addDcResources(
   // The DC connector builds out of tree, so its plugin DLLs must be staged into
   // plugins-dc before the API loads plugins at startup. Gated on the store above so a
   // restore that needs the package finds the source registered.
+  //
+  // Builds the plugin csproj rather than scripts/dev/build-dc.sh, which also builds the
+  // connector's test project. That project reaches SSH.NET through Testcontainers.MsSql,
+  // which fails NU1903 for anyone whose layout puts the portal's Directory.Build.props
+  // above the connector. The plugin's CopyPlugins target does the staging either way.
   const pluginBuild = await builder
-    .addExecutable(
-      "dc-plugin-build",
-      resolve(repoRoot, "scripts/dev/build-dc.sh"),
-      repoRoot,
-      [],
-    )
+    .addExecutable("dc-plugin-build", "dotnet", connectorPath, [
+      "build",
+      resolve(
+        connectorPath,
+        "src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj",
+      ),
+      // Otherwise the connector resolves the contract from its own location and falls
+      // back to the NuGet package when this repo is not its sibling.
+      `-p:StateConnectorInterfacesProject=${resolve(
+        repoRoot,
+        "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj",
+      )}`,
+      `-p:PluginDestDir=${resolve(
+        repoRoot,
+        `apps/portal/src/SEBT.Portal.Api/plugins-${config.state}`,
+      )}`,
+    ])
     .waitForCompletion(nugetStore)
     .withHiddenOnCompletion();
 
