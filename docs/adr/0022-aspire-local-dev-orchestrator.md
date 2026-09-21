@@ -52,14 +52,45 @@ This makes the configuration that the application needs into data. The AppHost p
 
 The contract is the same in kind for each state, and not in content. DC and CO answer the sign-in question at different layers. The DC API makes and checks an email OTP itself, so it needs only a transport for mail. CO gives identity to an external provider, so it needs an IdP and a client registration. A common shape such as `{ host, port }` or `{ issuer, clientId }` would be a fiction, and the third state would break it.
 
-Sign-in was the first capability. The household source is the second. The other 2 stay in the state modules.
+Each of the 4 is now a capability. No state has a module of its own.
 
-| Capability | DC | CO | State |
-| --- | --- | --- | --- |
-| Sign-in | email OTP, with Mailpit | OIDC, with Keycloak | a capability |
-| Household source | the `DcSource` database and a seed job | mock CBMS | a capability |
-| Connector build | a build outside this repository | a project reference | in `states/` |
-| Cache | none, `HybridCache` level 1 only | Redis with TLS | in `states/` |
+| Capability | DC | CO |
+| --- | --- | --- |
+| Sign-in | email OTP, with Mailpit | OIDC, with Keycloak |
+| Household source | the `DcSource` database and a seed job | mock CBMS |
+| Connector build | a build of the second repository | a build of the in-repo project |
+| Cache | none, `HybridCache` level 1 only | Redis with TLS |
+
+The cache of DC is an empty provider. It makes no resource, it gives no setting, and it needs no wait. This is intentional. An empty provider says that DC answered the question, and a missing provider is an error of compilation. A person who reads the matrix sees both answers.
+
+The AppHost prints the full contract at each start. This is the output for CO:
+
+```
+[cache] Redis with TLS. ...
+[connector-build] a build of the CO plugin project in this repository. ...
+[household-source] mock CBMS, in the process of the API. ...
+[sign-in] OIDC via Keycloak. ...
+[preflight] connector-build: CO plugin project at .../SEBT.Portal.StatePlugins.CO.csproj
+[preflight] sign-in: Keycloak realm import file at .../sebt-realm.json
+[preflight] sign-in: Keycloak login theme at .../themes
+[config] cache supplies api: Redis__Host, Redis__Port, Redis__Ssl, Redis__SslHost,
+         Redis__AcceptSelfSignedCertificates, Redis__Password
+[config] cache waits for: redis (healthy)
+[config] connector-build supplies api: PluginAssemblyPaths__0
+[config] connector-build waits for: co-plugin-build (completion)
+[config] household-source supplies api: UseMockHouseholdData, Cbms__UseMockResponses, Seeding__State
+[config] sign-in supplies api: Oidc__DiscoveryEndpoint, Oidc__ClientId, ... Seeding__EmailPattern
+[config] sign-in neutralizes api: DevelopmentPhoneOverride__Phone, Seeding__CoLoadedSeedEmailOverride
+[config] sign-in waits for: keycloak (healthy)
+[config] sign-in portal binding supplies api: Oidc__CallbackRedirectUri
+[config] sign-in portal binding supplies web: OIDC_ISSUER_ORIGIN
+```
+
+This answers the question that made us start this work: which configuration does this state need to run? Before, the answer was in the comments of 4 modules, and each module changed the API itself.
+
+The connector build found a fault in the graph of CO. The csproj of the API has no reference to the CO connector. Thus a build of the API alone stages no plugin, and `plugins-co` held only what an earlier `pnpm api:build-co` put there. A new checkout started the API with no CO connector, and nothing gave a message. The capability now gives CO a build job, the same as DC. A test confirms this: after a delete of `plugins-co`, the job made the directory again with 37 files, and the health check `co-cbms-api-ping` of the connector reported Healthy.
+
+`states/dc.mts` is now empty, and it is deleted. DC is 3 capabilities and nothing else.
 
 The second capability showed one fault in the shape of the first. The list of preflight checks was a fixed array. The paths of the DC household source come from `DC_CONNECTOR_PATH`, and only the resolved configuration knows that value. Therefore `preflight` is now a function of `AppHostConfig`, and both capabilities use that shape.
 
@@ -169,7 +200,9 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 
 - **Correct the hot reload problem before the AppHost becomes the default path.** There are 2 options. Make the API an executable resource that runs `dotnet watch run`. This keeps the TypeScript AppHost, but it loses the functions of `addProject`, such as the endpoint from the launch profile and `aspire resource api rebuild`. The other option is an AppHost in C#. This gives full watch support, but we lose the TypeScript AppHost. Write a ticket for this work.
 - **Done.** The AppHost sets `Otel__UseLogExporter=otlp`, so the result is the same for each developer. Make a test of the traces and the metrics in the dashboard.
-- **Decide if the other 2 capabilities become providers.** Sign-in and the household source both fit the shape with no exception. The connector build and the cache are the 2 that are left. After the connector build moves, `states/dc.mts` is empty, and after the cache moves, `states/co.mts` is empty. Decide at that point if the directory `states/` continues to exist.
+- **Give the directory `states/` a name that agrees with what is in it.** The 4 capabilities are complete, so `states/dc.mts` and `states/co.mts` are deleted. The directory holds `apps.mts` and `shared.mts`, and no state owns either one. A name such as `platform/` or `shared/` agrees with the content.
+- **Make a check that each capability is discharged.** `Record<SupportedState, Provider>` makes a check that each state has a provider for each capability. Nothing makes a check that `apphost.mts` calls `applyRequirements` for each capability. A test of the composed graph can make that check, and it is the same test that makes a check of the settings that each state needs.
+- **Make a check of the trusted developer certificate.** This is silent failure 2 in the list above, and the cache capability meets it. The certificate is in the keychain of the machine, so a check of a file is not enough. A command such as `dotnet dev-certs https --check` in the preflight of the cache is one option.
 - Keep Redis in `states/co.mts`. If DC production moves from IIS to the container path with ElastiCache, move Redis to the shared path at that time.
 - **Done.** `states/co.mts` uses `addKeycloak` with `withRealmImport`. A bind mount gives the themes from `docker/keycloak`. The realm reads the portal address from the variable `SEBT_PORTAL_ORIGIN`, so the portal keeps a port that Aspire selects. This replaces the Compose profile `keycloak` for the Aspire path. Read [ADR-0019](./0019-keycloak-local-oidc-stand-in.md).
 - **Done.** The README has the section "Local development with Aspire". It gives the installation of the CLI, the command `aspire certs trust`, and the step for the `appsettings` files.

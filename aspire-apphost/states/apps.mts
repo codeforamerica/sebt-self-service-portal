@@ -54,12 +54,8 @@ export async function addApi(
     .withEnvironment("STATE", config.state)
     .withEnvironment("ConnectionStrings__DefaultConnection", shared.portalDb)
     .withEnvironment("JwtSettings__SecretKey", jwtSecret)
-    // This is where the plugin DLLs of the state are, relative to the content root of the
-    // API. The key is absent from appsettings.json, and it is in the gitignored state
-    // file only. Thus the API cannot load a plugin on a new checkout. The value comes
-    // from the state, so a new state module needs no more wiring. The API binds the key
-    // as an array, and for this reason the name ends with `__0`.
-    .withEnvironment("PluginAssemblyPaths__0", `plugins-${config.state}`)
+    // PluginAssemblyPaths is not here. The connector build capability stages the DLLs,
+    // and it gives the path. Read ../capabilities/connector-build.mts.
     .withOtlpExporter()
     // The log export is off by default. appsettings.json sets `Otel:UseLogExporter` to
     // `console`. With that value, the API registers no OpenTelemetry log provider, and
