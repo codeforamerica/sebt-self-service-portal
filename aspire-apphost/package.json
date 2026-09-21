@@ -12,6 +12,7 @@
     "aspire:dc": "STATE=dc aspire run",
     "aspire:co": "STATE=co aspire run",
     "aspire:stop": "aspire stop",
+    "aspire:stop:all": "aspire stop --all",
     "aspire:status": "aspire describe",
     "aspire:build": "tsc -p tsconfig.apphost.json",
     "aspire:dev": "tsc --watch -p tsconfig.apphost.json",

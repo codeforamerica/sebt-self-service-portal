@@ -154,6 +154,12 @@ export async function addCoResources(
     .withEnvironment("Seeding__EmailPattern", "sebt.co+{0}@codeforamerica.org")
     .withEnvironment("Seeding__State", "co")
     .withEnvironment("UseMockHouseholdData", "true")
+    // Two separate mock switches, and both are needed. UseMockHouseholdData above is the
+    // portal's own: it routes household reads and writes to MockHouseholdRepository. This
+    // one belongs to the CO connector, which builds its own CBMS HTTP client and otherwise
+    // demands Cbms:ClientId and Cbms:ClientSecret. Without it the connector's
+    // co-cbms-api-ping health check reports Degraded on a checkout that has no credentials.
+    .withEnvironment("Cbms__UseMockResponses", "true")
     // Same hazard as the phone override: this one renames the co-loaded seed user's
     // address, so a value left in a developer's appsettings.Development.json would break
     // exactly one of the three Keycloak logins and leave the other two working.
