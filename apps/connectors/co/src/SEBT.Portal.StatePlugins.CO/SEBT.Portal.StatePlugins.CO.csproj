@@ -30,7 +30,7 @@
         <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.11" />
         <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.11" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.11" />
-        <PackageReference Include="System.Composition" Version="10.0.11" />
+        <PackageReference Include="System.Composition" Version="10.0.12" />
         <PackageReference Include="SEBT.Portal.StatesPlugins.Interfaces" Version="$(StateConnectorInterfacesFloatingVersion)" Condition="!Exists('$(StateConnectorInterfacesProject)')" />
         <InternalsVisibleTo Include="SEBT.Portal.StatePlugins.CO.Tests" />
         <!-- Required so NSubstitute/Castle.DynamicProxy can create proxies for internal interfaces (e.g. ICbmsHouseholdCache) in tests. -->
