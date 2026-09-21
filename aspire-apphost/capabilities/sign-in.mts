@@ -49,8 +49,15 @@ export interface SignInProvider {
   readonly name: string;
   /** What a developer does to sign in on a local machine. This is the first question that a new person asks. */
   readonly signInHint: string;
-  /** The obligations of the host machine. The checks run before any resource exists. */
-  readonly preflight: readonly Preflight[];
+  /**
+   * The obligations of the host machine. The checks run before any resource exists.
+   *
+   * This is a function of the configuration, and not a fixed list. The household source
+   * capability needs this shape, because the paths of DC come from DC_CONNECTOR_PATH,
+   * and only the resolved configuration knows that value. The 2 capabilities keep one
+   * shape.
+   */
+  readonly preflight: (config: AppHostConfig) => readonly Preflight[];
   provision(context: SignInContext): Promise<SignInCapability>;
 }
 

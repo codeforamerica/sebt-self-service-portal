@@ -59,6 +59,6 @@ export const dcEmailOtp: SignInProvider = {
   // Mailpit uses a fixed image, and it needs nothing from the host machine. Each other
   // resource already needs the container runtime. This list is empty by design, and not
   // by omission.
-  preflight: [],
+  preflight: () => [],
   provision,
 };

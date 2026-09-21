@@ -247,8 +247,9 @@ export const coKeycloakOidc: SignInProvider = {
   name: "OIDC via Keycloak",
   signInHint: `Sign in as one of the realm's three fixture users (co-loaded, verified, non-co-loaded); the admin console is at https://localhost:${keycloakPort} with admin/admin.`,
   // The container mounts both paths. If a path is absent, the fault is not visible until
-  // a login fails, because Keycloak starts in both cases.
-  preflight: [
+  // a login fails, because Keycloak starts in both cases. Both paths come from the
+  // repository root, so this function does not read the configuration.
+  preflight: () => [
     {
       description: `Keycloak realm import file at ${realmFile}`,
       check: () => {

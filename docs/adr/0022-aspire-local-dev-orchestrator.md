@@ -52,14 +52,18 @@ This makes the configuration that the application needs into data. The AppHost p
 
 The contract is the same in kind for each state, and not in content. DC and CO answer the sign-in question at different layers. The DC API makes and checks an email OTP itself, so it needs only a transport for mail. CO gives identity to an external provider, so it needs an IdP and a client registration. A common shape such as `{ host, port }` or `{ issuer, clientId }` would be a fiction, and the third state would break it.
 
-Sign-in is the first capability. The others stay in the state modules for now.
+Sign-in was the first capability. The household source is the second. The other 2 stay in the state modules.
 
-| Capability | DC | CO |
-| --- | --- | --- |
-| Sign-in | email OTP, with Mailpit | OIDC, with Keycloak |
-| Household source | the `DcSource` database and a seed job | mock CBMS |
-| Connector build | a build outside this repository | a project reference |
-| Cache | none, `HybridCache` level 1 only | Redis with TLS |
+| Capability | DC | CO | State |
+| --- | --- | --- | --- |
+| Sign-in | email OTP, with Mailpit | OIDC, with Keycloak | a capability |
+| Household source | the `DcSource` database and a seed job | mock CBMS | a capability |
+| Connector build | a build outside this repository | a project reference | in `states/` |
+| Cache | none, `HybridCache` level 1 only | Redis with TLS | in `states/` |
+
+The second capability showed one fault in the shape of the first. The list of preflight checks was a fixed array. The paths of the DC household source come from `DC_CONNECTOR_PATH`, and only the resolved configuration knows that value. Therefore `preflight` is now a function of `AppHostConfig`, and both capabilities use that shape.
+
+The household source also shows the 2 limits of the shape. The provider of DC makes 3 resources, gives 1 setting, and makes the API wait for the completion of the seed job. The provider of CO makes no resource and gives 3 settings. One contract holds both.
 
 The map of the providers is `Record<SupportedState, SignInProvider>`. Therefore a new state in `SupportedState` is an error of compilation until that state has a sign-in flow.
 
@@ -165,7 +169,7 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 
 - **Correct the hot reload problem before the AppHost becomes the default path.** There are 2 options. Make the API an executable resource that runs `dotnet watch run`. This keeps the TypeScript AppHost, but it loses the functions of `addProject`, such as the endpoint from the launch profile and `aspire resource api rebuild`. The other option is an AppHost in C#. This gives full watch support, but we lose the TypeScript AppHost. Write a ticket for this work.
 - **Done.** The AppHost sets `Otel__UseLogExporter=otlp`, so the result is the same for each developer. Make a test of the traces and the metrics in the dashboard.
-- **Decide if the other 3 capabilities become providers.** Sign-in is the test of the shape. Convert the household source next, because it holds the chain of 3 resources of DC and it will make a test of the waits and of the preflight checks. If the shape needs an exception for one provider, stop and keep the rest as plain modules.
+- **Decide if the other 2 capabilities become providers.** Sign-in and the household source both fit the shape with no exception. The connector build and the cache are the 2 that are left. After the connector build moves, `states/dc.mts` is empty, and after the cache moves, `states/co.mts` is empty. Decide at that point if the directory `states/` continues to exist.
 - Keep Redis in `states/co.mts`. If DC production moves from IIS to the container path with ElastiCache, move Redis to the shared path at that time.
 - **Done.** `states/co.mts` uses `addKeycloak` with `withRealmImport`. A bind mount gives the themes from `docker/keycloak`. The realm reads the portal address from the variable `SEBT_PORTAL_ORIGIN`, so the portal keeps a port that Aspire selects. This replaces the Compose profile `keycloak` for the Aspire path. Read [ADR-0019](./0019-keycloak-local-oidc-stand-in.md).
 - **Done.** The README has the section "Local development with Aspire". It gives the installation of the CLI, the command `aspire certs trust`, and the step for the `appsettings` files.

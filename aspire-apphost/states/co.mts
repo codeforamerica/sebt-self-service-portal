@@ -2,8 +2,9 @@
 // appsettings is the one that declares a Redis section. Redis holds the CBMS household
 // cache. DC uses HybridCache with level 1 only.
 //
-// Guardians sign in against an OIDC provider. Keycloak is not here. It belongs to the
-// sign-in capability, in ../capabilities/sign-in-co.mts.
+// Two other parts of CO are capabilities, and they are not here:
+//   ../capabilities/sign-in-co.mts          Keycloak, the OIDC provider.
+//   ../capabilities/household-source-co.mts the 2 mock switches for CBMS.
 
 import { EndpointProperty } from "../.aspire/modules/aspire.mjs";
 import type {
@@ -59,20 +60,6 @@ export async function addCoResources(
     .withEnvironment("Redis__SslHost", "localhost")
     .withEnvironment("Redis__AcceptSelfSignedCertificates", "false")
     .withEnvironment("Redis__Password", redisPassword)
-    // Step 4 of docs/development/keycloak-oidc.md. The fixture users of the realm get a
-    // household only when the seed makes the addresses that they sign in with. Thus a
-    // person cannot sign in against Keycloak and read the real CBMS data at the same
-    // time. This graph selects Keycloak. ../capabilities/sign-in-co.mts gives the email
-    // pattern that connects the 2 halves.
-    .withEnvironment("Seeding__State", "co")
-    .withEnvironment("UseMockHouseholdData", "true")
-    // There are 2 mock switches, and both are necessary. UseMockHouseholdData above
-    // belongs to the portal. It sends the household reads and writes to
-    // MockHouseholdRepository. The switch below belongs to the CO connector. That
-    // connector makes its own CBMS HTTP client, and it needs Cbms:ClientId and
-    // Cbms:ClientSecret. Without the switch, the co-cbms-api-ping health check of the
-    // connector reports Degraded on a checkout that has no credentials.
-    .withEnvironment("Cbms__UseMockResponses", "true")
     .waitFor(redis);
 
   return { redis };

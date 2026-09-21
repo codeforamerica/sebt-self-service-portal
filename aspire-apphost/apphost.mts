@@ -20,6 +20,7 @@
 // Usage: pnpm aspire:dc or pnpm aspire:co
 
 import { createBuilder } from "./.aspire/modules/aspire.mjs";
+import { householdSourceProviderFor } from "./capabilities/household-source.mjs";
 import {
   applyRequirements,
   runPreflight,
@@ -35,11 +36,14 @@ const config = loadConfig();
 console.log(`[apphost] composing resource graph for STATE=${config.state}`);
 
 const signIn = signInProviderFor(config.state);
+const householdSource = householdSourceProviderFor(config.state);
 console.log(`[sign-in] ${signIn.name}. ${signIn.signInHint}`);
+console.log(`[household-source] ${householdSource.name}. ${householdSource.dataHint}`);
 
 // The checks run before the builder exists. Thus an unsatisfied obligation costs one
 // second, and it does not give a graph that is half started.
-await runPreflight("sign-in", signIn.preflight);
+await runPreflight("sign-in", signIn.preflight(config));
+await runPreflight("household-source", householdSource.preflight(config));
 
 const builder = await createBuilder();
 
@@ -47,15 +51,26 @@ const shared = await addSharedResources(builder, config);
 const api = await addApi(builder, config, shared);
 
 // A state module attaches its own API environment and its own waits to the resource
-// above.
+// above. Each capability that a state module loses makes this arm smaller.
 switch (config.state) {
   case "dc":
-    await addDcResources(builder, config, shared, api);
+    await addDcResources(builder, config, api);
     break;
   case "co":
     await addCoResources(builder, config, api);
     break;
 }
+
+const householdSourceCapability = await householdSource.provision({
+  builder,
+  config,
+  saPassword: shared.saPassword,
+});
+await applyRequirements(
+  { api },
+  "household-source",
+  householdSourceCapability.requirements,
+);
 
 const signInCapability = await signIn.provision({ builder, config });
 await applyRequirements({ api }, "sign-in", signInCapability.requirements);
