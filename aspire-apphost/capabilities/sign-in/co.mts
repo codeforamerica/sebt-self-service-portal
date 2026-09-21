@@ -7,15 +7,15 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { EndpointProperty, refExpr } from "../.aspire/modules/aspire.mjs";
-import type { NextJsAppResource } from "../.aspire/modules/aspire.mjs";
-import { repoRoot } from "../config.mjs";
-import type { Requirements } from "./requirements.mjs";
+import { EndpointProperty, refExpr } from "../../.aspire/modules/aspire.mjs";
+import type { NextJsAppResource } from "../../.aspire/modules/aspire.mjs";
+import { repoRoot } from "../../config.mjs";
+import type { Requirements } from "../requirements.mjs";
 import type {
   SignInCapability,
   SignInContext,
   SignInProvider,
-} from "./sign-in.mjs";
+} from "./contract.mjs";
 
 /**
  * The host port of Keycloak. This port is fixed, and Aspire does not allocate it.

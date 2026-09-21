@@ -10,11 +10,11 @@
 // An empty provider is a statement, and not an omission. It says that DC answered this
 // question, and that the answer is "nothing". Read ./requirements.mts.
 
-import type { DistributedApplicationBuilder } from "../.aspire/modules/aspire.mjs";
-import type { AppHostConfig, SupportedState } from "../config.mjs";
-import { coRedis } from "./cache-co.mjs";
-import { dcNoCache } from "./cache-dc.mjs";
-import type { Preflight, Requirements } from "./requirements.mjs";
+import type { DistributedApplicationBuilder } from "../../.aspire/modules/aspire.mjs";
+import type { AppHostConfig, SupportedState } from "../../config.mjs";
+import { coRedis } from "./co.mjs";
+import { dcNoCache } from "./dc.mjs";
+import type { Preflight, Requirements } from "../requirements.mjs";
 
 export interface CacheContext {
   builder: DistributedApplicationBuilder;

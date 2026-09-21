@@ -1,12 +1,12 @@
 // DC signs a guardian in with an email OTP. The API makes the code and does a check of
 // it. Thus the flow needs one item of infrastructure only: a destination for the mail.
 
-import { EndpointProperty } from "../.aspire/modules/aspire.mjs";
+import { EndpointProperty } from "../../.aspire/modules/aspire.mjs";
 import type {
   SignInCapability,
   SignInContext,
   SignInProvider,
-} from "./sign-in.mjs";
+} from "./contract.mjs";
 
 async function provision({ builder }: SignInContext): Promise<SignInCapability> {
   // The paths of the health checks agree with the MailPit integration of

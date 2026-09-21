@@ -16,11 +16,11 @@
 import type {
   DistributedApplicationBuilder,
   NextJsAppResource,
-} from "../.aspire/modules/aspire.mjs";
-import type { AppHostConfig, SupportedState } from "../config.mjs";
-import type { Preflight, Requirements } from "./requirements.mjs";
-import { coKeycloakOidc } from "./sign-in-co.mjs";
-import { dcEmailOtp } from "./sign-in-dc.mjs";
+} from "../../.aspire/modules/aspire.mjs";
+import type { AppHostConfig, SupportedState } from "../../config.mjs";
+import type { Preflight, Requirements } from "../requirements.mjs";
+import { coKeycloakOidc } from "./co.mjs";
+import { dcEmailOtp } from "./dc.mjs";
 
 /**
  * What a provider gets. This is small, and that is intentional. A provider that needs

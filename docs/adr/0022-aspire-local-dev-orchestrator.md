@@ -63,6 +63,21 @@ Each of the 4 is now a capability. No state has a module of its own.
 
 The cache of DC is an empty provider. It makes no resource, it gives no setting, and it needs no wait. This is intentional. An empty provider says that DC answered the question, and a missing provider is an error of compilation. A person who reads the matrix sees both answers.
 
+One directory holds each capability, and each directory has the same 3 files. Therefore the layout on disk agrees with the matrix above: one row is one directory, and one column is one file.
+
+```
+capabilities/
+  requirements.mts              the shape that each capability speaks in
+  cache/contract.mts            the provider type and the map of the states
+  cache/dc.mts                  the answer of DC
+  cache/co.mts                  the answer of CO
+  connector-build/{contract,dc,co}.mts
+  household-source/{contract,dc,co}.mts
+  sign-in/{contract,dc,co}.mts
+```
+
+To compare 2 states, read the 2 files in one directory. To add a state, add one file to each directory.
+
 The AppHost prints the full contract at each start. This is the output for CO:
 
 ```
@@ -216,7 +231,7 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 
 - DC-713, the spike for the orchestrator for local development
 - `aspire-apphost/apphost.mts`, `aspire-apphost/config.mts`, and `aspire-apphost/states/{shared,dc,co,apps}.mts`
-- `aspire-apphost/capabilities/requirements.mts`, and `aspire-apphost/capabilities/sign-in{,-dc,-co}.mts`
+- `aspire-apphost/capabilities/requirements.mts`, and `aspire-apphost/capabilities/{cache,connector-build,household-source,sign-in}/{contract,dc,co}.mts`
 - `aspire.config.json`, which holds the SDK version, the package versions, and the dashboard profile
 - The root `package.json` and `aspire-apphost/package.json`, which hold `aspire:dc`, `aspire:co`, `aspire:stop`, and `aspire:status`
 - [ADR-0007, the approach for the plugins of the states](./0007-multi-state-plugin-approach.md)

@@ -1,12 +1,12 @@
 // CO keeps the CBMS household cache in Redis. The configuration of CO is the one that
 // declares a `Redis` section.
 
-import { EndpointProperty } from "../.aspire/modules/aspire.mjs";
+import { EndpointProperty } from "../../.aspire/modules/aspire.mjs";
 import type {
   CacheCapability,
   CacheContext,
   CacheProvider,
-} from "./cache.mjs";
+} from "./contract.mjs";
 
 async function provision({
   builder,

@@ -8,7 +8,7 @@
 import type {
   HouseholdSourceCapability,
   HouseholdSourceProvider,
-} from "./household-source.mjs";
+} from "./contract.mjs";
 
 // The context is not in the parameter list, because this provider needs nothing from it.
 // The type of HouseholdSourceProvider still accepts this function.

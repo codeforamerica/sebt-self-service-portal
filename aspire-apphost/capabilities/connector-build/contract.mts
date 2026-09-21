@@ -15,11 +15,11 @@
 // The provider that stages the DLLs also gives the path to the API. Thus one module owns
 // both halves of the answer. Read ./requirements.mts.
 
-import type { DistributedApplicationBuilder } from "../.aspire/modules/aspire.mjs";
-import type { AppHostConfig, SupportedState } from "../config.mjs";
-import { coInRepoBuild } from "./connector-build-co.mjs";
-import { dcOutOfTreeBuild } from "./connector-build-dc.mjs";
-import type { Preflight, Requirements } from "./requirements.mjs";
+import type { DistributedApplicationBuilder } from "../../.aspire/modules/aspire.mjs";
+import type { AppHostConfig, SupportedState } from "../../config.mjs";
+import { coInRepoBuild } from "./co.mjs";
+import { dcOutOfTreeBuild } from "./dc.mjs";
+import type { Preflight, Requirements } from "../requirements.mjs";
 
 export interface ConnectorBuildContext {
   builder: DistributedApplicationBuilder;

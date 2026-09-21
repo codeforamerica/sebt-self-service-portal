@@ -14,11 +14,11 @@
 import type {
   DistributedApplicationBuilder,
   ParameterResource,
-} from "../.aspire/modules/aspire.mjs";
-import type { AppHostConfig, SupportedState } from "../config.mjs";
-import type { Preflight, Requirements } from "./requirements.mjs";
-import { coMockCbms } from "./household-source-co.mjs";
-import { dcSourceDatabase } from "./household-source-dc.mjs";
+} from "../../.aspire/modules/aspire.mjs";
+import type { AppHostConfig, SupportedState } from "../../config.mjs";
+import type { Preflight, Requirements } from "../requirements.mjs";
+import { coMockCbms } from "./co.mjs";
+import { dcSourceDatabase } from "./dc.mjs";
 
 export interface HouseholdSourceContext {
   builder: DistributedApplicationBuilder;

@@ -5,17 +5,17 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { repoRoot } from "../config.mjs";
-import type { AppHostConfig } from "../config.mjs";
+import { repoRoot } from "../../config.mjs";
+import type { AppHostConfig } from "../../config.mjs";
 import {
   pluginDirectory,
   pluginPathKey,
-} from "./connector-build.mjs";
+} from "./contract.mjs";
 import type {
   ConnectorBuildCapability,
   ConnectorBuildContext,
   ConnectorBuildProvider,
-} from "./connector-build.mjs";
+} from "./contract.mjs";
 
 /** The plugin project of CO, in this repository. */
 const pluginProject = resolve(

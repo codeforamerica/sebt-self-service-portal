@@ -11,9 +11,17 @@
 //                 applications, and the database of the portal. No state owns them.
 //   capabilities/ the infrastructure that a state needs to satisfy one requirement of
 //                 the application. A capability is a provider. The provider returns what
-//                 it needs, and it does not change the API. There are 4 capabilities:
-//                 the cache, the connector build, the household source, and sign-in.
-//                 Read capabilities/requirements.mts.
+//                 it needs, and it does not change the API.
+//
+// One directory holds each capability, and each one has the same 3 files:
+//
+//   capabilities/requirements.mts        the shape that each capability speaks in.
+//   capabilities/<capability>/contract.mts  the provider type and the map of the states.
+//   capabilities/<capability>/dc.mts        the answer of DC.
+//   capabilities/<capability>/co.mts        the answer of CO.
+//
+// The 4 capabilities are the cache, the connector build, the household source, and
+// sign-in. To compare 2 states, read the 2 files in one directory.
 //
 // Each value, and also the state, comes from ./config.mts.
 // To add a state, add one provider for each capability. The type of each registry is
@@ -22,14 +30,14 @@
 // Usage: pnpm aspire:dc or pnpm aspire:co
 
 import { createBuilder } from "./.aspire/modules/aspire.mjs";
-import { cacheProviderFor } from "./capabilities/cache.mjs";
-import { connectorBuildProviderFor } from "./capabilities/connector-build.mjs";
-import { householdSourceProviderFor } from "./capabilities/household-source.mjs";
+import { cacheProviderFor } from "./capabilities/cache/contract.mjs";
+import { connectorBuildProviderFor } from "./capabilities/connector-build/contract.mjs";
+import { householdSourceProviderFor } from "./capabilities/household-source/contract.mjs";
 import {
   applyRequirements,
   runPreflight,
 } from "./capabilities/requirements.mjs";
-import { signInProviderFor } from "./capabilities/sign-in.mjs";
+import { signInProviderFor } from "./capabilities/sign-in/contract.mjs";
 import { loadConfig } from "./config.mjs";
 import { addApi, addWebApps } from "./states/apps.mjs";
 import { addSharedResources } from "./states/shared.mjs";

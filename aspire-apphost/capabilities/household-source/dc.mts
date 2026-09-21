@@ -5,12 +5,12 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { EndpointProperty, refExpr } from "../.aspire/modules/aspire.mjs";
+import { EndpointProperty, refExpr } from "../../.aspire/modules/aspire.mjs";
 import type {
   HouseholdSourceCapability,
   HouseholdSourceContext,
   HouseholdSourceProvider,
-} from "./household-source.mjs";
+} from "./contract.mjs";
 
 /** The image that seeds the database. It is in the checkout of the connector. */
 const seedDockerfile = "Dockerfile.seed";

@@ -6,7 +6,7 @@
 // that DC answers the question, and so that a person who reads the capability matrix
 // sees the answer. The empty return is the answer.
 
-import type { CacheCapability, CacheProvider } from "./cache.mjs";
+import type { CacheCapability, CacheProvider } from "./contract.mjs";
 
 // The context is not in the parameter list, because this provider needs nothing from it.
 // The type of CacheProvider still accepts this function.
