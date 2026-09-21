@@ -42,6 +42,27 @@ The variable `STATE` selects which resources exist. DC needs a `DcSource` databa
 
 Therefore the launch command selects the state. The commands are `pnpm aspire:dc` and `pnpm aspire:co`. All other values come from one file, `aspire-apphost/config.mts`. This file is the only module that reads `process.env`. To add a state, add one module `states/<state>.mts` and one arm to the switch.
 
+### Infrastructure that differs by state is a capability, and a capability returns its requirements
+
+The first version of the AppHost had a problem. Each state module received the `api` resource and changed it. The environment of the API was then the sum of the edits of 4 modules, in an order that mattered but that no module declared. A comment in `states/apps.mts` gave the rule, because nothing else did.
+
+Therefore a capability provider does not change the API. It makes the resources that it owns. Then it returns what those resources require: the settings the API must receive, the resources the API must wait for, and the obligations of the host machine. The file `apphost.mts` discharges them at one place. The types are in `aspire-apphost/capabilities/requirements.mts`.
+
+This makes the configuration that the application needs into data. The AppHost prints it at each start, and a later change can make a comparison of it with the values that `appsettings`, `tofu`, and `web.config` give to the other environments.
+
+The contract is the same in kind for each state, and not in content. DC and CO answer the sign-in question at different layers. The DC API makes and checks an email OTP itself, so it needs only a transport for mail. CO gives identity to an external provider, so it needs an IdP and a client registration. A common shape such as `{ host, port }` or `{ issuer, clientId }` would be a fiction, and the third state would break it.
+
+Sign-in is the first capability. The others stay in the state modules for now.
+
+| Capability | DC | CO |
+| --- | --- | --- |
+| Sign-in | email OTP, with Mailpit | OIDC, with Keycloak |
+| Household source | the `DcSource` database and a seed job | mock CBMS |
+| Connector build | a build outside this repository | a project reference |
+| Cache | none, `HybridCache` level 1 only | Redis with TLS |
+
+The map of the providers is `Record<SupportedState, SignInProvider>`. Therefore a new state in `SupportedState` is an error of compilation until that state has a sign-in flow.
+
 ### The plugin build becomes part of the AppHost
 
 The script `build-dc.sh` becomes a resource that runs one time. Its name is `dc-plugin-build`. The API waits for it with `waitForCompletion`.
@@ -128,6 +149,8 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
   2. If no trusted developer certificate is available, Redis gives a plain endpoint. It does not give TLS. In a non-interactive session on macOS, the CLI cannot show the Keychain prompt. Therefore CI always has this result.
   3. The value `Otel:OtlpExporter:Endpoint` in `appsettings.json` has a higher priority than the standard variable `OTEL_EXPORTER_OTLP_ENDPOINT`. `withOtlpExporter()` sets that variable. Therefore the traces and the metrics go to the old Jaeger address, which we removed.
   4. The default value of `Otel:UseLogExporter` is `console`. Therefore the application registers no OpenTelemetry log provider, and Serilog uses `writeToProviders: false`. The structured logs in the dashboard stay empty until a developer changes this value.
+  5. Aspire gives Keycloak a developer certificate and serves it with TLS. The endpoint keeps the name `http`, and no endpoint has the name `https`. Aspire publishes container port 8443 only, and it binds the fixed host port 8180 to that port. Keycloak also listens on 8080 in the container, but nothing publishes that port. An address of `http://localhost:8180` therefore accepts a TCP connection and answers nothing. The API cannot read the discovery document, `OidcController.Authorize` catches the error, and it sends the person back to `/login` with the log line `reason=discovery_failed`. Keycloak reported healthy for the whole time, because the health check of Aspire uses the management port. The sign-in provider now uses `https` and adds a health check that reads the discovery document.
+  6. Two checkouts of this repository use the same name for the data volume, `sebt-portal-mssql-data`, and `withPersistentLifetime()` keeps the container after the session ends. The second checkout cannot start its own `mssql`. The container stops with `BootstrapSystemDataDirectories() failure`, and `portal-db` shows `Exited` while the API shows `Waiting`. This reads as a fault in the database, and not as a collision.
      Result: make a positive test of each statement about this stack. Do not look at the dashboard and assume.
 - **The telemetry needs 2 explicit values.** The dashboard shows the console log of each resource with no extra work. For the structured logs, set `Otel:UseLogExporter` to `otlp`. For the traces and the metrics, set `Otel__OtlpExporter__Endpoint`. The AppHost now sets both values, so the result is the same for each developer. We made a test of the structured logs of the API, and they arrive in the dashboard. We did not make a test of the traces and the metrics.
 - **The files `appsettings.{state}.json` and the `.env` files are still necessary.** Aspire does not remove this step from the setup. Aspire does not read a `.env` file. Compose reads it. If `appsettings.dc.json` is absent, the API stops with the message `PluginAssemblyPaths missing from configuration`. This is a problem in the local setup, not a problem in Aspire. The command `pnpm dev:dc` has the same result.
@@ -142,6 +165,7 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 
 - **Correct the hot reload problem before the AppHost becomes the default path.** There are 2 options. Make the API an executable resource that runs `dotnet watch run`. This keeps the TypeScript AppHost, but it loses the functions of `addProject`, such as the endpoint from the launch profile and `aspire resource api rebuild`. The other option is an AppHost in C#. This gives full watch support, but we lose the TypeScript AppHost. Write a ticket for this work.
 - **Done.** The AppHost sets `Otel__UseLogExporter=otlp`, so the result is the same for each developer. Make a test of the traces and the metrics in the dashboard.
+- **Decide if the other 3 capabilities become providers.** Sign-in is the test of the shape. Convert the household source next, because it holds the chain of 3 resources of DC and it will make a test of the waits and of the preflight checks. If the shape needs an exception for one provider, stop and keep the rest as plain modules.
 - Keep Redis in `states/co.mts`. If DC production moves from IIS to the container path with ElastiCache, move Redis to the shared path at that time.
 - **Done.** `states/co.mts` uses `addKeycloak` with `withRealmImport`. A bind mount gives the themes from `docker/keycloak`. The realm reads the portal address from the variable `SEBT_PORTAL_ORIGIN`, so the portal keeps a port that Aspire selects. This replaces the Compose profile `keycloak` for the Aspire path. Read [ADR-0019](./0019-keycloak-local-oidc-stand-in.md).
 - **Done.** The README has the section "Local development with Aspire". It gives the installation of the CLI, the command `aspire certs trust`, and the step for the `appsettings` files.
@@ -155,6 +179,7 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 
 - DC-713, the spike for the orchestrator for local development
 - `aspire-apphost/apphost.mts`, `aspire-apphost/config.mts`, and `aspire-apphost/states/{shared,dc,co,apps}.mts`
+- `aspire-apphost/capabilities/requirements.mts`, and `aspire-apphost/capabilities/sign-in{,-dc,-co}.mts`
 - `aspire.config.json`, which holds the SDK version, the package versions, and the dashboard profile
 - The root `package.json` and `aspire-apphost/package.json`, which hold `aspire:dc`, `aspire:co`, `aspire:stop`, and `aspire:status`
 - [ADR-0007, the approach for the plugins of the states](./0007-multi-state-plugin-approach.md)

@@ -1,5 +1,5 @@
-// Resources shared by every state. State-specific resources live in ./dc.mts and
-// ./co.mts, selected by ../apphost.mts.
+// Resources that each state uses. Resources that are specific to a state are in ./dc.mts
+// and ./co.mts. ../apphost.mts selects between them.
 
 import type {
   DistributedApplicationBuilder,
@@ -10,11 +10,11 @@ import type {
 import type { AppHostConfig } from "../config.mjs";
 
 export interface SharedResources {
-  /** SQL Server instance hosting the portal's own database. */
+  /** SQL Server instance that holds the database of the portal. */
   sql: SqlServerServerResource;
-  /** The portal's application database. EF Core migrations apply on API startup. */
+  /** The application database of the portal. EF Core migrations apply when the API starts. */
   portalDb: SqlServerDatabaseResource;
-  /** Reused by state modules that stand up their own SQL Server. */
+  /** A state module that makes its own SQL Server uses this parameter again. */
   saPassword: ParameterResource;
 }
 
@@ -22,27 +22,29 @@ export async function addSharedResources(
   builder: DistributedApplicationBuilder,
   config: AppHostConfig,
 ): Promise<SharedResources> {
-  // Explicit rather than Aspire's generated password: the value must stay stable so the
-  // persistent data volume keeps accepting it and external tooling connects unchanged.
+  // This password is explicit, and Aspire does not make one. The value must stay the
+  // same. Thus the persistent data volume continues to accept it, and an external tool
+  // connects with no change.
   const saPassword = await builder.addParameter("sql-password", {
     value: config.sqlPassword,
     secret: true,
   });
 
-  // Host ports are intentionally unpinned. Aspire reaches containers through a host-side
-  // proxy, and a proxy that cannot bind fails silently: the resource still reports
-  // healthy while that port serves something else, such as a running compose stack.
-  // Consumers get the assigned port injected, and the dashboard shows it for DB tooling.
+  // The host ports are not pinned, and this is intentional. Aspire gets to a container
+  // through a proxy on the host. If that proxy cannot bind, it shows no message. The
+  // resource reports healthy, but a different program answers on that port. An example
+  // is a compose stack that runs. A consumer gets the port that Aspire selected, and the
+  // dashboard shows the port for a database tool.
   const sql = await builder
     .addSqlServer("mssql", { password: saPassword })
     .withDataVolume({ name: "sebt-portal-mssql-data" })
-    // Matches `docker compose up -d`: the container outlives the AppHost so local data
-    // survives. SQL Server fixes the SA password at creation, so changing
-    // MSSQL_SA_PASSWORD later requires removing the container.
+    // This agrees with `docker compose up -d`. The container continues after the AppHost
+    // stops, so the local data stays. SQL Server sets the SA password one time, when it
+    // makes the container. Thus a new value of MSSQL_SA_PASSWORD needs a new container.
     .withPersistentLifetime();
 
-  // Kebab-case resource name for the dashboard; databaseName is what connection strings
-  // and EF Core migrations target.
+  // The resource name is in kebab-case for the dashboard. Connection strings and EF Core
+  // migrations use `databaseName`.
   const portalDb = await sql.addDatabase("portal-db", {
     databaseName: "SebtPortal",
   });

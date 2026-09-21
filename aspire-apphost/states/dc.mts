@@ -1,6 +1,8 @@
-// Resources specific to DC. Household data is read from a separate `DcSource` database
-// standing in for the state's ESA_LINK system, and guardians authenticate by email OTP,
-// so DC also needs a local SMTP sink.
+// Resources that are specific to DC. The portal reads household data from a separate
+// `DcSource` database. This database is a stand-in for the ESA_LINK system of DC.
+//
+// Guardians sign in with an email OTP. The SMTP sink for that mail is not here. It
+// belongs to the sign-in capability, in ../capabilities/sign-in-dc.mts.
 
 import { resolve } from "node:path";
 
@@ -18,18 +20,16 @@ import type { AppHostConfig } from "../config.mjs";
 import type { SharedResources } from "./shared.mjs";
 
 export interface DcResources {
-  /** SQL Server standing in for DC's ESA_LINK system. */
+  /** SQL Server that is a stand-in for the ESA_LINK system of DC. */
   dcSourceSql: SqlServerServerResource;
-  /** The database the DC connector reads household data from. */
+  /** The database that the DC connector reads household data from. */
   dcSourceDb: SqlServerDatabaseResource;
-  /** One-shot seed job. Gate consumers on it with waitForCompletion. */
+  /** One-shot seed job. Use `waitForCompletion` to make a consumer wait for it. */
   dcSourceSeed: ContainerResource;
-  /** One-shot registering ~/nuget-store, which the plugin build may restore from. */
+  /** One-shot job that registers ~/nuget-store. The plugin build can restore from it. */
   nugetStore: ExecutableResource;
-  /** One-shot build staging the DC plugin DLLs into plugins-dc. */
+  /** One-shot build that puts the DC plugin DLLs into plugins-dc. */
   pluginBuild: ExecutableResource;
-  /** SMTP sink for email OTP. */
-  mailpit: ContainerResource;
 }
 
 export async function addDcResources(
@@ -40,31 +40,32 @@ export async function addDcResources(
 ): Promise<DcResources> {
   const connectorPath = config.dcConnectorPath;
 
-  // A separate server rather than another database on the portal's instance: DcSource
-  // represents an external state system the portal does not own, and collapsing the two
-  // would erase that boundary.
+  // This is a separate server, and not one more database on the instance of the portal.
+  // `DcSource` is an external system of the state, and the portal does not own it. One
+  // instance for both would remove that boundary.
   const dcSourceSql = await builder
     .addSqlServer("dc-source", { password: shared.saPassword })
     .withDataVolume({ name: "sebt-dc-source-mssql-data" })
     .withPersistentLifetime();
 
-  // 000_CreateDatabase.sql is IF NOT EXISTS-guarded, so creating the database here and
-  // letting the seed scripts run afterwards is safe.
+  // 000_CreateDatabase.sql has an IF NOT EXISTS guard. Thus it is safe to make the
+  // database here and to run the seed scripts after.
   const dcSourceDb = await dcSourceSql.addDatabase("dc-source-db", {
     databaseName: "DcSource",
   });
 
-  // sqlcmd expects `host,port`; EndpointProperty.HostAndPort renders `host:port`.
+  // sqlcmd needs `host,port`. EndpointProperty.HostAndPort gives `host:port`.
   const dbEndpoint = await dcSourceSql.getEndpoint("tcp");
   const dbHost = await dbEndpoint.property(EndpointProperty.Host);
   const dbPort = await dbEndpoint.property(EndpointProperty.Port);
 
-  // Reuses the connector repo's own seed image instead of reimplementing its script
-  // loop. seed-aws.sh truncates HouseholdCases before reseeding, so repeat runs
-  // converge rather than duplicating rows.
+  // This uses the seed image of the connector repository, and it does not write that
+  // script loop again. seed-aws.sh does a TRUNCATE of HouseholdCases before it seeds.
+  // Thus a second run gives the same data, and it does not make more rows.
   //
-  // waitForCompletion on this resource lets consumers block until seeding finishes.
-  // Compose can only wait for the server to report healthy, not for the data to land.
+  // `waitForCompletion` on this resource makes a consumer wait until the seed job is
+  // complete. Compose can wait only for the server to report healthy. It cannot wait for
+  // the data.
   const dcSourceSeed = await builder
     .addDockerfile("dc-source-seed", connectorPath, {
       dockerfilePath: "Dockerfile.seed",
@@ -73,20 +74,23 @@ export async function addDcResources(
     .withEnvironment("DB_USER", "sa")
     .withEnvironment("DB_PASSWORD", shared.saPassword)
     .waitFor(dcSourceDb)
-    // A finished one-shot otherwise sits in the dashboard looking like a failure.
+    // If this is absent, a complete one-shot job stays in the dashboard and looks like a
+    // fault.
     .withHiddenOnCompletion();
 
-  // The connector's csproj resolves the plugin contract as a ProjectReference when it can
-  // see this repo as a sibling, and falls back to the SEBT.Portal.StatesPlugins.Interfaces
-  // package otherwise. That fallback is reachable from here: DC_CONNECTOR_PATH may point
-  // at a checkout that is not a sibling, and the connector derives the contract path from
-  // its own location, not from ours. The package then has to come from ~/nuget-store.
+  // The csproj of the connector uses a ProjectReference for the plugin contract when it
+  // can see this repository as a sibling. If it cannot see it, the csproj uses the
+  // SEBT.Portal.StatesPlugins.Interfaces package. This graph can get that second path.
+  // DC_CONNECTOR_PATH can point to a checkout that is not a sibling. The connector finds
+  // the contract path from its own location, and not from ours. Then the package must
+  // come from ~/nuget-store.
   //
-  // Runs the connector's own setup.sh rather than reimplementing it, the same reasoning as
-  // dc-source-seed reusing its Dockerfile.seed. The script is idempotent: it creates the
-  // directory with mkdir -p and updates the NuGet source when one is already registered.
-  // Note it writes to the user's global NuGet configuration, the only part of this graph
-  // that touches state outside the two repositories.
+  // This runs the setup.sh of the connector, and it does not write that script again.
+  // This is the same reason that dc-source-seed uses the Dockerfile.seed of the
+  // connector. The script is idempotent. It makes the directory with `mkdir -p`, and it
+  // changes the NuGet source if a source is present. The script writes to the global
+  // NuGet configuration of the user. This is the one part of this graph that changes
+  // data outside the two repositories.
   const nugetStore = await builder
     .addExecutable(
       "dc-nuget-store",
@@ -96,14 +100,15 @@ export async function addDcResources(
     )
     .withHiddenOnCompletion();
 
-  // The DC connector builds out of tree, so its plugin DLLs must be staged into
-  // plugins-dc before the API loads plugins at startup. Gated on the store above so a
-  // restore that needs the package finds the source registered.
+  // The DC connector builds outside this repository. Thus its plugin DLLs must go into
+  // plugins-dc before the API loads the plugins at start. This job waits for the store
+  // above. Then a restore that needs the package finds the source.
   //
-  // Builds the plugin csproj rather than scripts/dev/build-dc.sh, which also builds the
-  // connector's test project. That project reaches SSH.NET through Testcontainers.MsSql,
-  // which fails NU1903 for anyone whose layout puts the portal's Directory.Build.props
-  // above the connector. The plugin's CopyPlugins target does the staging either way.
+  // This builds the plugin csproj, and not scripts/dev/build-dc.sh. That script also
+  // builds the test project of the connector. That project gets SSH.NET through
+  // Testcontainers.MsSql, which fails with NU1903. This occurs if the layout puts the
+  // Directory.Build.props of the portal above the connector. The CopyPlugins target of
+  // the plugin copies the DLLs in both cases.
   const pluginBuild = await builder
     .addExecutable("dc-plugin-build", "dotnet", connectorPath, [
       "build",
@@ -111,8 +116,8 @@ export async function addDcResources(
         connectorPath,
         "src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj",
       ),
-      // Otherwise the connector resolves the contract from its own location and falls
-      // back to the NuGet package when this repo is not its sibling.
+      // If this property is absent, the connector finds the contract from its own
+      // location. Then it uses the NuGet package when this repository is not its sibling.
       `-p:StateConnectorInterfacesProject=${resolve(
         repoRoot,
         "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj",
@@ -159,5 +164,5 @@ export async function addDcResources(
     .waitForCompletion(pluginBuild)
     .waitFor(mailpit);
 
-  return { dcSourceSql, dcSourceDb, dcSourceSeed, nugetStore, pluginBuild, mailpit };
+  return { dcSourceSql, dcSourceDb, dcSourceSeed, nugetStore, pluginBuild };
 }

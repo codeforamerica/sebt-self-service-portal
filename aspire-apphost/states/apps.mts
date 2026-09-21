@@ -1,8 +1,8 @@
 // The .NET API and the Next.js front ends.
 //
-// The API is created here with the configuration both states share; each state module
-// then attaches its own environment and waits to the returned resource, keeping
-// state-specific wiring next to the resources that motivate it.
+// This module makes the API with the configuration that each state uses. Then each state
+// module attaches its own environment and its own waits to that resource. Thus the
+// wiring of a state stays near the resources that need it.
 
 import { resolve } from "node:path";
 
@@ -16,9 +16,9 @@ import type { AppHostConfig } from "../config.mjs";
 import type { SharedResources } from "./shared.mjs";
 
 export interface WebApps {
-  /** The portal itself. */
+  /** The portal application. */
   web: NextJsAppResource;
-  /** The public enrollment checker, which every state deploys. */
+  /** The public enrollment checker. Each state deploys it. */
   checker: NextJsAppResource;
 }
 
@@ -27,19 +27,21 @@ export async function addApi(
   config: AppHostConfig,
   shared: SharedResources,
 ): Promise<ProjectResource> {
-  // JwtSettings.SecretKey ships empty in appsettings.json, and it is [Required] with a
-  // 32-character minimum, so the API fails options validation at startup unless the
-  // gitignored appsettings.Development.json supplies it. Generated rather than written
-  // here, so no signing key is committed. Tokens issued before a restart stop validating
-  // after it, which is harmless locally: they already expire in 15 minutes.
+  // JwtSettings.SecretKey is empty in appsettings.json. The key is [Required], and it has
+  // a minimum of 32 characters. Thus the API fails its options validation at start,
+  // unless the gitignored appsettings.Development.json gives a value.
+  //
+  // Aspire makes this value, and this module does not write one. Thus no repository holds
+  // a signing key. A token from before a restart is not valid after the restart. This is
+  // not a problem on a local machine, because a token expires in 15 minutes.
   const jwtSecret = await builder.addParameterWithGeneratedValue(
     "jwt-secret",
     { minLength: 64, lower: true, upper: true, numeric: true },
     { secret: true },
   );
 
-  // The `http` launch profile supplies ASPNETCORE_ENVIRONMENT and
-  // Seeding__EnableDevEndpoints, so they are not repeated here.
+  // The `http` launch profile gives ASPNETCORE_ENVIRONMENT and
+  // Seeding__EnableDevEndpoints. Thus this module does not set them again.
   const api = await builder
     .addProject(
       "api",
@@ -52,28 +54,33 @@ export async function addApi(
     .withEnvironment("STATE", config.state)
     .withEnvironment("ConnectionStrings__DefaultConnection", shared.portalDb)
     .withEnvironment("JwtSettings__SecretKey", jwtSecret)
-    // Where the state's plugin DLLs are staged, relative to the API's content root. The
-    // key is absent from appsettings.json and lives only in the gitignored state file, so
-    // the API cannot load plugins on a fresh checkout. Derived from the state so a new
-    // state module needs no extra wiring; the API binds it as an array, hence `__0`.
+    // This is where the plugin DLLs of the state are, relative to the content root of the
+    // API. The key is absent from appsettings.json, and it is in the gitignored state
+    // file only. Thus the API cannot load a plugin on a new checkout. The value comes
+    // from the state, so a new state module needs no more wiring. The API binds the key
+    // as an array, and for this reason the name ends with `__0`.
     .withEnvironment("PluginAssemblyPaths__0", `plugins-${config.state}`)
     .withOtlpExporter()
-    // Log export is opt-in: appsettings.json ships `Otel:UseLogExporter=console`, under
-    // which the API registers no OpenTelemetry log provider and Serilog keeps
-    // writeToProviders false, leaving the dashboard's structured logs empty. Only the
-    // gitignored appsettings.Development.json turns it on, so without this the dashboard
-    // depends on a file each developer edits by hand. LoggingSetup reads the value from
-    // configuration, which includes this variable, so it also flips writeToProviders.
+    // The log export is off by default. appsettings.json sets `Otel:UseLogExporter` to
+    // `console`. With that value, the API registers no OpenTelemetry log provider, and
+    // Serilog keeps writeToProviders false. Then the structured logs of the dashboard
+    // stay empty. The gitignored appsettings.Development.json is the other file that can
+    // change this value. Without the line below, the dashboard depends on a file that
+    // each developer edits by hand.
     //
-    // The destination needs no override here: the log exporter takes its address from the
-    // standard OTEL_EXPORTER_OTLP_* variables that withOtlpExporter already sets.
+    // LoggingSetup reads the value from the configuration, which includes this variable.
+    // Thus LoggingSetup also changes writeToProviders.
+    //
+    // The destination needs no override here. The log exporter gets its address from the
+    // standard OTEL_EXPORTER_OTLP_* variables that `withOtlpExporter` sets.
     .withEnvironment("Otel__UseLogExporter", "otlp")
     .waitFor(shared.portalDb);
 
-  // withOtlpExporter sets the standard OTEL_EXPORTER_OTLP_ENDPOINT, but
-  // OpenTelemetrySetup binds OtlpExporterOptions from the `Otel:OtlpExporter` config
-  // section, and appsettings.json sets that to the old Jaeger address. Config wins, so
-  // without this override traces and metrics are exported to a port nothing listens on.
+  // `withOtlpExporter` sets the standard OTEL_EXPORTER_OTLP_ENDPOINT. But
+  // OpenTelemetrySetup binds OtlpExporterOptions from the `Otel:OtlpExporter`
+  // configuration section, and appsettings.json sets that section to the old Jaeger
+  // address. The configuration has the higher priority. Without the override below, the
+  // API sends the traces and the metrics to a port where no program listens.
   if (config.dashboardOtlpEndpoint) {
     await api.withEnvironment(
       "Otel__OtlpExporter__Endpoint",
@@ -91,47 +98,53 @@ export async function addWebApps(
 ): Promise<WebApps> {
   const apiEndpoint = await api.getEndpoint("http");
 
-  // withPnpm runs `pnpm dev`, so the package's own predev hook still generates design
-  // tokens and locale files — the same inner loop as `pnpm web:dev`.
+  // `withPnpm` runs `pnpm dev`. Thus the `predev` hook of the package continues to make
+  // the design tokens and the locale files. This is the same loop as `pnpm web:dev`.
   //
-  // STATE is unprefixed on purpose: Next inlines every NEXT_PUBLIC_* reference at build
-  // time, so the portal keeps the state server-side and stamps it onto <html data-state>
-  // per request. See docs/adr/0023-runtime-client-config.md.
-  // withBrowserLogs tracks a browser Aspire launches itself, so its console output and
-  // screenshots reach the dashboard alongside the server-side telemetry. It uses an
-  // Aspire-managed Chromium user data directory, never the developer's own profile.
+  // STATE has no prefix, and this is intentional. Next puts each NEXT_PUBLIC_* reference
+  // into the build. Thus the portal keeps the state on the server, and it writes the
+  // state onto `<html data-state>` for each request. Read
+  // docs/adr/0023-runtime-client-config.md.
+  //
+  // `withBrowserLogs` applies to a browser that Aspire starts. The console output and the
+  // screenshots of that browser go to the dashboard with the telemetry from the server.
+  // Aspire uses a Chromium user data directory that it controls. It does not use the
+  // profile of the developer.
   const web = await builder
     .addNextJsApp("web", resolve(repoRoot, "apps/portal/src/SEBT.Portal.Web"))
     .withPnpm()
     .withEnvironment("STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
-    // instrumentation.node.ts calls startOtel, but packages/observability resolves every
-    // signal to 'none' unless OTEL_EXPORTER_OTLP_ENDPOINT is set, so the SDK never starts
-    // and the app stays dark. withOtlpExporter supplies that address. See
-    // docs/adr/0018-web-tier-opentelemetry.md.
+    // instrumentation.node.ts calls startOtel. But packages/observability sets each
+    // signal to 'none' if OTEL_EXPORTER_OTLP_ENDPOINT is absent. Then the SDK does not
+    // start, and the application sends no telemetry. `withOtlpExporter` gives that
+    // address. Read docs/adr/0018-web-tier-opentelemetry.md.
     .withOtlpExporter()
     .withBrowserLogs()
     .waitFor(api);
 
-  // deploy-enrollment-checker.yaml builds and ships a static export for DC as well as
-  // CO, so the checker belongs to every state's graph rather than CO's alone.
+  // deploy-enrollment-checker.yaml builds and sends a static export for DC and for CO.
+  // Thus the checker belongs to the graph of each state, and not to the CO graph alone.
   //
-  // Deployed, the checker reads window.__CHECKER_CONFIG__ from a config.js written into
-  // its bucket at deploy time. That file only accompanies a static export, so here,
-  // where the checker runs `next dev`, lib/client-config.ts falls back to the build-time
-  // env set below. The remaining flags (school field, bot protection, analytics keys)
-  // keep their schema defaults; a developer who needs one can set it in the app's
-  // .env.local, which Next still reads because these values take precedence over it.
+  // In a deployed environment, the checker reads window.__CHECKER_CONFIG__ from a
+  // config.js. The deploy writes that file into the bucket of the checker, and that file
+  // goes with a static export only. Here the checker runs `next dev`, so
+  // lib/client-config.ts uses the build-time environment below.
   //
-  // NEXT_PUBLIC_API_BASE_URL is deliberately unset: without it the browser calls the
-  // checker's own /api/enrollment/* route handlers, which proxy to BACKEND_URL. Those
-  // routes are stripped from the static export, where the deployed apiBaseUrl points at
-  // the portal instead.
+  // The other flags keep the defaults of their schema. These flags are the school field,
+  // the bot protection, and the analytics keys. A developer who needs one of them can set
+  // it in the .env.local of the application. Next still reads that file, because the
+  // values below have the higher priority.
   //
-  // STATE and NEXT_PUBLIC_STATE are set together because the checker's next.config.ts
-  // derives the latter from the former and overwrites whatever was passed in: STATE
-  // alone decides the build, and NEXT_PUBLIC_STATE alone would be discarded, quietly
-  // yielding CO's checker.
+  // NEXT_PUBLIC_API_BASE_URL is absent, and this is intentional. Without it, the browser
+  // calls the /api/enrollment/* route handlers of the checker, and those handlers send
+  // the request to BACKEND_URL. The static export does not include those routes. There
+  // the deployed apiBaseUrl points to the portal.
+  //
+  // STATE and NEXT_PUBLIC_STATE go together. The next.config.ts of the checker gets
+  // NEXT_PUBLIC_STATE from STATE, and it writes over the value that it received. STATE
+  // alone controls the build. NEXT_PUBLIC_STATE alone would be discarded, and the build
+  // would quietly give the checker of CO.
   const checker = await builder
     .addNextJsApp(
       "enrollment-checker",
@@ -141,14 +154,15 @@ export async function addWebApps(
     .withEnvironment("STATE", config.state)
     .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
-    // Same reason as the portal: the checker registers startOtel too.
+    // This is the same reason as the portal. The checker also registers startOtel.
     .withOtlpExporter()
     .withBrowserLogs()
     .waitFor(api);
 
-  // The portal returns CORS headers for the checker's origin and the checker links back
-  // to the portal, so each needs the other's URL. Endpoint references resolve after
-  // allocation, so referencing both directions is fine.
+  // The portal returns CORS headers for the origin of the checker, and the checker has a
+  // link back to the portal. Thus each application needs the URL of the other. An
+  // endpoint reference resolves after Aspire allocates the port. Thus a reference in both
+  // directions is correct.
   await web.withEnvironment(
     "ENROLLMENT_CHECKER_ORIGIN",
     await checker.getEndpoint("http"),
