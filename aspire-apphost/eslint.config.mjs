@@ -5,7 +5,12 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig(
   {
-    files: ['apphost.mts', 'config.mts', 'states/**/*.mts'],
+    files: [
+      'apphost.mts',
+      'config.mts',
+      'capabilities/**/*.mts',
+      'states/**/*.mts',
+    ],
     extends: [tseslint.configs.base],
     languageOptions: {
       parserOptions: {
@@ -18,12 +23,12 @@ export default defineConfig(
     },
   },
   {
-    // config.mts owns the whole environment surface, so every knob is declared and
-    // defaulted in one place and resource modules read the resolved AppHostConfig. That
-    // rule was previously a comment, which did not stop states/apps.mts from reading
-    // ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL directly. config.mts is absent from `files`
-    // below, which is what exempts it.
-    files: ['apphost.mts', 'states/**/*.mts'],
+    // config.mts owns the environment surface. Thus one file declares each value with
+    // its default, and a resource module reads the resolved AppHostConfig. Before this
+    // rule, that statement was a comment. The comment did not stop states/apps.mts from
+    // a direct read of ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL. config.mts is absent from
+    // `files` below, and that is what makes it an exception.
+    files: ['apphost.mts', 'capabilities/**/*.mts', 'states/**/*.mts'],
     rules: {
       'no-restricted-properties': [
         'error',

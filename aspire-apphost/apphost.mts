@@ -1,49 +1,76 @@
 // Aspire AppHost for the SEBT Self-Service Portal.
 //
-// The resource graph is composed per state: the shared resources plus exactly one
-// state's resources. DC and CO need genuinely different dependencies — DC a DcSource
-// database and Mailpit, CO Redis and a Keycloak IdP — so the graph is built per state
-// rather than modeling every state and starting a subset.
+// This AppHost composes the resource graph for one state. The graph has the shared
+// resources and the resources of that one state. DC and CO need different dependencies.
+// DC needs a DcSource database. CO needs Redis and an OIDC provider. Thus the AppHost
+// builds one graph for one state. It does not model each state and start a subset.
 //
-// Every knob, including which state to compose, comes from ./config.mts.
-// Adding a state: add a states/<state>.mts module and one case below.
+// Two kinds of module give the resources:
 //
-// Usage: pnpm aspire:dc | pnpm aspire:co
+//   states/       the resources of a state, wired directly onto the API.
+//   capabilities/ the infrastructure that a state needs to satisfy one requirement of
+//                 the application. A capability is a provider. The provider returns what
+//                 it needs, and it does not change the API. Sign-in is the first
+//                 capability. Read capabilities/requirements.mts.
+//
+// Each value, and also the state, comes from ./config.mts.
+// To add a state, add a states/<state>.mts module, a sign-in provider, and one arm to
+// the switch below.
+//
+// Usage: pnpm aspire:dc or pnpm aspire:co
 
 import { createBuilder } from "./.aspire/modules/aspire.mjs";
+import {
+  applyRequirements,
+  runPreflight,
+} from "./capabilities/requirements.mjs";
+import { signInProviderFor } from "./capabilities/sign-in.mjs";
 import { loadConfig } from "./config.mjs";
 import { addApi, addWebApps } from "./states/apps.mjs";
-import { addCoResources, wireCoPortalCallback } from "./states/co.mjs";
-import type { CoResources } from "./states/co.mjs";
+import { addCoResources } from "./states/co.mjs";
 import { addDcResources } from "./states/dc.mjs";
 import { addSharedResources } from "./states/shared.mjs";
 
 const config = loadConfig();
 console.log(`[apphost] composing resource graph for STATE=${config.state}`);
 
+const signIn = signInProviderFor(config.state);
+console.log(`[sign-in] ${signIn.name}. ${signIn.signInHint}`);
+
+// The checks run before the builder exists. Thus an unsatisfied obligation costs one
+// second, and it does not give a graph that is half started.
+await runPreflight("sign-in", signIn.preflight);
+
 const builder = await createBuilder();
 
 const shared = await addSharedResources(builder, config);
 const api = await addApi(builder, config, shared);
 
-// State modules attach their own API environment and waits to the resource above.
-let co: CoResources | undefined;
-
+// A state module attaches its own API environment and its own waits to the resource
+// above.
 switch (config.state) {
   case "dc":
     await addDcResources(builder, config, shared, api);
     break;
   case "co":
-    co = await addCoResources(builder, config, api);
+    await addCoResources(builder, config, api);
     break;
 }
 
+const signInCapability = await signIn.provision({ builder, config });
+await applyRequirements({ api }, "sign-in", signInCapability.requirements);
+
 const apps = await addWebApps(builder, config, api);
 
-// Last because it is the one piece of state wiring that reads the portal's endpoint:
-// CO's realm redirects back to it, so neither side can hardcode a port.
-if (co) {
-  await wireCoPortalCallback(api, co, apps.web);
+// This is last, because it is the one part of the wiring that reads the endpoint of the
+// portal. The realm of CO redirects back to that endpoint. Thus neither side can hold a
+// fixed port.
+if (signInCapability.bindPortal) {
+  await applyRequirements(
+    { api, portal: apps.web },
+    "sign-in portal binding",
+    await signInCapability.bindPortal(apps.web),
+  );
 }
 
 await builder.build().run();

@@ -130,39 +130,10 @@ export async function addDcResources(
     .waitForCompletion(nugetStore)
     .withHiddenOnCompletion();
 
-  // Health check paths follow CommunityToolkit's MailPit integration. The image tag is
-  // pinned; compose uses a floating `latest`.
-  const mailpit = await builder
-    .addContainer("mailpit", { image: "axllent/mailpit", tag: "v1.30.7" })
-    .withEndpoint({ name: "smtp", targetPort: 1025, scheme: "smtp" })
-    .withHttpEndpoint({ name: "http", targetPort: 8025 })
-    .withEnvironment("MP_MAX_MESSAGES", "5000")
-    .withHttpHealthCheck({
-      path: "/livez",
-      statusCode: 200,
-      endpointName: "http",
-    })
-    .withHttpHealthCheck({
-      path: "/readyz",
-      statusCode: 200,
-      endpointName: "http",
-    });
-
-  const smtpEndpoint = await mailpit.getEndpoint("smtp");
-
   await api
     .withEnvironment("DCConnector__ConnectionString", dcSourceDb)
-    .withEnvironment(
-      "SmtpClientSettings__SmtpServer",
-      await smtpEndpoint.property(EndpointProperty.Host),
-    )
-    .withEnvironment(
-      "SmtpClientSettings__SmtpPort",
-      await smtpEndpoint.property(EndpointProperty.Port),
-    )
     .waitForCompletion(dcSourceSeed)
-    .waitForCompletion(pluginBuild)
-    .waitFor(mailpit);
+    .waitForCompletion(pluginBuild);
 
   return { dcSourceSql, dcSourceDb, dcSourceSeed, nugetStore, pluginBuild };
 }

@@ -13,6 +13,7 @@
   "include": [
     "apphost.mts",
     "config.mts",
+    "capabilities/**/*.mts",
     "states/**/*.mts",
     ".aspire/modules/aspire.mts",
     ".aspire/modules/base.mts",

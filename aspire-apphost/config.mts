@@ -1,12 +1,13 @@
-// The AppHost's configuration surface.
+// The configuration surface of the AppHost.
 //
-// This is the only module that reads process.env, so every knob a developer might need
-// to change is declared and defaulted in one place. Resource modules take the resolved
-// config and never consult the environment themselves.
+// This module is the one that reads process.env. Thus each value that a developer can
+// change is declared here, with its default. A resource module gets the resolved
+// configuration, and it does not read the environment.
 //
-// State is chosen by the launch command (`pnpm aspire:dc` / `pnpm aspire:co`) rather
-// than at runtime: STATE decides which resources exist, and Aspire composes the resource
-// graph once at startup, so changing it means relaunching the AppHost.
+// The launch command selects the state, and the run time does not. The commands are
+// `pnpm aspire:dc` and `pnpm aspire:co`. STATE decides which resources exist, and Aspire
+// composes the resource graph one time at start. Thus a new state needs a new start of
+// the AppHost.
 
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
@@ -15,31 +16,36 @@ export type SupportedState = "dc" | "co";
 
 export const supportedStates: readonly SupportedState[] = ["dc", "co"];
 
-/** aspire-apphost/ -> repo root. */
+/** The repository root, from the aspire-apphost directory. */
 export const repoRoot = resolve(import.meta.dirname, "..");
 
 export interface AppHostConfig {
-  /** Which state's resource graph to compose. */
+  /** The state whose resource graph this AppHost composes. */
   state: SupportedState;
   /**
-   * SA password for both SQL Server instances. Matches compose.yaml and
-   * appsettings.json; never used in a deployed environment.
+   * The SA password for the 2 SQL Server instances. It agrees with compose.yaml and
+   * appsettings.json. A deployed environment does not use it.
    */
   sqlPassword: string;
-  /** Aspire requires Redis auth; compose runs Redis unauthenticated. */
+  /** Aspire needs authentication for Redis. Compose runs Redis with no authentication. */
   redisPassword: string;
-  /** Checkout of the out-of-tree DC connector, holding Dockerfile.seed and scripts/sql. */
+  /**
+   * The checkout of the DC connector, which is outside this repository. It holds
+   * Dockerfile.seed and scripts/sql.
+   */
   dcConnectorPath: string;
   /**
-   * Where the dashboard accepts OTLP. Aspire sets this from the launch profile in
-   * aspire.config.json, so it is absent when the AppHost runs without one — hence
-   * optional rather than defaulted, since a wrong address is worse than none.
+   * The address where the dashboard accepts OTLP. Aspire sets it from the launch profile
+   * in aspire.config.json. Thus the value is absent when the AppHost runs with no launch
+   * profile. The value is optional and it has no default, because an incorrect address is
+   * worse than no address.
    */
   dashboardOtlpEndpoint: string | undefined;
 }
 
 function resolveState(): SupportedState {
-  // Defaults to dc, matching compose.yaml's `${STATE:-dc}` and `pnpm dev`.
+  // The default is dc. This agrees with `${STATE:-dc}` in compose.yaml and with
+  // `pnpm dev`.
   const requested = (process.env.STATE ?? "dc").toLowerCase();
 
   if (!supportedStates.includes(requested as SupportedState)) {
@@ -56,7 +62,8 @@ function resolveDcConnectorPath(state: SupportedState): string {
     process.env.DC_CONNECTOR_PATH ??
     resolve(repoRoot, "..", "sebt-self-service-portal-dc-connector");
 
-  // Only DC needs the checkout, so CO must not fail on its absence.
+  // DC is the state that needs the checkout. Thus CO must not fail when the checkout is
+  // absent.
   if (state === "dc" && !existsSync(path)) {
     throw new Error(
       `DC connector checkout not found at '${path}'. Clone it beside this repo, or set DC_CONNECTOR_PATH.`,
