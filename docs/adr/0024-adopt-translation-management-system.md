@@ -10,7 +10,7 @@ Proposed. Amends [0006-i18n-implementation.md](./0006-i18n-implementation.md): t
 
 Authors write portal and enrollment-checker copy in a Google Sheet. Engineers export it by hand to per-state CSVs, and the build compiles those into locale JSON. This CSV pipeline has three problems:
 
-- **It fails silently.** Duplicate keys resolve by last row wins, and unpublished copy ships. A spike validation pass found 30 errors and 77 warnings in the two live CSVs.
+- **It fails silently.** Duplicate keys resolve by last row wins, and unpublished copy ships. A spike validation pass found dozens of defects in the two live CSVs, including duplicate keys with differing values.
 - **Every copy change is an engineering release.** DC production also needs a manual deployment that an administrator runs.
 - **There is no translation workflow:** no review states, no reviewer roles, no quality checks.
 
