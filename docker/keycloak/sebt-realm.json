@@ -125,6 +125,7 @@
         "post.logout.redirect.uris": "${SEBT_PORTAL_ORIGIN}/*"
       },
       "defaultClientScopes": [
+        "basic",
         "web-origins",
         "acr",
         "profile",
@@ -246,6 +247,7 @@
         "post.logout.redirect.uris": "${SEBT_PORTAL_ORIGIN}/*"
       },
       "defaultClientScopes": [
+        "basic",
         "web-origins",
         "acr",
         "profile",
