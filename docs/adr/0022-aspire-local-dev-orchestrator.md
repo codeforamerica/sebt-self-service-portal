@@ -40,13 +40,13 @@ The 2 Next.js applications use `addNextJsApp` with `withPnpm()`. This runs `pnpm
 
 The variable `STATE` selects which resources exist. DC needs a `DcSource` database and Mailpit. CO needs Redis and, later, Keycloak. Aspire composes the graph one time when it starts.
 
-Therefore the launch command selects the state. The commands are `pnpm aspire:dc` and `pnpm aspire:co`. All other values come from one file, `aspire-apphost/config.mts`. This file is the only module that reads `process.env`. To add a state, add one module `states/<state>.mts` and one arm to the switch.
+Therefore the launch command selects the state. The commands are `pnpm aspire:dc` and `pnpm aspire:co`. All other values come from one file, `aspire-apphost/config.mts`. This file is the only module that reads `process.env`. To add a state, add one provider to each capability directory. There is no switch on the state.
 
 ### Infrastructure that differs by state is a capability, and a capability returns its requirements
 
 The first version of the AppHost had a problem. Each state module received the `api` resource and changed it. The environment of the API was then the sum of the edits of 4 modules, in an order that mattered but that no module declared. A comment in `states/apps.mts` gave the rule, because nothing else did.
 
-Therefore a capability provider does not change the API. It makes the resources that it owns. Then it returns what those resources require: the settings the API must receive, the resources the API must wait for, and the obligations of the host machine. The file `apphost.mts` discharges them at one place. The types are in `aspire-apphost/capabilities/requirements.mts`.
+Therefore a capability provider does not change the API. It makes the resources that it owns. Then it returns what those resources require: the settings the API must receive, the resources the API must wait for, and the obligations of the host machine. The file `compose.mts` discharges them at one place, and `apphost.mts` holds no wiring. The types are in `aspire-apphost/capabilities/requirements.mts`.
 
 This makes the configuration that the application needs into data. The AppHost prints it at each start, and a later change can make a comparison of it with the values that `appsettings`, `tofu`, and `web.config` give to the other environments.
 
@@ -85,7 +85,9 @@ The AppHost prints the full contract at each start. This is the output for CO:
 [connector-build] a build of the CO plugin project in this repository. ...
 [household-source] mock CBMS, in the process of the API. ...
 [sign-in] OIDC via Keycloak. ...
+[preflight] cache: a trusted HTTPS developer certificate
 [preflight] connector-build: CO plugin project at .../SEBT.Portal.StatePlugins.CO.csproj
+[preflight] sign-in: a trusted HTTPS developer certificate
 [preflight] sign-in: Keycloak realm import file at .../sebt-realm.json
 [preflight] sign-in: Keycloak login theme at .../themes
 [config] cache supplies api: Redis__Host, Redis__Port, Redis__Ssl, Redis__SslHost,
@@ -215,11 +217,24 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 
 - **Correct the hot reload problem before the AppHost becomes the default path.** There are 2 options. Make the API an executable resource that runs `dotnet watch run`. This keeps the TypeScript AppHost, but it loses the functions of `addProject`, such as the endpoint from the launch profile and `aspire resource api rebuild`. The other option is an AppHost in C#. This gives full watch support, but we lose the TypeScript AppHost. Write a ticket for this work.
 - **Done.** The AppHost sets `Otel__UseLogExporter=otlp`, so the result is the same for each developer. Make a test of the traces and the metrics in the dashboard.
-- **Give the directory `states/` a name that agrees with what is in it.** The 4 capabilities are complete, so `states/dc.mts` and `states/co.mts` are deleted. The directory holds `apps.mts` and `shared.mts`, and no state owns either one. A name such as `platform/` or `shared/` agrees with the content.
-- **Make a check that each capability is discharged.** `Record<SupportedState, Provider>` makes a check that each state has a provider for each capability. Nothing makes a check that `apphost.mts` calls `applyRequirements` for each capability. A test of the composed graph can make that check, and it is the same test that makes a check of the settings that each state needs.
-- **Make a check of the trusted developer certificate.** This is silent failure 2 in the list above, and the cache capability meets it. The certificate is in the keychain of the machine, so a check of a file is not enough. A command such as `dotnet dev-certs https --check` in the preflight of the cache is one option.
-- Keep Redis in `states/co.mts`. If DC production moves from IIS to the container path with ElastiCache, move Redis to the shared path at that time.
-- **Done.** `states/co.mts` uses `addKeycloak` with `withRealmImport`. A bind mount gives the themes from `docker/keycloak`. The realm reads the portal address from the variable `SEBT_PORTAL_ORIGIN`, so the portal keeps a port that Aspire selects. This replaces the Compose profile `keycloak` for the Aspire path. Read [ADR-0019](./0019-keycloak-local-oidc-stand-in.md).
+- **Done.** The directory `states/` is now `shared/`, because no state owns what is in it. `states/shared.mts` is `shared/database.mts`, and `SharedResources` is `PortalDatabase`.
+- **Make a check that each capability is discharged.** `Record<SupportedState, Provider>` makes a check that each state has a provider for each capability. Nothing makes a check that `compose.mts` calls `applyRequirements` for each one. A provider that nobody calls is silent: the graph starts, and the API misses one setting.
+
+  We wrote this test and then removed it, to keep the spike small. The method is decided, and a later ticket can put it back. These are the results, so that nobody does the work again:
+
+  `DistributedApplicationTestingBuilder` is the usual way, and it is not available to us. It needs a type from the `Projects` namespace, and that namespace holds an entry for each `<ProjectReference>` of a test project. This AppHost is TypeScript, so it has no csproj and no such entry. Read https://aspire.dev/testing/advanced-scenarios/.
+
+  The command `aspire do publish-manifest --output-path <file>` gives the model in the one form that Aspire writes for a program. It runs the real AppHost with the real builder, it starts no container, and it takes about 6 seconds for each state. The JSON holds each resource and its environment, with each reference resolved, such as `{mailpit.bindings.smtp.host}` and `https://localhost:{keycloak.bindings.http.port}/realms/sebt/...`. Therefore a check reads the value and not the key only.
+
+  The wiring is in `compose.mts` and not in `apphost.mts`, which also lets a test call `composeGraph` with a builder of its own.
+
+  2 mutations showed that the check has value. With the call to `applyRequirements` for the cache removed, it failed. With the scheme of the Keycloak discovery document changed back to `http`, it failed and named the scheme. That second one is silent failure 5 above, and the check found it in 13 seconds.
+
+  The manifest does not hold the waits. Therefore no check of that kind covers `waitFor`, and the line `[config] ... waits for:` at each start is the record of them.
+- **Done.** The preflight of the cache and the preflight of sign-in both make a check of the trusted developer certificate. `capabilities/developer-certificate.mts` runs `dotnet dev-certs https --check --trust` one time for each start. The thumbprint in its output agrees with the file name in `KC_HTTPS_CERTIFICATE_FILE` of the Keycloak container, so this is the same certificate that Aspire mounts.
+- **Add the lint and the build of the AppHost to CI.** Both are local commands today, so a change that does not compile can merge. The job runs `pnpm run aspire:lint` and `pnpm run aspire:build`. Neither one needs Docker. Add `aspire:test` to the same job when the check above comes back.
+- Keep Redis in the cache capability, `capabilities/cache/co.mts`. If DC production moves from IIS to the container path with ElastiCache, move Redis to the shared path at that time.
+- **Done.** `capabilities/sign-in/co.mts` uses `addKeycloak` with `withRealmImport`. A bind mount gives the themes from `docker/keycloak`. The realm reads the portal address from the variable `SEBT_PORTAL_ORIGIN`, so the portal keeps a port that Aspire selects. This replaces the Compose profile `keycloak` for the Aspire path. Read [ADR-0019](./0019-keycloak-local-oidc-stand-in.md).
 - **Done.** The README has the section "Local development with Aspire". It gives the installation of the CLI, the command `aspire certs trust`, and the step for the `appsettings` files.
 - **No workflow in CI makes a check of the AppHost.** `tsc` and `eslint` run only on a local machine. Therefore a change that does not compile can merge. Add a CI job that runs the lint and `pnpm aspire:build`.
 - **Make 3 changes to `compose.yaml`, and do this for each result of the decision.** Use a fixed version for the Mailpit image. Add a health check for each database. Add a password for Redis, to agree with ElastiCache. This spike found these 3 problems in Compose. They are not functions of Aspire.
@@ -230,7 +245,8 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 ## References
 
 - DC-713, the spike for the orchestrator for local development
-- `aspire-apphost/apphost.mts`, `aspire-apphost/config.mts`, and `aspire-apphost/states/{shared,dc,co,apps}.mts`
+- `aspire-apphost/apphost.mts`, `aspire-apphost/compose.mts`, `aspire-apphost/config.mts`, and `aspire-apphost/shared/{apps,database}.mts`
+- `aspire-apphost/test/compose.test.mts` and `aspire-apphost/test/recording-builder.mts`
 - `aspire-apphost/capabilities/requirements.mts`, and `aspire-apphost/capabilities/{cache,connector-build,household-source,sign-in}/{contract,dc,co}.mts`
 - `aspire.config.json`, which holds the SDK version, the package versions, and the dashboard profile
 - The root `package.json` and `aspire-apphost/package.json`, which hold `aspire:dc`, `aspire:co`, `aspire:stop`, and `aspire:status`

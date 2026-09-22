@@ -12,9 +12,10 @@
   },
   "include": [
     "apphost.mts",
+    "compose.mts",
     "config.mts",
     "capabilities/**/*.mts",
-    "states/**/*.mts",
+    "shared/**/*.mts",
     ".aspire/modules/aspire.mts",
     ".aspire/modules/base.mts",
     ".aspire/modules/transport.mts"

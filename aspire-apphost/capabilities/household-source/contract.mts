@@ -26,7 +26,7 @@ export interface HouseholdSourceContext {
   /**
    * The SA password of the shared SQL Server. A provider that makes its own SQL Server
    * uses the same password. This is the one part of the shared graph that a provider
-   * needs, so the context names it and it does not take all of SharedResources.
+   * needs, so the context names it and it does not take all of PortalDatabase.
    */
   saPassword: ParameterResource;
 }

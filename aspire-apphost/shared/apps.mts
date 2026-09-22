@@ -13,7 +13,7 @@ import type {
 } from "../.aspire/modules/aspire.mjs";
 import { repoRoot } from "../config.mjs";
 import type { AppHostConfig } from "../config.mjs";
-import type { SharedResources } from "./shared.mjs";
+import type { PortalDatabase } from "./database.mjs";
 
 export interface WebApps {
   /** The portal application. */
@@ -25,7 +25,7 @@ export interface WebApps {
 export async function addApi(
   builder: DistributedApplicationBuilder,
   config: AppHostConfig,
-  shared: SharedResources,
+  shared: PortalDatabase,
 ): Promise<ProjectResource> {
   // JwtSettings.SecretKey is empty in appsettings.json. The key is [Required], and it has
   // a minimum of 32 characters. Thus the API fails its options validation at start,

@@ -1,5 +1,6 @@
-// Resources that each state uses. Resources that are specific to a state are in ./dc.mts
-// and ./co.mts. ../apphost.mts selects between them.
+// The database of the portal. Each state uses it, and no state changes it. A capability
+// that needs its own database makes one, and ../capabilities/household-source/dc.mts is
+// the example.
 
 import type {
   DistributedApplicationBuilder,
@@ -9,19 +10,19 @@ import type {
 } from "../.aspire/modules/aspire.mjs";
 import type { AppHostConfig } from "../config.mjs";
 
-export interface SharedResources {
+export interface PortalDatabase {
   /** SQL Server instance that holds the database of the portal. */
   sql: SqlServerServerResource;
   /** The application database of the portal. EF Core migrations apply when the API starts. */
   portalDb: SqlServerDatabaseResource;
-  /** A state module that makes its own SQL Server uses this parameter again. */
+  /** A capability that makes its own SQL Server uses this parameter again. */
   saPassword: ParameterResource;
 }
 
-export async function addSharedResources(
+export async function addPortalDatabase(
   builder: DistributedApplicationBuilder,
   config: AppHostConfig,
-): Promise<SharedResources> {
+): Promise<PortalDatabase> {
   // This password is explicit, and Aspire does not make one. The value must stay the
   // same. Thus the persistent data volume continues to accept it, and an external tool
   // connects with no change.

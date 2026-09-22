@@ -7,7 +7,7 @@
     "node": "^20.19.0 || ^22.13.0 || >=24"
   },
   "scripts": {
-    "aspire:lint": "eslint apphost.mts config.mts \"capabilities/**/*.mts\" \"states/**/*.mts\"",
+    "aspire:lint": "eslint apphost.mts compose.mts config.mts \"capabilities/**/*.mts\" \"shared/**/*.mts\"",
     "aspire:start": "aspire run",
     "aspire:dc": "STATE=dc aspire run",
     "aspire:co": "STATE=co aspire run",

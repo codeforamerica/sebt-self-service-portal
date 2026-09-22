@@ -2,6 +2,7 @@
 // declares a `Redis` section.
 
 import { EndpointProperty } from "../../.aspire/modules/aspire.mjs";
+import { trustedDeveloperCertificate } from "../developer-certificate.mjs";
 import type {
   CacheCapability,
   CacheContext,
@@ -84,10 +85,8 @@ export const coRedis: CacheProvider = {
   name: "Redis with TLS",
   cacheHint:
     "Redis Commander and RedisInsight run as child resources of redis in the dashboard.",
-  // A trusted developer certificate is necessary, and `aspire certs trust` gives it. A
-  // check of that is not here: the certificate is in the keychain of the machine, and
-  // this module cannot read it with a check of a file. Read the follow-ups of
-  // docs/adr/0022-aspire-local-dev-orchestrator.md.
-  preflight: () => [],
+  // Without a trusted certificate, Aspire serves the plain endpoint of Redis and it
+  // shows no message. The API uses Redis__Ssl=true, so it then reaches nothing.
+  preflight: () => [trustedDeveloperCertificate],
   provision,
 };

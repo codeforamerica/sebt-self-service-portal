@@ -10,6 +10,7 @@ import { resolve } from "node:path";
 import { EndpointProperty, refExpr } from "../../.aspire/modules/aspire.mjs";
 import type { NextJsAppResource } from "../../.aspire/modules/aspire.mjs";
 import { repoRoot } from "../../config.mjs";
+import { trustedDeveloperCertificate } from "../developer-certificate.mjs";
 import type { Requirements } from "../requirements.mjs";
 import type {
   SignInCapability,
@@ -249,7 +250,11 @@ export const coKeycloakOidc: SignInProvider = {
   // The container mounts both paths. If a path is absent, the fault is not visible until
   // a login fails, because Keycloak starts in both cases. Both paths come from the
   // repository root, so this function does not read the configuration.
+  //
+  // Keycloak serves TLS with the developer certificate, and the API reads the discovery
+  // document from that address. Thus this capability needs the certificate too.
   preflight: () => [
+    trustedDeveloperCertificate,
     {
       description: `Keycloak realm import file at ${realmFile}`,
       check: () => {
