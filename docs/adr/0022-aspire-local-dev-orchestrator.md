@@ -105,6 +105,19 @@ The AppHost prints the full contract at each start. This is the output for CO:
 
 This answers the question that made us start this work: which configuration does this state need to run? Before, the answer was in the comments of 4 modules, and each module changed the API itself.
 
+The household source found a second gap, in the graph of DC. The DC connector calls 4 stored procedures, and it has no compiled-in default for a name, because the schema differs for each environment. The graph gave the connection string and no procedure name. Thus `DcSummerEbtCaseService` threw an `InvalidOperationException` for each household lookup, and `DcAddressUpdateService` gave the result `NOT_CONFIGURED`. The graph now gives the 2 names that the seed scripts make:
+
+| Setting | Value | The script that makes it |
+| --- | --- | --- |
+| `DCConnector__GetHouseholdByGuardianProcName` | `[sebt_app_test].[GetHouseholdByGuardian]` | 102_proc_GetHouseholdByGuardian.sql |
+| `DCConnector__AddressUpdateProcName` | `[dbo].[UpdateMailingAddress]` | 103_proc_UpdateMailingAddress.sql |
+
+A query of the seeded database confirms both names, and the first one gives a household of 3 people for the guardian `test0001@email.com`.
+
+The other 2 names stay absent, and this is intentional. The README of the connector gives `[sebt_app_test].[RequestNewCard]` and `dbo.sp_CheckEligibility` for a local machine, and the seed scripts make neither one. A query of the database confirms that neither name resolves. A name that points to an absent procedure gives the message "Could not find stored procedure", which says nothing about the configuration. With no name, the connector gives `NOT_CONFIGURED` or an error that names the key to set. Thus card replacement and the check of eligibility cannot run against the local `DcSource`, and the message says why.
+
+The README also gives `[sebt_app_test].[UpdateMailingAddress]`, and the local script makes `[dbo].[UpdateMailingAddress]`. The header of that script calls it the local implementation. Therefore the 2 names are both correct, each one for its own environment.
+
 The connector build found a fault in the graph of CO. The csproj of the API has no reference to the CO connector. Thus a build of the API alone stages no plugin, and `plugins-co` held only what an earlier `pnpm api:build-co` put there. A new checkout started the API with no CO connector, and nothing gave a message. The capability now gives CO a build job, the same as DC. A test confirms this: after a delete of `plugins-co`, the job made the directory again with 37 files, and the health check `co-cbms-api-ping` of the connector reported Healthy.
 
 `states/dc.mts` is now empty, and it is deleted. DC is 3 capabilities and nothing else.
