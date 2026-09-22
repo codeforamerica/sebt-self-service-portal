@@ -146,4 +146,5 @@ For more detailed information, please refer to:
 - [Compliance](compliance/index.md) covers security, privacy, licensing, and accessibility obligations.
 - [Architecture Decisions](adr/index.md) record why the system is shaped the way it is.
 - [.NET API Reference](api/index.md) covers every published C# type.
-- [Releases](releases.md) tell you what changed, and when.
+- [REST API Reference](rest/index.md) covers every HTTP endpoint the two front ends call.
+- [Releases](https://github.com/codeforamerica/sebt-self-service-portal/releases) tell you what changed, and when.

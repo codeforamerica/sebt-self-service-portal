@@ -15,7 +15,7 @@
  * word it does not literally contain, such as "i18n" or "translation" for the
  * content guide.
  */
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'yaml';
@@ -75,6 +75,63 @@ export function readKeywords(markdown: string): string[] {
     return keywords.map(String);
   }
   return typeof keywords === 'string' ? keywords.split(/[,\s]+/).filter(Boolean) : [];
+}
+
+/** The subset of an OpenAPI document this step reads. */
+export interface OpenApiSpec {
+  paths?: Record<string, Record<string, unknown>>;
+}
+
+interface OpenApiOperation {
+  summary?: string;
+  description?: string;
+  tags?: string[];
+}
+
+/**
+ * Keys that may sit beside operations in a path item without being one. Anything
+ * not on this list is treated as a verb, so a method added to a later OpenAPI
+ * revision is indexed rather than silently dropped.
+ */
+const NON_OPERATION_KEYS = new Set(['summary', 'description', 'servers', 'parameters', '$ref']);
+
+/**
+ * One search entry per operation in the OpenAPI document.
+ *
+ * The REST reference is a single page rendered client-side by RapiDoc, so the
+ * build-time extractor sees an empty article and indexes nothing but the prose
+ * above it. Without this the endpoints are unsearchable: a query for
+ * "replace card" or "/api/household/address" finds no page at all.
+ *
+ * Each entry points at the id RapiDoc gives the operation's `<section>`,
+ * `{method}-{path}`. Those ids live inside the component's shadow DOM, where
+ * native fragment navigation cannot reach them, but RapiDoc reads the hash
+ * itself on load and scrolls to the operation and expands it.
+ */
+export function endpointEntries(spec: OpenApiSpec, pageHref: string): Record<string, SearchEntry> {
+  const entries: Record<string, SearchEntry> = {};
+
+  for (const [path, pathItem] of Object.entries(spec.paths ?? {})) {
+    for (const [key, value] of Object.entries(pathItem)) {
+      if (NON_OPERATION_KEYS.has(key)) {
+        continue;
+      }
+
+      const operation = value as OpenApiOperation;
+      const href = `${pageHref}#${key.toLowerCase()}-${path}`;
+      entries[href] = {
+        href,
+        title: `${key.toUpperCase()} ${path}`,
+        summary: [operation.summary, operation.description, ...(operation.tags ?? [])]
+          .filter(Boolean)
+          .join(' ')
+          .replace(/\s{2,}/g, ' ')
+          .trim(),
+      };
+    }
+  }
+
+  return entries;
 }
 
 /** Every Markdown file under `dir`, as paths relative to it. */
@@ -154,9 +211,20 @@ function main(): void {
     }
   }
 
+  // The REST page renders client-side, so its endpoints reach the index only from the spec.
+  // Absent when someone renders the site without running `pnpm docs:spec` first.
+  const specPath = join(siteDir, 'rest/portal.openapi.json');
+  let endpoints = 0;
+  if (existsSync(specPath)) {
+    const entries = endpointEntries(JSON.parse(readFileSync(specPath, 'utf8')), 'rest/index.html');
+    Object.assign(index, entries);
+    endpoints = Object.keys(entries).length;
+  }
+
   writeFileSync(indexPath, JSON.stringify(index));
   console.log(
-    `Search index: cleaned ${retitled} title(s), removed the date line from ${destamped} summary(s), added keywords to ${enriched} page(s).`,
+    `Search index: cleaned ${retitled} title(s), removed the date line from ${destamped} summary(s), ` +
+      `added keywords to ${enriched} page(s), indexed ${endpoints} REST endpoint(s).`,
   );
 }
 

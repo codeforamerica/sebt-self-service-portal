@@ -203,6 +203,27 @@ header .navbar-nav .nav-link.active {
   box-shadow: inset 0 -0.1875rem 0 var(--sebt-gold);
 }
 
+/* Children of a navbar dropdown sit on the menu's own surface rather than on teal,
+   so the white above makes an open menu read as empty. They take the body color
+   instead, which tracks the light and dark themes on its own. The active marker is
+   dropped too: the gold underline is drawn for a teal bar, not for a white menu. */
+header .navbar-nav .dropdown-menu .nav-link,
+header .navbar-nav .dropdown-menu .nav-link:hover,
+header .navbar-nav .dropdown-menu .nav-link:focus,
+header .navbar-nav .dropdown-menu .nav-link.active,
+header .navbar-nav .dropdown-menu a {
+  color: var(--bs-body-color);
+}
+
+header .navbar-nav .dropdown-menu .nav-link.active {
+  box-shadow: none;
+}
+
+header .navbar-nav .dropdown-menu .nav-link:hover,
+header .navbar-nav .dropdown-menu .nav-link:focus {
+  background-color: var(--bs-primary-bg-subtle);
+}
+
 /* The mobile TOC/nav toggles and the search icon are Bootstrap icon buttons
    that inherit body color, which is invisible on teal. */
 header .btn,

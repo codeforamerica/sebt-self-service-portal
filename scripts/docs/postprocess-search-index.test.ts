@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { applyKeywords, hrefFor, readKeywords, stripDocMeta, stripSiteTitle, type SearchEntry } from './postprocess-search-index.ts';
+import { applyKeywords, endpointEntries, hrefFor, readKeywords, stripDocMeta, stripSiteTitle, type SearchEntry } from './postprocess-search-index.ts';
 
 const SITE = 'Summer EBT Self-Service Portal: Engineering Documentation';
 
@@ -82,4 +82,57 @@ test('the provenance line is stripped with the changelog link present', () => {
   const summary = 'Title Last updated September 3, 2026 · View source · View changelog Body text';
 
   assert.equal(stripDocMeta(summary), 'Title Body text');
+});
+
+test('indexes one entry per operation, anchored at the id RapiDoc gives the section', () => {
+  const spec = {
+    paths: {
+      '/api/features': { get: { summary: 'Gets the current feature flag states.', tags: ['Features'] } },
+      '/api/household/address': { put: { summary: 'Updates the mailing address.', tags: ['Household'] } },
+    },
+  };
+
+  const entries = endpointEntries(spec, 'rest/index.html');
+
+  assert.deepEqual(Object.keys(entries).sort(), [
+    'rest/index.html#get-/api/features',
+    'rest/index.html#put-/api/household/address',
+  ]);
+  assert.equal(entries['rest/index.html#get-/api/features'].title, 'GET /api/features');
+});
+
+test('an operation summary and tag are both searchable', () => {
+  const spec = { paths: { '/api/features': { get: { summary: 'Gets the current feature flag states.', tags: ['Features'] } } } };
+
+  const summary = endpointEntries(spec, 'rest/index.html')['rest/index.html#get-/api/features'].summary;
+
+  assert.match(summary, /feature flag states/);
+  assert.match(summary, /Features/);
+});
+
+test('path-level keys that are not HTTP methods are not indexed as operations', () => {
+  const spec = {
+    paths: {
+      '/api/features': {
+        get: { summary: 'Gets flags.' },
+        parameters: [{ name: 'shared' }],
+        servers: [{ url: 'https://example.gov' }],
+      },
+    },
+  };
+
+  assert.deepEqual(Object.keys(endpointEntries(spec, 'rest/index.html')), ['rest/index.html#get-/api/features']);
+});
+
+test('an operation with no summary still gets an entry, so the path is findable', () => {
+  const spec = { paths: { '/api/features': { get: {} } } };
+
+  const entries = endpointEntries(spec, 'rest/index.html');
+
+  assert.equal(entries['rest/index.html#get-/api/features'].title, 'GET /api/features');
+  assert.equal(entries['rest/index.html#get-/api/features'].summary, '');
+});
+
+test('a document with no paths yields no entries rather than throwing', () => {
+  assert.deepEqual(endpointEntries({}, 'rest/index.html'), {});
 });

@@ -57,4 +57,5 @@ Stage the new version in a separate directory or task definition rather than ove
 database change first, and only move traffic once it is complete. Keep the previous version in place until the
 release is accepted, so a rollback does not need a rebuild.
 
-Releases and what changed in each are listed under [Releases](../../releases.md).
+Releases and what changed in each are listed on
+[GitHub Releases](https://github.com/codeforamerica/sebt-self-service-portal/releases).

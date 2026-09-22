@@ -3,4 +3,5 @@
 # no name, and docfx takes each name from the target page's H1.
 - href: index.md
 - href: security.md
+- href: accessibility.md
 - href: licensing.md

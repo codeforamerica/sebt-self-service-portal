@@ -17,11 +17,12 @@ pnpm docs:build     # generate everything, then render to docs/docfx/_site
 pnpm docs:serve     # render and serve at http://localhost:8080
 ```
 
-`docs:build` runs four steps, each of which can be run on its own while iterating:
+`docs:build` runs five steps, each of which can be run on its own while iterating:
 
 | Step | Command | What it does |
 | --- | --- | --- |
 | Sections | `pnpm docs:sections` | Copies `docs/adr/` and `docs/guides/` into the site and writes each `toc.yml`. |
+| REST spec | `pnpm docs:spec` | Exports the API's OpenAPI document and stages the RapiDoc bundle. Takes ~20s. |
 | .NET API | `pnpm docs:api` | Runs `docfx metadata` over the C# projects. Takes ~15s. |
 | Render | `docfx build` | Renders the site. |
 | Search index | `pnpm docs:index` | Rewrites `_site/index.json`. See [Search indexing](#search-indexing). |
@@ -46,6 +47,54 @@ though its implementation is not here.
 
 `api/index.md` is hand-written and survives regeneration, because `docfx metadata` only removes files it generated
 itself.
+
+### REST reference
+
+`rest/index.md` is an authored page that hosts [RapiDoc](https://rapidocweb.com), a web component that renders
+`rest/portal.openapi.json` in the browser. Both the spec and the `rapidoc-min.js` bundle are generated and
+git-ignored; `pnpm docs:spec` produces them.
+
+**The spec comes from an xUnit test**, `OpenApiDocumentExportTests`, which asks the in-memory host for the `v1`
+document and writes it to the path in `SEBT_OPENAPI_OUTPUT`. Swashbuckle's own tooling was tried first and does not
+work here. Both `dotnet swagger tofile` and the build-time `GetDocument` tool start the app through
+`HostFactoryResolver`, which runs `Program.Main` as far as the plugin registration on line 28; that throws without
+`PluginAssemblyPaths`, and supplying one makes the tool load the plugin directory into its own assembly load context,
+where `System.Composition.Runtime` fails to bind against the copy the tool already holds.
+`PortalWebApplicationFactory` already solves host configuration for the integration tests, so the export rides on it.
+With `SEBT_OPENAPI_OUTPUT` unset the tests still assert the document generates, so breaking Swagger generation fails
+the normal suite rather than waiting for a docs build.
+
+**`IncludeXmlComments` is what makes the pages readable.** `GenerateDocumentationFile` was already on, but SwaggerGen
+was never told to read the resulting XML, so every operation came through with no description. `ConfigureSwaggerGenOptions`
+now wires it up, which is why endpoint summaries and `<response>` text appear here and in the dev Swagger UI. As with
+the .NET reference, prose on these pages is the `///` comment from the controller.
+
+**docfx's own REST support is not used.** Its `RestApiDocumentProcessor` identifies a spec by a top-level `swagger`
+property, which OpenAPI 3 renamed to `openapi`, so it reads Swagger 2.0 only. Serializing down to 2.0 works and was
+the first approach, but it drops what 2.0 cannot express, including `oneOf` and multiple named examples. Rendering
+OpenAPI 3 directly keeps the document the API actually serves.
+
+Four things about the page are load-bearing and easy to undo by accident:
+
+- **The wrapping `<div>`.** `rapi-doc` is not a tag markdig recognizes, so an element whose open tag spans several
+  lines is escaped into a paragraph instead of passed through. A known block-level tag around it keeps the block raw.
+- **`height: auto !important`.** RapiDoc writes `height: 100vh` as an inline style onto its own parent, and an inline
+  declaration outranks a normal one. Without `!important` the wrapper stays one viewport tall while the component
+  grows past it, and the footer and prev/next links render on top of the reference.
+- **The injected shadow styles.** Height, overflow, and the endpoint row's column widths live inside RapiDoc's shadow
+  root, which no external stylesheet can select. They are appended once `customElements.whenDefined` resolves, rather
+  than polled for, because the bundle is 840KB and its parse time is not predictable.
+- **The hash cleanup.** docfx's search appends `?q=<query>` after the fragment, so a search result arrives as
+  `#put-/api/household/address?q=mailing address`. RapiDoc matches section ids exactly, so the query is stripped
+  before it reads the hash.
+
+The page carries `_disableToc` and `_disableContribution` in `docfx.json`. The sidebar would list one entry and
+nothing else, and "Edit this page" would point at a file whose reference content is generated rather than written.
+
+Authentication is absent from the document by design rather than by oversight. The security scheme is contributed by
+the state connector through `IStateAuthenticationService.ConfigureSwaggerGenSecurityOptions`; the CO connector adds a
+bearer scheme and `DefaultStateAuthenticationService` is a no-op. This site is state-neutral and builds with
+`plugins-none`, so no scheme is defined. The page says so rather than implying the endpoints are open.
 
 ### Docs and ADRs (copied sections)
 
@@ -112,6 +161,13 @@ Pages may also declare `keywords:` in front matter. docfx drops the key, and thi
 indexed summary, which is what lets the content guide be found by "i18n" or "translation". They go at the end because
 lunr scores a term the same wherever it sits, while the search UI shows the front of the summary as the blurb.
 
+The step also adds one entry per REST operation, read from `_site/rest/portal.openapi.json`. RapiDoc renders in the
+browser, so the extractor sees an empty article at build time and would otherwise index the page's prose and none of
+its 26 endpoints. Each entry points at the id RapiDoc gives the operation's section, `{method}-{path}`. Those ids sit
+inside shadow DOM where native fragment navigation cannot reach them, but RapiDoc reads the hash itself and scrolls
+to the operation and expands it. The entries are keyed by href, so re-running the step replaces rather than
+duplicates them. If the spec is missing the step skips this and says so in its output.
+
 The step is idempotent, so running it against an already-processed index changes nothing.
 
 Ranking caveat: 513 of the 553 indexed pages are API reference against 40 conceptual pages, so a conceptual query can
@@ -134,15 +190,23 @@ No webfont is loaded. The apps use Urbanist (DC) and Atkinson Hyperlegible (CO),
 
 ## What's generated, what's committed
 
-Committed: `docfx.json`, `filterConfig.yml`, `toc.yml`, `index.md`, `releases.md`, `compliance/`, `api/index.md`, `adr/index.md`,
-`img/`, `template/`, this README.
+Committed: `docfx.json`, `filterConfig.yml`, `toc.yml`, `index.md`, `compliance/`, `api/index.md`, `adr/index.md`,
+`rest/index.md`, `img/`, `template/`, this README.
 
-`releases.md` and the `compliance/` pages are authored rather than copied, so they carry no "last updated" line. That matches the other authored
+The `compliance/` pages are authored rather than copied, so they carry no "last updated" line. That matches the other authored
 pages. Its dependency figures were measured rather than estimated, and the page says so, because they drift with the
 lockfile.
 
+There is no Releases page. Release notes live on GitHub, and the footer links straight to them. An earlier
+`releases.md` also documented how the notes are generated, which `scripts/release-notes/README.md` and
+`.github/workflows/weekly-release-notes.yml` still cover, and the state release tag patterns
+(`YYYY.MM.DD-dc`, `YYYY.MM.DD-colorado`, and the older `-co` spelling), which are now documented nowhere. Read the
+tag list itself if you need them. Note that a footer link must be an absolute URL:
+`_appFooter` is raw-inserted into the template with `{{{...}}}`, so docfx neither re-renders `{{_rel}}` inside it nor
+rewrites a relative href per page, and a relative one would break on every page below the root.
+
 Generated and git-ignored (see `.gitignore`): `_site/`, `api/*.yml`, `adr/*.md` except `index.md`, `adr/toc.yml`,
-`guides/`.
+`guides/`, `rest/portal.openapi.json`, `rest/rapidoc-min.js`.
 
 ## Extending it
 
@@ -150,10 +214,6 @@ Adding a section is a `content` entry in `docfx.json` plus a `toc.yml` entry. Ca
 
 - **`docs/tdd/` and `docs/development/`**: already Markdown. Note the copied-section caveat: a `src`/`dest` mapping
   breaks link and title resolution, so add them to `SECTIONS` rather than mapping them.
-- **REST API**: docfx's REST API support reads Swagger 2.0 only, while Swashbuckle emits OpenAPI 3.0.1, so this
-  means either embedding a renderer or converting the document. Note also that `IncludeXmlComments` is not configured
-  anywhere in the solution, so no `///` comments reach the OpenAPI document and every endpoint would render without a
-  description. Fix that first, or the section adds an endpoint list and nothing else.
 - **Frontend reference**: docfx does not read TypeScript. This needs TypeDoc output rendered separately or linked.
 - **The repository README**: it links to many source paths that docfx would report as broken links, so publishing it
   means either rewriting those links or accepting the warnings.
@@ -175,3 +235,14 @@ resolve three of the four. A *new* `InvalidFileLink` warning beyond these is a r
 
 **`docfx build` warns `EmptyTocItemName`, or ADR nav entries render unnamed.** `adr/` is holding a `toc.yml` without
 the copies beside it. Run `pnpm docs:sections`.
+
+**The REST page is blank, or shows only its prose.** The spec or the bundle is missing from `rest/`. Run
+`pnpm docs:spec`. The page loads `portal.openapi.json` at runtime, so a missing file is a silent empty render rather
+than a build error.
+
+**The REST page renders but the footer sits on top of it.** The `height: auto !important` rule in `rest/index.md` has
+been dropped or weakened. RapiDoc sets `height: 100vh` inline on its parent, which wins against a normal declaration.
+
+**`pnpm docs:spec` fails with `PluginAssemblyPaths missing from configuration`.** The export is running against a
+host that is not `PortalWebApplicationFactory`. That factory sets `PluginAssemblyPaths__0` to `plugins-none`; see the
+REST reference section above for why Swashbuckle's own CLI cannot be swapped in here.
