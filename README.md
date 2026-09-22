@@ -74,6 +74,31 @@ Other configuration files live in the repository root: `pnpm-workspace.yaml`, `p
 
 > **On Windows:** Make long paths available using `git config core.longpaths true`, since the nested `apps/portal/...` paths can exceed the legacy limit of 260 characters.
 
+### Set up the workspace with one script
+
+Steps 1, 2, and 4 below are scripted. The script clones both repositories side by side,
+checks your toolchain against the versions this repository pins, installs the JavaScript
+dependencies, and builds the solution:
+
+```bash
+./scripts/dev/init-workspace.sh        # macOS and Linux
+.\scripts\dev\init-workspace.ps1       # Windows
+```
+
+It checks your toolchain and it does not install it, because a developer machine holds one
+Node and one .NET for every repository on it. A failed check names the version this
+repository wants and the command that installs it.
+
+It stops when a required tool is missing, and when no container runtime is running. It
+continues without the DC connector, which leaves you a CO-only workspace, and it says so
+in the summary it prints at the end.
+
+Behind a firewall that inspects TLS, add `--system-certs` so Node and pnpm read the
+operating system trust store, and `--ca-bundle <file>` when the proxy root certificate is
+a file rather than a keychain entry. Run the script with `--help` for the rest.
+
+Step 3, the `.env` and `appsettings` files, is still yours to do. So is the Aspire CLI, if
+you take that path. Read [local development with Aspire](#local-development-with-aspire).
 
 ### 1. Install prerequisite software
 
@@ -188,11 +213,21 @@ decision and the trade-offs.
 
 ### Do these steps one time
 
-1. Install the Aspire CLI.
+Steps 3 and 4 are what [`scripts/dev/init-workspace.sh`](./scripts/dev/init-workspace.sh)
+does, along with the toolchain checks. Read
+[the workspace script](#set-up-the-workspace-with-one-script). The Aspire CLI and the
+certificate below are not part of it, because both are machine-wide and the certificate
+prompts for your keychain.
+
+1. Install the Aspire CLI at the version `aspire.config.json` pins.
 
    ```bash
-   dotnet tool install -g Aspire.Cli
+   pnpm add -g @microsoft/aspire-cli@13.5.4
    ```
+
+   The version has to match `sdk.version` in `aspire.config.json`. pnpm needs its global
+   bin directory on your PATH, so run `pnpm setup` once if you have never installed a
+   global package with it.
 
 2. Trust the local developer certificate.
 
