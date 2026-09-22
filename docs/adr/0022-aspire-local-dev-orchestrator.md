@@ -105,16 +105,22 @@ The AppHost prints the full contract at each start. This is the output for CO:
 
 This answers the question that made us start this work: which configuration does this state need to run? Before, the answer was in the comments of 4 modules, and each module changed the API itself.
 
-The household source found a second gap, in the graph of DC. The DC connector calls 4 stored procedures, and it has no compiled-in default for a name, because the schema differs for each environment. The graph gave the connection string and no procedure name. Thus `DcSummerEbtCaseService` threw an `InvalidOperationException` for each household lookup, and `DcAddressUpdateService` gave the result `NOT_CONFIGURED`. The graph now gives the 2 names that the seed scripts make:
+The household source found a second gap, in the graph of DC. The DC connector calls 4 stored procedures, and it has no compiled-in default for a name, because the schema differs for each environment. The graph gave the connection string and no procedure name. Thus `DcSummerEbtCaseService` threw an `InvalidOperationException` for each household lookup, and `DcAddressUpdateService` gave the result `NOT_CONFIGURED`. The graph now gives each of the 4 names:
 
 | Setting | Value | The script that makes it |
 | --- | --- | --- |
 | `DCConnector__GetHouseholdByGuardianProcName` | `[sebt_app_test].[GetHouseholdByGuardian]` | 102_proc_GetHouseholdByGuardian.sql |
 | `DCConnector__AddressUpdateProcName` | `[dbo].[UpdateMailingAddress]` | 103_proc_UpdateMailingAddress.sql |
+| `DCConnector__CardReplacementProcName` | `[sebt_app_test].[RequestNewCard]` | 104_proc_RequestNewCard.sql |
+| `DCConnector__CheckEligibilityProcName` | `dbo.sp_CheckEligibility` | 105_proc_CheckEligibility.sql |
 
-A query of the seeded database confirms both names, and the first one gives a household of 3 people for the guardian `test0001@email.com`.
+A query of the seeded database confirms each of the 4 names, and the household lookup gives a household of 3 people for the guardian `test0001@email.com`.
 
-The other 2 names stay absent, and this is intentional. The README of the connector gives `[sebt_app_test].[RequestNewCard]` and `dbo.sp_CheckEligibility` for a local machine, and the seed scripts make neither one. A query of the database confirms that neither name resolves. A name that points to an absent procedure gives the message "Could not find stored procedure", which says nothing about the configuration. With no name, the connector gives `NOT_CONFIGURED` or an error that names the key to set. Thus card replacement and the check of eligibility cannot run against the local `DcSource`, and the message says why.
+DC gave us the body of `[sebt_app_test].[RequestNewCard]` from `ESA_LINK`, and 104_proc_RequestNewCard.sql now holds it. The changes are the same 3 that 102 lists: no `USE [ESA_LINK]` line, `CREATE OR ALTER PROCEDURE`, and a guard on the CREATE TABLE for `RequestCardLog`. The body holds `@IsTest = 1`, so each call answers `@resultCode = 0`, and `DcCardReplacementService` reads that as a success. A test confirms this, and it confirms that a second run of the script gives no error.
+
+105_proc_CheckEligibility.sql holds `dbo.sp_CheckEligibility`, from `src/Scripts/Database/Procedures/sp_CheckEligibility.sql` of codeforamerica/sebt-dc-enrollment-checker at 6299229. The connector is the source of the signature, and the script follows the connector. The enrollment checker declares `@mailingAddressStreetLine1`, `@mailingAddressStreetLine2`, `@mailingAddressCity`, `@mailingAddressState`, and `@mailingAddressZipCode`. `DcEnrollmentCheckService` binds `@addressLine1`, `@addressLine2`, `@city`, `@state`, and `@zip`. `CommandType.StoredProcedure` sends each parameter by name, so a procedure with the other names gives the error "@addressLine1 is not a parameter for procedure sp_CheckEligibility".
+
+The body is the body of the enrollment checker, and `RAND()` decides the answer. Thus a child is eligible about half of the time, and a second call for the same child can answer differently. A rule on `@formData` in place of the first `SET` gives a repeatable answer. The connector reads the OUTPUT parameters only, so it ignores the result set of candidate matches.
 
 The README also gives `[sebt_app_test].[UpdateMailingAddress]`, and the local script makes `[dbo].[UpdateMailingAddress]`. The header of that script calls it the local implementation. Therefore the 2 names are both correct, each one for its own environment.
 
