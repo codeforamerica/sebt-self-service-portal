@@ -51,6 +51,8 @@ No shared cache (Redis or otherwise) is required. Messages are per-deployment st
 
 `generateMetadata` in the root layout is the only metadata definition in the application, and it is currently language-unaware — English-only title and description from `state.ts`, and a hardcoded `openGraph.locale: 'en_US'`. Once the locale is a root parameter it becomes the input to all three, plus `alternates.languages`, which Next renders as `<link rel="alternate" hreflang>`. `sitemap.ts` gains per-locale entries for the seven public routes.
 
+`public/robots.txt` is a static file that hardcodes `Sitemap: https://sebt.dc.gov/sitemap.xml`. It is not parameterized by state, so it is already wrong for Colorado and would need to become a generated route alongside the per-locale sitemap work.
+
 This is the one part of the work that is blocked on content rather than engineering: localized titles and descriptions do not exist in the state CSVs today and must be authored in the Google Sheet first.
 
 ### Caching and CDN behavior
@@ -184,7 +186,9 @@ export default async function RootLayout(props: LayoutProps<'/[lang]'>) {
 - **The tests that encode the current behavior must be rewritten, not merely adjusted.** `I18nProvider.test.tsx` has eight tests locking the `?lang=` > `localStorage` precedence; both i18n E2E specs seed `localStorage['i18nextLng']` and assert `html[lang]`; `test-setup.ts` initializes the real i18next instance for every portal unit test.
 - Existing `?lang=` links in the wild, and the OIDC login flow that forwards `language=` to PingOne and re-reads `localStorage` on return (`COLoginPage.tsx`), both need a compatibility path.
 - The `[lang]` restructure moves every page, layout, and route group, and touches every test and E2E path that hardcodes a URL. This is the largest single cost, and the rewrite alternative above exists to avoid it.
-- Bundle size does not improve on its own. Messages ship to the client while components remain client-side; removing that weight is an RSC conversion, which is a separate and much larger effort.
+- **Analytics accuracy improves as a side effect.** `DataLayerProvider` derives both `page.language` and `page.locale` from `document.documentElement.lang`. Because that attribute is `en` until the post-hydration flip, language is currently captured from whatever the DOM says at that instant — so non-English sessions can be recorded as English depending on timing. Rendering the attribute correctly on the server fixes the measurement at its source. Worth checking separately: the derived locale is built as `` `${lang}_US` ``, which yields `am_US` and `es_US`.
+- Bundle size does not improve on its own. Messages ship to the client while components remain client-side; removing that weight is an RSC conversion, which is a separate and much larger effort. The existing budgets in `.size-limit.json` (150 KB first load, 500 KB total) have no per-locale dimension, so bundled message growth is invisible to them until it crosses the aggregate limit.
+- `i18next` is initialized with `react: { useSuspense: false }`. Any later move toward server-rendered messages or streaming should revisit that, since the setting exists to make a client-only instance render synchronously.
 - The enrollment checker cannot share any of this. It deploys as `output: 'export'`, and Proxy is explicitly unsupported for static exports, so locale routing there needs its own mechanism.
 
 ## Follow-up work
@@ -194,7 +198,7 @@ In order:
 1. **Resolve the language on the server** — cookie and `Accept-Language` negotiation in `proxy.ts`, `<html lang>` from the resolved value, client i18n seeded from it. Delivers the flash fix on its own.
 2. **Locale-prefixed routing** — the `[lang]` restructure (or the rewrite alternative), redirects for missing and unsupported locales, language selector writing the URL and cookie, and a compatibility path for `?lang=` and the OIDC return.
 3. **Server-side message loading** — the dictionary loader above, wired for the components that are already server-rendered.
-4. **Localized metadata and hreflang** — title, description, Open Graph, `alternates.languages`, and per-locale sitemap entries. Blocked on new content rows in the Google Sheet.
+4. **Localized metadata and hreflang** — title, description, Open Graph, `alternates.languages`, per-locale sitemap entries, and a state-aware `robots.txt` to replace the hardcoded DC sitemap URL. Blocked on new content rows in the Google Sheet.
 5. **Test and E2E migration** — rewrite the provider precedence tests and re-seed both i18n E2E specs against the new mechanism.
 6. **CDN and rollout** — only if HTML caching is ever enabled: proxy-dependent routes bypass the cache, `_rsc` stays in the cache key, and per-locale traffic is monitored after rollout.
 
@@ -204,7 +208,7 @@ Answerable from the code, recorded so the follow-up tickets do not re-litigate t
 
 - **Runtime model.** Both production paths run the same `next build` standalone Node server — an Alpine container on Fargate, and the same `server.js` launched by IIS `httpPlatformHandler` on the DC host. Proxy behaves identically in both. The filesystem is readable in both, but nothing here needs to read it.
 - **Prerequisites.** None. Next 16.3.4 already provides everything, including `next/root-params`. No upgrade, no Redis, no CDN reconfiguration.
-- **Analytics.** The dimension already exists — `DataLayerProvider` sets `page.language` and `page.locale`, and `web-vitals.ts` snapshots `language`. Any change to how the locale is resolved must keep those populated.
+- **Analytics.** The dimension already exists — `DataLayerProvider` sets `page.language` and `page.locale` from `<html lang>`, and `web-vitals.ts` snapshots `language`. Any change to how the locale is resolved must keep those populated; see Consequences for why the current values are probably under-reporting non-English sessions.
 - **Initial locales.** `en`/`es` for both states, plus `am` for DC, matching `state.ts` today.
 
 Needing a decision from product, content, or infrastructure:
