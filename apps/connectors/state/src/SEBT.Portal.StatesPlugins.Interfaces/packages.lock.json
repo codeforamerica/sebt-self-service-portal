@@ -53,15 +53,15 @@
       },
       "System.Composition": {
         "type": "Direct",
-        "requested": "[10.0.11, )",
-        "resolved": "10.0.11",
-        "contentHash": "hGUJdkomA2imB1I55/zf2vxt1EksFpGCqUdb5emVURi/JuhBi9kbBn8HixXxAUuZn/4jixb928+a/yeImmRSiA==",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "fjUHMvT9eTFbpcevI4bMpb3ukHvjBaxqrkopXIhrk+tuW/D/NdJCIlzHRagqA86z+IEowZxEjpa0LRUHGuVFAg==",
         "dependencies": {
-          "System.Composition.AttributedModel": "10.0.11",
-          "System.Composition.Convention": "10.0.11",
-          "System.Composition.Hosting": "10.0.11",
-          "System.Composition.Runtime": "10.0.11",
-          "System.Composition.TypedParts": "10.0.11"
+          "System.Composition.AttributedModel": "10.0.12",
+          "System.Composition.Convention": "10.0.12",
+          "System.Composition.Hosting": "10.0.12",
+          "System.Composition.Runtime": "10.0.12",
+          "System.Composition.TypedParts": "10.0.12"
         }
       },
       "Microsoft.Extensions.ApiDescription.Server": {
@@ -144,38 +144,38 @@
       },
       "System.Composition.AttributedModel": {
         "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "pexJp2ogcmngQ0GUg0KNtGRzfDgQ/5ZPNapEJ/EMc4rl2Y528cKPigXGdjajbVtvKfER1Tx/5DY3WRiWUgIH5w=="
+        "resolved": "10.0.12",
+        "contentHash": "tl0VsgDslx5qj7S08+olVpSwhTrUuWLL3IUAGTEVUXaagHroUKifGy+tIiQkITzMDvNbDTs13GvyxgSV3G8B4w=="
       },
       "System.Composition.Convention": {
         "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "+RujAxDD1L9gbPZvdtA5ajYSDgKK1gMXDA75033wL3wGoxwx0fOHfXy+5k9ai6pttRMxXfpUjd+FHtsEiexsBg==",
+        "resolved": "10.0.12",
+        "contentHash": "Lyo9C8qk+/wFo9Ge9G9KiOQZWjdfVW6hZWz0yMTqpjkf6xTHkxHxWCKh7xw/kxhdrz/GNroy18qMJWbkqDJ3DQ==",
         "dependencies": {
-          "System.Composition.AttributedModel": "10.0.11"
+          "System.Composition.AttributedModel": "10.0.12"
         }
       },
       "System.Composition.Hosting": {
         "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "naPy86Excbn32uhiAYWMfplmuaY4604eooPbgCINAe23SAbiVBgLx8VHcySlWy1slMcfDU6mbWEzw4kgVEc2gw==",
+        "resolved": "10.0.12",
+        "contentHash": "2y5uJ+7ixLbpvE6Z5tespyhUvl2EEo1SuDW9xpeThpwsh8FeS39DZ7iLOSAcHG0FNjBwA5GqvNjgm4Pl5xjUPQ==",
         "dependencies": {
-          "System.Composition.Runtime": "10.0.11"
+          "System.Composition.Runtime": "10.0.12"
         }
       },
       "System.Composition.Runtime": {
         "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "Iw3mmCOGqUSdZZayH8OlM0yBi+C0v6JoRbHZLrXCJGv8NoKw1QgD3qYfvtH3umE+rO8vzczheELZ6MYLAn6JgA=="
+        "resolved": "10.0.12",
+        "contentHash": "7iYtUEuk0KAboGtFI9qw4hy1u4Wry4MmxNMOlfHgR3ab365QGF+FwjefpDRo3wmwijgJ8wJD0o4bK1v6jdlY3w=="
       },
       "System.Composition.TypedParts": {
         "type": "Transitive",
-        "resolved": "10.0.11",
-        "contentHash": "CctpS0AnYhip8TUgO43xnkpq1wFnV7V/UU7OH3kBaNB8MlfZFSUiYhcf/cQysaECozelv+3rCln+/c2AUnIqJQ==",
+        "resolved": "10.0.12",
+        "contentHash": "GQVuDQ4W0vg94QA8xiP/btHk6wKnV2S9FoJuJc8+SjI70RW3C6lJWd2YI7lpZXML5DcCIumDHtD+S7MT47Vj8Q==",
         "dependencies": {
-          "System.Composition.AttributedModel": "10.0.11",
-          "System.Composition.Hosting": "10.0.11",
-          "System.Composition.Runtime": "10.0.11"
+          "System.Composition.AttributedModel": "10.0.12",
+          "System.Composition.Hosting": "10.0.12",
+          "System.Composition.Runtime": "10.0.12"
         }
       }
     },
