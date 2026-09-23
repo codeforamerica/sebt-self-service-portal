@@ -57,6 +57,26 @@ export interface Wait {
   until: "healthy" | "completion";
 }
 
+/**
+ * Each resource that can export telemetry. A project and a Next.js application both have
+ * these methods, but each returns its own type. Thus this names the methods and not a
+ * resource of the generated API.
+ */
+export interface ExportTarget {
+  withOtlpExporter(): PromiseLike<unknown>;
+  withBrowserLogs(): PromiseLike<unknown>;
+  getResourceName(): Promise<string>;
+}
+
+/** One resource that sends its telemetry somewhere. */
+export interface Exporter {
+  resource: ExportTarget;
+  /** Also track the browser that Aspire starts. A front end has one, a server does not. */
+  browserLogs?: boolean;
+  /** Why the resource exports. Write one line. */
+  why: string;
+}
+
 /** One obligation of the host machine. The check runs before any resource exists. */
 export interface Preflight {
   /** What the machine must have. Write it so that the startup log reads as a checklist. */
@@ -74,6 +94,12 @@ export interface Requirements {
    * Thus only a late binding can give these. Read `bindPortal` in ./sign-in.mts.
    */
   portalSettings?: ConfigSetting[];
+  /**
+   * The resources that must export telemetry. The exporter is a method of the resource
+   * and not an environment variable, so it cannot be a setting. It is here so that this
+   * wiring stays data that a program can print. Read ./telemetry/contract.mts.
+   */
+  exporters?: Exporter[];
   waits: Wait[];
 }
 
@@ -131,6 +157,13 @@ export async function applyRequirements(
     }
   }
 
+  for (const exporter of requirements.exporters ?? []) {
+    await exporter.resource.withOtlpExporter();
+    if (exporter.browserLogs) {
+      await exporter.resource.withBrowserLogs();
+    }
+  }
+
   for (const wait of requirements.waits) {
     if (wait.until === "completion") {
       await targets.api.waitForCompletion(wait.resource);
@@ -167,6 +200,17 @@ async function logRequirements(
   if (portalSettings.length > 0) {
     const keys = portalSettings.map((setting) => setting.key);
     console.log(`[config] ${capability} supplies web: ${keys.join(", ")}`);
+  }
+
+  const exporters = requirements.exporters ?? [];
+  if (exporters.length > 0) {
+    const described = await Promise.all(
+      exporters.map(async (exporter) => {
+        const name = await exporter.resource.getResourceName();
+        return exporter.browserLogs ? `${name} (+browser)` : name;
+      }),
+    );
+    console.log(`[config] ${capability} exports from: ${described.join(", ")}`);
   }
 
   if (requirements.waits.length > 0) {

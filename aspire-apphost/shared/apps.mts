@@ -42,7 +42,7 @@ export async function addApi(
 
   // The `http` launch profile gives ASPNETCORE_ENVIRONMENT and
   // Seeding__EnableDevEndpoints. Thus this module does not set them again.
-  const api = await builder
+  return builder
     .addProject(
       "api",
       resolve(
@@ -55,36 +55,12 @@ export async function addApi(
     .withEnvironment("ConnectionStrings__DefaultConnection", shared.portalDb)
     .withEnvironment("JwtSettings__SecretKey", jwtSecret)
     // PluginAssemblyPaths is not here. The connector build capability stages the DLLs,
-    // and it gives the path. Read ../capabilities/connector-build.mts.
-    .withOtlpExporter()
-    // The log export is off by default. appsettings.json sets `Otel:UseLogExporter` to
-    // `console`. With that value, the API registers no OpenTelemetry log provider, and
-    // Serilog keeps writeToProviders false. Then the structured logs of the dashboard
-    // stay empty. The gitignored appsettings.Development.json is the other file that can
-    // change this value. Without the line below, the dashboard depends on a file that
-    // each developer edits by hand.
+    // and it gives the path. Read ../capabilities/connector-build/contract.mts.
     //
-    // LoggingSetup reads the value from the configuration, which includes this variable.
-    // Thus LoggingSetup also changes writeToProviders.
-    //
-    // The destination needs no override here. The log exporter gets its address from the
-    // standard OTEL_EXPORTER_OTLP_* variables that `withOtlpExporter` sets.
-    .withEnvironment("Otel__UseLogExporter", "otlp")
+    // The OTLP exporter is not here either. The telemetry capability owns it, and it
+    // runs after the web applications exist, because all 3 of them export. Read
+    // ../capabilities/telemetry/contract.mts.
     .waitFor(shared.portalDb);
-
-  // `withOtlpExporter` sets the standard OTEL_EXPORTER_OTLP_ENDPOINT. But
-  // OpenTelemetrySetup binds OtlpExporterOptions from the `Otel:OtlpExporter`
-  // configuration section, and appsettings.json sets that section to the old Jaeger
-  // address. The configuration has the higher priority. Without the override below, the
-  // API sends the traces and the metrics to a port where no program listens.
-  if (config.dashboardOtlpEndpoint) {
-    await api.withEnvironment(
-      "Otel__OtlpExporter__Endpoint",
-      config.dashboardOtlpEndpoint,
-    );
-  }
-
-  return api;
 }
 
 export async function addWebApps(
@@ -102,21 +78,13 @@ export async function addWebApps(
   // state onto `<html data-state>` for each request. Read
   // docs/adr/0023-runtime-client-config.md.
   //
-  // `withBrowserLogs` applies to a browser that Aspire starts. The console output and the
-  // screenshots of that browser go to the dashboard with the telemetry from the server.
-  // Aspire uses a Chromium user data directory that it controls. It does not use the
-  // profile of the developer.
+  // The OTLP exporter and the browser logs are not here. Read
+  // ../capabilities/telemetry/contract.mts.
   const web = await builder
     .addNextJsApp("web", resolve(repoRoot, "apps/portal/src/SEBT.Portal.Web"))
     .withPnpm()
     .withEnvironment("STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
-    // instrumentation.node.ts calls startOtel. But packages/observability sets each
-    // signal to 'none' if OTEL_EXPORTER_OTLP_ENDPOINT is absent. Then the SDK does not
-    // start, and the application sends no telemetry. `withOtlpExporter` gives that
-    // address. Read docs/adr/0018-web-tier-opentelemetry.md.
-    .withOtlpExporter()
-    .withBrowserLogs()
     .waitFor(api);
 
   // deploy-enrollment-checker.yaml builds and sends a static export for DC and for CO.
@@ -150,9 +118,6 @@ export async function addWebApps(
     .withEnvironment("STATE", config.state)
     .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
-    // This is the same reason as the portal. The checker also registers startOtel.
-    .withOtlpExporter()
-    .withBrowserLogs()
     .waitFor(api);
 
   // The portal returns CORS headers for the origin of the checker, and the checker has a

@@ -13,15 +13,18 @@
 //                 the application. A capability is a provider. The provider returns what
 //                 it needs, and it does not change the API.
 //
-// One directory holds each capability, and each one has the same 3 files:
+// One directory holds each capability:
 //
 //   capabilities/requirements.mts           the shape that each capability speaks in.
 //   capabilities/<capability>/contract.mts  the provider type and the map of the states.
 //   capabilities/<capability>/dc.mts        the answer of DC.
 //   capabilities/<capability>/co.mts        the answer of CO.
 //
-// The 4 capabilities are the cache, the connector build, the household source, and
-// sign-in. To compare 2 states, read the 2 files in one directory.
+// The 5 capabilities are the cache, the connector build, the household source, sign-in,
+// and telemetry. To compare 2 states, read the 2 files in one directory.
+//
+// Telemetry is the one capability where the 2 states agree, so it holds one provider in
+// dashboard.mts instead of a file for each state.
 //
 // The wiring is in ./compose.mts, and not here. This file is the entry point only.
 //

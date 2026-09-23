@@ -18,6 +18,8 @@ import {
 } from "./capabilities/requirements.mjs";
 import { signInProviderFor } from "./capabilities/sign-in/contract.mjs";
 import type { SignInProvider } from "./capabilities/sign-in/contract.mjs";
+import { telemetryProviderFor } from "./capabilities/telemetry/contract.mjs";
+import type { TelemetryProvider } from "./capabilities/telemetry/contract.mjs";
 import type { AppHostConfig, SupportedState } from "./config.mjs";
 import { addApi, addWebApps } from "./shared/apps.mjs";
 import { addPortalDatabase } from "./shared/database.mjs";
@@ -28,6 +30,7 @@ export interface StateCapabilities {
   connectorBuild: ConnectorBuildProvider;
   householdSource: HouseholdSourceProvider;
   signIn: SignInProvider;
+  telemetry: TelemetryProvider;
 }
 
 export function capabilitiesFor(state: SupportedState): StateCapabilities {
@@ -36,18 +39,19 @@ export function capabilitiesFor(state: SupportedState): StateCapabilities {
     connectorBuild: connectorBuildProviderFor(state),
     householdSource: householdSourceProviderFor(state),
     signIn: signInProviderFor(state),
+    telemetry: telemetryProviderFor(state),
   };
 }
 
 /** Prints how this state answers each capability, and what a developer does with it. */
 export function announceCapabilities(config: AppHostConfig): void {
-  const { cache, connectorBuild, householdSource, signIn } = capabilitiesFor(
-    config.state,
-  );
+  const { cache, connectorBuild, householdSource, signIn, telemetry } =
+    capabilitiesFor(config.state);
   console.log(`[cache] ${cache.name}. ${cache.cacheHint}`);
   console.log(`[connector-build] ${connectorBuild.name}. ${connectorBuild.buildHint}`);
   console.log(`[household-source] ${householdSource.name}. ${householdSource.dataHint}`);
   console.log(`[sign-in] ${signIn.name}. ${signIn.signInHint}`);
+  console.log(`[telemetry] ${telemetry.name}. ${telemetry.telemetryHint}`);
 }
 
 /**
@@ -59,13 +63,13 @@ export function announceCapabilities(config: AppHostConfig): void {
 export async function runCapabilityPreflight(
   config: AppHostConfig,
 ): Promise<void> {
-  const { cache, connectorBuild, householdSource, signIn } = capabilitiesFor(
-    config.state,
-  );
+  const { cache, connectorBuild, householdSource, signIn, telemetry } =
+    capabilitiesFor(config.state);
   await runPreflight("cache", cache.preflight(config));
   await runPreflight("connector-build", connectorBuild.preflight(config));
   await runPreflight("household-source", householdSource.preflight(config));
   await runPreflight("sign-in", signIn.preflight(config));
+  await runPreflight("telemetry", telemetry.preflight(config));
 }
 
 /**
@@ -77,9 +81,8 @@ export async function composeGraph(
   builder: DistributedApplicationBuilder,
   config: AppHostConfig,
 ): Promise<void> {
-  const { cache, connectorBuild, householdSource, signIn } = capabilitiesFor(
-    config.state,
-  );
+  const { cache, connectorBuild, householdSource, signIn, telemetry } =
+    capabilitiesFor(config.state);
 
   const database = await addPortalDatabase(builder, config);
   const api = await addApi(builder, config, database);
@@ -112,6 +115,15 @@ export async function composeGraph(
   await applyRequirements({ api }, "sign-in", signInCapability.requirements);
 
   const apps = await addWebApps(builder, config, api);
+
+  // Telemetry comes after the applications, because all 3 of them export.
+  const telemetryCapability = await telemetry.provision({
+    config,
+    api,
+    web: apps.web,
+    checker: apps.checker,
+  });
+  await applyRequirements({ api }, "telemetry", telemetryCapability.requirements);
 
   // This is last, because it is the one part of the wiring that reads the endpoint of
   // the portal. The realm of CO redirects back to that endpoint. Thus neither side can
