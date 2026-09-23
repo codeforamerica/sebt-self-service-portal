@@ -37,6 +37,8 @@ Resolved in `proxy.ts`, first match wins:
 3. **`Accept-Language`**, negotiated against the state's supported set.
 4. **`en`** as the fallback.
 
+Region-qualified codes are normalized before matching (`en-US` → `en`), since the content pipeline is keyed by language alone.
+
 A request without a locale prefix is redirected to the resolved locale (`/dashboard` → `/es/dashboard`). A request naming a locale the state does not support is redirected to the default rather than 404'd, so a DC link to `/am/...` forwarded to a CO user degrades to readable content instead of an error page.
 
 ### Message storage and loading
@@ -78,6 +80,24 @@ The value is separable from the URLs, and the first phase carries most of it:
 **`serverLoadMessages(locale, namespaces)` with an LRU cache and filesystem fallback.** Rejected for the reasons given above — it caches what Node already caches, and its fallback path breaks under `output: 'standalone'`. Recorded here because the spike brief asked for it specifically.
 
 **Moving to `next-intl`.** Out of scope. ADR 0006's reasoning holds, and the gap being closed is *where rendering happens*, not which library formats the strings.
+
+## Deviations from the generic SSR draft
+
+The spike brief was derived from a semi-generic SSR/i18n draft (`sebt_ssr.md`, attached to the spike ticket). That draft is explicitly framework-generic — it uses French as its example locale, `pages/[locale]/[...slug].tsx` for routing, and `getServerSideProps` for data loading — so several of its concrete recommendations do not survive contact with this codebase. The differences are listed here so an implementer working from the draft, or from the tickets generated out of it, knows which parts were deliberately not followed.
+
+| Draft says | This ADR says | Why |
+| --- | --- | --- |
+| `pages/[locale]/[...slug].tsx`, `getServerSideProps` | `app/[lang]/`, `next/root-params` | The portal is App Router; `getServerSideProps` does not exist there. |
+| `/locales/{locale}/{namespace}.json` | `content/locales/{lang}/{state}/{namespace}.json` | Content is per language **and per state**. The draft has no multi-state concept; flattening it would merge DC and CO copy. |
+| One `supportedLocales` list | Supported locales resolved per state | DC serves `en/es/am`, CO serves `en/es`. A single list lets `/am` resolve on CO with no content behind it. |
+| In-memory LRU, TTL of 5–60 minutes, optional Redis | Node's module cache; no LRU, no TTL, no Redis | Messages are statically imported and change only on redeploy, so a TTL expires nothing and a second cache adds no hits. |
+| Filesystem read as the loader fallback | Imports only | `output: 'standalone'` ships only traced files; an `fs` read would work in development and fail in the container. |
+| Optional remote translations backend | Keep the CSV → JSON pipeline | Content is authored by the content team in a Google Sheet, per ADR 0006 and ADR 0009. A remote backend would bypass that workflow, not serve it. |
+| CDN-cached HTML per locale, in the title decision | No HTML caching | Every route is dynamic and authenticated pages render household PII. See the caching section; this is the most consequential deviation. |
+| "Translation edits must propagate without full rebuilds" | Recorded as an open question | Stated as a requirement in the draft, but it is not true of this app today, and making it true is a larger change than locale routing. |
+| RTL visual-regression testing | Not in scope | `en`, `es` and `am` are all left-to-right. Worth revisiting only if an RTL language is added. |
+
+Two parts of the draft are adopted as written: normalizing locale codes (`en-US` → `en`) before matching, and having the language switcher change the URL rather than only a cookie. Its "no FOUC" goal is the same defect this ADR calls the English flash, and phase 1 delivers it without any of the routing work.
 
 ## Prototype
 
@@ -192,6 +212,8 @@ export default async function RootLayout(props: LayoutProps<'/[lang]'>) {
 - The enrollment checker cannot share any of this. It deploys as `output: 'export'`, and Proxy is explicitly unsupported for static exports, so locale routing there needs its own mechanism.
 
 ## Follow-up work
+
+Four implementation tickets (A–D) were drafted on the spike ticket ahead of this write-up, generated from the same generic draft. They map onto this plan as: A → 2, B → 3, C → 4, D → 6. Two steps below have no counterpart there — phase 1, which delivers the main user-visible win on its own, and the test migration, which is not optional given how thoroughly the current mechanism is encoded in tests. Where a drafted ticket's acceptance criteria conflict with this ADR, the deviations table above gives the reason.
 
 In order:
 
