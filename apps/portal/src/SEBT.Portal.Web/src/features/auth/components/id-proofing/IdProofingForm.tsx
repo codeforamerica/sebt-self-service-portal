@@ -46,6 +46,11 @@ export interface IdOption {
   helperKey?: string
   /** i18next key for the text input label shown when this option is selected */
   inputLabelKey?: string
+  /**
+   * i18next key for hint text under the text input. Rendered only once the key exists, so a row
+   * that has not landed in the content sheet shows no hint rather than the raw key.
+   */
+  inputHelperKey?: string
   /** Render a horizontal rule above this option to visually separate it from preceding options. */
   dividerBefore?: boolean
   /**
@@ -70,6 +75,11 @@ function matchesDigitRule(value: string, rule: IdOptionValidation): boolean {
 
 interface IdProofingFormProps {
   idOptions: IdOption[]
+  /**
+   * When present, the form first asks "Do you receive SNAP or TANF?". "Yes" asks only for this
+   * option's number; "No" opens `idOptions`. When absent, `idOptions` show straight away.
+   */
+  snapTanfOption?: IdOption
   contactLink: string
   getDiToken?: () => Promise<string | null>
 }
@@ -89,7 +99,12 @@ function getLocalizedMonths(locale: string) {
   }))
 }
 
-export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofingFormProps) {
+export function IdProofingForm({
+  idOptions,
+  snapTanfOption,
+  contactLink,
+  getDiToken
+}: IdProofingFormProps) {
   const router = useRouter()
   const { t, i18n } = useTranslation('idProofing')
   const { t: tCommon } = useTranslation('common')
@@ -104,6 +119,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const [dobMonth, setDobMonth] = useState('')
   const [dobDay, setDobDay] = useState('')
   const [dobYear, setDobYear] = useState('')
+  const [snapTanfAnswer, setSnapTanfAnswer] = useState<'yes' | 'no' | null>(null)
   const [selectedIdType, setSelectedIdType] = useState<IdOptionValue | null>(null)
   const [idValue, setIdValue] = useState('')
 
@@ -128,8 +144,23 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
   const { session } = useAuth()
   const isCoLoaded = session?.isCoLoaded === true
 
-  const selectedOption = idOptions.find((opt) => opt.value === selectedIdType)
-  const showIdValueInput = selectedIdType !== null && selectedIdType !== NONE_VALUE
+  const answeredYes = snapTanfOption !== undefined && snapTanfAnswer === 'yes'
+  const showIdOptions = snapTanfOption === undefined || snapTanfAnswer === 'no'
+  // The SNAP/TANF question design makes the ID choice optional. Without the question, an ID
+  // choice stays required, with "None of the above" as the explicit opt-out.
+  const idChoiceOptional = snapTanfOption !== undefined
+  const selectedOption = answeredYes
+    ? snapTanfOption
+    : idOptions.find((opt) => opt.value === selectedIdType)
+  const showIdValueInput = selectedOption !== undefined && selectedOption.value !== NONE_VALUE
+  // Every ID is optional. "Yes" has no "None of the above" to fall back on, so a blank case
+  // number submits as no ID; a chosen SSN or ITIN still needs its number.
+  const idTypeToSubmit: IdType | null =
+    selectedOption !== undefined &&
+    selectedOption.value !== NONE_VALUE &&
+    (!answeredYes || idValue.trim() !== '')
+      ? selectedOption.value
+      : null
 
   const REQUIRED_FIELD_ERROR: Msg = { ns: 'validation', key: 'required' }
   const SSN_ITIN_SHAPE_ERROR: Msg = { ns: 'validation', key: 'ssn' }
@@ -162,12 +193,12 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
     if (!dobYear) newDobErrors.year = REQUIRED_FIELD_ERROR
 
     let idTypeErr: Msg | null = null
-    if (selectedIdType === null) {
+    if (!idChoiceOptional && selectedIdType === null) {
       idTypeErr = REQUIRED_FIELD_ERROR
     }
 
     let idError: Msg | null = null
-    if (showIdValueInput && !idValue.trim()) {
+    if (showIdValueInput && !answeredYes && !idValue.trim()) {
       idError = REQUIRED_FIELD_ERROR
     }
 
@@ -181,8 +212,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
     if (allRequiredFilled) {
       const parsed = SubmitIdProofingRequestSchema.safeParse({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
-        idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
-        idValue: showIdValueInput ? idValue : null
+        idType: idTypeToSubmit,
+        idValue: idTypeToSubmit === null ? null : idValue
       })
 
       if (!parsed.success) {
@@ -194,7 +225,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
             // any single field. Surface at the fieldset level so we don't
             // mark an individual input invalid that's actually fine.
             newDobFieldsetError = DOB_INVALID_ERROR
-          } else if (path === 'idValue' && showIdValueInput) {
+          } else if (path === 'idValue' && idTypeToSubmit !== null) {
             idError = SSN_ITIN_SHAPE_ERROR
           }
         }
@@ -204,7 +235,7 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
       // SSN/ITIN (federal, state-agnostic); other ID types carry their own
       // rule on the IdOption. Run this after schema parsing so schema-level
       // errors win when both apply.
-      if (idError === null && showIdValueInput && selectedOption?.validation) {
+      if (idError === null && idTypeToSubmit !== null && selectedOption?.validation) {
         if (!matchesDigitRule(idValue, selectedOption.validation)) {
           idError = digitRuleErrorMessage(selectedOption.validation)
         }
@@ -239,9 +270,8 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
 
       const response = await submitIdProofing.mutateAsync({
         dateOfBirth: { month: dobMonth, day: dobDay, year: dobYear },
-        // Map the UI "none" sentinel to null for the API
-        idType: selectedIdType === NONE_VALUE || selectedIdType === null ? null : selectedIdType,
-        idValue: showIdValueInput ? idValue.trim() : null,
+        idType: idTypeToSubmit,
+        idValue: idTypeToSubmit === null ? null : idValue.trim(),
         diSessionToken
       })
 
@@ -261,11 +291,14 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         if (response.offboardingReason === 'noQualifyingHousehold') {
           setPageData('idv_primary_reason', 'no_qualifying_household')
         } else {
-          // Co-loaded users reach "failed" only via SNAP/TANF + DOB mismatch (no Socure),
-          // or when the backend classified the household as co-loaded-only.
+          // Co-loaded users, and anyone who submitted a SNAP/TANF case number, reach "failed" only via
+          // SNAP/TANF + DOB mismatch (no Socure), or when the backend classified the household as
+          // co-loaded-only. A "Yes" with a blank case number submits no ID and can still fail in Socure.
           setPageData(
             'idv_primary_reason',
-            isCoLoaded || response.offboardingReason === 'coLoadedOnly'
+            isCoLoaded ||
+              (answeredYes && idTypeToSubmit !== null) ||
+              response.offboardingReason === 'coLoadedOnly'
               ? 'not_found'
               : 'socure_fail'
           )
@@ -463,11 +496,53 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
         </div>
       </fieldset>
 
-      {/* ID type selection */}
-      <fieldset className="usa-fieldset margin-top-3">
+      {/* SNAP/TANF question */}
+      {snapTanfOption && (
+        <fieldset className="usa-fieldset margin-top-3">
+          <legend className="usa-legend">{t('labelSnapOrTanf')}</legend>
+
+          {(['yes', 'no'] as const).map((answer) => (
+            <div
+              key={answer}
+              className="margin-top-2"
+            >
+              <div className="usa-radio">
+                <input
+                  className="usa-radio__input usa-radio__input--tile"
+                  type="radio"
+                  id={`${formId}-snap-tanf-${answer}`}
+                  name="snapTanfAnswer"
+                  value={answer}
+                  checked={snapTanfAnswer === answer}
+                  onChange={() => {
+                    // Each answer asks for a different ID, so nothing entered under one carries over.
+                    setSnapTanfAnswer(answer)
+                    setSelectedIdType(null)
+                    setIdValue('')
+                    setIdValueError(null)
+                  }}
+                />
+                <label
+                  className="usa-radio__label"
+                  htmlFor={`${formId}-snap-tanf-${answer}`}
+                >
+                  <span className="text-bold">{tCommon(answer)}</span>
+                </label>
+              </div>
+            </div>
+          ))}
+        </fieldset>
+      )}
+
+      {/* ID type selection. With the SNAP/TANF question, hidden until "No" is answered; the
+          hidden attribute also takes it out of the accessibility tree. */}
+      <fieldset
+        className="usa-fieldset margin-top-3"
+        hidden={!showIdOptions}
+      >
         <legend className="usa-legend">
           {t('labelId')}
-          <span className="text-secondary-dark"> *</span>
+          {!idChoiceOptional && <span className="text-secondary-dark"> *</span>}
         </legend>
 
         {idTypeError && (
@@ -537,7 +612,11 @@ export function IdProofingForm({ idOptions, contactLink, getDiToken }: IdProofin
               setIdValue(next)
             }}
             autoComplete="off"
-            isRequired
+            isRequired={!answeredYes}
+            {...(selectedOption.inputHelperKey &&
+            i18n.exists(`idProofing:${selectedOption.inputHelperKey}`)
+              ? { hint: t(selectedOption.inputHelperKey) }
+              : {})}
             {...(selectedOption?.validation
               ? {
                   inputMode: 'numeric' as const,
