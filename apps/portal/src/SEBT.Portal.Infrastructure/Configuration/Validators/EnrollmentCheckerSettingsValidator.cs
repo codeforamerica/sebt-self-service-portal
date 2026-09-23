@@ -16,6 +16,11 @@ public class EnrollmentCheckerSettingsValidator : IValidateOptions<EnrollmentChe
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, EnrollmentCheckerSettings options)
     {
+        if (options is null)
+        {
+            return ValidateOptionsResult.Fail("EnrollmentChecker configuration section is not present.");
+        }
+
         var income = options.IncomeEligibility;
         var problems = new List<string>();
 

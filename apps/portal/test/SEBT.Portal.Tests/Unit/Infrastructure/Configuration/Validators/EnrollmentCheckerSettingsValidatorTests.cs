@@ -17,6 +17,15 @@ public class EnrollmentCheckerSettingsValidatorTests
         Assert.True(result.Succeeded);
     }
 
+    [Fact]
+    public void Validate_NullSettings_Fails()
+    {
+        var result = _validator.Validate(null, null!);
+
+        Assert.True(result.Failed);
+        Assert.Contains("EnrollmentChecker configuration section is not present", result.FailureMessage);
+    }
+
     // The figures appsettings.dc.example.json ships.
     [Fact]
     public void Validate_ConfiguredIncomeEligibility_Succeeds()

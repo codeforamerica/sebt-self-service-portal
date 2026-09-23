@@ -20,6 +20,15 @@ public class RedisSettingsValidatorTests
     }
 
     [Fact]
+    public void Validate_NullSettings_Fails()
+    {
+        var result = Validator(Environments.Development).Validate(null, null!);
+
+        Assert.True(result.Failed);
+        Assert.Contains("Redis configuration section is not present", result.FailureMessage);
+    }
+
+    [Fact]
     public void Validate_ElasticacheShapedSettings_InProduction_Succeeds()
     {
         var settings = new RedisSettings

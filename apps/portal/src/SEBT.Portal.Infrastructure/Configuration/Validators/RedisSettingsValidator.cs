@@ -21,6 +21,11 @@ public class RedisSettingsValidator(IHostEnvironment environment) : IValidateOpt
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, RedisSettings options)
     {
+        if (options is null)
+        {
+            return ValidateOptionsResult.Fail("Redis configuration section is not present.");
+        }
+
         if (!options.IsConfigured)
         {
             return ValidateOptionsResult.Success;
