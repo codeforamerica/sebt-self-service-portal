@@ -36,6 +36,16 @@ function provision(): Promise<HouseholdSourceCapability> {
           value: "co",
           why: "Tells the seed which state to make households for.",
         },
+        // appsettings.co.example.json sets Phone, and the base appsettings.json sets
+        // Email. Email cannot resolve after an OIDC login, because that login stores a
+        // user with no email and HouseholdIdentifierResolver reads an email from the user
+        // record alone. Phone comes from the token, and the fixture users of the realm
+        // carry the phones of the co-loaded and co-active mock households.
+        {
+          key: "StateHouseholdId__PreferredHouseholdIdTypes__0",
+          value: "Phone",
+          why: "The key that the portal looks a household up by. Only Phone resolves for a user who signed in through OIDC.",
+        },
       ],
       // Nothing to wait for. The mock data is in the process of the API.
       waits: [],
@@ -46,7 +56,7 @@ function provision(): Promise<HouseholdSourceCapability> {
 export const coMockCbms: HouseholdSourceProvider = {
   name: "mock CBMS, in the process of the API",
   dataHint:
-    "Households come from MockHouseholdRepository.SeedMockData; the sign-in capability sets the email pattern that connects them to the users of the realm.",
+    "Households come from MockHouseholdRepository.SeedMockData; the phone claim of a user of the realm selects one of them.",
   // No resource and no file. Thus there is no obligation on the host machine. This list
   // is empty by design, and not by omission.
   preflight: () => [],
