@@ -92,6 +92,25 @@ async function provision({
           value: checkEligibilityProcedure,
           why: "Does a check of the eligibility of a child.",
         },
+        // The 2 settings below connect the users of the portal to the rows of DcSource.
+        // The seed scripts put addresses of this shape in PortalID, and
+        // GetHouseholdByGuardian matches PortalID against the email of the person who
+        // signed in. The default pattern is {0}@example.com, so without these the portal
+        // has no user that any row names, and each household comes back empty.
+        //
+        // Seeding__State also decides whether DatabaseSeeder makes the DC scenarios at
+        // all, and those are the users whose id proofing is complete. The stored
+        // procedure matches an email only when isIdentityProofed is 1.
+        {
+          key: "Seeding__EmailPattern",
+          value: "sebt.dc+{0}@codeforamerica.org",
+          why: "Makes the seeded users have the addresses that the PortalID of a DcSource row holds.",
+        },
+        {
+          key: "Seeding__State",
+          value: "dc",
+          why: "Tells the seed which state to make users for. The DC scenarios exist only under this value.",
+        },
       ],
       // The API starts after the data lands. Otherwise the first request reads an empty
       // table, which looks like a household that does not exist.
