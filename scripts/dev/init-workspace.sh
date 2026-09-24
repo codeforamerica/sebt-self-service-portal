@@ -97,11 +97,13 @@ Options:
                         installs the JavaScript dependencies, and builds the
                         solution, and it stops at the first tool it needs and
                         does not have.
-      --system-certs    Trust the operating system certificate store for Node
-                        and pnpm. Use this behind a firewall that inspects TLS.
-      --ca-bundle FILE  Also trust an explicit PEM bundle. Implies
-                        --system-certs. Use this when the proxy root
-                        certificate is a file rather than a keychain entry.
+      --system-certs    Behind a firewall that inspects TLS, use this one flag.
+                        It points git, Node, pnpm, curl, and .NET at the trust
+                        store your machine already has.
+      --ca-bundle FILE  Use an explicit PEM bundle rather than the system trust
+                        store. Implies --system-certs. Reach for this only when
+                        the proxy root is a file that was never added to the
+                        store.
   -h, --help            Show this message.
 
 Environment:
@@ -228,26 +230,77 @@ major_of() {
     printf '%s' "$1" | tr -cd '0-9.\n' | cut -d. -f1
 }
 
+# Writes the operating system trust store to a PEM file and prints its path.
+# git, curl, and .NET each read a bundle rather than the store, so a proxy root
+# that lives only in the store is invisible to all 3. Node is the exception,
+# because --use-system-ca reads the store directly.
+system_root_bundle() {
+    local out candidate
+
+    case "$(uname -s)" in
+        Darwin)
+            out=$(mktemp -d)
+            CLEANUP_DIRS+=("$out")
+            out="$out/system-roots.pem"
+
+            # The first keychain holds the Apple roots. The second holds what an
+            # administrator added, which is where a proxy root lands, so the
+            # bundle needs both or it trusts the proxy and nothing else.
+            security find-certificate -a -p \
+                /System/Library/Keychains/SystemRootCertificates.keychain \
+                > "$out" 2>/dev/null || return 1
+            security find-certificate -a -p /Library/Keychains/System.keychain \
+                >> "$out" 2>/dev/null || true
+
+            grep -q "BEGIN CERTIFICATE" "$out" || return 1
+            printf '%s' "$out"
+            ;;
+        Linux)
+            # The platform already keeps one, and a proxy root added the
+            # supported way is in it.
+            for candidate in /etc/ssl/certs/ca-certificates.crt \
+                             /etc/pki/tls/certs/ca-bundle.crt \
+                             /etc/ssl/ca-bundle.pem; do
+                [ -f "$candidate" ] || continue
+                printf '%s' "$candidate"
+                return 0
+            done
+            return 1
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+# One flag covers the whole situation behind a TLS-inspecting proxy. Work out
+# what that means for each tool here, rather than asking a developer to know
+# which tool reads which store.
 apply_cert_policy() {
     [ "$SYSTEM_CERTS" -eq 1 ] || return 0
 
     step "Trusting the system certificate store"
 
-    # Node reads its own bundle by default, so a proxy root in the keychain is
-    # invisible to it and to pnpm. This is the supported opt in, and it keeps
-    # verification on. Never reach for strict-ssl=false here.
+    # This is the supported opt in for Node, and it keeps verification on.
+    # Never reach for strict-ssl=false here.
     export NODE_OPTIONS="${NODE_OPTIONS:-} --use-system-ca"
     info "Node and pnpm now read the operating system trust store."
 
     if [ -n "$CA_BUNDLE" ]; then
         [ -f "$CA_BUNDLE" ] || fail "CA bundle '$CA_BUNDLE' not found."
+    elif CA_BUNDLE=$(system_root_bundle); then
+        info "Read the operating system roots into a bundle for this run."
+    else
+        CA_BUNDLE=""
+        notice "Could not read the operating system trust store, so git, curl, and .NET keep their own bundles. If a clone fails on a certificate, pass --ca-bundle <file>."
+    fi
+
+    if [ -n "$CA_BUNDLE" ]; then
         # One file, four consumers: Node adds it to its own bundle, OpenSSL
         # covers .NET on Linux, and curl and git each read their own variable.
         export NODE_EXTRA_CA_CERTS="$CA_BUNDLE"
         export SSL_CERT_FILE="$CA_BUNDLE"
         export CURL_CA_BUNDLE="$CA_BUNDLE"
         export GIT_SSL_CAINFO="$CA_BUNDLE"
-        info "Added $CA_BUNDLE for Node, .NET, curl, and git."
+        info "git, curl, and .NET now read $CA_BUNDLE."
     fi
 }
 
@@ -879,7 +932,15 @@ else
 fi
 clone_repo "$portal_url" "$PORTAL" "The portal" ||
     fail "Could not clone the portal from $portal_url.
-Behind a TLS-inspecting proxy, re-run with --system-certs. For a private fork, re-run with --ssh."
+
+Git printed the reason above this message.
+
+  A certificate complaint means a proxy is inspecting TLS. Re-run with
+  --system-certs, which points git, curl, .NET, and Node at the trust store
+  your machine already has.
+
+  An authentication complaint means HTTPS access is the problem. Re-run with
+  --ssh to clone over SSH instead."
 
 # Every version below comes out of the checkout above, so nothing here runs
 # before the clone.

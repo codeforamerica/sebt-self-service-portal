@@ -51,12 +51,13 @@
     and does not have.
 
 .PARAMETER SystemCerts
-    Trust the operating system certificate store for Node and pnpm. Use this behind
-    a firewall that inspects TLS.
+    Behind a firewall that inspects TLS, use this one flag. It points git, Node,
+    pnpm, and .NET at the Windows certificate store your machine already has.
 
 .PARAMETER CaBundle
-    Also trust an explicit PEM bundle. Implies -SystemCerts. Use this when the proxy
-    root certificate is a file rather than a certificate store entry.
+    Use an explicit PEM bundle rather than the certificate store. Implies
+    -SystemCerts. Reach for this only when the proxy root is a file that was never
+    added to the store.
 
 .EXAMPLE
     .\init-workspace.ps1
@@ -309,6 +310,17 @@ function Set-CertificatePolicy {
     # in, and it keeps verification on. Never reach for strict-ssl=false here.
     $env:NODE_OPTIONS = ($env:NODE_OPTIONS, '--use-system-ca' | Where-Object { $_ }) -join ' '
     Write-Info 'Node and pnpm now read the operating system trust store.'
+
+    # Git needs telling separately, and it is the first thing that reaches the
+    # network here, so a clone fails before Node ever runs. The schannel backend
+    # is what makes git read the Windows certificate store, where a corporate
+    # proxy root already lives. These variables configure the git processes this
+    # script starts and leave the developer's own git config alone. They need
+    # git 2.31 or later, which every supported Git for Windows has.
+    $env:GIT_CONFIG_COUNT = '1'
+    $env:GIT_CONFIG_KEY_0 = 'http.sslBackend'
+    $env:GIT_CONFIG_VALUE_0 = 'schannel'
+    Write-Info 'Git now reads the Windows certificate store, for this run only.'
 
     if ($CaBundle) {
         if (-not (Test-Path -LiteralPath $CaBundle)) {
@@ -967,7 +979,15 @@ Write-Step 'Cloning the portal'
 if (-not (Copy-Repository $PortalRepo $Portal 'The portal')) {
     Stop-WithError @"
 Could not clone the portal from $PortalRepo.
-Behind a TLS-inspecting proxy, re-run with -SystemCerts. For a private fork, re-run with -Ssh.
+
+Git printed the reason above this message.
+
+  A certificate complaint means a proxy is inspecting TLS. Re-run with
+  -SystemCerts, which points git, Node, and .NET at the Windows certificate
+  store your machine already has.
+
+  An authentication complaint means HTTPS access is the problem. Re-run with
+  -Ssh to clone over SSH instead.
 "@
 }
 

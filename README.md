@@ -133,9 +133,12 @@ alone.
 
 `--yes` takes every offer without asking, for an unattended run. `--check-only` declines
 every offer, which is the way to see what a machine is missing. `--ssh` clones over SSH.
-Behind a firewall that inspects TLS, add `--system-certs` so Node and pnpm read the
-operating system trust store, and `--ca-bundle <file>` when the proxy root certificate is
-a file rather than a keychain entry. Run the script with `--help` for the rest.
+
+Behind a firewall that inspects TLS, add `--system-certs`. That one flag is the whole
+answer: git, Node, pnpm, curl, and .NET each read a different trust store, and the script
+points all of them at the one your machine already has. Reach for `--ca-bundle <file>`
+only when the proxy root is a file that was never added to that store. Run the script with
+`--help` for the rest.
 
 The DC connector is a private repository. Without access to it the script carries on and
 leaves you a CO-only workspace, and the summary says so.
