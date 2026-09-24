@@ -32,7 +32,7 @@ We'll be immediately including the changes tied to branch `spike/DC-513-oidc-pro
 - Docker Compose service behind a `keycloak` profile, using insecure `start-dev` defaults.  This isn't planned for any production use, so this should be OK.
 - Versioned realm import from `docker/keycloak/sebt-realm.json` (clients, fixture users, protocol mappers) that'll we can update as we add additional seeded users.
 - Optional local theme under `docker/keycloak/themes/sebt` so the login UI is obviously not myColorado
-- Portal overlay documented in `appsettings.keycloak.example.json` and [docs/development/keycloak-oidc.md](../development/keycloak-oidc.md)
+- Portal overlay documented in `appsettings.keycloak.example.json` and [docs/development/keycloak-oidc.md](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/development/keycloak-oidc.md)
 - Two clients will be supported:
   - `sebt-portal` for normal login
   - `sebt-portal-stepup` for IAL elevation, emitting Socure-shaped verification claims when present on the user
@@ -85,7 +85,7 @@ Highest fidelity to myColorado, but keeps the MFA, account, and non-determinism 
 ## References
 
 - DC-513 (OIDC provider spike)
-- [docs/development/keycloak-oidc.md](../development/keycloak-oidc.md)
+- [docs/development/keycloak-oidc.md](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/development/keycloak-oidc.md)
 - `compose.yaml` (`keycloak` profile)
 - `docker/keycloak/sebt-realm.json`
 - `apps/portal/src/SEBT.Portal.Api/appsettings.keycloak.example.json`

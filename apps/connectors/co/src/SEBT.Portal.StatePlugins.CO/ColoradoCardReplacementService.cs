@@ -14,7 +14,7 @@ namespace SEBT.Portal.StatePlugins.CO;
 
 /// <summary>
 /// Colorado card-replacement via CBMS <c>update-std-dtls</c> with <c>reqNewCard = "Y"</c>.
-/// Resolves the household via <see cref="ICbmsHouseholdCache"/> using <see cref="PhoneNormalizer"/> on
+/// Resolves the household via <see cref="Cbms.Cache.ICbmsHouseholdCache"/> using <see cref="PhoneNormalizer"/> on
 /// <see cref="CardReplacementRequest.HouseholdIdentifierValue"/>, filters enrollment rows to
 /// those whose <c>sebtChldCwin</c> matches the requested <see cref="CardReplacementRequest.CaseRefs"/>,
 /// then sends a single PATCH with one array element per matched student. The portal's
@@ -232,7 +232,7 @@ public class ColoradoCardReplacementService : ColoradoCbmsServiceBase, ICardRepl
     /// <summary>
     /// Overrides the base <see cref="ColoradoCbmsServiceBase.GetOrCreateClient"/> when a test HTTP handler
     /// has been injected via the internal constructor. This preserves the test seam for the PATCH path
-    /// while the read path is served by the <see cref="PluginCache"/> substitute.
+    /// while the read path is served by the <see cref="Cbms.Cache.PluginCache"/> substitute.
     /// In production (where <see cref="_testHttpMessageHandler"/> is null) the base implementation is used.
     /// </summary>
     protected new CbmsSebtApiClient GetOrCreateClient(CbmsConnectionOptions options)

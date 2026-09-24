@@ -18,7 +18,7 @@ public class GetHouseholdDataQuery : IQuery<Core.Models.Household.HouseholdData>
 
     /// <summary>
     /// When false, state connectors that support it (CO CBMS) skip the FIS card lookup.
-    /// Honored only when <see cref="FeatureFlags.DeferEbtCardDataLoading"/> is enabled.
+    /// Honored only when <see cref="Core.AppSettings.FeatureFlags.DeferEbtCardDataLoading"/> is enabled.
     /// </summary>
     public bool IncludeCardDetails { get; init; } = true;
 }

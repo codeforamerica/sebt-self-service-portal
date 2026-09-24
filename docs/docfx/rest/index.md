@@ -38,7 +38,13 @@ below renders, for use with a client generator, an editor, or a request tool.
 
 <!-- The wrapping div is load-bearing. `rapi-doc` is not a tag markdig recognizes, so an
      unwrapped element whose open tag spans several lines is escaped into a paragraph rather
-     than passed through as raw HTML. A known block-level tag around it keeps the block raw. -->
+     than passed through as raw HTML. A known block-level tag around it keeps the block raw.
+
+     `load-fonts="false"` is required, not an optimization. RapiDoc defaults to injecting a
+     Google Fonts stylesheet for Open Sans and Roboto Mono, which it then does not use here
+     because `regular-font`/`mono-font` below pin the same system stack the rest of the site
+     uses. Left on, this page is the only one that makes a third-party request, and it fails
+     outright wherever fonts.gstatic.com is unreachable. -->
 <div class="rest-reference">
 <rapi-doc
   spec-url="portal.openapi.json"
@@ -55,6 +61,7 @@ below renders, for use with a client generator, an editor, or a request tool.
   schema-description-expanded="true"
   default-schema-tab="schema"
   font-size="large"
+  load-fonts="false"
   regular-font="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
   mono-font="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace"
 ></rapi-doc>
@@ -97,7 +104,14 @@ below renders, for use with a client generator, an editor, or a request tool.
       // `/api/household/address` down to a few characters per line. Pinning the path to its
       // content width and breaking it normally gives the summary the leftover space instead.
       '.endpoint-head .path { flex: 0 0 auto !important; word-break: normal !important; }',
-      '.endpoint-head .descr { flex: 1 1 auto !important; }',
+      // The summary is the only prose on a collapsed row, and RapiDoc renders it a step below
+      // its own regular size, which lands it well under the site's body text. Several of these
+      // summaries run to a paragraph, so they are read rather than glanced at. `word-break` is
+      // the same override the path needs: RapiDoc sets `break-all` on the row, which hyphenless
+      // splits every line of prose mid-word.
+      '.endpoint-head .descr { flex: 1 1 auto !important;' +
+        ' font-size: var(--font-size-regular) !important; line-height: 1.5 !important;' +
+        ' word-break: normal !important; overflow-wrap: break-word !important; }',
     ].join('');
 
     function applyTheme(el) {

@@ -11,7 +11,7 @@ public interface ISelfServiceEvaluator
     /// <summary>
     /// Evaluates which self-service actions are permitted for a single case.
     /// Uses the case's own <see cref="SummerEbtCase.IssuanceType"/> and
-    /// <see cref="SummerEbtCase.CardStatus"/>. Per James's 4.3.26 guidance,
+    /// <see cref="SummerEbtCase.EbtCardStatus"/>. Per James's 4.3.26 guidance,
     /// self-service actions are case-scoped, not household-scoped.
     /// </summary>
     AllowedActions Evaluate(SummerEbtCase summerEbtCase);
