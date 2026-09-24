@@ -41,7 +41,9 @@
 
 .PARAMETER Branch
     Clone this branch of the portal rather than the default one. Use this to set
-    up from a branch whose changes have not merged yet.
+    up from a branch whose changes have not merged yet. It applies to the portal
+    only. The DC connector is a separate repository and always comes from its
+    default branch.
 
 .PARAMETER Ssh
     Clone over SSH instead of HTTPS.
@@ -388,56 +390,59 @@ Install it and run this script again:
 # branch happened to be there. That is how a developer ends up on main
 # wondering where the AppHost went.
 function Confirm-Branch {
-    param([string] $Directory, [string] $Label)
+    param([string] $Directory, [string] $Label, [string] $BranchName)
 
-    if (-not $Branch) { return }
+    if (-not $BranchName) { return }
 
     $current = Get-CommandOutput 'git' @('-C', $Directory, 'rev-parse', '--abbrev-ref', 'HEAD')
-    if ($current -eq $Branch) {
-        Write-Info "$Label is on $Branch."
+    if ($current -eq $BranchName) {
+        Write-Info "$Label is on $BranchName."
         return
     }
 
     $shown = if ($current) { $current } else { 'an unknown branch' }
-    Write-Notice "$Label is on $shown, and -Branch asked for $Branch."
-    if (Confirm-Action "Switch $Label to ${Branch}?") {
+    Write-Notice "$Label is on $shown, and -Branch asked for $BranchName."
+    if (Confirm-Action "Switch $Label to ${BranchName}?") {
         # The refspec is explicit because a clone made with --depth or
         # --single-branch tracks one branch only, and a bare fetch of the branch
         # name then leaves nothing for checkout to resolve.
-        $refspec = "${Branch}:refs/remotes/origin/$Branch"
+        $refspec = "${BranchName}:refs/remotes/origin/$BranchName"
         if (-not (Invoke-NativeStatus 'git' ($script:GitExtraArgs + @('-C', $Directory, 'fetch', 'origin', $refspec)))) {
             Stop-WithError @"
-Could not fetch $Branch into $Directory.
+Could not fetch $BranchName into $Directory.
 Fetch it by hand and run this script again.
 "@
         }
 
         # The first form moves to a local branch that already exists. The second
         # creates one that follows the remote.
-        $checked = Test-NativeSuccess 'git' @('-C', $Directory, 'checkout', $Branch)
+        $checked = Test-NativeSuccess 'git' @('-C', $Directory, 'checkout', $BranchName)
         if (-not $checked) {
-            $checked = Invoke-NativeStatus 'git' @('-C', $Directory, 'checkout', '-b', $Branch, '--track', "origin/$Branch")
+            $checked = Invoke-NativeStatus 'git' @('-C', $Directory, 'checkout', '-b', $BranchName, '--track', "origin/$BranchName")
         }
         if (-not $checked) {
             Stop-WithError @"
-Fetched $Branch, and could not check it out in $Directory.
+Fetched $BranchName, and could not check it out in $Directory.
 Check for local changes in the way, then run this script again.
 "@
         }
 
-        Write-Info "$Label is now on $Branch."
+        Write-Info "$Label is now on $BranchName."
         return
     }
 
     Write-Notice "Staying on $shown. Every version this script reads comes from there."
 }
 
+# The branch is a parameter and not the script-level one, because it applies to
+# the portal alone. The DC connector is a different repository with its own
+# branches, and a portal branch name means nothing there.
 function Copy-Repository {
-    param([string] $Url, [string] $Directory, [string] $Label)
+    param([string] $Url, [string] $Directory, [string] $Label, [string] $BranchName)
 
     if (Test-Path -LiteralPath (Join-Path $Directory '.git')) {
         Write-Info "$Label is already cloned at $Directory."
-        Confirm-Branch $Directory $Label
+        Confirm-Branch $Directory $Label $BranchName
         return $true
     }
 
@@ -446,7 +451,7 @@ function Copy-Repository {
     # every line can be shown now and kept for the failure message, which would
     # otherwise have to guess at the cause. A guess sent a developer after the
     # wrong problem once.
-    if (Invoke-Clone $Url $Directory) { return $true }
+    if (Invoke-Clone $Url $Directory $BranchName) { return $true }
 
     # A certificate complaint almost always means a proxy is inspecting TLS, and
     # the fix is the one -SystemCerts applies. Applying it here too means the
@@ -464,7 +469,7 @@ function Copy-Repository {
             Remove-Item -LiteralPath $Directory -Force
         }
 
-        if (Invoke-Clone $Url $Directory) {
+        if (Invoke-Clone $Url $Directory $BranchName) {
             Write-Info 'That worked. The rest of this run uses the certificate store too.'
             return $true
         }
@@ -497,13 +502,13 @@ function Test-CertificateComplaint {
 }
 
 function Invoke-Clone {
-    param([string] $Url, [string] $Directory)
+    param([string] $Url, [string] $Directory, [string] $BranchName)
 
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
         $arguments = $script:GitExtraArgs + @('clone')
-        if ($Branch) { $arguments += @('--branch', $Branch) }
+        if ($BranchName) { $arguments += @('--branch', $BranchName) }
         $arguments += @($Url, $Directory)
         $lines = & git @arguments 2>&1 | ForEach-Object {
             $text = $_.ToString()
@@ -1169,7 +1174,7 @@ Write-Step "Preparing the workspace at $WorkspaceRoot"
 New-Item -ItemType Directory -Force -Path $WorkspaceRoot | Out-Null
 
 Write-Step 'Cloning the portal'
-if (-not (Copy-Repository $PortalRepo $Portal 'The portal')) {
+if (-not (Copy-Repository $PortalRepo $Portal 'The portal' $Branch)) {
     $said = ($script:CloneOutput -split "`n" | ForEach-Object { "  $($_.TrimEnd())" }) -join "`n"
 
     # Never advise a step this run already took. The retry above turns the

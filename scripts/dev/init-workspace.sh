@@ -95,7 +95,9 @@ Options:
                         otherwise.
       --branch NAME     Clone this branch of the portal rather than the
                         default one. Use this to set up from a branch whose
-                        changes have not merged yet.
+                        changes have not merged yet. It applies to the portal
+                        only. The DC connector is a separate repository and
+                        always comes from its default branch.
       --ssh             Clone over SSH instead of HTTPS.
   -y, --yes             Accept every install offer without asking. Use this for
                         an unattended run.
@@ -348,7 +350,7 @@ Install it and run this script again:
 CLONE_OUTPUT=""
 
 run_clone() {
-    local url="$1" dir="$2" log status
+    local url="$1" dir="$2" branch="${3:-}" log status
 
     log=$(mktemp -d)
     CLEANUP_DIRS+=("$log")
@@ -356,8 +358,8 @@ run_clone() {
 
     # tee keeps the progress on screen and a copy for the message below.
     # PIPESTATUS is git's own exit code, not tee's.
-    if [ -n "$BRANCH" ]; then
-        git clone --branch "$BRANCH" "$url" "$dir" 2>&1 | tee "$log"
+    if [ -n "$branch" ]; then
+        git clone --branch "$branch" "$url" "$dir" 2>&1 | tee "$log"
     else
         git clone "$url" "$dir" 2>&1 | tee "$log"
     fi
@@ -391,49 +393,52 @@ is_certificate_complaint() {
 # branch happened to be there. That is how a developer ends up on main
 # wondering where the AppHost went.
 ensure_branch() {
-    local dir="$1" label="$2" current
+    local dir="$1" label="$2" branch="${3:-}" current
 
-    [ -n "$BRANCH" ] || return 0
+    [ -n "$branch" ] || return 0
 
     current=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
-    if [ "$current" = "$BRANCH" ]; then
-        info "$label is on $BRANCH."
+    if [ "$current" = "$branch" ]; then
+        info "$label is on $branch."
         return 0
     fi
 
-    notice "$label is on ${current:-an unknown branch}, and --branch asked for $BRANCH."
-    if confirm "Switch $label to $BRANCH?"; then
+    notice "$label is on ${current:-an unknown branch}, and --branch asked for $branch."
+    if confirm "Switch $label to $branch?"; then
         # The refspec is explicit because a clone made with --depth or
         # --single-branch tracks one branch only, and a bare `fetch origin
         # <branch>` then leaves nothing for checkout to resolve.
-        git -C "$dir" fetch origin "$BRANCH:refs/remotes/origin/$BRANCH" ||
-            fail "Could not fetch $BRANCH into $dir.
+        git -C "$dir" fetch origin "$branch:refs/remotes/origin/$branch" ||
+            fail "Could not fetch $branch into $dir.
 Fetch it by hand and run this script again."
 
         # The first form moves to a local branch that already exists. The
         # second creates one that follows the remote.
-        git -C "$dir" checkout "$BRANCH" 2>/dev/null ||
-            git -C "$dir" checkout -b "$BRANCH" --track "origin/$BRANCH" ||
-            fail "Fetched $BRANCH, and could not check it out in $dir.
+        git -C "$dir" checkout "$branch" 2>/dev/null ||
+            git -C "$dir" checkout -b "$branch" --track "origin/$branch" ||
+            fail "Fetched $branch, and could not check it out in $dir.
 Check for local changes in the way, then run this script again."
 
-        info "$label is now on $BRANCH."
+        info "$label is now on $branch."
         return 0
     fi
 
     notice "Staying on ${current:-the current branch}. Every version this script reads comes from there."
 }
 
+# The branch is an argument and not the global, because it applies to the
+# portal alone. The DC connector is a different repository with its own
+# branches, and a portal branch name means nothing there.
 clone_repo() {
-    local url="$1" dir="$2" label="$3"
+    local url="$1" dir="$2" label="$3" branch="${4:-}"
 
     if [ -d "$dir/.git" ]; then
         info "$label is already cloned at $dir."
-        ensure_branch "$dir" "$label"
+        ensure_branch "$dir" "$label" "$branch"
         return 0
     fi
 
-    if run_clone "$url" "$dir"; then
+    if run_clone "$url" "$dir" "$branch"; then
         return 0
     fi
 
@@ -450,7 +455,7 @@ clone_repo() {
         # one left by anything else would stop the retry before it starts.
         rmdir "$dir" 2>/dev/null || true
 
-        if run_clone "$url" "$dir"; then
+        if run_clone "$url" "$dir" "$branch"; then
             info "That worked. The rest of this run uses the system trust store too."
             return 0
         fi
@@ -1105,7 +1110,7 @@ if [ "$USE_SSH" -eq 1 ]; then
 else
     portal_url="$PORTAL_REPO_HTTPS"
 fi
-if ! clone_repo "$portal_url" "$PORTAL" "The portal"; then
+if ! clone_repo "$portal_url" "$PORTAL" "The portal" "$BRANCH"; then
     # Never advise a step this run already took. The retry above turns
     # --system-certs on by itself, so by the time a certificate error reaches
     # here, the trust store has been tried and did not hold the root.
