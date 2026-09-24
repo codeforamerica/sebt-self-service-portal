@@ -86,13 +86,23 @@ jobs:
     permissions:
       contents: read
       actions: read
+      id-token: write
     steps:
+      - name: Fetch docs bot credentials from Doppler
+        uses: dopplerhq/secrets-fetch-action@451892f16195f9ac360e1a5bcbf0b5fd0e957534 # v2.0.0
+        id: doppler
+        with:
+          auth-method: oidc
+          doppler-identity-id: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
+          doppler-project: safety-net-sebt-self-service-portal
+          doppler-config: ci-cd
+
       - name: Get docs bot token
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: docs-token
         with:
-          app-id: ${{ secrets.DOCS_BOT_APP_ID }}
-          private-key: ${{ secrets.DOCS_BOT_APP_PRIVATE_KEY }}
+          app-id: ${{ steps.doppler.outputs.DOCS_BOT_APP_ID }}
+          private-key: ${{ steps.doppler.outputs.DOCS_BOT_APP_PRIVATE_KEY }}
           owner: codeforamerica
           repositories: sebt-self-service-portal
 
