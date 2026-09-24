@@ -384,11 +384,50 @@ is_certificate_complaint() {
     return 1
 }
 
+# An existing checkout is not cloned again, so --branch would otherwise be
+# ignored without a word, and the run would set itself up against whatever
+# branch happened to be there. That is how a developer ends up on main
+# wondering where the AppHost went.
+ensure_branch() {
+    local dir="$1" label="$2" current
+
+    [ -n "$BRANCH" ] || return 0
+
+    current=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+    if [ "$current" = "$BRANCH" ]; then
+        info "$label is on $BRANCH."
+        return 0
+    fi
+
+    notice "$label is on ${current:-an unknown branch}, and --branch asked for $BRANCH."
+    if confirm "Switch $label to $BRANCH?"; then
+        # The refspec is explicit because a clone made with --depth or
+        # --single-branch tracks one branch only, and a bare `fetch origin
+        # <branch>` then leaves nothing for checkout to resolve.
+        git -C "$dir" fetch origin "$BRANCH:refs/remotes/origin/$BRANCH" ||
+            fail "Could not fetch $BRANCH into $dir.
+Fetch it by hand and run this script again."
+
+        # The first form moves to a local branch that already exists. The
+        # second creates one that follows the remote.
+        git -C "$dir" checkout "$BRANCH" 2>/dev/null ||
+            git -C "$dir" checkout -b "$BRANCH" --track "origin/$BRANCH" ||
+            fail "Fetched $BRANCH, and could not check it out in $dir.
+Check for local changes in the way, then run this script again."
+
+        info "$label is now on $BRANCH."
+        return 0
+    fi
+
+    notice "Staying on ${current:-the current branch}. Every version this script reads comes from there."
+}
+
 clone_repo() {
     local url="$1" dir="$2" label="$3"
 
     if [ -d "$dir/.git" ]; then
         info "$label is already cloned at $dir."
+        ensure_branch "$dir" "$label"
         return 0
     fi
 
@@ -972,6 +1011,12 @@ summary() {
     printf '%s\n' "----------------------------------------------------------------------"
     printf 'Workspace ready: %s\n' "$WORKSPACE"
     printf '%s\n' "----------------------------------------------------------------------"
+    printf '\n'
+    # The branch decides which versions were read and whether there is an
+    # AppHost at all, so it belongs in the summary and not only in git.
+    printf 'Checkout\n'
+    printf '  Portal      %s on %s\n' "$PORTAL" \
+        "$(git -C "$PORTAL" rev-parse --abbrev-ref HEAD 2>/dev/null || printf 'an unknown branch')"
     printf '\n'
     printf 'Toolchain\n'
     printf '  Node        %s\n' "$(node --version)"

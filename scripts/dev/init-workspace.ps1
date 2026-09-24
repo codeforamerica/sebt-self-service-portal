@@ -381,11 +381,61 @@ Install it and run this script again:
     Write-Info (Get-CommandOutput 'git' @('--version'))
 }
 
+# An existing checkout is not cloned again, so -Branch would otherwise be
+# ignored without a word, and the run would set itself up against whatever
+# branch happened to be there. That is how a developer ends up on main
+# wondering where the AppHost went.
+function Confirm-Branch {
+    param([string] $Directory, [string] $Label)
+
+    if (-not $Branch) { return }
+
+    $current = Get-CommandOutput 'git' @('-C', $Directory, 'rev-parse', '--abbrev-ref', 'HEAD')
+    if ($current -eq $Branch) {
+        Write-Info "$Label is on $Branch."
+        return
+    }
+
+    $shown = if ($current) { $current } else { 'an unknown branch' }
+    Write-Notice "$Label is on $shown, and -Branch asked for $Branch."
+    if (Confirm-Action "Switch $Label to ${Branch}?") {
+        # The refspec is explicit because a clone made with --depth or
+        # --single-branch tracks one branch only, and a bare fetch of the branch
+        # name then leaves nothing for checkout to resolve.
+        $refspec = "${Branch}:refs/remotes/origin/$Branch"
+        if (-not (Invoke-NativeStatus 'git' ($script:GitExtraArgs + @('-C', $Directory, 'fetch', 'origin', $refspec)))) {
+            Stop-WithError @"
+Could not fetch $Branch into $Directory.
+Fetch it by hand and run this script again.
+"@
+        }
+
+        # The first form moves to a local branch that already exists. The second
+        # creates one that follows the remote.
+        $checked = Test-NativeSuccess 'git' @('-C', $Directory, 'checkout', $Branch)
+        if (-not $checked) {
+            $checked = Invoke-NativeStatus 'git' @('-C', $Directory, 'checkout', '-b', $Branch, '--track', "origin/$Branch")
+        }
+        if (-not $checked) {
+            Stop-WithError @"
+Fetched $Branch, and could not check it out in $Directory.
+Check for local changes in the way, then run this script again.
+"@
+        }
+
+        Write-Info "$Label is now on $Branch."
+        return
+    }
+
+    Write-Notice "Staying on $shown. Every version this script reads comes from there."
+}
+
 function Copy-Repository {
     param([string] $Url, [string] $Directory, [string] $Label)
 
     if (Test-Path -LiteralPath (Join-Path $Directory '.git')) {
         Write-Info "$Label is already cloned at $Directory."
+        Confirm-Branch $Directory $Label
         return $true
     }
 
@@ -1023,6 +1073,13 @@ function Write-Summary {
     Write-Host '----------------------------------------------------------------------'
     Write-Host "Workspace ready: $WorkspaceRoot"
     Write-Host '----------------------------------------------------------------------'
+    Write-Host ''
+    # The branch decides which versions were read and whether there is an
+    # AppHost at all, so it belongs in the summary and not only in git.
+    $portalBranch = Get-CommandOutput 'git' @('-C', $Portal, 'rev-parse', '--abbrev-ref', 'HEAD')
+    if (-not $portalBranch) { $portalBranch = 'an unknown branch' }
+    Write-Host 'Checkout'
+    Write-Host "  Portal      $Portal on $portalBranch"
     Write-Host ''
     Write-Host 'Toolchain'
     Write-Host "  Node        $(Get-CommandOutput 'node' @('--version'))"
