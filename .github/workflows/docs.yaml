@@ -1,0 +1,212 @@
+name: Docs
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: docs-build-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          # "Last updated" dates come from per-file git log; depth 1 makes them all identical.
+          fetch-depth: 0
+
+      - name: Resolve pinned versions
+        id: versions
+        run: |
+          {
+            echo "node=$(jq -r '.engines.node | capture("(?<v>[0-9]+)").v' package.json)"
+            echo "pnpm=$(jq -r '.engines.pnpm | capture("(?<v>[0-9]+)").v' package.json)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: ${{ steps.versions.outputs.pnpm }}
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ steps.versions.outputs.node }}
+          cache: "pnpm"
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'Directory.Build.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm docs:tools
+
+      - name: Build documentation
+        # docfx prints "Build succeeded with warning." and exits 255 under --warningsAsErrors.
+        run: pnpm docs:build
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-manifest
+          path: docs/docfx/_site/.docs-manifest.json
+          retention-days: 14
+
+      - if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-site
+          path: docs/docfx/_site
+          retention-days: 7
+
+      - if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: docs/docfx/_site
+
+  diff:
+    name: Diff against published site
+    needs: build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Get docs bot token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: docs-token
+        with:
+          app-id: ${{ secrets.DOCS_BOT_APP_ID }}
+          private-key: ${{ secrets.DOCS_BOT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal
+
+      - name: Download candidate manifest
+        env:
+          GH_TOKEN: ${{ steps.docs-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::docs bot token is empty — check the create-github-app-token step above"
+            exit 1
+          fi
+          gh run download "${{ github.run_id }}" --name docs-manifest --dir candidate
+
+      - name: Fetch published manifest
+        id: published
+        env:
+          GH_TOKEN: ${{ steps.docs-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          url=$(gh api "repos/${GH_REPO}/pages" -q .html_url 2>/dev/null || true)
+          if [ -z "$url" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if curl -fsSL "${url%/}/.docs-manifest.json" -o published.json; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compare
+        id: diff
+        if: steps.published.outputs.found == 'true'
+        run: |
+          set -euo pipefail
+          jq -r '.files | to_entries[] | "\(.key) \(.value)"' published.json | sort > old.txt
+          jq -r '.files | to_entries[] | "\(.key) \(.value)"' candidate/.docs-manifest.json | sort > new.txt
+
+          cut -d' ' -f1 old.txt | sort > old-paths.txt
+          cut -d' ' -f1 new.txt | sort > new-paths.txt
+          comm -13 old-paths.txt new-paths.txt > added.txt
+          comm -23 old-paths.txt new-paths.txt > removed.txt
+          comm -12 old.txt new.txt | cut -d' ' -f1 | sort > same.txt
+          comm -12 old-paths.txt new-paths.txt | comm -23 - same.txt > changed.txt
+
+          total=$(( $(wc -l < added.txt) + $(wc -l < removed.txt) + $(wc -l < changed.txt) ))
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "<!-- docs-site-diff -->"
+            if [ "$total" -eq 0 ]; then
+              echo "### Docs site: no change"
+              echo
+              echo "Site hash matches the published site (\`$(jq -r .site published.json | cut -c1-12)\`)."
+            else
+              echo "### Docs site: $total file(s) change on merge"
+              echo
+              printf '| Change | Count |\n| --- | --- |\n'
+              printf '| Added | %s |\n' "$(wc -l < added.txt)"
+              printf '| Removed | %s |\n' "$(wc -l < removed.txt)"
+              printf '| Modified | %s |\n' "$(wc -l < changed.txt)"
+              echo
+              printf 'Published `%s` → candidate `%s`\n\n' \
+                "$(jq -r .site published.json | cut -c1-12)" \
+                "$(jq -r .site candidate/.docs-manifest.json | cut -c1-12)"
+              for kind in added removed changed; do
+                [ -s "$kind.txt" ] || continue
+                count=$(wc -l < "$kind.txt")
+                echo "<details><summary>$kind ($count)</summary>"
+                echo
+                head -50 "$kind.txt" | sed 's|^|- `|;s|$|`|'
+                [ "$count" -gt 50 ] && echo "- …and $((count - 50)) more"
+                echo
+                echo "</details>"
+              done
+            fi
+          } > report.md
+
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment and flag
+        if: steps.published.outputs.found == 'true'
+        env:
+          GH_TOKEN: ${{ steps.docs-token.outputs.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          TOTAL: ${{ steps.diff.outputs.total }}
+        run: |
+          gh pr comment "$PR" --body-file report.md --edit-last --create-if-none
+          if [ "$TOTAL" != "0" ]; then
+            gh label create docs-site-change --color FFB000 \
+              --description "Changes the published docs site" --force
+            gh pr edit "$PR" --add-label docs-site-change
+          else
+            gh pr edit "$PR" --remove-label docs-site-change || true
+          fi
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+      actions: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

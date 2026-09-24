@@ -5,10 +5,16 @@ records, the .NET API reference, release pointers, and the compliance pages.
 
 ## Prerequisites
 
+docfx is optional. The site is built and published by CI, and nothing else in the repository needs it, so no
+part of the normal setup installs it. Run these only to build the site yourself.
+
 ```bash
-dotnet tool install -g docfx    # 2.78 or later
-pnpm install                    # for the section generator
+pnpm docs:tools     # restores the pinned docfx into docs/docfx/
+pnpm install        # for the section generator
 ```
+
+The version lives in `docs/docfx/.config/dotnet-tools.json`, a manifest scoped to this directory. It is marked
+`isRoot`, so the repository-wide `dotnet tool restore` never picks docfx up.
 
 ## Building
 
@@ -17,17 +23,22 @@ pnpm docs:build     # generate everything, then render to docs/docfx/_site
 pnpm docs:serve     # render and serve at http://localhost:8080
 ```
 
-`docs:build` runs five steps, each of which can be run on its own while iterating:
+`docs:build` runs six steps, each of which can be run on its own while iterating:
 
 | Step | Command | What it does |
 | --- | --- | --- |
 | Sections | `pnpm docs:sections` | Copies `docs/adr/` and `docs/guides/` into the site and writes each `toc.yml`. |
 | REST spec | `pnpm docs:spec` | Exports the API's OpenAPI document and stages the RapiDoc bundle. Takes ~20s. |
 | .NET API | `pnpm docs:api` | Runs `docfx metadata` over the C# projects. Takes ~15s. |
-| Render | `docfx build` | Renders the site. |
+| Render | `pnpm docs:render` | Renders the site. |
 | Search index | `pnpm docs:index` | Rewrites `_site/index.json`. See [Search indexing](#search-indexing). |
+| Manifest | `pnpm docs:manifest` | Writes `_site/.docs-manifest.json`. See [Publishing](#publishing). |
 
 `pnpm docs:serve` runs the full build and then serves the result, so the search index step is not skipped.
+
+Both docfx steps pass `--warningsAsErrors`, so a broken link or an unresolvable `cref` fails the build rather
+than scrolling past. Note that docfx still prints `Build succeeded with warning.` on its last line and then
+exits 255; the exit code is the truth.
 
 ## How each section is wired
 
@@ -207,6 +218,25 @@ rewrites a relative href per page, and a relative one would break on every page 
 
 Generated and git-ignored (see `.gitignore`): `_site/`, `api/*.yml`, `adr/*.md` except `index.md`, `adr/toc.yml`,
 `guides/`, `rest/portal.openapi.json`, `rest/rapidoc-min.js`.
+
+## Publishing
+
+`.github/workflows/docs.yaml` builds the site on every pull request and publishes it to GitHub Pages on every push
+to `main`. Pull requests build but never deploy, which is the point: the build compiles the C# projects and runs the
+OpenAPI export test, so a broken `///` comment or a deleted link target fails before merge.
+
+The checkout uses `fetch-depth: 0`. The page dates come from a per-file `git log`, and at the default depth of 1
+every page would silently report the date of the last push.
+
+`docs:manifest` writes `_site/.docs-manifest.json`: a sha256 per file, plus one rollup hash over the sorted list.
+It publishes with the site, so a pull request can fetch the manifest from the live site and diff its own build
+against what is actually deployed, without a retained artifact to expire. Files rewritten on every build regardless
+of content — `index.json`, `manifest.json`, `xrefmap.yml` — are excluded, or every comparison would report the whole
+site as changed.
+
+When that diff finds anything, CI comments the added, removed, and modified paths on the pull request and applies
+the `docs-site-change` label. Both are updated in place on later pushes, and the label is removed if the diff
+returns to empty.
 
 ## Extending it
 
