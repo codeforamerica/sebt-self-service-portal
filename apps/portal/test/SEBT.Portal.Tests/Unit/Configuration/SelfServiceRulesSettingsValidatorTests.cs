@@ -122,6 +122,90 @@ public class SelfServiceRulesSettingsValidatorTests
         Assert.Contains(CardStatus.Damaged, settings.CardReplacement.ByIssuanceType[IssuanceType.SummerEbt].AllowedCardStatuses);
     }
 
+    [Fact]
+    public void BindConfiguration_DisableDaysBeforeExpiration_BindsWhenPresent()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { "SelfServiceRules:AddressUpdate:Enabled", "false" },
+                { "SelfServiceRules:CardReplacement:Enabled", "true" },
+                { "SelfServiceRules:CardReplacement:DisableDaysBeforeExpiration", "4" },
+                { "SelfServiceRules:CardReplacement:ByIssuanceType:SummerEbt:Enabled", "true" }
+            })
+            .Build();
+
+        var settings = new SelfServiceRulesSettings();
+        config.GetSection(SelfServiceRulesSettings.SectionName).Bind(settings);
+
+        Assert.Equal(4, settings.CardReplacement.DisableDaysBeforeExpiration);
+        Assert.Null(settings.AddressUpdate.DisableDaysBeforeExpiration);
+    }
+
+    [Fact]
+    public void Validate_NegativeDisableDaysBeforeExpiration_ReturnsFailure()
+    {
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false },
+            CardReplacement = new ActionRuleSettings
+            {
+                Enabled = true,
+                DisableDaysBeforeExpiration = -1,
+                ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
+                {
+                    [IssuanceType.SummerEbt] = new() { Enabled = true }
+                }
+            }
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("DisableDaysBeforeExpiration", result.Failures!.Single());
+    }
+
+    [Fact]
+    public void Validate_ZeroDisableDaysBeforeExpiration_ReturnsSuccess()
+    {
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false },
+            CardReplacement = new ActionRuleSettings
+            {
+                Enabled = true,
+                DisableDaysBeforeExpiration = 0,
+                ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
+                {
+                    [IssuanceType.SummerEbt] = new() { Enabled = true }
+                }
+            }
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public void Validate_NegativeDisableDaysBeforeExpiration_FailsEvenWhenActionDisabled()
+    {
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false },
+            CardReplacement = new ActionRuleSettings
+            {
+                Enabled = false,
+                DisableDaysBeforeExpiration = -3
+            }
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("DisableDaysBeforeExpiration", result.Failures!.Single());
+    }
+
     private static SelfServiceRulesSettings CreateDcSettings() => new()
     {
         AddressUpdate = new ActionRuleSettings

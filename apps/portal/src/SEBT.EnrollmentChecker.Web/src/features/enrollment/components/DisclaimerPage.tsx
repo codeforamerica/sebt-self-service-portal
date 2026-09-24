@@ -4,7 +4,7 @@ import { Button } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
-import { env } from '@/lib/env'
+import { getClientConfig } from '@/lib/client-config'
 import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
@@ -12,6 +12,7 @@ export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
   const { pageTitleText } = getStateConfig(getState())
   const router = useRouter()
+  const { adentifiPixelApplyNow } = getClientConfig()
   const { season } = useEnrollmentSeason()
   const isClosed = season === 'closed'
 
@@ -46,8 +47,8 @@ export function DisclaimerPage() {
         </div>
       </div>
 
-      {env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW && (
-        <AdentifiPixels pixelId={env.NEXT_PUBLIC_ADENTIFI_PIXEL_APPLY_NOW} />
+      {adentifiPixelApplyNow && (
+        <AdentifiPixels pixelId={adentifiPixelApplyNow} />
       )}
     </div>
   )

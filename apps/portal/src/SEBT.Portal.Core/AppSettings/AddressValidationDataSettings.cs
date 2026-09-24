@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
@@ -29,5 +31,6 @@ public sealed class AddressValidationDataSettings : IHaveConfigSectionName
     /// Set to 0 to disable the length check (default). When set, addresses exceeding
     /// this limit trigger abbreviation lookup or rejection.
     /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "AddressValidationData:MaxStreetAddressLength must not be negative; use 0 to disable the length check.")]
     public int MaxStreetAddressLength { get; set; }
 }

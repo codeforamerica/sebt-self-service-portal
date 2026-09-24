@@ -30,14 +30,18 @@ public abstract class StartupValidationTestBase : IDisposable
         SetEnv("MinimumIal__CoLoadedStreamlineCases", "IAL1");
         SetEnv("MinimumIal__NonCoLoadedStreamlineCases", "IAL1plus");
 
-        // Production has two rules that non-production environments don't:
+        // Production has extra startup rules that these tests must neutralize so
+        // only the section under test can fail:
         //  - Redis is required once OIDC is configured.
-        //  - appsettings.json sets the forbidden IdentifierHasher placeholder, which the prod-only
-        //    validator rejects; we need to set a valid key so only the section under test can fail.
+        //  - appsettings.json sets the forbidden IdentifierHasher placeholder.
+        //  - WebApplicationFactory bootstraps as Development, so user secrets stay
+        //    in the config graph after UseEnvironment(Production). A local
+        //    Socure:UseStub=true would otherwise fail alongside the assertion.
         SetEnv("ConnectionStrings__Redis", isProduction ? "localhost:6379" : "");
         if (isProduction)
         {
             SetEnv("IdentifierHasher__SecretKey", "integration-test-identifier-hasher-key-32chars!");
+            SetEnv("Socure__Enabled", "false");
         }
     }
 

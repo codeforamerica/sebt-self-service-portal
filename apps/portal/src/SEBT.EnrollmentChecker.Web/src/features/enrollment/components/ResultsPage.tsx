@@ -21,7 +21,8 @@ import { NotEnrolledSection } from './NotEnrolledSection'
 
 interface ResultsPageProps {
   results: ChildCheckApiResponse[]
-  portalUrl: string
+  /** Undefined on a misconfigured deployment; the CTA is hidden rather than dead. */
+  portalUrl: string | undefined
 }
 
 type HouseholdEnrollmentResult = 'allEnrolled' | 'noneEnrolled' | 'mixedEnrolled' | 'indeterminate'
@@ -61,11 +62,10 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   const { season } = useEnrollmentSeason()
   const isClosed = season === 'closed'
 
-  // Closure copy plus the optional summer-2027 application link. The wait-note
-  // key differs by surface (standalone vs numbered step), so callers pass it.
-  const apply2027Block = (noteKey: 'apply2027Note' | 'apply2027StepNote') => (
+  // Closure copy plus the optional summer-2027 application link.
+  const apply2027Block = () => (
     <>
-      <p>{t('enrollmentClosedBody')}</p>
+      <p>{t('applyForSebtClosedBody2')}</p>
       {nextSeasonApplyHref && (
         <>
           <p>
@@ -74,10 +74,10 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
               data-analytics-cta="apply_cta"
               data-testid="apply-2027-link"
             >
-              {t('apply2027Action')}
+              {t('applyForSebtClosedBody3')}
             </a>
           </p>
-          <RichText>{t(noteKey)}</RichText>
+          <RichText>{t('applyForSebtClosedBody4')}</RichText>
         </>
       )}
     </>
@@ -91,23 +91,25 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
       <div className="margin-top-2">
         <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
       </div>
-      <p>
-        <a
-          href={portalUrl}
-          className="usa-button"
-          data-testid="portal-link"
-        >
-          {t('streamlinedEnrolledAction')}
-        </a>
-      </p>
+      {portalUrl && (
+        <p>
+          <a
+            href={portalUrl}
+            className="usa-button"
+            data-testid="portal-link"
+          >
+            {t('streamlinedEnrolledAction')}
+          </a>
+        </p>
+      )}
     </section>
   )
 
   const apply2027NextStep = (
     <section data-testid="next-step-apply-2027">
-      <h2 className="usa-process-list__heading margin-top-4">{t('apply2027StepTitle')}</h2>
+      <h2 className="usa-process-list__heading margin-top-4">{t('applyForSebtClosedActionApply')}</h2>
       <p className="margin-top-05">{t('applyForSebtBody2')}</p>
-      {apply2027Block('apply2027StepNote')}
+      {apply2027Block()}
     </section>
   )
 
@@ -181,7 +183,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
             className="margin-top-3"
             data-testid="not-enrolled-inline"
           >
-            <RichText>{t('notEnrolledInlineTitle')}</RichText>
+            <RichText>{t('applyForSebtClosedBody1')}</RichText>
             <ul>
               {notEnrolled.map((child) => (
                 <ChildResultCard
@@ -249,19 +251,19 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
               <section>{portalNextStep}</section>
               <section className="margin-top-3">
                 <p>{t('applyForSebtBody2')}</p>
-                {apply2027Block('apply2027Note')}
+                {apply2027Block()}
               </section>
             </>
           )}
 
         {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
-          <section className="margin-top-3">{apply2027Block('apply2027Note')}</section>
+          <section className="margin-top-3">{apply2027Block()}</section>
         )}
 
         {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
           <section className="margin-top-3">
             <p>{t('applyForSebtBody2')}</p>
-            {apply2027Block('apply2027Note')}
+            {apply2027Block()}
           </section>
         )}
 

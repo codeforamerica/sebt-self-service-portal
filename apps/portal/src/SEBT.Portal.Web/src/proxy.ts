@@ -38,9 +38,12 @@ export function proxy(request: NextRequest) {
 
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDev = process.env.NODE_ENV === 'development'
-  const hasAmplitude = !!process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
-  const hasMixpanel = !!process.env.NEXT_PUBLIC_MIXPANEL_TOKEN
-  const hasSiteImprove = !!process.env.NEXT_PUBLIC_SITEIMPROVE_ID
+  // Unprefixed so these stay server-side: the middleware runs per request, so a
+  // key added at release time widens the CSP without a rebuild. Prefixed reads
+  // would be inlined at build and freeze the policy to the build environment.
+  const hasAmplitude = !!process.env.AMPLITUDE_API_KEY
+  const hasMixpanel = !!process.env.MIXPANEL_TOKEN
+  const hasSiteImprove = !!process.env.SITEIMPROVE_ID
   const proto =
     request.headers.get('x-forwarded-proto') ?? request.nextUrl.protocol.replace(':', '')
   const isHttps = proto === 'https'
@@ -77,10 +80,11 @@ export function proxy(request: NextRequest) {
     isDev && "'unsafe-eval'"
   ])
 
-  // No Google Fonts entries: every font is vendored via next/font/local
-  // (see packages/design-system/design/scripts/generate-fonts.js) rather than
-  // fetched from fonts.googleapis.com/fonts.gstatic.com at build time. Adding
-  // a state or font back onto next/font/google should re-add those domains here.
+  // No Google Fonts entries: every font is self-hosted under public/fonts and
+  // declared as @font-face in the per-state theme stylesheet (see
+  // packages/design-system/design/scripts/generate-theme-css.js), rather than
+  // fetched from fonts.googleapis.com/fonts.gstatic.com. Loading a font from
+  // Google should re-add those domains here.
   const styleSrc = "'self' 'unsafe-inline' https://verify-v2.socure.com"
   const fontSrc = "'self' https://verify-v2.socure.com"
   const imgSrc = "'self' data: https: https://www.google-analytics.com"

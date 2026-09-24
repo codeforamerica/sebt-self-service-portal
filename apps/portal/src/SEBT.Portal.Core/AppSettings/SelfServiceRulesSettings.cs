@@ -56,6 +56,18 @@ public class ActionRuleSettings
     public string? DisabledMessageKey { get; set; }
 
     /// <summary>
+    /// Optional. When set, card replacement is denied for a case once today (the
+    /// state's <c>OutageSchedule:TimeZoneId</c> calendar date) is within this many
+    /// days of <c>BenefitExpirationDate</c>, inclusive: remaining days ≤ this value.
+    /// Null or omitted leaves replacement available until other rules deny it.
+    /// Independent of <see cref="Enabled"/>: a statewide off still denies every card,
+    /// and this cutoff still applies when statewide is on. Applied only to card
+    /// replacement, not address update. A missing expiration date does not trigger
+    /// this cutoff.
+    /// </summary>
+    public int? DisableDaysBeforeExpiration { get; set; }
+
+    /// <summary>
     /// Per-issuance-type rules. Keys are <see cref="IssuanceType"/> enum names
     /// (e.g., "SummerEbt", "TanfEbtCard", "SnapEbtCard", "Unknown").
     /// Issuance types not present in this dictionary are denied by default.
