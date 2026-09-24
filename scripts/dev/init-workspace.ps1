@@ -39,6 +39,10 @@
     checkout when the script runs from inside one, and to .\sebt-portal-workspace
     otherwise.
 
+.PARAMETER Branch
+    Clone this branch of the portal rather than the default one. Use this to set
+    up from a branch whose changes have not merged yet.
+
 .PARAMETER Ssh
     Clone over SSH instead of HTTPS.
 
@@ -70,6 +74,8 @@
 param(
     [Alias('w')]
     [string] $Workspace,
+
+    [string] $Branch,
 
     [switch] $Ssh,
 
@@ -106,6 +112,8 @@ $script:AspireReady = $false
 $script:CertsTrusted = $false
 # What git said about the last clone, so a failure can quote it.
 $script:CloneOutput = ''
+# Arguments put in front of every git subcommand, such as the TLS backend.
+$script:GitExtraArgs = @()
 # Directories this run put on PATH. The summary offers to make them permanent.
 $script:PathAdditions = @()
 # One line per thing the script installed, for the summary.
@@ -316,12 +324,15 @@ function Set-CertificatePolicy {
     # Git needs telling separately, and it is the first thing that reaches the
     # network here, so a clone fails before Node ever runs. The schannel backend
     # is what makes git read the Windows certificate store, where a corporate
-    # proxy root already lives. These variables configure the git processes this
-    # script starts and leave the developer's own git config alone. They need
-    # git 2.31 or later, which every supported Git for Windows has.
-    $env:GIT_CONFIG_COUNT = '1'
-    $env:GIT_CONFIG_KEY_0 = 'http.sslBackend'
-    $env:GIT_CONFIG_VALUE_0 = 'schannel'
+    # proxy root already lives.
+    #
+    # This goes on the command line rather than into GIT_CONFIG_KEY_0, for two
+    # reasons. A -c argument outranks every config file, and it works on git
+    # versions older than the 2.31 that added those variables. The env route
+    # failed silently on a real machine, and the giveaway was the error text:
+    # 'SSL peer certificate ... was not OK' comes from OpenSSL, so git had not
+    # switched backends at all. It still leaves the developer's config alone.
+    $script:GitExtraArgs = @('-c', 'http.sslBackend=schannel')
     Write-Info 'Git now reads the Windows certificate store, for this run only.'
 
     if ($CaBundle) {
@@ -383,10 +394,66 @@ function Copy-Repository {
     # every line can be shown now and kept for the failure message, which would
     # otherwise have to guess at the cause. A guess sent a developer after the
     # wrong problem once.
+    if (Invoke-Clone $Url $Directory) { return $true }
+
+    # A certificate complaint almost always means a proxy is inspecting TLS, and
+    # the fix is the one -SystemCerts applies. Applying it here too means the
+    # common corporate machine needs no flag and no second run. Anything else,
+    # such as a name that does not resolve, is not ours to retry.
+    if ($script:GitExtraArgs.Count -eq 0 -and (Test-CertificateComplaint $script:CloneOutput)) {
+        Write-Notice 'That reads like a proxy inspecting TLS. Trying again with the Windows certificate store.'
+        $script:GitExtraArgs = @('-c', 'http.sslBackend=schannel')
+        $env:NODE_OPTIONS = ($env:NODE_OPTIONS, '--use-system-ca' | Where-Object { $_ }) -join ' '
+
+        # git removes a directory it created when the clone fails, and an empty
+        # one left by anything else would stop the retry before it starts.
+        if ((Test-Path -LiteralPath $Directory) -and
+            -not (Get-ChildItem -LiteralPath $Directory -Force)) {
+            Remove-Item -LiteralPath $Directory -Force
+        }
+
+        if (Invoke-Clone $Url $Directory) {
+            Write-Info 'That worked. The rest of this run uses the certificate store too.'
+            return $true
+        }
+    }
+
+    return $false
+}
+
+# True when git's output is complaining about a certificate rather than about
+# the network or the repository. Covers both backends: schannel names itself,
+# and OpenSSL reports through libcurl with wording of its own.
+function Test-CertificateComplaint {
+    param([string] $Output)
+
+    if (-not $Output) { return $false }
+
+    $patterns = @(
+        'SSL certificate problem',
+        'unable to get local issuer certificate',
+        'self.signed certificate',
+        'SSL peer certificate',
+        'schannel',
+        'certificate verify failed',
+        'unable to access .* SSL'
+    )
+    foreach ($pattern in $patterns) {
+        if ($Output -match $pattern) { return $true }
+    }
+    return $false
+}
+
+function Invoke-Clone {
+    param([string] $Url, [string] $Directory)
+
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        $lines = & git clone $Url $Directory 2>&1 | ForEach-Object {
+        $arguments = $script:GitExtraArgs + @('clone')
+        if ($Branch) { $arguments += @('--branch', $Branch) }
+        $arguments += @($Url, $Directory)
+        $lines = & git @arguments 2>&1 | ForEach-Object {
             $text = $_.ToString()
             Write-Host "    $text"
             $text
@@ -489,10 +556,28 @@ The script stopped rather than install it. Try again, and if it repeats, report 
 }
 
 function Test-Node {
-    $required = (Get-Content -Raw -Path (Join-Path $Portal '.nvmrc')).Trim().TrimStart('v')
+    # .nvmrc is the pin where a checkout has one. A checkout that predates it
+    # still states a floor in engines.node, and that is a usable answer, so a
+    # branch without the file gets set up rather than a stack trace.
+    $nvmrc = Join-Path $Portal '.nvmrc'
+    if (Test-Path -LiteralPath $nvmrc) {
+        $required = (Get-Content -Raw -Path $nvmrc).Trim().TrimStart('v')
+        $pinnedBy = '.nvmrc'
+    } else {
+        $required = Get-JsonValue (Join-Path $Portal 'package.json') 'engines.node'
+        $pinnedBy = 'engines.node in package.json'
+    }
+
+    if (-not $required) {
+        Stop-WithError @"
+Neither .nvmrc nor engines.node in package.json states a Node version.
+$Portal does not look like a checkout of this repository.
+"@
+    }
+
     $requiredMajor = Get-MajorVersion $required
 
-    Write-Step "Checking Node (.nvmrc pins $required)"
+    Write-Step "Checking Node ($pinnedBy pins $required)"
 
     $installed = Get-CommandOutput 'node' @('--version')
     $installedMajor = Get-MajorVersion $installed
@@ -796,7 +881,16 @@ A container runtime is needed. Install one and run this script again:
 # --- Aspire ----------------------------------------------------------------
 
 function Test-Aspire {
-    $pinned = Get-JsonValue (Join-Path $Portal 'aspire.config.json') 'sdk.version'
+    # A checkout without this file has no AppHost to run, so there is nothing
+    # for the CLI to do and its absence is not a failure.
+    $config = Join-Path $Portal 'aspire.config.json'
+    if (-not (Test-Path -LiteralPath $config)) {
+        Write-Step 'Checking the Aspire CLI'
+        Write-Info 'This checkout has no aspire.config.json, so it has no AppHost. Skipping the CLI.'
+        return
+    }
+
+    $pinned = Get-JsonValue $config 'sdk.version'
     if (-not $pinned) {
         Stop-WithError 'aspire.config.json has no sdk.version entry, so the Aspire CLI version cannot be read.'
     }
@@ -998,6 +1092,20 @@ New-Item -ItemType Directory -Force -Path $WorkspaceRoot | Out-Null
 Write-Step 'Cloning the portal'
 if (-not (Copy-Repository $PortalRepo $Portal 'The portal')) {
     $said = ($script:CloneOutput -split "`n" | ForEach-Object { "  $($_.TrimEnd())" }) -join "`n"
+
+    # Never advise a step this run already took. The retry above turns the
+    # certificate store on by itself, so by the time a certificate error
+    # reaches here, that has been tried and did not hold the root.
+    $tlsAdvice = if ($script:GitExtraArgs.Count -gt 0) {
+        @"
+The Windows certificate store was already tried, and it does not hold
+      the root your proxy presents. Export that root to a file and pass
+      -CaBundle <file>.
+"@.Trim()
+    } else {
+        'A proxy is inspecting TLS. Re-run with -SystemCerts.'
+    }
+
     Stop-WithError @"
 Could not clone the portal from $PortalRepo.
 
@@ -1008,8 +1116,8 @@ $said
 Read that first. These are the usual causes, and the words above decide which:
 
   'SSL certificate problem', 'unable to get local issuer certificate',
-  'schannel: ... revocation'
-      A proxy is inspecting TLS. Re-run with -SystemCerts.
+  'SSL peer certificate ... was not OK', 'schannel: ...'
+      $tlsAdvice
 
   'Could not resolve host', 'Failed to connect', 'Connection timed out'
       No route to github.com. This needs a proxy or a VPN, and no flag here

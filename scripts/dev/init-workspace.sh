@@ -50,6 +50,7 @@ TOOLS_DIR="${SEBT_TOOLS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/sebt}"
 DOTNET_DIR="${DOTNET_INSTALL_DIR:-$HOME/.dotnet}"
 
 WORKSPACE=""
+BRANCH=""
 USE_SSH=0
 SYSTEM_CERTS=0
 CA_BUNDLE=""
@@ -90,6 +91,9 @@ Options:
                         Defaults to the parent of this checkout when the script
                         runs from inside one, and to ./sebt-portal-workspace
                         otherwise.
+      --branch NAME     Clone this branch of the portal rather than the
+                        default one. Use this to set up from a branch whose
+                        changes have not merged yet.
       --ssh             Clone over SSH instead of HTTPS.
   -y, --yes             Accept every install offer without asking. Use this for
                         an unattended run.
@@ -132,6 +136,11 @@ while [ $# -gt 0 ]; do
         -w|--workspace)
             [ $# -ge 2 ] || fail "--workspace needs a directory."
             WORKSPACE="$2"
+            shift 2
+            ;;
+        --branch)
+            [ $# -ge 2 ] || fail "--branch needs a name."
+            BRANCH="$2"
             shift 2
             ;;
         --ssh)
@@ -336,13 +345,8 @@ Install it and run this script again:
 # than guess at it. A guess sent a developer after the wrong problem once.
 CLONE_OUTPUT=""
 
-clone_repo() {
-    local url="$1" dir="$2" label="$3" log status
-
-    if [ -d "$dir/.git" ]; then
-        info "$label is already cloned at $dir."
-        return 0
-    fi
+run_clone() {
+    local url="$1" dir="$2" log status
 
     log=$(mktemp -d)
     CLEANUP_DIRS+=("$log")
@@ -350,11 +354,68 @@ clone_repo() {
 
     # tee keeps the progress on screen and a copy for the message below.
     # PIPESTATUS is git's own exit code, not tee's.
-    git clone "$url" "$dir" 2>&1 | tee "$log"
+    if [ -n "$BRANCH" ]; then
+        git clone --branch "$BRANCH" "$url" "$dir" 2>&1 | tee "$log"
+    else
+        git clone "$url" "$dir" 2>&1 | tee "$log"
+    fi
     status=${PIPESTATUS[0]}
 
     CLONE_OUTPUT=$(cat "$log")
     return "$status"
+}
+
+# True when git is complaining about a certificate rather than about the
+# network or the repository. The wording differs by TLS backend, so this
+# matches several: OpenSSL reports through libcurl in words of its own, and
+# Windows schannel names itself.
+is_certificate_complaint() {
+    case "$1" in
+        *"SSL certificate problem"*|\
+        *"unable to get local issuer certificate"*|\
+        *"self-signed certificate"*|\
+        *"self signed certificate"*|\
+        *"SSL peer certificate"*|\
+        *"certificate verify failed"*|\
+        *"schannel"*)
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+clone_repo() {
+    local url="$1" dir="$2" label="$3"
+
+    if [ -d "$dir/.git" ]; then
+        info "$label is already cloned at $dir."
+        return 0
+    fi
+
+    if run_clone "$url" "$dir"; then
+        return 0
+    fi
+
+    # A certificate complaint almost always means a proxy is inspecting TLS,
+    # and the fix is the one --system-certs applies. Applying it here too means
+    # the common corporate machine needs no flag and no second run. Anything
+    # else, such as a name that does not resolve, is not ours to retry.
+    if [ "$SYSTEM_CERTS" -eq 0 ] && is_certificate_complaint "$CLONE_OUTPUT"; then
+        notice "That reads like a proxy inspecting TLS. Trying again with the system trust store."
+        SYSTEM_CERTS=1
+        apply_cert_policy
+
+        # git removes a directory it created when the clone fails, and an empty
+        # one left by anything else would stop the retry before it starts.
+        rmdir "$dir" 2>/dev/null || true
+
+        if run_clone "$url" "$dir"; then
+            info "That worked. The rest of this run uses the system trust store too."
+            return 0
+        fi
+    fi
+
+    return 1
 }
 
 # --- Node ------------------------------------------------------------------
@@ -424,12 +485,37 @@ The script stopped rather than install it. Try again, and if it repeats, report 
     INSTALLED+=("Node $version in $TOOLS_DIR/node")
 }
 
+# Reads engines.node out of package.json without a JSON parser. Every other
+# pin goes through json_value, which runs Node. This one cannot: it is the
+# fallback for deciding whether Node needs installing in the first place.
+engines_node_pin() {
+    sed -n '/"engines"/,/}/p' "$PORTAL/package.json" |
+        grep '"node"' |
+        head -1 |
+        sed -E 's/.*"node"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/'
+}
+
 check_node() {
-    local required required_major installed installed_major
-    required=$(tr -d ' \t\r\nv' < "$PORTAL/.nvmrc")
+    local required required_major installed installed_major pinned_by
+
+    # .nvmrc is the pin where a checkout has one. A checkout that predates it
+    # still states a floor in engines.node, and that is a usable answer, so a
+    # branch without the file gets set up rather than a stack trace.
+    if [ -f "$PORTAL/.nvmrc" ]; then
+        required=$(tr -d ' \t\r\nv' < "$PORTAL/.nvmrc")
+        pinned_by=".nvmrc"
+    else
+        required=$(engines_node_pin)
+        pinned_by="engines.node in package.json"
+    fi
+
+    [ -n "$required" ] ||
+        fail "Neither .nvmrc nor engines.node in package.json states a Node version.
+$PORTAL does not look like a checkout of this repository."
+
     required_major=$(major_of "$required")
 
-    step "Checking Node (.nvmrc pins $required)"
+    step "Checking Node ($pinned_by pins $required)"
 
     installed=$(node --version 2>/dev/null || true)
     installed_major=$(major_of "$installed")
@@ -720,6 +806,15 @@ Start Docker Desktop and run this script again. The local stack needs it for the
 # command edits a shell profile, and this script asks before it does that.
 check_aspire() {
     local pinned installed
+
+    # A checkout without this file has no AppHost to run, so there is nothing
+    # for the CLI to do and its absence is not a failure.
+    if [ ! -f "$PORTAL/aspire.config.json" ]; then
+        step "Checking the Aspire CLI"
+        info "This checkout has no aspire.config.json, so it has no AppHost. Skipping the CLI."
+        return 0
+    fi
+
     pinned=$(json_value "$PORTAL/aspire.config.json" sdk.version) ||
         fail "aspire.config.json has no sdk.version entry, so the Aspire CLI version cannot be read."
 
@@ -944,7 +1039,18 @@ if [ "$USE_SSH" -eq 1 ]; then
 else
     portal_url="$PORTAL_REPO_HTTPS"
 fi
-clone_repo "$portal_url" "$PORTAL" "The portal" ||
+if ! clone_repo "$portal_url" "$PORTAL" "The portal"; then
+    # Never advise a step this run already took. The retry above turns
+    # --system-certs on by itself, so by the time a certificate error reaches
+    # here, the trust store has been tried and did not hold the root.
+    if [ "$SYSTEM_CERTS" -eq 1 ]; then
+        tls_advice="The system trust store was already tried, and it does not hold the root
+      your proxy presents. Export that root to a file and pass
+      --ca-bundle <file>."
+    else
+        tls_advice="A proxy is inspecting TLS. Re-run with --system-certs."
+    fi
+
     fail "Could not clone the portal from $portal_url.
 
 This is what git said:
@@ -953,8 +1059,9 @@ $(printf '%s' "$CLONE_OUTPUT" | sed 's/^/  /')
 
 Read that first. These are the usual causes, and the words above decide which:
 
-  'SSL certificate problem', 'unable to get local issuer certificate'
-      A proxy is inspecting TLS. Re-run with --system-certs.
+  'SSL certificate problem', 'unable to get local issuer certificate',
+  'SSL peer certificate ... was not OK'
+      $tls_advice
 
   'Could not resolve host', 'Failed to connect', 'Connection timed out'
       No route to github.com. This needs a proxy or a VPN, and no flag here
@@ -965,6 +1072,7 @@ Read that first. These are the usual causes, and the words above decide which:
 
   'already exists and is not an empty directory'
       Remove $PORTAL and run this script again."
+fi
 
 # Every version below comes out of the checkout above, so nothing here runs
 # before the clone.
