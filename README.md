@@ -74,17 +74,99 @@ Other configuration files live in the repository root: `pnpm-workspace.yaml`, `p
 
 > **On Windows:** Make long paths available using `git config core.longpaths true`, since the nested `apps/portal/...` paths can exceed the legacy limit of 260 characters.
 
+### Set up the workspace with one script
+
+On a new machine, this is the whole setup. Make an empty directory, and run the script in
+it:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/codeforamerica/sebt-self-service-portal/main/scripts/dev/init-workspace.sh
+bash init-workspace.sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/codeforamerica/sebt-self-service-portal/main/scripts/dev/init-workspace.ps1 -OutFile init-workspace.ps1
+.\init-workspace.ps1
+```
+
+Already have a checkout? Run `./scripts/dev/init-workspace.sh` from inside it. The script
+finds the parent directory and treats it as the workspace.
+
+The script clones both repositories side by side, puts the toolchain this repository pins
+in place, installs the JavaScript dependencies, builds the solution, installs the Aspire
+CLI, and trusts the developer certificate. When it finishes, one command starts the app:
+
+```bash
+cd sebt-portal-workspace/sebt-self-service-portal
+pnpm aspire:dc      # or: pnpm aspire:co
+```
+
+Read [local development with Aspire](#local-development-with-aspire) for what that command
+starts, and for the one thing it costs you: the API has no hot reload on that path. The
+Compose path below stays the better one while you are editing C#.
+
+#### What it installs, and where
+
+The script asks before each of these, and it prints the by-hand command if you decline.
+Every install goes in your home directory and needs no sudo, so a Node or a .NET that
+another repository depends on stays exactly as it is.
+
+| Tool | Version from | Installed to |
+| ---- | ------------ | ------------ |
+| Node | `.nvmrc` | `~/.local/share/sebt/node` |
+| pnpm | `engines.pnpm` in `package.json` | `~/.local/share/sebt` |
+| .NET SDK | `global.json` | `~/.dotnet` |
+| Aspire CLI | `sdk.version` in `aspire.config.json` | the pnpm global directory |
+| Podman | not pinned, so the platform package manager picks | wherever that puts it |
+
+Those directories are not on the PATH of a new terminal, so the script offers to add them
+to your shell profile at the end. Decline it and the run still works, and a later
+`pnpm aspire:dc` in a fresh terminal does not.
+
+Podman is the container runtime it offers, because Docker Desktop licensing is a problem
+for some of us. An already-running Docker satisfies the check, and the script leaves it
+alone.
+
+#### Options
+
+`--yes` takes every offer without asking, for an unattended run. `--check-only` declines
+every offer, which is the way to see what a machine is missing. `--ssh` clones over SSH.
+
+Behind a firewall that inspects TLS, add `--system-certs`. That one flag is the whole
+answer: git, Node, pnpm, curl, and .NET each read a different trust store, and the script
+points all of them at the one your machine already has. Reach for `--ca-bundle <file>`
+only when the proxy root is a file that was never added to that store. Run the script with
+`--help` for the rest.
+
+The DC connector is a private repository. Without access to it the script carries on and
+leaves you a CO-only workspace, and the summary says so.
+
+Step 3 below, the `.env` and `appsettings` files, is the one step still yours to do, and
+the Aspire path does not need it.
 
 ### 1. Install prerequisite software
 
-- [Git](https://git-scm.com/install/)
-- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for the backend
+The script above installs all of these except git, at the pinned version, and asks first.
+This list is for a machine you would rather set up yourself, and for reading what a failed
+check is asking of you.
+
+- [Git](https://git-scm.com/install/). The one tool the script cannot install, because it
+  needs git to reach the files that hold every other version.
+- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for the backend. `global.json`
+  holds the version.
   - To install it with Homebrew, run `brew install dotnet`
-- [nodeJS](https://nodejs.org/en) 24
+- [nodeJS](https://nodejs.org/en) 25. `.nvmrc` holds the version. The Aspire AppHost does
+  not start on Node 24.
   - `brew install node`
-- [pnpm](https://pnpm.io/installation/) for frontend package management and development scripts
-  - `brew install pnpm`
-- [Docker](https://www.docker.com/) Desktop to run and manage local containers (including MSSQL db, Redis, and keycloak).
+- [pnpm](https://pnpm.io/installation/) 10 or later for frontend package management and
+  development scripts. `engines.pnpm` in `package.json` holds the floor.
+  - `brew install pnpm`, or `npm install -g pnpm@10`. Node stopped shipping corepack in
+    version 25, so corepack is no longer the route here.
+- A container runtime for the local MSSQL database, Redis, Keycloak, and Mailpit. Either
+  [Podman](https://podman.io/docs/installation) or [Docker](https://www.docker.com/)
+  Desktop works.
 
 ### 2. Clone the repository
 
@@ -174,6 +256,92 @@ Once all dependencies are installed and running, you can use these start command
 ```
 
 To view the running app, go to <https://localhost:3000> in your browser.
+
+## Local development with Aspire
+
+Aspire is a second way to run the app on your machine. One command starts all the resources
+for one state. The command starts the databases, the containers, the API, the portal, and
+the enrollment checker. Aspire replaces `docker compose up`, the connector build, and
+`pnpm dev`. It gives you one process and one dashboard.
+
+The Compose path above continues to work. No workflow in CI uses Aspire. Use the path that
+you prefer. Read [ADR-0022](./docs/adr/0022-aspire-local-dev-orchestrator.md) for the
+decision and the trade-offs.
+
+### Do these steps one time
+
+[`scripts/dev/init-workspace.sh`](./scripts/dev/init-workspace.sh) does all of these. Read
+[the workspace script](#set-up-the-workspace-with-one-script). This list is what it does,
+for a machine you set up yourself and for reading what went wrong on one where a step was
+declined.
+
+1. Install pnpm. It is the installer for the Aspire CLI, so it comes first. Read
+   [step 1](#1-install-prerequisite-software).
+
+2. Install the Aspire CLI with pnpm, at the version `aspire.config.json` pins.
+
+   ```bash
+   pnpm add -g @microsoft/aspire-cli@13.5.4
+   ```
+
+   The version has to match `sdk.version` in `aspire.config.json`. pnpm needs its global
+   bin directory on your PATH, so run `pnpm setup` once if you have never installed a
+   global package with it. Then run `aspire --version` to confirm the install.
+
+3. Trust the local developer certificate.
+
+   ```bash
+   aspire certs trust
+   ```
+
+   Aspire gives Redis a TLS endpoint. If no trusted certificate is available, Aspire gives
+   a plain endpoint, and it shows no error. This command needs a person, so CI cannot run
+   it.
+
+4. Start Podman or Docker. Make sure that the DC connector repository is beside this
+   repository. Read [step 2](#2-clone-the-repository). If your checkout is in a different
+   location, set `DC_CONNECTOR_PATH`.
+
+5. Install the dependencies. The AppHost does not do this step for you.
+
+   ```bash
+   pnpm install
+   dotnet build SEBT.slnx
+   ```
+
+6. You do not need to copy the `appsettings` files for this path. The AppHost gives every
+   value that the API needs at startup. It gives the connection strings, the ports, the
+   plugin directory of the state, and a generated JWT signing key. If you keep the files,
+   the values from the AppHost win, because an environment variable has a higher priority
+   than a JSON file. The Compose path still needs those files. Read
+   [step 3](#3-configure-your-local-environment).
+
+### Start the app
+
+| Command | Result |
+| ------- | ------ |
+| `pnpm aspire:dc` | Start DC: the portal database, `DcSource`, its seed job, the DC plugin build, and Mailpit |
+| `pnpm aspire:co` | Start CO: the portal database, Redis with 2 user interfaces, and Keycloak |
+| `pnpm aspire:status` | Show the graph and the address of each resource |
+| `pnpm aspire:stop` | Stop all the resources |
+
+Each state starts only its own resources. Each state also starts the API, the portal, and
+the enrollment checker. The dashboard shows the console logs, the structured logs, the
+traces, and the address of each resource.
+
+### The limits of this path
+
+- Aspire selects the host ports for each run. Read the address from the dashboard, because
+  a saved link does not work. Keycloak is an exception. Keycloak stays at
+  <http://localhost:8180>, because its realm holds that address.
+- The API has no hot reload. After you change C# code, run `aspire resource api rebuild`.
+  The 2 Next.js applications keep hot reload from their own development servers.
+- To control one resource, run `aspire resource <name> stop`, `start`, or `rebuild`. The
+  other resources continue to run.
+- CO uses Keycloak for the login, not MyColorado. The AppHost gives the OIDC client. The
+  AppHost also makes the seed data agree with the fixture users of the realm. Therefore CO
+  gives mock household data on this path. Read the
+  [Keycloak guide](./docs/development/keycloak-oidc.md) for the users and the passwords.
 
 ## Development
 

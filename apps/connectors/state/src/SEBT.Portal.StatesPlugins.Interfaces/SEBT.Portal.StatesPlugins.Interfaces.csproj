@@ -27,6 +27,12 @@
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
         <PackageReference Include="Microsoft.OpenApi" Version="1.6.31" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0"/>
+        <!-- System.Composition ships its patch level in the assembly version (10.0.0.11 vs
+             10.0.0.12), unlike Microsoft.Extensions.* which stays 10.0.0.0 across patches.
+             The DC connector stages its whole output into plugins-dc, so a split here means
+             the host binds one identity and the plugin folder carries another, and plugin
+             loading throws FileLoadException at startup. Keep this in step with the external
+             dc-connector's pin. -->
         <PackageReference Include="System.Composition" Version="10.0.12"/>
     </ItemGroup>
 
