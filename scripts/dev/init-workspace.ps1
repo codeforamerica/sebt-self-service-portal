@@ -104,6 +104,8 @@ $DotnetDir = if ($env:DOTNET_INSTALL_DIR) { $env:DOTNET_INSTALL_DIR }
 $script:DcConnectorPresent = $false
 $script:AspireReady = $false
 $script:CertsTrusted = $false
+# What git said about the last clone, so a failure can quote it.
+$script:CloneOutput = ''
 # Directories this run put on PATH. The summary offers to make them permanent.
 $script:PathAdditions = @()
 # One line per thing the script installed, for the summary.
@@ -376,9 +378,27 @@ function Copy-Repository {
         return $true
     }
 
-    # git clone writes its progress to stderr, so this one has to tolerate that
-    # stream rather than read a failure into it.
-    return (Invoke-NativeStatus 'git' @('clone', $Url, $Directory))
+    # git clone writes its progress and its errors to stderr, so this tolerates
+    # that stream rather than reading a failure into it. 2>&1 merges the two so
+    # every line can be shown now and kept for the failure message, which would
+    # otherwise have to guess at the cause. A guess sent a developer after the
+    # wrong problem once.
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $lines = & git clone $Url $Directory 2>&1 | ForEach-Object {
+            $text = $_.ToString()
+            Write-Host "    $text"
+            $text
+        }
+        $script:CloneOutput = ($lines -join [Environment]::NewLine)
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        $script:CloneOutput = $_.Exception.Message
+        return $false
+    } finally {
+        $ErrorActionPreference = $previous
+    }
 }
 
 # --- Node ------------------------------------------------------------------
@@ -977,17 +997,29 @@ New-Item -ItemType Directory -Force -Path $WorkspaceRoot | Out-Null
 
 Write-Step 'Cloning the portal'
 if (-not (Copy-Repository $PortalRepo $Portal 'The portal')) {
+    $said = ($script:CloneOutput -split "`n" | ForEach-Object { "  $($_.TrimEnd())" }) -join "`n"
     Stop-WithError @"
 Could not clone the portal from $PortalRepo.
 
-Git printed the reason above this message.
+This is what git said:
 
-  A certificate complaint means a proxy is inspecting TLS. Re-run with
-  -SystemCerts, which points git, Node, and .NET at the Windows certificate
-  store your machine already has.
+$said
 
-  An authentication complaint means HTTPS access is the problem. Re-run with
-  -Ssh to clone over SSH instead.
+Read that first. These are the usual causes, and the words above decide which:
+
+  'SSL certificate problem', 'unable to get local issuer certificate',
+  'schannel: ... revocation'
+      A proxy is inspecting TLS. Re-run with -SystemCerts.
+
+  'Could not resolve host', 'Failed to connect', 'Connection timed out'
+      No route to github.com. This needs a proxy or a VPN, and no flag here
+      configures one. Set the HTTPS_PROXY environment variable and try again.
+
+  'Authentication failed', 'Repository not found', 'terminal prompts disabled'
+      HTTPS access is the problem. Re-run with -Ssh to clone over SSH.
+
+  'already exists and is not an empty directory'
+      Remove $Portal and run this script again.
 "@
 }
 

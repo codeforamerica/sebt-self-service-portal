@@ -332,15 +332,29 @@ Install it and run this script again:
     info "$(git --version)"
 }
 
+# Holds what git said about the last clone, so a failure can quote it rather
+# than guess at it. A guess sent a developer after the wrong problem once.
+CLONE_OUTPUT=""
+
 clone_repo() {
-    local url="$1" dir="$2" label="$3"
+    local url="$1" dir="$2" label="$3" log status
 
     if [ -d "$dir/.git" ]; then
         info "$label is already cloned at $dir."
         return 0
     fi
 
-    git clone "$url" "$dir"
+    log=$(mktemp -d)
+    CLEANUP_DIRS+=("$log")
+    log="$log/clone.log"
+
+    # tee keeps the progress on screen and a copy for the message below.
+    # PIPESTATUS is git's own exit code, not tee's.
+    git clone "$url" "$dir" 2>&1 | tee "$log"
+    status=${PIPESTATUS[0]}
+
+    CLONE_OUTPUT=$(cat "$log")
+    return "$status"
 }
 
 # --- Node ------------------------------------------------------------------
@@ -933,14 +947,24 @@ fi
 clone_repo "$portal_url" "$PORTAL" "The portal" ||
     fail "Could not clone the portal from $portal_url.
 
-Git printed the reason above this message.
+This is what git said:
 
-  A certificate complaint means a proxy is inspecting TLS. Re-run with
-  --system-certs, which points git, curl, .NET, and Node at the trust store
-  your machine already has.
+$(printf '%s' "$CLONE_OUTPUT" | sed 's/^/  /')
 
-  An authentication complaint means HTTPS access is the problem. Re-run with
-  --ssh to clone over SSH instead."
+Read that first. These are the usual causes, and the words above decide which:
+
+  'SSL certificate problem', 'unable to get local issuer certificate'
+      A proxy is inspecting TLS. Re-run with --system-certs.
+
+  'Could not resolve host', 'Failed to connect', 'Connection timed out'
+      No route to github.com. This needs a proxy or a VPN, and no flag here
+      configures one. Set https_proxy in your environment and try again.
+
+  'Authentication failed', 'Repository not found', 'terminal prompts disabled'
+      HTTPS access is the problem. Re-run with --ssh to clone over SSH.
+
+  'already exists and is not an empty directory'
+      Remove $PORTAL and run this script again."
 
 # Every version below comes out of the checkout above, so nothing here runs
 # before the clone.
