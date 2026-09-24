@@ -7,7 +7,14 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
-    include: ['src/**/*.test.{ts,tsx}', 'design/scripts/**/*.test.{js,ts}'],
+    // content/scripts is listed by name: generate-locales.test.js there is a
+    // standalone node:assert script, not a Vitest suite.
+    include: [
+      'src/**/*.test.{ts,tsx}',
+      'design/scripts/**/*.test.{js,ts}',
+      'content/scripts/validate-content*.test.js',
+      'content/scripts/referenced-keys.test.js'
+    ],
     exclude: ['node_modules/**'],
     coverage: {
       provider: 'v8',
