@@ -4,7 +4,7 @@ Date: 2026-09-02
 
 ## Status
 
-Proposed. This is a draft. It is the result of the spike DC-713.
+Accepted, with the conditions in the decision below. It is the result of the spike DC-713.
 
 ## Context
 
@@ -225,7 +225,7 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
      Result: make a positive test of each statement about this stack. Do not look at the dashboard and assume.
 - **The telemetry needs 2 explicit values.** The dashboard shows the console log of each resource with no extra work. For the structured logs, set `Otel:UseLogExporter` to `otlp`. For the traces and the metrics, set `Otel__OtlpExporter__Endpoint`. The AppHost now sets both values, so the result is the same for each developer. We made a test of the structured logs of the API, and they arrive in the dashboard. We did not make a test of the traces and the metrics.
 - **The files `appsettings.{state}.json` and the `.env` files are still necessary.** Aspire does not remove this step from the setup. Aspire does not read a `.env` file. Compose reads it. If `appsettings.dc.json` is absent, the API stops with the message `PluginAssemblyPaths missing from configuration`. This is a problem in the local setup, not a problem in Aspire. The command `pnpm dev:dc` has the same result.
-- **New tools are necessary.** A developer must install the Aspire CLI. A developer must also run `aspire certs trust` one time on each machine. That command needs a person, so CI cannot run it.
+- **New tools are necessary.** A developer must install the Aspire CLI. The install goes through pnpm, `pnpm add -g @microsoft/aspire-cli@<version>`, because pnpm is already a prerequisite of this repository and the version then stays with `sdk.version` in `aspire.config.json`. The shell installer at aspire.dev and `dotnet tool install` are the other 2 methods, and each one adds a tool chain that the repository does not use for anything else. A developer must also run `aspire certs trust` one time on each machine. That command needs a person, so CI cannot run it. `scripts/dev/init-workspace.sh` now does both steps, and it asks first, so the cost of these 2 tools falls on the first run of that script and not on each developer in turn.
 - **The versions change quickly.** During the spike, the CLI changed from 13.5.0 to 13.5.2, and then to 13.5.3. The SDK stayed at 13.5.0. Therefore each run showed a warning. Also, `aspire integration search` showed packages at version 13.5.1 that were not on nuget.org. The CLI has a catalog that is newer than the feed. The command `aspire update` now holds the SDK and each package at 13.5.4, which agrees with the CLI. Expect this problem again after the next release of the CLI.
 - Aspire selects the host ports for each run. Therefore a developer must read the port from the dashboard. A saved link does not work.
 - The data volumes are new. The data in the Compose `SebtPortal` database does not move to them.

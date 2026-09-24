@@ -2,35 +2,37 @@
 #
 # Prepare a workspace for local development on the SEBT portal.
 #
-# The script builds the two-repository layout the portal expects, verifies the
-# toolchain the repository pins, installs the dependencies, and builds the
-# solution. It stops at the point where the app is ready to start.
+# The script builds the two-repository layout the portal expects, puts the
+# toolchain the repository pins in place, installs the dependencies, builds the
+# solution, and installs the Aspire CLI. It ends at the point where one command
+# starts the app.
 #
-# It checks the toolchain, and it does not install it. A developer machine holds
-# one Node and one .NET for every repository on it, so a setup script is the
-# wrong place to change either. Each check therefore reports the version it
-# wants and the command that installs it, and the developer runs that command.
+# It asks before it installs anything, and it installs into your home directory.
+# Node goes to the tools directory below and the .NET SDK goes to ~/.dotnet, so
+# a machine-wide Node or .NET stays as it is, and no step needs sudo. Decline
+# any offer and the script prints the command that does that step by hand.
 #
 # No version is written here. Each one comes from a config file in the portal
 # checkout, so a bump to that file is the only edit a bump needs:
 #
-#   .nvmrc        Node
-#   package.json  pnpm, from engines.pnpm
-#   global.json   the .NET SDK
+#   .nvmrc             Node
+#   package.json       pnpm, from engines.pnpm
+#   global.json        the .NET SDK
+#   aspire.config.json the Aspire CLI, from sdk.version
 #
-# Thus the script clones the portal before it checks a version. Git is the one
-# prerequisite it cannot report on, because it needs git to reach the file that
+# Thus the script clones the portal before it reads a version. Git is the one
+# prerequisite it cannot install, because it needs git to reach the file that
 # holds the others.
 #
-# The Aspire CLI is deliberately out of scope. It is a global tool with its own
-# one-time steps, including a certificate trust prompt that needs a person.
-# Read "Local development with Aspire" in README.md.
+# Podman is the exception to the pinned-download rule. The repository pins no
+# container runtime, and Podman has no user-local tarball worth maintaining, so
+# that one offer goes through the platform package manager.
 #
 # The Windows twin of this script is init-workspace.ps1. Keep the two in step.
 #
 # Usage:
-#   ./init-workspace.sh [--workspace DIR] [--ssh] [--system-certs]
-#                       [--ca-bundle FILE]
+#   ./init-workspace.sh [--workspace DIR] [--ssh] [--yes] [--check-only]
+#                       [--system-certs] [--ca-bundle FILE]
 
 set -euo pipefail
 
@@ -42,12 +44,36 @@ DC_REPO_HTTPS="https://github.com/codeforamerica/${DC_DIR_NAME}.git"
 PORTAL_REPO_SSH="git@github.com:codeforamerica/${PORTAL_DIR_NAME}.git"
 DC_REPO_SSH="git@github.com:codeforamerica/${DC_DIR_NAME}.git"
 
+# Everything the script installs for Node lands here. One directory keeps the
+# whole footprint visible, and removing it undoes every Node-side change.
+TOOLS_DIR="${SEBT_TOOLS_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/sebt}"
+DOTNET_DIR="${DOTNET_INSTALL_DIR:-$HOME/.dotnet}"
+
 WORKSPACE=""
 USE_SSH=0
 SYSTEM_CERTS=0
 CA_BUNDLE=""
+ASSUME_YES=0
+CHECK_ONLY=0
 
 DC_CONNECTOR_PRESENT=0
+ASPIRE_READY=0
+CERTS_TRUSTED=0
+# Directories this run put on PATH. The summary offers to make them permanent.
+PATH_ADDITIONS=()
+# One line per thing the script installed, for the summary.
+INSTALLED=()
+# Temporary download directories. The trap below clears them on every exit
+# path, including the error paths, which a per-function RETURN trap misses.
+CLEANUP_DIRS=()
+
+cleanup() {
+    local dir
+    for dir in ${CLEANUP_DIRS+"${CLEANUP_DIRS[@]}"}; do
+        rm -rf "$dir"
+    done
+}
+trap cleanup EXIT
 
 usage() {
     cat <<'EOF'
@@ -55,8 +81,9 @@ Prepare a workspace for local development on the SEBT portal.
 
 Usage: ./init-workspace.sh [options]
 
-The script checks the toolchain against the versions this repository pins, and
-it does not install it. A failed check prints the command that fixes it.
+The script asks before it installs a missing tool, and it installs the version
+this repository pins into your home directory. Decline an offer and it prints
+the command that does that step by hand.
 
 Options:
   -w, --workspace DIR   Parent directory that holds both repositories.
@@ -64,6 +91,12 @@ Options:
                         runs from inside one, and to ./sebt-portal-workspace
                         otherwise.
       --ssh             Clone over SSH instead of HTTPS.
+  -y, --yes             Accept every install offer without asking. Use this for
+                        an unattended run.
+      --check-only      Decline every install offer. The script still clones,
+                        installs the JavaScript dependencies, and builds the
+                        solution, and it stops at the first tool it needs and
+                        does not have.
       --system-certs    Trust the operating system certificate store for Node
                         and pnpm. Use this behind a firewall that inspects TLS.
       --ca-bundle FILE  Also trust an explicit PEM bundle. Implies
@@ -71,9 +104,14 @@ Options:
                         certificate is a file rather than a keychain entry.
   -h, --help            Show this message.
 
-The script stops when a required tool is missing or when no container runtime is
-available. It continues without the DC connector, and it says so in the summary
-at the end.
+Environment:
+  SEBT_TOOLS_DIR        Where to put a downloaded Node. Defaults to
+                        ~/.local/share/sebt.
+  DOTNET_INSTALL_DIR    Where to put a downloaded .NET SDK. Defaults to
+                        ~/.dotnet.
+
+The script stops when a required tool is missing and you decline to install it.
+It continues without the DC connector, and it says so in the summary at the end.
 EOF
 }
 
@@ -98,6 +136,14 @@ while [ $# -gt 0 ]; do
             USE_SSH=1
             shift
             ;;
+        -y|--yes)
+            ASSUME_YES=1
+            shift
+            ;;
+        --check-only)
+            CHECK_ONLY=1
+            shift
+            ;;
         --system-certs)
             SYSTEM_CERTS=1
             shift
@@ -118,9 +164,54 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+[ "$ASSUME_YES" -eq 1 ] && [ "$CHECK_ONLY" -eq 1 ] &&
+    fail "--yes and --check-only ask for opposite things. Pass one of them."
+
+# Asks a yes or no question and answers it for the caller under --yes and
+# --check-only. The read is from the terminal, not from stdin, because
+# `curl ... | bash` leaves stdin holding the script itself.
+confirm() {
+    local question="$1" reply
+
+    if [ "$CHECK_ONLY" -eq 1 ]; then
+        info "Skipping (--check-only): $question"
+        return 1
+    fi
+
+    if [ "$ASSUME_YES" -eq 1 ]; then
+        info "Yes (--yes): $question"
+        return 0
+    fi
+
+    if [ ! -t 0 ] && [ ! -r /dev/tty ]; then
+        info "No terminal to ask on, so treating this as no: $question"
+        return 1
+    fi
+
+    printf '    %s [y/N] ' "$question" > /dev/tty
+    read -r reply < /dev/tty || reply=""
+    case "$reply" in
+        [yY]|[yY][eE][sS]) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Puts a directory at the front of PATH for this run and records it, so the
+# summary can offer to make it permanent. A directory that is already on PATH
+# is not recorded, because there is nothing there for a profile to fix.
+add_to_path() {
+    local dir="$1"
+    case ":$PATH:" in
+        *":$dir:"*) return 0 ;;
+    esac
+    PATH="$dir:$PATH"
+    export PATH
+    PATH_ADDITIONS+=("$dir")
+}
+
 # Reads one dotted path out of a JSON file. Node is the parser, so this runs
-# only after check_node. The alternative, a grep for a quoted key, reads the
-# wrong "version" as soon as a file grows a second one.
+# only after Node is in place. The alternative, a grep for a quoted key, reads
+# the wrong "version" as soon as a file grows a second one.
 json_value() {
     node -e '
       const [file, path] = process.argv.slice(1);
@@ -180,7 +271,11 @@ resolve_workspace() {
 ensure_git() {
     step "Checking git"
     command -v git >/dev/null 2>&1 ||
-        fail "git is not installed. Install it from https://git-scm.com/downloads and run this script again."
+        fail "git is not installed, and the script needs it to reach every other version this repository pins.
+Install it and run this script again:
+  macOS         xcode-select --install
+  Linux         your platform package manager, such as: sudo apt install git
+  any platform  https://git-scm.com/downloads"
     info "$(git --version)"
 }
 
@@ -193,6 +288,73 @@ clone_repo() {
     fi
 
     git clone "$url" "$dir"
+}
+
+# --- Node ------------------------------------------------------------------
+
+node_platform() {
+    local os arch
+    case "$(uname -s)" in
+        Darwin) os="darwin" ;;
+        Linux)  os="linux" ;;
+        *) return 1 ;;
+    esac
+    case "$(uname -m)" in
+        arm64|aarch64) arch="arm64" ;;
+        x86_64|amd64)  arch="x64" ;;
+        *) return 1 ;;
+    esac
+    printf '%s-%s' "$os" "$arch"
+}
+
+# Downloads the newest release of the pinned Node major and verifies it against
+# the checksum file that release publishes. The .tar.gz is on purpose: the .xz
+# is smaller, but unpacking it needs an xz that a bare machine may not have.
+install_node() {
+    local required_major="$1"
+    local platform dist_url shasums entry filename version checksum tmp
+
+    platform=$(node_platform) ||
+        fail "This script has no Node download for $(uname -s) $(uname -m).
+Install Node ${required_major} from https://nodejs.org/en/download and run this script again."
+
+    dist_url="https://nodejs.org/dist/latest-v${required_major}.x"
+
+    info "Resolving the newest Node ${required_major} release..."
+    shasums=$(curl -fsSL "$dist_url/SHASUMS256.txt") ||
+        fail "Could not reach $dist_url/SHASUMS256.txt.
+Check your network, or install Node ${required_major} from https://nodejs.org/en/download and run this script again."
+
+    entry=$(printf '%s\n' "$shasums" | grep -E "  node-v${required_major}\.[0-9.]+-${platform}\.tar\.gz$" | head -1) ||
+        entry=""
+    [ -n "$entry" ] ||
+        fail "The Node ${required_major} release has no ${platform} build in SHASUMS256.txt.
+Install Node ${required_major} from https://nodejs.org/en/download and run this script again."
+
+    checksum=${entry%% *}
+    filename=${entry##* }
+    version=$(printf '%s' "$filename" | sed -E 's/^node-(v[0-9.]+)-.*$/\1/')
+
+    tmp=$(mktemp -d)
+    CLEANUP_DIRS+=("$tmp")
+
+    info "Downloading Node $version for $platform..."
+    curl -fsSL -o "$tmp/$filename" "$dist_url/$filename" ||
+        fail "Could not download $dist_url/$filename."
+
+    info "Verifying the checksum..."
+    (cd "$tmp" && printf '%s  %s\n' "$checksum" "$filename" | shasum -a 256 -c --status -) ||
+        fail "The checksum of $filename does not match the one $dist_url/SHASUMS256.txt publishes.
+The script stopped rather than install it. Try again, and if it repeats, report it."
+
+    info "Installing to $TOOLS_DIR/node..."
+    rm -rf "$TOOLS_DIR/node"
+    mkdir -p "$TOOLS_DIR/node"
+    tar -xzf "$tmp/$filename" -C "$TOOLS_DIR/node" --strip-components 1
+
+    add_to_path "$TOOLS_DIR/node/bin"
+    hash -r
+    INSTALLED+=("Node $version in $TOOLS_DIR/node")
 }
 
 check_node() {
@@ -210,19 +372,65 @@ check_node() {
         return 0
     fi
 
-    if [ -z "$installed" ]; then
-        fail "Node is not installed, and this repository needs version ${required_major} or later.
-Install it, then run this script again:
+    if [ -n "$installed" ]; then
+        info "Node $installed is installed, and this repository needs version ${required_major} or later."
+    else
+        info "Node is not installed, and this repository needs version ${required_major} or later."
+    fi
+
+    if confirm "Download Node ${required_major} to $TOOLS_DIR/node? It needs no sudo and leaves any other Node alone."; then
+        install_node "$required_major"
+        installed=$(node --version 2>/dev/null || true)
+        installed_major=$(major_of "$installed")
+        [ -n "$installed_major" ] && [ "$installed_major" -ge "$required_major" ] 2>/dev/null ||
+            fail "Node $installed is on PATH after the install, and the pin asks for ${required_major} or later."
+        info "Node $installed satisfies the pin."
+        return 0
+    fi
+
+    fail "Node ${required_major} or later is needed. Install it and run this script again:
   macOS         brew install node
   Windows       winget install OpenJS.NodeJS
   any platform  https://nodejs.org/en/download"
-    fi
+}
 
-    fail "Node $installed is installed, and this repository needs version ${required_major} or later.
-Upgrade it, then run this script again:
-  macOS         brew upgrade node
-  Windows       winget upgrade OpenJS.NodeJS
-  any platform  https://nodejs.org/en/download"
+# --- pnpm ------------------------------------------------------------------
+
+# npm, not corepack. Node stopped shipping corepack in its tarball as of Node
+# 25, so on a machine this script just set up there is no corepack to call. The
+# --prefix keeps the install in a directory this script owns, which is what
+# makes it work without sudo whether Node came from here, Homebrew, or a
+# platform package.
+install_pnpm() {
+    local required_major="$1" version
+
+    command -v npm >/dev/null 2>&1 ||
+        fail "npm is not on PATH, so the script cannot install pnpm for you.
+Install pnpm ${required_major} yourself and run this script again: https://pnpm.io/installation"
+
+    info "Resolving the newest pnpm ${required_major} release..."
+    version=$(npm view "pnpm@^${required_major}" version --json 2>/dev/null |
+        node -e '
+          let raw = "";
+          process.stdin.on("data", chunk => raw += chunk).on("end", () => {
+            const parsed = JSON.parse(raw || "null");
+            const versions = Array.isArray(parsed) ? parsed : [parsed];
+            const latest = versions.filter(Boolean).pop();
+            if (!latest) { process.exit(1); }
+            process.stdout.write(String(latest));
+          });
+        ') ||
+        fail "Could not read the pnpm versions from the npm registry.
+Install pnpm ${required_major} yourself and run this script again: https://pnpm.io/installation"
+
+    info "Installing pnpm $version to $TOOLS_DIR..."
+    mkdir -p "$TOOLS_DIR"
+    npm install -g --prefix "$TOOLS_DIR" "pnpm@$version" ||
+        fail "npm could not install pnpm@$version into $TOOLS_DIR."
+
+    add_to_path "$TOOLS_DIR/bin"
+    hash -r
+    INSTALLED+=("pnpm $version in $TOOLS_DIR")
 }
 
 check_pnpm() {
@@ -241,17 +449,52 @@ check_pnpm() {
         return 0
     fi
 
-    if [ -z "$installed" ]; then
-        fail "pnpm is not installed, and this repository needs version ${required_major} or later.
-Install it, then run this script again:
-  corepack enable pnpm     (corepack ships with Node, so this needs no download)
-  or read https://pnpm.io/installation"
+    if [ -n "$installed" ]; then
+        info "pnpm $installed is installed, and this repository needs version ${required_major} or later."
+    else
+        info "pnpm is not installed, and this repository needs version ${required_major} or later."
     fi
 
-    fail "pnpm $installed is installed, and this repository needs version ${required_major} or later.
-Upgrade it, then run this script again:
-  corepack prepare pnpm@latest --activate
+    if confirm "Install pnpm ${required_major} to $TOOLS_DIR? It needs no sudo."; then
+        install_pnpm "$required_major"
+        installed=$(pnpm --version 2>/dev/null || true)
+        installed_major=$(major_of "$installed")
+        [ -n "$installed_major" ] && [ "$installed_major" -ge "$required_major" ] 2>/dev/null ||
+            fail "pnpm $installed is on PATH after the install, and the pin asks for ${required_major} or later."
+        info "pnpm $installed satisfies the pin."
+        return 0
+    fi
+
+    fail "pnpm ${required_major} or later is needed. Install it and run this script again:
+  npm install -g pnpm@${required_major}
   or read https://pnpm.io/installation"
+}
+
+# --- .NET ------------------------------------------------------------------
+
+# dotnet-install.sh is the installer Microsoft publishes for exactly this case:
+# a versioned SDK in a directory of your choosing, with no package manager and
+# no sudo.
+install_dotnet() {
+    local pinned="$1" tmp
+
+    tmp=$(mktemp -d)
+    CLEANUP_DIRS+=("$tmp")
+
+    info "Downloading the .NET install script..."
+    curl -fsSL -o "$tmp/dotnet-install.sh" https://dot.net/v1/dotnet-install.sh ||
+        fail "Could not download https://dot.net/v1/dotnet-install.sh.
+Install the .NET SDK $pinned from https://dotnet.microsoft.com/download and run this script again."
+    chmod +x "$tmp/dotnet-install.sh"
+
+    info "Installing the .NET SDK $pinned to $DOTNET_DIR..."
+    "$tmp/dotnet-install.sh" --version "$pinned" --install-dir "$DOTNET_DIR" ||
+        fail "The .NET install script failed for version $pinned."
+
+    export DOTNET_ROOT="$DOTNET_DIR"
+    add_to_path "$DOTNET_DIR"
+    hash -r
+    INSTALLED+=(".NET SDK $pinned in $DOTNET_DIR")
 }
 
 check_dotnet() {
@@ -261,53 +504,305 @@ check_dotnet() {
 
     step "Checking the .NET SDK (global.json pins $pinned)"
 
-    command -v dotnet >/dev/null 2>&1 ||
-        fail "The .NET SDK is not installed, and global.json asks for $pinned.
-Install it, then run this script again:
-  macOS         brew install dotnet
-  Windows       winget install Microsoft.DotNet.SDK.10
-  any platform  https://dotnet.microsoft.com/download"
-
     # `dotnet --version` inside the checkout resolves global.json, including its
     # rollForward. A zero exit is therefore the whole check: it says an SDK is
     # installed and that this repository accepts it.
-    if (cd "$PORTAL" && dotnet --version >/dev/null 2>&1); then
+    if command -v dotnet >/dev/null 2>&1 && (cd "$PORTAL" && dotnet --version >/dev/null 2>&1); then
         info ".NET SDK $(cd "$PORTAL" && dotnet --version) satisfies global.json."
         return 0
     fi
 
-    fail "No installed .NET SDK satisfies global.json, which asks for $pinned.
-Installed SDKs:
-$(dotnet --list-sdks 2>/dev/null | sed 's/^/  /')
-Install $pinned or a later patch of it from https://dotnet.microsoft.com/download, then run this script again."
+    if command -v dotnet >/dev/null 2>&1; then
+        info "No installed .NET SDK satisfies global.json, which asks for $pinned. Installed SDKs:"
+        dotnet --list-sdks 2>/dev/null | sed 's/^/      /'
+    else
+        info "The .NET SDK is not installed, and global.json asks for $pinned."
+    fi
+
+    if confirm "Download the .NET SDK $pinned to $DOTNET_DIR? It needs no sudo and leaves any other SDK alone."; then
+        install_dotnet "$pinned"
+        (cd "$PORTAL" && dotnet --version >/dev/null 2>&1) ||
+            fail "The .NET SDK in $DOTNET_DIR does not satisfy global.json after the install."
+        info ".NET SDK $(cd "$PORTAL" && dotnet --version) satisfies global.json."
+        return 0
+    fi
+
+    fail "The .NET SDK $pinned is needed. Install it and run this script again:
+  macOS         brew install dotnet
+  Windows       winget install Microsoft.DotNet.SDK.10
+  any platform  https://dotnet.microsoft.com/download"
+}
+
+# --- container runtime -----------------------------------------------------
+
+responding_runtime() {
+    local runtime
+    for runtime in docker podman nerdctl; do
+        command -v "$runtime" >/dev/null 2>&1 || continue
+        if "$runtime" info >/dev/null 2>&1; then
+            printf '%s' "$runtime"
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Starts the Podman VM, and creates it first when this is a new install. macOS
+# and Windows always need one. Linux runs containers natively, so a missing
+# `podman machine` there is normal and not an error.
+start_podman_machine() {
+    if podman info >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [ "$(uname -s)" = "Linux" ]; then
+        return 1
+    fi
+
+    if ! podman machine inspect >/dev/null 2>&1; then
+        info "Creating the Podman virtual machine. This takes a few minutes the first time..."
+        podman machine init || return 1
+    fi
+
+    info "Starting the Podman virtual machine..."
+    podman machine start || return 1
+    podman info >/dev/null 2>&1
+}
+
+install_podman() {
+    case "$(uname -s)" in
+        Darwin)
+            command -v brew >/dev/null 2>&1 ||
+                fail "Homebrew is not installed, so the script cannot install Podman for you.
+Install Podman from https://podman.io/docs/installation and run this script again."
+            info "Installing Podman with Homebrew..."
+            brew install podman || fail "brew install podman failed."
+            ;;
+        Linux)
+            # Every one of these writes outside the home directory, so each one
+            # needs sudo. The script asks for the runtime, and sudo asks for the
+            # password itself.
+            if command -v apt-get >/dev/null 2>&1; then
+                info "Installing Podman with apt. It asks for your password..."
+                sudo apt-get update && sudo apt-get install -y podman || fail "apt-get install podman failed."
+            elif command -v dnf >/dev/null 2>&1; then
+                info "Installing Podman with dnf. It asks for your password..."
+                sudo dnf install -y podman || fail "dnf install podman failed."
+            else
+                fail "The script does not know the package manager on this system.
+Install Podman from https://podman.io/docs/installation and run this script again."
+            fi
+            ;;
+        *)
+            fail "The script has no Podman install for $(uname -s).
+Install it from https://podman.io/docs/installation and run this script again."
+            ;;
+    esac
+
+    hash -r
+    start_podman_machine ||
+        fail "Podman is installed, and its virtual machine did not start.
+Run 'podman machine init' and 'podman machine start' by hand, then run this script again."
+    INSTALLED+=("Podman, with its virtual machine started")
 }
 
 check_container_runtime() {
     step "Checking for a container runtime"
 
-    local runtime installed=""
-    for runtime in docker podman nerdctl; do
-        command -v "$runtime" >/dev/null 2>&1 || continue
-        installed="$installed $runtime"
-
-        if "$runtime" info >/dev/null 2>&1; then
-            info "$runtime is installed and responding."
-            return 0
-        fi
-    done
-
-    # An installed but stopped runtime is a different problem from an absent
-    # one, and it has a different fix, so the two get different messages.
-    if [ -n "$installed" ]; then
-        fail "A container runtime is installed ($(printf '%s' "$installed" | sed 's/^ //')) but it is not responding.
-Start it and run this script again. The local stack needs it for the databases, Redis, Keycloak, and Mailpit."
+    local runtime
+    if runtime=$(responding_runtime); then
+        info "$runtime is installed and responding."
+        return 0
     fi
 
-    fail "No container runtime is installed, and the local stack cannot start the databases, Redis, Keycloak, or Mailpit without one.
-Install one and run this script again:
+    # An installed but stopped runtime is a different problem from an absent
+    # one, and it has a different fix, so the two get different treatment.
+    if command -v podman >/dev/null 2>&1; then
+        info "Podman is installed and not responding."
+        if confirm "Start the Podman virtual machine?"; then
+            start_podman_machine && { info "Podman is responding."; return 0; }
+            fail "The Podman virtual machine did not start.
+Run 'podman machine start' by hand and read its output, then run this script again."
+        fi
+        fail "The local stack needs a container runtime for the databases, Redis, Keycloak, and Mailpit.
+Start Podman and run this script again:
+  podman machine start"
+    fi
+
+    if command -v docker >/dev/null 2>&1; then
+        fail "Docker is installed and it is not responding.
+Start Docker Desktop and run this script again. The local stack needs it for the databases, Redis, Keycloak, and Mailpit."
+    fi
+
+    info "No container runtime is installed, and the local stack needs one for the databases, Redis, Keycloak, and Mailpit."
+    if confirm "Install Podman? It is the usual choice here, because Docker Desktop licensing is a problem for some of us."; then
+        install_podman
+        info "Podman is responding."
+        return 0
+    fi
+
+    fail "A container runtime is needed. Install one and run this script again:
   Podman        https://podman.io/docs/installation   (then: podman machine init && podman machine start)
-  Docker        https://www.docker.com/products/docker-desktop
-Podman is the usual choice where Docker Desktop licensing is a problem."
+  Docker        https://www.docker.com/products/docker-desktop"
+}
+
+# --- Aspire ----------------------------------------------------------------
+
+# The CLI comes from pnpm, so it lands in a user directory like everything else
+# above. PNPM_HOME is set here rather than through `pnpm setup`, because that
+# command edits a shell profile, and this script asks before it does that.
+check_aspire() {
+    local pinned installed
+    pinned=$(json_value "$PORTAL/aspire.config.json" sdk.version) ||
+        fail "aspire.config.json has no sdk.version entry, so the Aspire CLI version cannot be read."
+
+    step "Checking the Aspire CLI (aspire.config.json pins $pinned)"
+
+    # An earlier run of this script puts the CLI here, and that directory is not
+    # on PATH in a new terminal until the profile block goes in. Adding it for
+    # the lookup finds that install. It is added only when it holds a CLI, so a
+    # machine that gets the CLI from somewhere else does not collect an empty
+    # directory in its profile.
+    local fallback_home="$TOOLS_DIR/pnpm-global"
+    if ! command -v aspire >/dev/null 2>&1 && [ -x "$fallback_home/aspire" ]; then
+        export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
+        add_to_path "$fallback_home"
+        hash -r
+    fi
+
+    # `aspire --version` prints the version with build metadata attached, as in
+    # 13.5.4+9c1b401. The pin in aspire.config.json carries no metadata, so the
+    # comparison is on the part before the plus sign.
+    installed=$(aspire --version 2>/dev/null | head -1 | tr -d ' \t\r' | cut -d+ -f1 || true)
+    if [ "$installed" = "$pinned" ]; then
+        info "The Aspire CLI $installed matches the pin."
+        ASPIRE_READY=1
+        return 0
+    fi
+
+    if [ -n "$installed" ]; then
+        info "The Aspire CLI $installed is installed, and aspire.config.json pins $pinned."
+    else
+        info "The Aspire CLI is not installed."
+    fi
+
+    # pnpm needs PNPM_HOME to place a global binary. Setting it here rather than
+    # running `pnpm setup` keeps the profile edit in one place, at the end of
+    # the run, where the script asks before it writes.
+    export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
+
+    if confirm "Install the Aspire CLI $pinned with pnpm, into $PNPM_HOME?"; then
+        mkdir -p "$PNPM_HOME"
+        pnpm add -g "@microsoft/aspire-cli@$pinned" ||
+            fail "pnpm could not install @microsoft/aspire-cli@$pinned."
+        add_to_path "$PNPM_HOME"
+        hash -r
+        INSTALLED+=("Aspire CLI $pinned in $PNPM_HOME")
+        ASPIRE_READY=1
+        return 0
+    fi
+
+    # The Compose path does not need this, so a no here is a choice and not a
+    # failure. The summary says which paths are open.
+    notice "The Aspire CLI is not installed. The Compose path works without it, and 'pnpm aspire:dc' does not."
+    return 0
+}
+
+check_certificates() {
+    [ "$ASPIRE_READY" -eq 1 ] || return 0
+
+    step "Checking the developer certificate"
+
+    # `aspire certs` can trust a certificate and it cannot report on one, so the
+    # check goes through the .NET SDK. This is the same command the AppHost runs
+    # in capabilities/developer-certificate.mts, so the two agree on the answer.
+    if dotnet dev-certs https --check --trust >/dev/null 2>&1; then
+        info "A trusted developer certificate is in place."
+        CERTS_TRUSTED=1
+        return 0
+    fi
+
+    info "No trusted developer certificate. Aspire gives Redis and Keycloak TLS with it."
+    # Trusting a certificate writes to the login keychain, and that prompt needs
+    # a person. An unattended run therefore has to skip it, and the summary says
+    # so rather than letting Aspire fall back to a plain endpoint in silence.
+    if [ "$ASSUME_YES" -eq 1 ] && [ ! -r /dev/tty ]; then
+        notice "Trusting the certificate needs a keychain prompt, so an unattended run cannot do it. Run 'aspire certs trust' yourself."
+        return 0
+    fi
+
+    if confirm "Trust it now? Your keychain asks for a password."; then
+        if aspire certs trust; then
+            info "The developer certificate is trusted."
+            CERTS_TRUSTED=1
+            INSTALLED+=("A trusted developer certificate")
+        else
+            notice "'aspire certs trust' did not finish. Run it yourself before you start Aspire."
+        fi
+        return 0
+    fi
+
+    notice "The developer certificate is not trusted. Redis gets a plain endpoint, and Aspire shows no error when that happens."
+}
+
+# --- PATH ------------------------------------------------------------------
+
+profile_file() {
+    case "$(basename "${SHELL:-}")" in
+        zsh)  printf '%s' "$HOME/.zshrc" ;;
+        bash)
+            # macOS login shells read .bash_profile and Linux reads .bashrc.
+            # Writing to the one that already exists keeps the script out of
+            # that argument.
+            if [ -f "$HOME/.bashrc" ]; then
+                printf '%s' "$HOME/.bashrc"
+            else
+                printf '%s' "$HOME/.bash_profile"
+            fi
+            ;;
+        *) return 1 ;;
+    esac
+}
+
+persist_path() {
+    [ ${#PATH_ADDITIONS[@]} -gt 0 ] || return 0
+
+    local profile block marker="# >>> sebt portal workspace >>>"
+
+    step "Making this run's PATH permanent"
+    info "This run added these directories to PATH:"
+    printf '      %s\n' "${PATH_ADDITIONS[@]}"
+    info "A new terminal does not have them, so 'pnpm aspire:dc' would not find these tools."
+
+    if ! profile=$(profile_file); then
+        notice "The script does not know the profile file for ${SHELL:-your shell}. Add the directories above to PATH yourself."
+        return 0
+    fi
+
+    if [ -f "$profile" ] && grep -qF "$marker" "$profile"; then
+        info "$profile already has the block from an earlier run. Leaving it as it is."
+        return 0
+    fi
+
+    if ! confirm "Add them to $profile?"; then
+        notice "PATH is unchanged. This run works, and a new terminal needs the directories above on PATH."
+        return 0
+    fi
+
+    block=$(printf '\n%s\n' "$marker")
+    for dir in "${PATH_ADDITIONS[@]}"; do
+        block=$(printf '%s\nexport PATH="%s:$PATH"' "$block" "$dir")
+    done
+    if [ -n "${PNPM_HOME:-}" ]; then
+        block=$(printf '%s\nexport PNPM_HOME="%s"' "$block" "$PNPM_HOME")
+    fi
+    if [ -d "$DOTNET_DIR" ]; then
+        block=$(printf '%s\nexport DOTNET_ROOT="%s"' "$block" "$DOTNET_DIR")
+    fi
+    block=$(printf '%s\n# <<< sebt portal workspace <<<\n' "$block")
+
+    printf '%s' "$block" >> "$profile"
+    info "Added the block to $profile. Open a new terminal, or run: source $profile"
 }
 
 summary() {
@@ -320,7 +815,19 @@ summary() {
     printf '  Node        %s\n' "$(node --version)"
     printf '  pnpm        %s\n' "$(pnpm --version)"
     printf '  .NET SDK    %s\n' "$(cd "$PORTAL" && dotnet --version)"
+    if [ "$ASPIRE_READY" -eq 1 ]; then
+        printf '  Aspire CLI  %s\n' "$(aspire --version 2>/dev/null | head -1)"
+    else
+        printf '  Aspire CLI  not installed\n'
+    fi
+    printf '  Containers  %s\n' "$(responding_runtime || printf 'none responding')"
     printf '\n'
+
+    if [ ${#INSTALLED[@]} -gt 0 ]; then
+        printf 'Installed\n'
+        printf '  %s\n' "${INSTALLED[@]}"
+        printf '\n'
+    fi
 
     if [ "$DC_CONNECTOR_PRESENT" -eq 1 ]; then
         printf 'States      DC and CO are both ready.\n'
@@ -328,6 +835,7 @@ summary() {
         printf 'States      CO only. You cannot run the DC configuration.\n'
         printf '            The DC connector is not at\n'
         printf '            %s.\n' "$DC_CONNECTOR"
+        printf '            It is a private repository, so the clone needs your GitHub access.\n'
         printf '            Clone it beside the portal, or point DC_CONNECTOR_PATH at your\n'
         printf '            checkout, then run this script again.\n'
     fi
@@ -335,11 +843,21 @@ summary() {
 
     printf 'Next\n'
     printf '  cd %s\n' "$PORTAL"
-    printf '\n'
-    printf '  Running the app needs one more choice, and README.md covers both:\n'
-    printf '    "Start services" and "Build and run the app" for the Compose path.\n'
-    printf '    "Local development with Aspire" for the Aspire path, which has its own\n'
-    printf '    one-time steps, including a certificate trust prompt that needs a person.\n'
+    if [ "$ASPIRE_READY" -eq 1 ]; then
+        if [ "$DC_CONNECTOR_PRESENT" -eq 1 ]; then
+            printf '  pnpm aspire:dc      start DC: portal database, DcSource, its seed job, the plugin build, Mailpit\n'
+        fi
+        printf '  pnpm aspire:co      start CO: portal database, Redis with 2 user interfaces, Keycloak\n'
+        if [ "$CERTS_TRUSTED" -eq 0 ]; then
+            printf '\n'
+            printf '  Run "aspire certs trust" first. Without it Redis gets a plain endpoint\n'
+            printf '  and Aspire reports no error.\n'
+        fi
+    else
+        printf '\n'
+        printf '  The Aspire CLI is not installed, so use the Compose path. README.md covers it\n'
+        printf '  under "Start services" and "Build and run the app".\n'
+    fi
     printf '\n'
 }
 
@@ -371,9 +889,10 @@ check_dotnet
 check_container_runtime
 
 step "Cloning the DC connector"
-# DC is the one state whose connector lives outside this repository, and a
-# developer without access to it still has a working CO workspace. So a failure
-# here is a warning and a line in the summary, and not the end of the run.
+# DC is the one state whose connector lives outside this repository, and it is
+# private, so a developer without access to it still has a working CO
+# workspace. A failure here is a warning and a line in the summary, and not the
+# end of the run.
 if [ "$USE_SSH" -eq 1 ]; then
     dc_url="$DC_REPO_SSH"
 else
@@ -391,5 +910,9 @@ step "Installing JavaScript dependencies"
 
 step "Building the .NET solution"
 (cd "$PORTAL" && dotnet build SEBT.slnx)
+
+check_aspire
+check_certificates
+persist_path
 
 summary
