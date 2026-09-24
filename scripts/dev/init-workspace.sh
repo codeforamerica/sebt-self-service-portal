@@ -58,6 +58,8 @@ ASSUME_YES=0
 CHECK_ONLY=0
 
 DC_CONNECTOR_PRESENT=0
+# Set when the run settles on Podman, so Aspire is told to use it.
+CONTAINER_RUNTIME_CHOICE=""
 ASPIRE_READY=0
 CERTS_TRUSTED=0
 # Directories this run put on PATH. The summary offers to make them permanent.
@@ -727,6 +729,20 @@ check_dotnet() {
 
 # --- container runtime -----------------------------------------------------
 
+# Aspire prefers Docker when it finds both, and it has no idea which one this
+# script just installed. Naming the choice here is what makes `pnpm aspire:dc`
+# reach the same runtime the checks passed against.
+# Read https://aspire.dev/get-started/prerequisites/.
+use_runtime() {
+    local runtime="$1"
+
+    [ "$runtime" = "podman" ] || return 0
+
+    export ASPIRE_CONTAINER_RUNTIME=podman
+    CONTAINER_RUNTIME_CHOICE=podman
+    info "Set ASPIRE_CONTAINER_RUNTIME=podman, so Aspire uses Podman and not Docker."
+}
+
 responding_runtime() {
     local runtime
     for runtime in docker podman nerdctl; do
@@ -804,6 +820,7 @@ check_container_runtime() {
     local runtime
     if runtime=$(responding_runtime); then
         info "$runtime is installed and responding."
+        use_runtime "$runtime"
         return 0
     fi
 
@@ -812,7 +829,7 @@ check_container_runtime() {
     if command -v podman >/dev/null 2>&1; then
         info "Podman is installed and not responding."
         if confirm "Start the Podman virtual machine?"; then
-            start_podman_machine && { info "Podman is responding."; return 0; }
+            start_podman_machine && { info "Podman is responding."; use_runtime podman; return 0; }
             fail "The Podman virtual machine did not start.
 Run 'podman machine start' by hand and read its output, then run this script again."
         fi
@@ -830,6 +847,7 @@ Start Docker Desktop and run this script again. The local stack needs it for the
     if confirm "Install Podman? It is the usual choice here, because Docker Desktop licensing is a problem for some of us."; then
         install_podman
         info "Podman is responding."
+        use_runtime podman
         return 0
     fi
 
@@ -966,7 +984,7 @@ profile_file() {
 }
 
 persist_path() {
-    [ ${#PATH_ADDITIONS[@]} -gt 0 ] || return 0
+    [ ${#PATH_ADDITIONS[@]} -gt 0 ] || [ -n "$CONTAINER_RUNTIME_CHOICE" ] || return 0
 
     local profile block marker="# >>> sebt portal workspace >>>"
 
@@ -999,6 +1017,9 @@ persist_path() {
     fi
     if [ -d "$DOTNET_DIR" ]; then
         block=$(printf '%s\nexport DOTNET_ROOT="%s"' "$block" "$DOTNET_DIR")
+    fi
+    if [ -n "$CONTAINER_RUNTIME_CHOICE" ]; then
+        block=$(printf '%s\nexport ASPIRE_CONTAINER_RUNTIME="%s"' "$block" "$CONTAINER_RUNTIME_CHOICE")
     fi
     block=$(printf '%s\n# <<< sebt portal workspace <<<\n' "$block")
 

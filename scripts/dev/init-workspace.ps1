@@ -108,6 +108,8 @@ $DotnetDir = if ($env:DOTNET_INSTALL_DIR) { $env:DOTNET_INSTALL_DIR }
              else { Join-Path $env:USERPROFILE '.dotnet' }
 
 $script:DcConnectorPresent = $false
+# Set when the run settles on Podman, so Aspire is told to use it.
+$script:ContainerRuntimeChoice = ''
 $script:AspireReady = $false
 $script:CertsTrusted = $false
 # What git said about the last clone, so a failure can quote it.
@@ -825,6 +827,20 @@ The .NET SDK $pinned is needed. Install it and run this script again:
 
 # --- container runtime -----------------------------------------------------
 
+# Aspire prefers Docker when it finds both, and it has no idea which one this
+# script just installed. Naming the choice here is what makes `pnpm aspire:dc`
+# reach the same runtime the checks passed against.
+# Read https://aspire.dev/get-started/prerequisites/.
+function Use-Runtime {
+    param([string] $Runtime)
+
+    if ($Runtime -ne 'podman') { return }
+
+    $env:ASPIRE_CONTAINER_RUNTIME = 'podman'
+    $script:ContainerRuntimeChoice = 'podman'
+    Write-Info 'Set ASPIRE_CONTAINER_RUNTIME=podman, so Aspire uses Podman and not Docker.'
+}
+
 function Get-RespondingRuntime {
     foreach ($runtime in @('docker', 'podman', 'nerdctl')) {
         if (Test-NativeSuccess $runtime @('info')) { return $runtime }
@@ -883,6 +899,7 @@ function Test-ContainerRuntime {
     $runtime = Get-RespondingRuntime
     if ($runtime) {
         Write-Info "$runtime is installed and responding."
+        Use-Runtime $runtime
         return
     }
 
@@ -893,6 +910,7 @@ function Test-ContainerRuntime {
         if (Confirm-Action 'Start the Podman virtual machine?') {
             if (Start-PodmanMachine) {
                 Write-Info 'Podman is responding.'
+                Use-Runtime 'podman'
                 return
             }
             Stop-WithError @"
@@ -918,6 +936,7 @@ Start Docker Desktop and run this script again. The local stack needs it for the
     if (Confirm-Action 'Install Podman? It is the usual choice here, because Docker Desktop licensing is a problem for some of us.') {
         Install-Podman
         Write-Info 'Podman is responding.'
+        Use-Runtime 'podman'
         return
     }
 
@@ -1036,7 +1055,7 @@ function Test-Certificate {
 # --- PATH ------------------------------------------------------------------
 
 function Save-Path {
-    if ($script:PathAdditions.Count -eq 0) { return }
+    if ($script:PathAdditions.Count -eq 0 -and -not $script:ContainerRuntimeChoice) { return }
 
     Write-Step 'Making this run''s PATH permanent'
     Write-Info 'This run added these directories to PATH:'
@@ -1063,6 +1082,9 @@ function Save-Path {
     }
     if (Test-Path -LiteralPath $DotnetDir) {
         [Environment]::SetEnvironmentVariable('DOTNET_ROOT', $DotnetDir, 'User')
+    }
+    if ($script:ContainerRuntimeChoice) {
+        [Environment]::SetEnvironmentVariable('ASPIRE_CONTAINER_RUNTIME', $script:ContainerRuntimeChoice, 'User')
     }
 
     Write-Info 'Updated your user PATH. Open a new terminal to pick it up.'
