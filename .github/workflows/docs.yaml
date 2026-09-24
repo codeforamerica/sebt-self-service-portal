@@ -23,6 +23,10 @@ jobs:
         with:
           # "Last updated" dates come from per-file git log; depth 1 makes them all identical.
           fetch-depth: 0
+          # This job runs pull-request-authored code (postinstall hooks, the tsx
+          # generators, the export test). Without this the checkout token sits in
+          # .git/config where any of it can read it. Nothing here needs to push.
+          persist-credentials: false
 
       - name: Resolve pinned versions
         id: versions
@@ -139,8 +143,18 @@ jobs:
         if: steps.published.outputs.found == 'true'
         run: |
           set -euo pipefail
-          jq -r '.files | to_entries[] | "\(.key) \(.value)"' published.json | sort > old.txt
-          jq -r '.files | to_entries[] | "\(.key) \(.value)"' candidate/.docs-manifest.json | sort > new.txt
+          # The candidate manifest is built by code from the pull request and read here
+          # by a job holding a write-scoped token, so its keys are untrusted input on
+          # their way into a bot comment. Keep only plausible site paths, and drop the
+          # characters that would let a key break out of the code span it is rendered in.
+          clean() {
+            tr -d '`\r' |
+              grep -E '^[A-Za-z0-9._/-]+ [a-f0-9]{64}$' |
+              grep -vE '(^|/)\.\.(/|$)' || true
+          }
+
+          jq -r '.files | to_entries[] | "\(.key) \(.value)"' published.json | clean | sort > old.txt
+          jq -r '.files | to_entries[] | "\(.key) \(.value)"' candidate/.docs-manifest.json | clean | sort > new.txt
 
           cut -d' ' -f1 old.txt | sort > old-paths.txt
           cut -d' ' -f1 new.txt | sort > new-paths.txt
