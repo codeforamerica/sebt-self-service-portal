@@ -129,9 +129,99 @@ function Stop-WithError {
     exit 1
 }
 
-# Runs a native command and fails the script when it returns a non-zero exit code.
-# PowerShell does not do this on its own, so a silent failure otherwise reaches the
-# summary as a success.
+function Test-CommandExists {
+    param([string] $Name)
+    return [bool] (Get-Command $Name -ErrorAction SilentlyContinue)
+}
+
+<#
+Every native command in this script goes through one of the three wrappers below,
+and none of them is called directly.
+
+This script runs with $ErrorActionPreference = 'Stop', and under that setting
+PowerShell turns anything a native command writes to stderr into a terminating
+NativeCommandError. Ordinary tools write to stderr for ordinary reasons: git
+clone reports progress there, `git rev-parse` outside a repository says so there,
+pnpm prints its progress there, and `dotnet --version` complains there when no
+SDK matches global.json. Redirecting with 2>$null does not help, because the
+error record is created before the redirection discards the text.
+
+So each wrapper lowers the preference for the length of the call and reads the
+exit code instead. Exit codes are what these tools use to report failure anyway.
+#>
+
+# Runs a native command and returns its standard output, or $null when the
+# command is absent or exits non-zero. This is the one for version lookups.
+function Get-CommandOutput {
+    param(
+        [Parameter(Mandatory)] [string] $Command,
+        [string[]] $Arguments = @()
+    )
+
+    if (-not (Test-CommandExists $Command)) { return $null }
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $output = & $Command @Arguments 2>$null
+        if ($LASTEXITCODE -ne 0) { return $null }
+        $text = ($output | Out-String).Trim()
+        if ([string]::IsNullOrWhiteSpace($text)) { return $null }
+        return $text
+    } catch {
+        return $null
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+# Runs a native command for its exit code alone and discards every stream. This
+# is the one for probes such as `podman info`.
+function Test-NativeSuccess {
+    param(
+        [Parameter(Mandatory)] [string] $Command,
+        [string[]] $Arguments = @()
+    )
+
+    if (-not (Test-CommandExists $Command)) { return $false }
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Command @Arguments *> $null
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+# Runs a native command with its output on screen and returns whether it
+# succeeded. This is the one for work a developer should watch, such as a clone
+# or an install.
+function Invoke-NativeStatus {
+    param(
+        [Parameter(Mandatory)] [string] $Command,
+        [string[]] $Arguments = @()
+    )
+
+    if (-not (Test-CommandExists $Command)) { return $false }
+
+    $previous = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        & $Command @Arguments
+        return ($LASTEXITCODE -eq 0)
+    } catch {
+        return $false
+    } finally {
+        $ErrorActionPreference = $previous
+    }
+}
+
+# Runs a native command and stops the script when it fails. PowerShell does not
+# do this on its own, so a failure otherwise reaches the summary as a success.
 function Invoke-Native {
     param(
         [Parameter(Mandatory)] [string] $Command,
@@ -139,18 +229,12 @@ function Invoke-Native {
         [string] $ErrorMessage
     )
 
-    & $Command @Arguments
-    if ($LASTEXITCODE -ne 0) {
+    if (-not (Invoke-NativeStatus $Command $Arguments)) {
         if (-not $ErrorMessage) {
             $ErrorMessage = "``$Command $($Arguments -join ' ')`` failed with exit code $LASTEXITCODE."
         }
         Stop-WithError $ErrorMessage
     }
-}
-
-function Test-CommandExists {
-    param([string] $Name)
-    return [bool] (Get-Command $Name -ErrorAction SilentlyContinue)
 }
 
 # Asks a yes or no question and answers it for the caller under -Yes and
@@ -245,11 +329,14 @@ function Set-CertificatePolicy {
 function Resolve-Workspace {
     if ($Workspace) { return $Workspace }
 
-    # Running from inside a checkout is the common case for an existing developer.
-    # The workspace is then the directory that already holds it.
+    # Running from inside a checkout is the common case for an existing
+    # developer, and the workspace is then the directory that already holds it.
+    # Downloaded on its own into an empty directory is the common case for a new
+    # one, and git reports that with a failure and a line on stderr. That is an
+    # answer and not an error, so the workspace becomes a new directory here.
     $scriptDir = Split-Path -Parent $PSCommandPath
-    $checkout = & git -C $scriptDir rev-parse --show-toplevel 2>$null
-    if ($LASTEXITCODE -eq 0 -and $checkout) {
+    $checkout = Get-CommandOutput 'git' @('-C', $scriptDir, 'rev-parse', '--show-toplevel')
+    if ($checkout) {
         return Split-Path -Parent $checkout
     }
 
@@ -266,7 +353,7 @@ Install it and run this script again:
   or read https://git-scm.com/downloads
 "@
     }
-    Write-Info (& git --version)
+    Write-Info (Get-CommandOutput 'git' @('--version'))
 }
 
 function Copy-Repository {
@@ -277,8 +364,9 @@ function Copy-Repository {
         return $true
     }
 
-    & git clone $Url $Directory
-    return ($LASTEXITCODE -eq 0)
+    # git clone writes its progress to stderr, so this one has to tolerate that
+    # stream rather than read a failure into it.
+    return (Invoke-NativeStatus 'git' @('clone', $Url, $Directory))
 }
 
 # --- Node ------------------------------------------------------------------
@@ -374,7 +462,7 @@ function Test-Node {
 
     Write-Step "Checking Node (.nvmrc pins $required)"
 
-    $installed = & node --version 2>$null
+    $installed = Get-CommandOutput 'node' @('--version')
     $installedMajor = Get-MajorVersion $installed
 
     if ($null -ne $installedMajor -and $installedMajor -ge $requiredMajor) {
@@ -390,7 +478,7 @@ function Test-Node {
 
     if (Confirm-Action "Download Node $requiredMajor to $(Join-Path $ToolsDir 'node')? It leaves any other Node alone.") {
         Install-Node $requiredMajor
-        $installed = & node --version 2>$null
+        $installed = Get-CommandOutput 'node' @('--version')
         $installedMajor = Get-MajorVersion $installed
         if ($null -eq $installedMajor -or $installedMajor -lt $requiredMajor) {
             Stop-WithError "Node $installed is on PATH after the install, and the pin asks for $requiredMajor or later."
@@ -423,7 +511,7 @@ Install pnpm $RequiredMajor yourself and run this script again: https://pnpm.io/
     }
 
     Write-Info "Resolving the newest pnpm $RequiredMajor release..."
-    $raw = & npm view "pnpm@^$RequiredMajor" version --json 2>$null
+    $raw = Get-CommandOutput 'npm' @('view', "pnpm@^$RequiredMajor", 'version', '--json')
     if ($LASTEXITCODE -ne 0 -or -not $raw) {
         Stop-WithError @"
 Could not read the pnpm versions from the npm registry.
@@ -454,7 +542,7 @@ function Test-Pnpm {
 
     Write-Step "Checking pnpm (package.json pins $required)"
 
-    $installed = & pnpm --version 2>$null
+    $installed = Get-CommandOutput 'pnpm' @('--version')
     $installedMajor = Get-MajorVersion $installed
 
     if ($null -ne $installedMajor -and $installedMajor -ge $requiredMajor) {
@@ -470,7 +558,7 @@ function Test-Pnpm {
 
     if (Confirm-Action "Install pnpm $requiredMajor to $ToolsDir?") {
         Install-Pnpm $requiredMajor
-        $installed = & pnpm --version 2>$null
+        $installed = Get-CommandOutput 'pnpm' @('--version')
         $installedMajor = Get-MajorVersion $installed
         if ($null -eq $installedMajor -or $installedMajor -lt $requiredMajor) {
             Stop-WithError "pnpm $installed is on PATH after the install, and the pin asks for $requiredMajor or later."
@@ -488,14 +576,12 @@ pnpm $requiredMajor or later is needed. Install it and run this script again:
 
 # --- .NET ------------------------------------------------------------------
 
+# Runs from inside the checkout, so global.json decides the answer. A $null here
+# means no installed SDK satisfies it, which is the same answer the check wants.
 function Get-DotnetVersion {
     Push-Location $Portal
     try {
-        $version = & dotnet --version 2>$null
-        if ($LASTEXITCODE -ne 0) { return $null }
-        return $version
-    } catch {
-        return $null
+        return (Get-CommandOutput 'dotnet' @('--version'))
     } finally {
         Pop-Location
     }
@@ -549,7 +635,7 @@ function Test-Dotnet {
             return
         }
         Write-Info "No installed .NET SDK satisfies global.json, which asks for $pinned. Installed SDKs:"
-        & dotnet --list-sdks 2>$null | ForEach-Object { Write-Host "      $_" }
+        (Get-CommandOutput 'dotnet' @('--list-sdks')) -split "`n" | ForEach-Object { Write-Host "      $($_.Trim())" }
     } else {
         Write-Info "The .NET SDK is not installed, and global.json asks for $pinned."
     }
@@ -574,9 +660,7 @@ The .NET SDK $pinned is needed. Install it and run this script again:
 
 function Get-RespondingRuntime {
     foreach ($runtime in @('docker', 'podman', 'nerdctl')) {
-        if (-not (Test-CommandExists $runtime)) { continue }
-        & $runtime info *> $null
-        if ($LASTEXITCODE -eq 0) { return $runtime }
+        if (Test-NativeSuccess $runtime @('info')) { return $runtime }
     }
     return $null
 }
@@ -584,22 +668,17 @@ function Get-RespondingRuntime {
 # Starts the Podman VM, and creates it first when this is a new install. Windows
 # always needs one.
 function Start-PodmanMachine {
-    & podman info *> $null
-    if ($LASTEXITCODE -eq 0) { return $true }
+    if (Test-NativeSuccess 'podman' @('info')) { return $true }
 
-    & podman machine inspect *> $null
-    if ($LASTEXITCODE -ne 0) {
+    if (-not (Test-NativeSuccess 'podman' @('machine', 'inspect'))) {
         Write-Info 'Creating the Podman virtual machine. This takes a few minutes the first time...'
-        & podman machine init
-        if ($LASTEXITCODE -ne 0) { return $false }
+        if (-not (Invoke-NativeStatus 'podman' @('machine', 'init'))) { return $false }
     }
 
     Write-Info 'Starting the Podman virtual machine...'
-    & podman machine start
-    if ($LASTEXITCODE -ne 0) { return $false }
+    if (-not (Invoke-NativeStatus 'podman' @('machine', 'start'))) { return $false }
 
-    & podman info *> $null
-    return ($LASTEXITCODE -eq 0)
+    return (Test-NativeSuccess 'podman' @('info'))
 }
 
 function Install-Podman {
@@ -611,8 +690,9 @@ Install Podman from https://podman.io/docs/installation and run this script agai
     }
 
     Write-Info 'Installing Podman with winget...'
-    & winget install --id RedHat.Podman --accept-source-agreements --accept-package-agreements
-    if ($LASTEXITCODE -ne 0) { Stop-WithError 'winget install RedHat.Podman failed.' }
+    Invoke-Native 'winget' @('install', '--id', 'RedHat.Podman',
+                             '--accept-source-agreements', '--accept-package-agreements') `
+        -ErrorMessage 'winget install RedHat.Podman failed.'
 
     # winget puts podman on the machine PATH, and this process started before
     # that happened. Re-reading both scopes is what makes the command resolve
@@ -705,7 +785,7 @@ function Test-Aspire {
     # `aspire --version` prints the version with build metadata attached, as in
     # 13.5.4+9c1b401. The pin in aspire.config.json carries no metadata, so the
     # comparison is on the part before the plus sign.
-    $raw = & aspire --version 2>$null | Select-Object -First 1
+    $raw = (Get-CommandOutput 'aspire' @('--version')) -split "`n" | Select-Object -First 1
     $installed = if ($raw) { ($raw.Trim() -split '\+')[0] } else { $null }
 
     if ($installed -eq $pinned) {
@@ -748,8 +828,7 @@ function Test-Certificate {
     # `aspire certs` can trust a certificate and it cannot report on one, so the
     # check goes through the .NET SDK. This is the same command the AppHost runs in
     # capabilities/developer-certificate.mts, so the two agree on the answer.
-    & dotnet dev-certs https --check --trust *> $null
-    if ($LASTEXITCODE -eq 0) {
+    if (Test-NativeSuccess 'dotnet' @('dev-certs', 'https', '--check', '--trust')) {
         Write-Info 'A trusted developer certificate is in place.'
         $script:CertsTrusted = $true
         return
@@ -765,8 +844,7 @@ function Test-Certificate {
     }
 
     if (Confirm-Action 'Trust it now? Windows asks you to confirm.') {
-        & aspire certs trust
-        if ($LASTEXITCODE -eq 0) {
+        if (Invoke-NativeStatus 'aspire' @('certs', 'trust')) {
             Write-Info 'The developer certificate is trusted.'
             $script:CertsTrusted = $true
             $script:Installed += 'A trusted developer certificate'
@@ -821,11 +899,15 @@ function Write-Summary {
     Write-Host '----------------------------------------------------------------------'
     Write-Host ''
     Write-Host 'Toolchain'
-    Write-Host "  Node        $(& node --version)"
-    Write-Host "  pnpm        $(& pnpm --version)"
+    Write-Host "  Node        $(Get-CommandOutput 'node' @('--version'))"
+    Write-Host "  pnpm        $(Get-CommandOutput 'pnpm' @('--version'))"
     Write-Host "  .NET SDK    $(Get-DotnetVersion)"
     if ($script:AspireReady) {
-        Write-Host "  Aspire CLI  $(& aspire --version 2>$null | Select-Object -First 1)"
+        # Built up first rather than interpolated inline: Windows PowerShell 5.1
+        # is unforgiving about nested double quotes inside a subexpression.
+        $aspireVersion = (Get-CommandOutput 'aspire' @('--version')) -split "`n" |
+            Select-Object -First 1
+        Write-Host "  Aspire CLI  $($aspireVersion.Trim())"
     } else {
         Write-Host '  Aspire CLI  not installed'
     }
