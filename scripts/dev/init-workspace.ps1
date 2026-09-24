@@ -673,7 +673,7 @@ function Test-Pnpm {
         Write-Info "pnpm is not installed, and this repository needs version $requiredMajor or later."
     }
 
-    if (Confirm-Action "Install pnpm $requiredMajor to $ToolsDir?") {
+    if (Confirm-Action "Install pnpm $requiredMajor to ${ToolsDir}?") {
         Install-Pnpm $requiredMajor
         $installed = Get-CommandOutput 'pnpm' @('--version')
         $installedMajor = Get-MajorVersion $installed
@@ -757,7 +757,7 @@ function Test-Dotnet {
         Write-Info "The .NET SDK is not installed, and global.json asks for $pinned."
     }
 
-    if (Confirm-Action "Download the .NET SDK $pinned to $DotnetDir? It leaves any other SDK alone.") {
+    if (Confirm-Action "Download the .NET SDK $pinned to ${DotnetDir}? It leaves any other SDK alone.") {
         Install-Dotnet $pinned
         if (-not (Get-DotnetVersion)) {
             Stop-WithError "The .NET SDK in $DotnetDir does not satisfy global.json after the install."
@@ -931,7 +931,7 @@ function Test-Aspire {
     # run, where the script asks before it writes.
     if (-not $env:PNPM_HOME) { $env:PNPM_HOME = $fallbackHome }
 
-    if (Confirm-Action "Install the Aspire CLI $pinned with pnpm, into $env:PNPM_HOME?") {
+    if (Confirm-Action "Install the Aspire CLI $pinned with pnpm, into ${env:PNPM_HOME}?") {
         New-Item -ItemType Directory -Force -Path $env:PNPM_HOME | Out-Null
         Invoke-Native 'pnpm' @('add', '-g', "@microsoft/aspire-cli@$pinned") `
             -ErrorMessage "pnpm could not install @microsoft/aspire-cli@$pinned."
