@@ -51,6 +51,7 @@ DOTNET_DIR="${DOTNET_INSTALL_DIR:-$HOME/.dotnet}"
 
 WORKSPACE=""
 BRANCH=""
+DC_REPO_OVERRIDE=""
 USE_SSH=0
 SYSTEM_CERTS=0
 CA_BUNDLE=""
@@ -98,6 +99,9 @@ Options:
                         changes have not merged yet. It applies to the portal
                         only. The DC connector is a separate repository and
                         always comes from its default branch.
+      --dc-repo URL     Clone the DC connector from this URL rather than the
+                        default one. Use this for a fork, or for a mirror your
+                        network can reach.
       --ssh             Clone over SSH instead of HTTPS.
   -y, --yes             Accept every install offer without asking. Use this for
                         an unattended run.
@@ -145,6 +149,11 @@ while [ $# -gt 0 ]; do
         --branch)
             [ $# -ge 2 ] || fail "--branch needs a name."
             BRANCH="$2"
+            shift 2
+            ;;
+        --dc-repo)
+            [ $# -ge 2 ] || fail "--dc-repo needs a URL."
+            DC_REPO_OVERRIDE="$2"
             shift 2
             ;;
         --ssh)
@@ -400,6 +409,13 @@ ensure_branch() {
     current=$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
     if [ "$current" = "$branch" ]; then
         info "$label is on $branch."
+        # Matching by name is not the same as being the right branch. A local
+        # branch cut from main carries the name and none of the content, and
+        # the run then reads main's versions while reporting the branch. Ask
+        # the remote whether the name exists at all.
+        if ! git -C "$dir" ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+            notice "origin has no branch called $branch, so this one is local only. Check the spelling: a local branch cut from main looks like this."
+        fi
         return 0
     fi
 
@@ -1157,7 +1173,10 @@ step "Cloning the DC connector"
 # private, so a developer without access to it still has a working CO
 # workspace. A failure here is a warning and a line in the summary, and not the
 # end of the run.
-if [ "$USE_SSH" -eq 1 ]; then
+# The option wins when it is given, so a fork or a mirror needs no edit here.
+if [ -n "$DC_REPO_OVERRIDE" ]; then
+    dc_url="$DC_REPO_OVERRIDE"
+elif [ "$USE_SSH" -eq 1 ]; then
     dc_url="$DC_REPO_SSH"
 else
     dc_url="$DC_REPO_HTTPS"

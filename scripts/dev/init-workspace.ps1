@@ -45,6 +45,10 @@
     only. The DC connector is a separate repository and always comes from its
     default branch.
 
+.PARAMETER DcRepo
+    Clone the DC connector from this URL rather than the default one. Use this for
+    a fork, or for a mirror your network can reach.
+
 .PARAMETER Ssh
     Clone over SSH instead of HTTPS.
 
@@ -79,6 +83,8 @@ param(
 
     [string] $Branch,
 
+    [string] $DcRepo,
+
     [switch] $Ssh,
 
     [Alias('y')]
@@ -99,8 +105,10 @@ $DcDirName = 'sebt-self-service-portal-dc-connector'
 
 $PortalRepo = if ($Ssh) { "git@github.com:codeforamerica/$PortalDirName.git" }
               else { "https://github.com/codeforamerica/$PortalDirName.git" }
-$DcRepo = if ($Ssh) { "git@github.com:codeforamerica/$DcDirName.git" }
-          else { "https://github.com/codeforamerica/$DcDirName.git" }
+# The parameter wins when it is given, so a fork or a mirror needs no edit here.
+$DcRepoUrl = if ($DcRepo) { $DcRepo }
+             elseif ($Ssh) { "git@github.com:codeforamerica/$DcDirName.git" }
+             else { "https://github.com/codeforamerica/$DcDirName.git" }
 
 # Everything the script installs for Node lands here. One directory keeps the
 # whole footprint visible, and removing it undoes every Node-side change.
@@ -226,7 +234,12 @@ function Invoke-NativeStatus {
     $previous = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     try {
-        & $Command @Arguments
+        # Out-Host, not a bare call. Anything a function writes to the output
+        # stream becomes its return value, so a bare `& $Command` hands the
+        # caller the command's stdout instead of the boolean, and the developer
+        # sees none of it. That is how a pnpm install and a dotnet build both
+        # ran in silence.
+        & $Command @Arguments 2>&1 | Out-Host
         return ($LASTEXITCODE -eq 0)
     } catch {
         return $false
@@ -397,6 +410,13 @@ function Confirm-Branch {
     $current = Get-CommandOutput 'git' @('-C', $Directory, 'rev-parse', '--abbrev-ref', 'HEAD')
     if ($current -eq $BranchName) {
         Write-Info "$Label is on $BranchName."
+        # Matching by name is not the same as being the right branch. A local
+        # branch cut from main carries the name and none of the content, and the
+        # run then reads main's versions while reporting the branch. Ask the
+        # remote whether the name exists at all.
+        if (-not (Test-NativeSuccess 'git' @('-C', $Directory, 'ls-remote', '--exit-code', '--heads', 'origin', $BranchName))) {
+            Write-Notice "origin has no branch called $BranchName, so this one is local only. Check the spelling: a local branch cut from main looks like this."
+        }
         return
     }
 
@@ -1226,7 +1246,7 @@ Write-Step 'Cloning the DC connector'
 # DC is the one state whose connector lives outside this repository, and it is
 # private, so a developer without access to it still has a working CO workspace. A
 # failure here is a warning and a line in the summary, and not the end of the run.
-if (Copy-Repository $DcRepo $DcConnector 'The DC connector') {
+if (Copy-Repository $DcRepoUrl $DcConnector 'The DC connector') {
     $script:DcConnectorPresent = $true
 } else {
     # The summary spells out what this costs, so the message here stays short.
