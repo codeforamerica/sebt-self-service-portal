@@ -56,7 +56,7 @@ Each of the 4 is now a capability. No state has a module of its own.
 
 | Capability | DC | CO |
 | --- | --- | --- |
-| Sign-in | email OTP, with Mailpit | OIDC, with Keycloak |
+| Sign-in | email OTP, with Mailpit; ID proofing against the Socure stub | OIDC, with Keycloak |
 | Household source | the `DcSource` database and a seed job | mock CBMS |
 | Connector build | a build of the second repository | a build of the in-repo project |
 | Cache | none, `HybridCache` level 1 only | Redis with TLS |
