@@ -732,7 +732,7 @@
           "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.12, )",
           "Microsoft.EntityFrameworkCore.Tools": "[10.0.12, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.10.0, )",
-          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.11, )",
+          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.12, )",
           "Microsoft.FeatureManagement": "[4.7.0, )",
           "Microsoft.IdentityModel.JsonWebTokens": "[8.22.0, )",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.22.0, )",
