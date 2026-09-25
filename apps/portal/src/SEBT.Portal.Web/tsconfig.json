@@ -42,7 +42,20 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    ".next-dc/types/**/*.ts",
+    ".next-dc/dev/types/**/*.ts",
+    ".next-co/types/**/*.ts",
+    ".next-co/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".next", "out", "dist", "e2e", "playwright.config.ts"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    ".next-co",
+    ".next-dc",
+    "out",
+    "dist",
+    "e2e",
+    "playwright.config.ts"
+  ]
 }
