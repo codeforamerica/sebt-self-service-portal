@@ -24,7 +24,7 @@ import { HouseholdSummary } from '../HouseholdSummary'
 import { UserProfileCard } from '../UserProfileCard'
 
 /**
- * Closed taxonomy of dashboard error codes per docs/adr/0015-co-loaded-error-code-taxonomy.md.
+ * Closed taxonomy of dashboard error codes per docs/adr/0029-co-loaded-error-code-taxonomy.md.
  * Adding a new value requires an ADR amendment plus matching updates in the
  * Serilog `OutcomeCode` field on the backend and in the i18n locale keys.
  */

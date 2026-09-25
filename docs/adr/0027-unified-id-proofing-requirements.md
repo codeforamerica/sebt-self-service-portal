@@ -1,4 +1,4 @@
-# 12. Unified IdProofingRequirements — Replace Dual IAL Config with Resource+Action Model
+# 27. Unified IdProofingRequirements — Replace Dual IAL Config with Resource+Action Model
 
 Date: 2026-04-15
 
@@ -35,7 +35,7 @@ Key design choices:
 - **Polymorphic values.** A requirement can be a simple string (uniform for all case types) or an object with per-case-type sub-requirements, supporting both simple and granular configurations in one syntax.
 - **Fail-safe config reload.** Invalid config pushes (e.g., via AWS AppConfig) are rejected with a Critical log; the service retains the last-known-good configuration rather than serving 500s.
 
-See [design spec](../superpowers/specs/2026-04-15-unified-id-proofing-requirements-design.md) and [configuration guide](../config/ial/README.md) for full details.
+See [design spec](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/superpowers/specs/2026-04-15-unified-id-proofing-requirements-design.md) and [configuration guide](../docs/configuration/identity-and-proofing.md) for full details.
 
 ## Consequences
 

@@ -8,7 +8,7 @@ Accepted
 
 ## Context
 
-Colorado production auth uses myColorado/PingOne (see [ADR-0008](./0008-oidc-mycolorado-authentication-and-state-auth-context.md) and [ADR-0012](./0012-oidc-rp-initiated-logout.md)).  For production use, it works fine with the application, but we don't have a local solution to run ourseleves and are depended on instances that we don't own.  Some example of problems that creates are:
+Colorado production auth uses myColorado/PingOne (see [ADR-0008](./0008-oidc-mycolorado-authentication-and-state-auth-context.md) and [ADR-0012](./0028-oidc-rp-initiated-logout.md)).  For production use, it works fine with the application, but we don't have a local solution to run ourseleves and are depended on instances that we don't own.  Some example of problems that creates are:
 
 - MFA and phone ownership block local sign-in and force workarounds such as using `DevelopmentPhoneOverride` or Google Groups juggling
 - Shared IdP accounts can lock or change under other people.  The current process is that we reach out to existing third-party instances (in the case with MyCO) and directly request resetting of data and state.
@@ -32,7 +32,7 @@ We'll be immediately including the changes tied to branch `spike/DC-513-oidc-pro
 - Docker Compose service behind a `keycloak` profile, using insecure `start-dev` defaults.  This isn't planned for any production use, so this should be OK.
 - Versioned realm import from `docker/keycloak/sebt-realm.json` (clients, fixture users, protocol mappers) that'll we can update as we add additional seeded users.
 - Optional local theme under `docker/keycloak/themes/sebt` so the login UI is obviously not myColorado
-- Portal overlay documented in `appsettings.keycloak.example.json` and [docs/development/keycloak-oidc.md](../development/keycloak-oidc.md)
+- Portal overlay documented in `appsettings.keycloak.example.json` and [docs/development/keycloak-oidc.md](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/development/keycloak-oidc.md)
 - Two clients will be supported:
   - `sebt-portal` for normal login
   - `sebt-portal-stepup` for IAL elevation, emitting Socure-shaped verification claims when present on the user
@@ -85,9 +85,9 @@ Highest fidelity to myColorado, but keeps the MFA, account, and non-determinism 
 ## References
 
 - DC-513 (OIDC provider spike)
-- [docs/development/keycloak-oidc.md](../development/keycloak-oidc.md)
+- [docs/development/keycloak-oidc.md](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/docs/development/keycloak-oidc.md)
 - `compose.yaml` (`keycloak` profile)
 - `docker/keycloak/sebt-realm.json`
 - `apps/portal/src/SEBT.Portal.Api/appsettings.keycloak.example.json`
 - [ADR-0008](./0008-oidc-mycolorado-authentication-and-state-auth-context.md)
-- [ADR-0012](./0012-oidc-rp-initiated-logout.md)
+- [ADR-0012](./0028-oidc-rp-initiated-logout.md)

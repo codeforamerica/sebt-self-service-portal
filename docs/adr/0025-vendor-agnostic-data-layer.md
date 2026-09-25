@@ -1,4 +1,4 @@
-# 9. Vendor-Agnostic Privacy-Aware Data Layer
+# 25. Vendor-Agnostic Privacy-Aware Data Layer
 
 Date: 2026-03-16
 
