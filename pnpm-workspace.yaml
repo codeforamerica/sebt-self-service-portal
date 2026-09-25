@@ -31,5 +31,24 @@ minimumReleaseAge: 10080 # 7 days (minutes)
 # [SECURITY] Version-pinned exemptions to the cooldown above. Each entry must
 # reference a specific package@version, so the exemption ages out automatically
 # on the next version bump. Justify each addition with a CVE or ticket link.
-# Empty: every current override resolves to a release already past the cooldown.
-minimumReleaseAgeExclude: []
+minimumReleaseAgeExclude:
+  # CVE-2026-94545 (critical): Satori does not escape attacker-controlled values in
+  # the Node.js `ImageResponse` path of `next/og`, so injected SVG markup becomes
+  # remote code execution in the Next process. Patched in 16.3.6, published inside
+  # the cooldown window. The siblings move together to keep the Next family aligned.
+  - next@16.3.6
+  - eslint-config-next@16.3.6
+  - '@next/bundle-analyzer@16.3.6'
+  - '@next/env@16.3.6'
+  - '@next/eslint-plugin-next@16.3.6'
+  - '@next/swc-darwin-arm64@16.3.6'
+  - '@next/swc-darwin-x64@16.3.6'
+  - '@next/swc-linux-arm64-gnu@16.3.6'
+  - '@next/swc-linux-arm64-musl@16.3.6'
+  - '@next/swc-linux-x64-gnu@16.3.6'
+  - '@next/swc-linux-x64-musl@16.3.6'
+  - '@next/swc-win32-arm64-msvc@16.3.6'
+  - '@next/swc-win32-x64-msvc@16.3.6'
+  - '@next/third-parties@16.3.6'
+
+
