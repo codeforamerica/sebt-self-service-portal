@@ -7,8 +7,9 @@ public interface IAddressUpdateBackend
 }
 
 /// <summary>
-/// A household-routed mailing-address update: <see cref="CaseIds"/> MAY BE EMPTY (a zero-case
-/// household still updates), and a single backend call yields a single <see cref="WriteResult"/>.
+/// A household-routed mailing-address update. Routing prefers
+/// <see cref="HouseholdIdentifier"/> on this envelope. A single backend
+/// call yields a single <see cref="WriteResult"/>.
 /// </summary>
 public sealed record AddressUpdateRequest(
     string HouseholdIdentifier,

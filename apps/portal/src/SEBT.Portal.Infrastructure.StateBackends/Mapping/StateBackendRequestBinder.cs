@@ -83,11 +83,12 @@ internal static class StateBackendRequestBinder
     }
 
     /// <summary>
-    /// Batch write-path binding (address update): the scalar binding plus the <c>shared</c> and
-    /// <c>collect</c> shapes over the decoded caseIds. A <c>shared</c> field that disagrees across
-    /// cases, or a shared/collect field missing from any caseId, fails loud.
+    /// Batch write-path binding (address update and batch card replacement): the scalar binding
+    /// plus the <c>shared</c> and <c>collect</c> shapes over the decoded caseIds. A <c>shared</c>
+    /// field that disagrees across cases, or a shared/collect field missing from any caseId, fails
+    /// loud. Zero caseIds are allowed when the binding does not use shared/collect
     /// </summary>
-    public static JsonObject BuildAddressBody(
+    public static JsonObject BuildBatchWriteBody(
         RequestBinding binding,
         IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds,
         IReadOnlyDictionary<string, string> scalarInputs)
@@ -96,12 +97,16 @@ internal static class StateBackendRequestBinder
         ArgumentNullException.ThrowIfNull(decodedCaseIds);
         ArgumentNullException.ThrowIfNull(scalarInputs);
 
-        if (decodedCaseIds.Count == 0)
+        bool needsCaseTokens =
+            (binding.Shared is { Count: > 0 }) || (binding.Collect is { Count: > 0 });
+
+        if (needsCaseTokens && decodedCaseIds.Count == 0)
         {
-            throw new InvalidOperationException("Address update requires at least one caseId.");
+            throw new InvalidOperationException(
+                "This write requires at least one caseId because shared/collect binding is configured.");
         }
 
-        // Constants + scalar address fields reuse the existing scalar binding.
+        // Constants + scalar fields (address, householdIdentifier envelope) reuse the scalar binding.
         JsonObject body = BuildBody(binding, scalarInputs);
 
         if (binding.Shared is { } shared)
@@ -122,6 +127,13 @@ internal static class StateBackendRequestBinder
 
         return body;
     }
+
+    /// <summary>Address-update alias for <see cref="BuildBatchWriteBody"/>.</summary>
+    public static JsonObject BuildAddressBody(
+        RequestBinding binding,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds,
+        IReadOnlyDictionary<string, string> scalarInputs) =>
+        BuildBatchWriteBody(binding, decodedCaseIds, scalarInputs);
 
     // One household-level field across all decoded caseIds; fails loud on disagreement.
     private static string ResolveShared(
