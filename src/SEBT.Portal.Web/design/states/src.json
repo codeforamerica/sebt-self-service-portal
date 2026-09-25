@@ -1940,51 +1940,38 @@
       "$type": "color",
       "$value": "{cyan-80v}"
     },
+    "theme-secondary-family": {
+      "$type": "color",
+      "$value": "'gold-vivid'",
+      "$description": "Family tokens designate the overall color set and do not map to explicit values. Therefore, they are blank."
+    },
     "theme-secondary-lighter": {
       "$type": "color",
-      "$value": "#F8DEDE"
+      "$value": "{yellow-5}"
     },
     "theme-secondary-light": {
       "$type": "color",
-      "$value": "#FFABAB"
+      "$value": "{gold-10v}"
     },
     "theme-secondary": {
       "$type": "color",
-      "$value": "#B50909"
+      "$value": "{gold-20v}"
     },
     "theme-secondary-vivid": {
       "$type": "color",
-      "$value": "#D40202"
-    },
-    "theme-secondary-darker": {
-      "$type": "color",
-      "$value": "#6F0101"
+      "$value": "{yellow-20v}"
     },
     "theme-secondary-dark": {
       "$type": "color",
-      "$value": "#950707"
+      "$value": "{gold-50v}"
+    },
+    "theme-secondary-darker": {
+      "$type": "color",
+      "$value": "{gold-70v}"
     },
     "theme-button-border-radius": {
       "$type": "borderRadius",
       "$value": "{md}"
-    },
-    "theme-font-type-sans": {
-      "$type": "fontFamilies",
-      "$value": "Atkinson Hyperlegible",
-      "$description": "In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist\n\nIn your settings configuration, tell $theme-typeface-tokens to create a new typeface token. In the code example, we are creating a new typeface token:\n\n $theme-typeface-tokens: (\n   \"Urbanist\": (\n     \"display-name\": \"Urbanist\",\n     \"cap-height\": 364px\n   ),\n ),\n\nSource: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2"
-    },
-    "theme-font-type-serif": {
-      "$type": "fontFamilies",
-      "$value": "Atkinson Hyperlegible",
-      "$description": "In your HTML files, add a reference to the JavaScript and/or CSS files provided by the font hosting service. https://fonts.google.com/specimen/Urbanist\n\nIn your settings configuration, tell $theme-typeface-tokens to create a new typeface token. In the code example, we are creating a new typeface token:\n\n $theme-typeface-tokens: (\n   \"Urbanist\": (\n     \"display-name\": \"Urbanist\",\n     \"cap-height\": 364px\n   ),\n ),\n\nSource: https://designsystem.digital.gov/design-tokens/typesetting/font-family/#adding-fonts-to-uswds-2"
-    },
-    "theme-font-role-heading": {
-      "$type": "fontFamilies",
-      "$value": "'sans'"
-    },
-    "theme-font-role-alt": {
-      "$type": "fontFamilies",
-      "$value": "'sans'"
     },
     "theme-global-paragraph-styles": {
       "$type": "boolean",
@@ -2018,53 +2005,13 @@
       "$value": "'none'",
       "$description": "Setting measures to 'none' prevents text from having a fixed width and allows it to flow."
     },
-    "theme-accent-cool-lighter": {
-      "$type": "color",
-      "$value": "#E7F2F5"
-    },
-    "theme-accent-cool-light": {
-      "$type": "color",
-      "$value": "#CBDDE7"
-    },
-    "theme-accent-cool": {
-      "$type": "color",
-      "$value": "#85AABE"
-    },
-    "theme-accent-cool-dark": {
-      "$type": "color",
-      "$value": "#356580"
-    },
-    "theme-accent-cool-darker": {
-      "$type": "color",
-      "$value": "#1F465C"
-    },
-    "theme-accent-warm-lighter": {
-      "$type": "color",
-      "$value": "#FDFCF0"
-    },
-    "theme-accent-warm-light": {
-      "$type": "color",
-      "$value": "#FCF9D9"
-    },
-    "theme-accent-warm": {
-      "$type": "color",
-      "$value": "#FFEC87"
-    },
-    "theme-accent-warm-dark": {
-      "$type": "color",
-      "$value": "#FFD100"
-    },
-    "theme-accent-warm-darker": {
-      "$type": "color",
-      "$value": "#DFA902"
-    },
     "theme-link-color": {
       "$type": "color",
       "$value": "{cyan-60v}"
     },
     "theme-focus-color": {
       "$type": "color",
-      "$value": "{ink}"
+      "$value": "{mint-cool-30v}"
     }
   },
   "$themes": [],
