@@ -226,9 +226,15 @@ public class UpdateAddressCommandHandler(
         }
 
         // Use the persisted address (normalized or user-entered when opted in) for the state connector call.
+        // Every case, co-loaded included: per-case backends write the address to each enrollment row.
         var updateRequest = new AddressUpdateRequest
         {
             HouseholdIdentifierValue = identifier.Value,
+            CaseIds = household.SummerEbtCases
+                .Select(c => c.SummerEBTCaseID)
+                .OfType<string>()
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .ToList(),
             Address = persistAddress
         };
 

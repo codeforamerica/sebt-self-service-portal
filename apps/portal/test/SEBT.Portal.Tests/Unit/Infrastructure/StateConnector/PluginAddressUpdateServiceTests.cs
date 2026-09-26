@@ -30,6 +30,7 @@ public class PluginAddressUpdateServiceTests
         var request = new AddressUpdateRequest
         {
             HouseholdIdentifierValue = "guardian@example.com",
+            CaseIds = ["case-1", "case-2"],
             Address = new Address
             {
                 StreetAddress1 = "123 Main St",
@@ -51,6 +52,7 @@ public class PluginAddressUpdateServiceTests
 
         Assert.NotNull(captured);
         Assert.Equal("guardian@example.com", captured.HouseholdIdentifierValue);
+        Assert.Equal(["case-1", "case-2"], captured.CaseIds);
         Assert.Equal("123 Main St", captured.Address.StreetAddress1);
         Assert.Equal("Apt 4B", captured.Address.StreetAddress2);
         Assert.Equal("Washington", captured.Address.City);
@@ -76,6 +78,7 @@ public class PluginAddressUpdateServiceTests
         await _sut.UpdateAddressAsync(request);
 
         Assert.NotNull(captured);
+        Assert.Empty(captured.CaseIds);
         Assert.Null(captured.Address.StreetAddress1);
         Assert.Null(captured.Address.StreetAddress2);
         Assert.Null(captured.Address.City);

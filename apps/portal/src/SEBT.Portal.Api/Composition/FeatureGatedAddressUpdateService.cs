@@ -22,7 +22,7 @@ internal sealed class FeatureGatedAddressUpdateService(
 
         var coreRequest = new AddressUpdateRequest(
             request.HouseholdIdentifierValue,
-            [],
+            request.CaseIds,
             new AddressUpdateAddress
             {
                 Line1 = request.Address.StreetAddress1,
