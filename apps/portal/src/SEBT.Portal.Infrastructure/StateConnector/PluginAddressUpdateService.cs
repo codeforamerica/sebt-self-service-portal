@@ -22,6 +22,7 @@ public class PluginAddressUpdateService(
         var pluginRequest = new PluginAddressUpdateRequest
         {
             HouseholdIdentifierValue = request.HouseholdIdentifierValue,
+            CaseIds = request.CaseIds,
             Address = new PluginAddress
             {
                 StreetAddress1 = request.Address.StreetAddress1,

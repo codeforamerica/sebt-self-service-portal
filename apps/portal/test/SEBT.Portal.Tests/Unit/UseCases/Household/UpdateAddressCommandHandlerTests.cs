@@ -363,6 +363,43 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_PassesEveryHouseholdCaseIdToStateConnector()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B", IsCoLoaded = true },
+            new SummerEbtCase { SummerEBTCaseID = "S2", ChildFirstName = "C", ChildLastName = "D", IsCoLoaded = false });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+            Arg.Is<AddressUpdateRequest>(r => r.CaseIds.SequenceEqual(new[] { "S1", "S2" })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_OmitsCasesWithoutIdFromStateConnectorRequest()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand();
+
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" },
+            new SummerEbtCase { SummerEBTCaseID = null, ChildFirstName = "C", ChildLastName = "D" },
+            new SummerEbtCase { SummerEBTCaseID = " ", ChildFirstName = "E", ChildLastName = "F" });
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _stateAddressUpdateService.Received(1).UpdateAddressAsync(
+            Arg.Is<AddressUpdateRequest>(r => r.CaseIds.SequenceEqual(new[] { "S1" })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_AllowsUpdate_WhenNoCasesExist()
     {
         var handler = CreateHandler();

@@ -6,6 +6,7 @@ using SEBT.Portal.Api.Options;
 using SEBT.Portal.Api.Telemetry;
 using SEBT.Portal.UseCases;
 using SEBT.Portal.Infrastructure;
+using SEBT.Portal.Infrastructure.StateBackends;
 using SEBT.Portal.Api.Startup;
 using SEBT.Portal.Api.Startup.Setup;
 
@@ -26,6 +27,7 @@ builder.Services.AddCaching(builder.Configuration, builder.Environment);
 
 // Registers plugins and allows them to be constructor injected into ASP.NET controllers
 builder.Services.AddPlugins(builder.Configuration, builder.Environment.ContentRootPath);
+builder.Services.AddConfigurableStateBackend(builder.Configuration, builder.Environment.ContentRootPath);
 
 builder.Services.AddControllers();
 builder.Services.Configure<RouteOptions>(options =>
@@ -41,6 +43,7 @@ builder.Services.AddSwaggerGen(); // Configured by ConfigureSwaggerGenOptions, w
 
 // Add Feature Management
 builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
+builder.Services.AddFeatureGatedStateBackendRouting(builder.Configuration);
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();

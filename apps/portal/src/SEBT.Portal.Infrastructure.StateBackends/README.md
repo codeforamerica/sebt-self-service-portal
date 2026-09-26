@@ -56,9 +56,9 @@ When a real state needs something no primitive covers, stop and add a **new name
 
 ## Status
 
-Spike / prototype (DC-568). The adapter is not yet wired into the portal composition root.
+Spike / prototype (DC-568). MEF plugins remain the default live path. The adapter is wired behind a dark-launch flag.
 
-- **Not wired:** `FeatureManagement:use_configurable_state_backend` and `StateBackend:ConfigPath` are the intended integration seam — they do not exist in this stack yet. MEF plugins serve all traffic. Nothing dispatches through `ConfigurableStateBackend` until a later stack adds the flag, the YAML path, and the resolve-time flip.
+- **Dark launch:** `FeatureManagement:use_configurable_state_backend` (default `false`) plus `StateBackend:ConfigPath`. When the path is set, YAML loads and validates at startup. Traffic stays on MEF plugins until the flag is enabled (AppConfig can flip it without a restart). Enabling the flag with an empty path fails the request.
 - **Follow-up:** move `Core/StateBackends/Configuration/` into `Infrastructure.StateBackends` (ADR-0002: Core should not carry HTTP concepts). Deferred so this stack does not reshuffle types.
 - **Validation:** the DC wrapper surface is complete; CO UAT smoke testing is underway. Test green is still substantially mock-based (MockHttp + self-authored fixtures) — the adapter is unvalidated against production traffic.
 - **Config trust model:** the YAML defines egress targets and constants. It is deployment-owned config, sitting inside the same trust boundary as appsettings secrets. It is not user- or state-supplied input.
