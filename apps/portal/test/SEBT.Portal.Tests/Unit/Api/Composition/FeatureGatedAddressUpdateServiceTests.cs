@@ -20,6 +20,7 @@ public class FeatureGatedAddressUpdateServiceTests
         new()
         {
             HouseholdIdentifierValue = "household-1",
+            CaseIds = ["case-token-1", "case-token-2"],
             Address = new PluginAddress
             {
                 StreetAddress1 = "1 Main St",
@@ -62,7 +63,7 @@ public class FeatureGatedAddressUpdateServiceTests
                 r.HouseholdIdentifier == "household-1"
                 && r.Address.Line1 == "1 Main St"
                 && r.Address.Zip == "80202"
-                && r.CaseIds.Count == 0),
+                && r.CaseIds.SequenceEqual(new[] { "case-token-1", "case-token-2" })),
             Arg.Any<CancellationToken>());
     }
 }
