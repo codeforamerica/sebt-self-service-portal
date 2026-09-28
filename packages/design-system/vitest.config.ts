@@ -12,8 +12,7 @@ export default defineConfig({
     include: [
       'src/**/*.test.{ts,tsx}',
       'design/scripts/**/*.test.{js,ts}',
-      'content/scripts/validate-content*.test.js',
-      'content/scripts/referenced-keys.test.js'
+      'content/scripts/validate-content*.test.js'
     ],
     exclude: ['node_modules/**'],
     coverage: {

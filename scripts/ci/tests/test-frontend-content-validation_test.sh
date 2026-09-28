@@ -15,8 +15,10 @@ mkdir -p "$WORK_DIR/bin"
 cat > "$WORK_DIR/bin/pnpm" <<'STUB'
 #!/usr/bin/env bash
 echo "$(basename "$PWD") :: $*" >> "$PNPM_CALLS"
-if [ "${FAIL_COPY_VALIDATE:-}" = "1" ] && [[ "$*" == *copy:validate* ]]; then
-  exit 1
+if [[ "$*" == *copy:validate* ]]; then
+  if [ "${FAIL_COPY_VALIDATE:-}" = "1" ] || [ "${FAIL_COPY_VALIDATE_IN:-}" = "$(basename "$PWD")" ]; then
+    exit 1
+  fi
 fi
 exit 0
 STUB
@@ -38,3 +40,8 @@ FAIL_COPY_VALIDATE=1 run_script || status=$?
 assert_eq "$status" "1"
 assert_contains "$CALLS" "SEBT.Portal.Web :: run copy:validate"
 assert_contains "$CALLS" "SEBT.EnrollmentChecker.Web :: run copy:validate"
+
+echo "fails when only the enrollment checker's content validation fails"
+status=0
+FAIL_COPY_VALIDATE_IN=SEBT.EnrollmentChecker.Web run_script || status=$?
+assert_eq "$status" "1"

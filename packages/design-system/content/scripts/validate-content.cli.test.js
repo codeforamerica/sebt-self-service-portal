@@ -12,6 +12,13 @@ const CLEAN_ROWS = [
   'GLOBAL - Button Continue,Continue,Continuar,ቀጥል',
   '"S7 - Portal Dashboard - Alert Title","Cards ending in [[9999], [9999],] will be sent","Tarjetas terminadas en [[9999], [9999],] serán enviadas","ካርድ [[9999], [9999],]"'
 ]
+// The generator treats output as cached only when each locale has a landing.json.
+const LANDING_ROW = 'S1 - Landing Page - Title,Get Summer EBT,Obtén Summer EBT,ሰመር ኢቢቲ'
+// No code renders this key. The defect that reached production: one opening
+// brace lost from "{{name}}".
+const BRACE_ROW = 'S7 - Portal Dashboard - Greeting,Hello {name}},Hola {{name}},ሰላም {{name}}'
+// The Spanish cell is empty.
+const UNTRANSLATED_ROW = 'S7 - Portal Dashboard - Footnote,See the back of your card,,ካርድ'
 // Spanish lost the closing bracket of the example list.
 const BROKEN_ROW =
   '"S7 - Portal Dashboard - Alert Title","Cards ending in [[9999], [9999],] will be sent","Tarjetas terminadas en [[9999], [9999], serán enviadas","ካርድ [[9999], [9999],]"'
@@ -67,9 +74,37 @@ describe('generate-locales.js --validate', () => {
     expect(result.stderr).toContain('dc/es dashboard.alertTitle')
   })
 
+  it('exits 1 for a defect in a key that no app code renders', () => {
+    writeCsv([CLEAN_ROWS[0], BRACE_ROW])
+
+    const result = run(['--validate'])
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain('mismatched-braces')
+    expect(result.stderr).toContain('dc/en dashboard.greeting')
+  })
+
+  it('warns about a missing translation without failing', () => {
+    writeCsv([...CLEAN_ROWS, UNTRANSLATED_ROW])
+
+    const result = run(['--validate'])
+
+    expect(result.status).toBe(0)
+    expect(result.stdout).toContain('Missing Spanish translation in dc: dashboard.footnote')
+  })
+
+  it('does not announce a generate run', () => {
+    writeCsv(CLEAN_ROWS)
+
+    const result = run(['--validate'])
+
+    expect(result.stdout).not.toContain('Generating')
+  })
+
   it('still validates when the generated output is cached', () => {
-    writeCsv([CLEAN_ROWS[0], BROKEN_ROW])
+    writeCsv([LANDING_ROW, BROKEN_ROW])
     run() // populates the cache
+    expect(run().stdout).toContain('Locales unchanged (cached)')
 
     const result = run(['--validate'])
 
@@ -87,67 +122,15 @@ describe('generate-locales.js without --validate', () => {
     expect(result.stderr).toContain('unbalanced-brackets')
     expect(existsSync(join(dir, 'locales', 'es', 'dc', 'dashboard.json'))).toBe(true)
   })
-})
 
-describe('generate-locales.js --validate --src-dirs', () => {
-  // The defect that reached production: one opening brace lost from "{{name}}".
-  const BRACE_ROW = 'S7 - Portal Dashboard - Greeting,Hello {name}},Hola {{name}},ሰላም {{name}}'
-  const RENDERS_GREETING = `const { t } = useTranslation('dashboard')\nexport const Page = () => <h1>{t('greeting')}</h1>\n`
-  const RENDERS_SOMETHING_ELSE = `const { t } = useTranslation('dashboard')\nexport const Page = () => <h1>{t('title')}</h1>\n`
+  it('reports the content error again on a cached run', () => {
+    writeCsv([LANDING_ROW, BROKEN_ROW])
+    run() // populates the cache
 
-  function writeSource(folder, file, text) {
-    mkdirSync(join(dir, folder), { recursive: true })
-    writeFileSync(join(dir, folder, file), text)
-  }
-
-  it('exits 1 when the app renders the key with the "{text}}" defect', () => {
-    writeCsv([CLEAN_ROWS[0], BRACE_ROW])
-    writeSource('src', 'Page.tsx', RENDERS_GREETING)
-
-    const result = run(['--validate', '--src-dirs', join(dir, 'src')])
-
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain('mismatched-braces')
-    expect(result.stderr).toContain('dc/en dashboard.greeting')
-  })
-
-  it('exits 0 and warns when no app code references the defective key', () => {
-    writeCsv([CLEAN_ROWS[0], BRACE_ROW])
-    writeSource('src', 'Page.tsx', RENDERS_SOMETHING_ELSE)
-
-    const result = run(['--validate', '--src-dirs', join(dir, 'src')])
+    const result = run()
 
     expect(result.status).toBe(0)
-    expect(result.stdout).toContain('mismatched-braces')
-    expect(result.stdout).toContain('no app code references this key')
-  })
-
-  it('reads every directory in a comma-separated list', () => {
-    writeCsv([CLEAN_ROWS[0], BRACE_ROW])
-    writeSource('src', 'Page.tsx', RENDERS_SOMETHING_ELSE)
-    writeSource('shared', 'Greeting.tsx', RENDERS_GREETING)
-
-    const result = run(['--validate', '--src-dirs', `${join(dir, 'src')},${join(dir, 'shared')}`])
-
-    expect(result.status).toBe(1)
-  })
-
-  it('does not count a reference that only a test file makes', () => {
-    writeCsv([CLEAN_ROWS[0], BRACE_ROW])
-    writeSource('src', 'Page.tsx', RENDERS_SOMETHING_ELSE)
-    writeSource('src', 'Page.test.tsx', RENDERS_GREETING)
-
-    const result = run(['--validate', '--src-dirs', join(dir, 'src')])
-
-    expect(result.status).toBe(0)
-  })
-
-  it('fails instead of guessing when a source directory does not exist', () => {
-    writeCsv([CLEAN_ROWS[0], BRACE_ROW])
-
-    const result = run(['--validate', '--src-dirs', join(dir, 'missing')])
-
-    expect(result.status).toBe(1)
-    expect(result.stderr).toContain('--src-dirs')
+    expect(result.stdout).toContain('Locales unchanged (cached)')
+    expect(result.stderr).toContain('unbalanced-brackets')
   })
 })

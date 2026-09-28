@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { bracketImbalance, hasBraceMismatch, hasOddBoldMarkers, validateStateContent } from './validate-content.js'
+import {
+  bracketImbalance,
+  hasBraceMismatch,
+  hasOddBoldMarkers,
+  unfillableTemplate,
+  validateStateContent
+} from './validate-content.js'
 
 // Builds the generator's per-state shape: { locale: { namespace: { key: value } } }
 function stateData({ en = {}, es = {}, am = {} }) {
@@ -28,6 +34,30 @@ describe('bracketImbalance', () => {
   })
 })
 
+describe('unfillableTemplate', () => {
+  it('accepts plural markers before and after the example list', () => {
+    expect(unfillableTemplate('A replacement for the card[s] ending in [[9999], [9999],] card[s]')).toBeNull()
+  })
+
+  it('accepts bracketed names inside the example list', () => {
+    expect(
+      unfillableTemplate('A replacement for [[First name] [Last name], and [First name] [Last name]] card[s]')
+    ).toBeNull()
+  })
+
+  it('reports a plural marker nested inside another bracket', () => {
+    expect(
+      unfillableTemplate('Reemplazo de la tarjeta[s] [terminada[s]] en [[9999], [9999],] será enviada')
+    ).toMatch(/outside the example list/)
+  })
+
+  it('reports a bracket pair that straddles the example list', () => {
+    expect(unfillableTemplate('tarjeta[s [[9999], [9999],] terminadas] en')).toMatch(
+      /outside the example list/
+    )
+  })
+})
+
 describe('hasOddBoldMarkers', () => {
   it('accepts paired markers', () => {
     expect(hasOddBoldMarkers('sign in using **your account** or a **new one**')).toBe(false)
@@ -36,6 +66,14 @@ describe('hasOddBoldMarkers', () => {
   it('flags a value that lost one marker', () => {
     expect(hasOddBoldMarkers('si tu estudiante no cumple con los criterios anteriores y**')).toBe(true)
   })
+
+  it('flags a pair split across a paragraph break, which never renders as bold', () => {
+    expect(hasOddBoldMarkers('**Bold one\n\nand bold** two')).toBe(true)
+  })
+
+  it('accepts pairs that each close inside their own paragraph', () => {
+    expect(hasOddBoldMarkers('**First** paragraph\n\n**Second** paragraph')).toBe(false)
+  })
 })
 
 describe('hasBraceMismatch', () => {
@@ -43,8 +81,16 @@ describe('hasBraceMismatch', () => {
     expect(hasBraceMismatch('{{count}} more entries in {{year}}')).toBe(false)
   })
 
+  it('accepts single-brace placeholders', () => {
+    expect(hasBraceMismatch('Summer EBT in {state} for {year}')).toBe(false)
+  })
+
   it('flags an extra closing brace', () => {
     expect(hasBraceMismatch('({count}} more entries')).toBe(true)
+  })
+
+  it('flags two broken placeholders whose brace counts cancel out', () => {
+    expect(hasBraceMismatch('Hello {name}} and {{x}')).toBe(true)
   })
 })
 
@@ -56,7 +102,7 @@ describe('validateStateContent', () => {
       am: { title: 'ካርድ[ዎች] [[9999], [9999],] {{count}}' }
     })
 
-    expect(validateStateContent(data, 'dc', {})).toEqual({ errors: [], warnings: [] })
+    expect(validateStateContent(data, 'dc')).toEqual({ errors: [] })
   })
 
   it('reports unbalanced brackets in a translation of bracketed English copy', () => {
@@ -65,7 +111,7 @@ describe('validateStateContent', () => {
       es: { alertAddressTitle: 'Las tarjeta terminadas en [[9999], [9999], van a ser' }
     })
 
-    const { errors } = validateStateContent(data, 'co', {})
+    const { errors } = validateStateContent(data, 'co')
 
     expect(errors).toEqual([
       expect.objectContaining({
@@ -83,7 +129,7 @@ describe('validateStateContent', () => {
       es: { note: 'Llámanos] hoy' }
     })
 
-    const { errors } = validateStateContent(data, 'co', {})
+    const { errors } = validateStateContent(data, 'co')
 
     expect(errors).toEqual([])
   })
@@ -94,7 +140,7 @@ describe('validateStateContent', () => {
       es: { alertAddressTitle: 'Una tarjeta de reemplazo para [First name] [Last name]' }
     })
 
-    const { errors } = validateStateContent(data, 'dc', {})
+    const { errors } = validateStateContent(data, 'dc')
 
     expect(rules(errors)).toEqual(['missing-example-list'])
     expect(errors[0]).toMatchObject({ locale: 'es', key: 'dashboard.alertAddressTitle' })
@@ -106,54 +152,52 @@ describe('validateStateContent', () => {
       es: { body: 'no cumple con los criterios y**', more: '{{count}} más' }
     })
 
-    const { errors, warnings } = validateStateContent(data, 'dc', {})
+    const { errors } = validateStateContent(data, 'dc')
 
-    expect(warnings).toEqual([])
     expect(errors.map((e) => `${e.locale} ${e.key} ${e.rule}`).sort()).toEqual([
       'en dashboard.more mismatched-braces',
       'es dashboard.body odd-bold-markers'
     ])
   })
 
-  it('skips empty values', () => {
-    const data = stateData({ en: { title: 'Title' }, es: { title: '' } })
+  it('reports a translation whose brackets balance but cannot be filled', () => {
+    const data = stateData({
+      en: { alertAddressTitle: 'A replacement for the card[s] ending in [[9999], [9999],] will be sent' },
+      es: {
+        alertAddressTitle: 'Reemplazo de la tarjeta[s] [terminada[s]] en [[9999], [9999],] será enviada'
+      }
+    })
 
-    expect(validateStateContent(data, 'co', {})).toEqual({ errors: [], warnings: [] })
-  })
-})
-
-describe('validateStateContent with isReferenced', () => {
-  // The defect that reached production: one opening brace lost from "{{name}}".
-  const data = stateData({
-    en: { greeting: 'Hello {name}}', unused: 'Hello {name}}' },
-    es: { greeting: 'Hola {{name}}', unused: 'Hola {{name}}' }
-  })
-  const isReferenced = (namespace, name) => namespace === 'dashboard' && name === 'greeting'
-
-  it('fails on a "{text}}" placeholder in a key the app renders', () => {
-    const { errors } = validateStateContent(data, 'dc', { isReferenced })
+    const { errors } = validateStateContent(data, 'co')
 
     expect(errors).toEqual([
-      expect.objectContaining({ rule: 'mismatched-braces', locale: 'en', key: 'dashboard.greeting' })
-    ])
-  })
-
-  it('only warns about the same defect in a key no code references', () => {
-    const { warnings } = validateStateContent(data, 'dc', { isReferenced })
-
-    expect(warnings).toEqual([
       expect.objectContaining({
-        rule: 'mismatched-braces',
-        locale: 'en',
-        key: 'dashboard.unused',
-        detail: expect.stringContaining('no app code references this key')
+        rule: 'unfillable-template',
+        locale: 'es',
+        key: 'dashboard.alertAddressTitle'
       })
     ])
   })
 
-  it('keeps the defect an error for every key when isReferenced is not given', () => {
-    const { errors } = validateStateContent(data, 'dc', {})
+  it('skips empty values', () => {
+    const data = stateData({ en: { title: 'Title' }, es: { title: '' } })
 
-    expect(errors.map((e) => e.key).sort()).toEqual(['dashboard.greeting', 'dashboard.unused'])
+    expect(validateStateContent(data, 'co')).toEqual({ errors: [] })
+  })
+})
+
+describe('validateStateContent for a key no code renders', () => {
+  it('reports the defect as an error, because it is still a defect in the sheet', () => {
+    // The defect that reached production: one opening brace lost from "{{name}}".
+    const data = stateData({
+      en: { unused: 'Hello {name}}' },
+      es: { unused: 'Hola {{name}}' }
+    })
+
+    const result = validateStateContent(data, 'dc')
+
+    expect(result).toEqual({
+      errors: [expect.objectContaining({ rule: 'mismatched-braces', locale: 'en', key: 'dashboard.unused' })]
+    })
   })
 })
