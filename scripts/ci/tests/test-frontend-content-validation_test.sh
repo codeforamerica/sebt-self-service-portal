@@ -32,7 +32,9 @@ run_script
 assert_contains "$CALLS" "SEBT.Portal.Web :: run copy:validate"
 assert_contains "$CALLS" "SEBT.EnrollmentChecker.Web :: run copy:validate"
 
-echo "fails when content validation fails"
+echo "fails when content validation fails, after checking both apps"
 status=0
 FAIL_COPY_VALIDATE=1 run_script || status=$?
 assert_eq "$status" "1"
+assert_contains "$CALLS" "SEBT.Portal.Web :: run copy:validate"
+assert_contains "$CALLS" "SEBT.EnrollmentChecker.Web :: run copy:validate"
