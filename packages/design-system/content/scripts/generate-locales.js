@@ -9,7 +9,6 @@
  *   node packages/design-system/content/scripts/generate-locales.js           # Generate all locales
  *   node packages/design-system/content/scripts/generate-locales.js --watch   # Watch mode (future)
  *   node packages/design-system/content/scripts/generate-locales.js --validate  # Check content only: writes nothing, exits 1 on a content error
- *   ... --validate --src-dirs src,../../../../packages/design-system/src          # Fail only for keys that source renders (see referenced-keys.js)
  *
  * CSV Files:
  *   content/states/dc.csv  # DC-specific content (downloaded from DC tab)
@@ -43,8 +42,9 @@
  *  -- to regenerate without caching, comment out any use of saveHash below
  * - Namespace splitting: Organizes by page/component for lazy loading
  * - Variable interpolation: Preserves {state}, {year} placeholders for runtime
- * - Content checks: every run reports content defects (see validate-content.js);
- *   only --validate fails on them, so a sheet typo never blocks dev or a build
+ * - Content checks: every run reports content defects, cached or not (see
+ *   validate-content.js); only --validate fails on them, so a sheet typo never
+ *   blocks dev or a build
  */
 
 // load-env.js is portal-specific and not needed in the shared package.
@@ -61,7 +61,6 @@ import {
 import * as path from 'path';
 import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
-import { collectReferences, createIsReferenced } from './referenced-keys.js';
 import { validateStateContent } from './validate-content.js';
 
 // Parse CLI arguments
@@ -76,9 +75,6 @@ const tsOutOverride  = getCliArg('--ts-out')
 const appFilter      = getCliArg('--app')   // 'portal' | 'enrollment' | null (all)
 const sectionsFilter = getCliArg('--sections')  // comma-separated, e.g., 'S1,GLOBAL'
 const allowedSections = sectionsFilter ? sectionsFilter.split(',').map(s => s.trim()) : null
-// Comma-separated source directories of the app being checked and the packages it renders.
-// When given, a content defect fails a run only if that source could render the key.
-const srcDirsArg     = getCliArg('--src-dirs')
 // Boolean flag, so it is not read with getCliArg (which expects a value after the name)
 const validateOnly = cliArgs.includes('--validate')
 
@@ -621,48 +617,16 @@ function filterStateDataForApp(stateData, app) {
   return filtered
 }
 
-const SOURCE_FILE = /\.(ts|tsx)$/
-const NOT_RENDERED = /\.test\.(ts|tsx)$|generated-locale-resources/
-
-/** Every source file under a directory that could render copy: no tests, no generated resources. */
-function readSourceFiles(dir) {
-  return readdirSync(dir, { withFileTypes: true, recursive: true })
-    .filter((entry) => entry.isFile() && SOURCE_FILE.test(entry.name) && !NOT_RENDERED.test(entry.name))
-    .map((entry) => join(entry.parentPath, entry.name))
-    .filter((file) => !file.includes(`${path.sep}node_modules${path.sep}`))
-    .map((file) => ({ path: file, text: readFileSync(file, 'utf8') }));
-}
-
-/**
- * --src-dirs: which keys could this app render? Returns undefined without the
- * option, and the content checks then treat every key as rendered. A directory
- * that does not exist stops the run: a typo in the option must not quietly turn
- * every defect into a warning.
- */
-function loadIsReferenced() {
-  if (!srcDirsArg) return undefined;
-
-  const dirs = srcDirsArg.split(',').map((d) => path.resolve(process.cwd(), d.trim()));
-  const missing = dirs.filter((d) => !existsSync(d));
-  if (missing.length > 0) {
-    console.error(`❌ --src-dirs: no such directory: ${missing.join(', ')}`);
-    process.exit(1);
-  }
-  return createIsReferenced(collectReferences(dirs.flatMap(readSourceFiles)));
-}
-
-const isReferenced = loadIsReferenced();
-
 /**
  * Read one state's CSV into this app's locale data and check its content.
- * Returns: { entryCount, stateData, errors, warnings }
+ * Returns: { entryCount, stateData, errors }
  */
 function readStateContent({ state, csvPath }) {
   const rows = parseCSV(readFileSync(csvPath, 'utf8'));
   const stateData = filterStateDataForApp(buildStateLocaleData(rows, state), appFilter);
-  const { errors, warnings } = validateStateContent(stateData, state, { isReferenced });
+  const { errors } = validateStateContent(stateData, state);
 
-  return { entryCount: rows.length - 1, stateData, errors, warnings };
+  return { entryCount: rows.length - 1, stateData, errors };
 }
 
 /**
@@ -691,7 +655,9 @@ function reportFindings(errors, warnings) {
 
 /**
  * --validate: check every state's content without writing anything. Always reads
- * the CSVs, so a cached output directory cannot hide a defect.
+ * the CSVs, so a cached output directory cannot hide a defect. A missing
+ * translation is reported as a warning; a content error fails the run.
+ * Returns the process exit code.
  */
 function validateContentOnly(stateFiles) {
   console.log('🔎 Validating locale content (no files written)...');
@@ -699,18 +665,18 @@ function validateContentOnly(stateFiles) {
   const allErrors = [];
   const allWarnings = [];
   for (const stateFile of stateFiles) {
-    const { errors, warnings } = readStateContent(stateFile);
+    const { stateData, errors } = readStateContent(stateFile);
     allErrors.push(...errors);
-    allWarnings.push(...warnings);
+    allWarnings.push(...validateStateCompleteness(stateData, stateFile.state));
   }
 
   reportFindings(allErrors, allWarnings);
 
   if (allErrors.length > 0) {
-    process.exit(1);
+    return 1;
   }
   console.log(`✅ Content checks passed for ${stateFiles.map((f) => f.state).join(', ')}\n`);
-  process.exit(0);
+  return 0;
 }
 
 /**
@@ -836,8 +802,6 @@ function generateResourceFile() {
  * Main entry point
  */
 function main() {
-  console.log('🌐 Generating i18n locale files...');
-
   // Discover state CSV files
   const stateFiles = discoverStateCsvFiles();
 
@@ -846,8 +810,11 @@ function main() {
       console.error('❌ No state CSV files found to validate');
       process.exit(1);
     }
-    validateContentOnly(stateFiles);
+    process.exit(validateContentOnly(stateFiles));
+    return;
   }
+
+  console.log('🌐 Generating i18n locale files...');
 
   if (stateFiles.length === 0) {
     console.log('⚠️  No state CSV files found in content/states/');
@@ -881,10 +848,10 @@ function main() {
 
         // Build locale data for this state, keeping only this app's namespaces,
         // and check its content
-        const { entryCount, stateData, errors, warnings } = readStateContent({ state, csvPath });
+        const { entryCount, stateData, errors } = readStateContent({ state, csvPath });
         console.log(`   Found ${entryCount} content entries`);
         allErrors.push(...errors);
-        allWarnings.push(...warnings, ...validateStateCompleteness(stateData, state));
+        allWarnings.push(...validateStateCompleteness(stateData, state));
 
         // Write locale files
         const fileCount = writeStateLocaleFiles(stateData, state);
@@ -924,6 +891,9 @@ function main() {
       console.log(`   Existing: ${locales.join(', ')}`);
     }
     console.log();
+
+    // Nothing is rewritten, but a content defect is still in the CSV: keep reporting it.
+    reportFindings(stateFiles.flatMap((stateFile) => readStateContent(stateFile).errors), []);
   }
 
   // Always generate the TypeScript resource file from whatever JSON files exist on disk
