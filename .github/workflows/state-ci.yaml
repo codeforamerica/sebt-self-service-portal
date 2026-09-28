@@ -352,6 +352,12 @@ jobs:
       - name: Test
         run: pnpm ci:test:enrollment-checker
 
+      # "Build & Test" runs the same check, but only when the portal or a
+      # shared package changes. This covers a pull request that touches only
+      # the checker's source, such as one that starts rendering a defective key.
+      - name: Validate locale content
+        run: pnpm --filter @sebt/enrollment-checker copy:validate
+
       # The static export cannot include SSR-only route handlers; the deploy
       # workflow removes them before building, so do the same here for parity.
       - name: Remove SSR-only API routes

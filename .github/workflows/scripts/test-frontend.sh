@@ -23,6 +23,7 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/apps/portal/src/SEBT.Portal.Web"
+ENROLLMENT_CHECKER_DIR="$PROJECT_ROOT/apps/portal/src/SEBT.EnrollmentChecker.Web"
 
 # Parse arguments
 SKIP_INSTALL=false
@@ -162,6 +163,22 @@ run_type_check() {
   log_success "Type checking passed"
 }
 
+# Fail on content defects a user would see: copy:generate reports them but
+# never fails, so without this a broken sheet cell ships. Both web apps are
+# checked here because this script runs inside the required "Build & Test" job,
+# and each app renders a different set of keys from the same state CSVs.
+validate_content() {
+  log_info "Validating locale content..."
+
+  local app_dir
+  for app_dir in "$FRONTEND_DIR" "$ENROLLMENT_CHECKER_DIR"; do
+    cd "$app_dir"
+    pnpm run copy:validate
+  done
+
+  log_success "Locale content is valid"
+}
+
 # Main execution
 main() {
   log_info "=== Frontend Test Script ==="
@@ -176,6 +193,7 @@ main() {
   run_lint
   run_tests
   run_package_tests
+  validate_content
 
   echo ""
   log_success "=== All frontend tests passed ==="
