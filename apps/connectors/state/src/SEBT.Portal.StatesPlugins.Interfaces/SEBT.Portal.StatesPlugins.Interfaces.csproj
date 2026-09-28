@@ -22,9 +22,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.11" />
-        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.11" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.11" />
+        <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
         <PackageReference Include="Microsoft.OpenApi" Version="1.6.31" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0"/>
         <!-- System.Composition ships its patch level in the assembly version (10.0.0.11 vs

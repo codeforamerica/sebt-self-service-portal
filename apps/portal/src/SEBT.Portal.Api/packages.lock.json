@@ -4,9 +4,9 @@
     "net10.0": {
       "Microsoft.AspNetCore.Authentication.JwtBearer": {
         "type": "Direct",
-        "requested": "[10.0.11, )",
-        "resolved": "10.0.11",
-        "contentHash": "Dy9yElSej0rVQL8LBpCLatWTKXNH6h6VBVFmGndTCf1Wge0jSvH9U8mml6ddVDAQ089q1/fDYlhyukHSgx8unQ==",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "DeE+Bq2OqB3FikFkZk+7gFBeLOQhkSolejLrbi+a9zpfvXtW1Ff6Nd6DIvHXIm+pc4aM4+52vDy3jnuau0qoUQ==",
         "dependencies": {
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "8.19.2"
         }
@@ -40,9 +40,9 @@
       },
       "Microsoft.Extensions.Caching.Hybrid": {
         "type": "Direct",
-        "requested": "[10.9.0, )",
-        "resolved": "10.9.0",
-        "contentHash": "D0tHRbUCliInxTfPgN9K6RxrCVaWu9kyIT66vbIJ/YwA6BV2xa8vTqoE3JQXA2Rf2vRdgd29+HR6Ay6KmzDslw=="
+        "requested": "[10.10.0, )",
+        "resolved": "10.10.0",
+        "contentHash": "+16+e4EjjvBg8OedpucUqSFeI9liu0S5AQG2FHY7OnBOV1jGYduYBN8KNPh6noNRM1npF4RBWKONQoAR9nFDSA=="
       },
       "Microsoft.Extensions.Caching.StackExchangeRedis": {
         "type": "Direct",
@@ -235,8 +235,8 @@
       },
       "BouncyCastle.Cryptography": {
         "type": "Transitive",
-        "resolved": "2.6.2",
-        "contentHash": "7oWOcvnntmMKNzDLsdxAYqApt+AjpRpP2CShjMfIa3umZ42UQMvH0tl1qAliYPNYO6vTdcGMqnRrCPmsfzTI1w=="
+        "resolved": "2.7.0",
+        "contentHash": "U+12df8UEWHgBi04YVf/Lgi2dy3SItlIYvHjjEVa/BngCQIzDCDRBk50DDByCfDvSbe5pRNFr3b7UrVK2kMcLw=="
       },
       "DistributedLock.Core": {
         "type": "Transitive",
@@ -268,15 +268,15 @@
       },
       "libphonenumber-csharp": {
         "type": "Transitive",
-        "resolved": "9.0.38",
-        "contentHash": "QRvXk+Ih0VjKtq03ouAqhUFDnBe1sqS2wTd6htWyvzPhdVIcyNPuoprDCWnPJk6RIYfsePTOG38VVc1EdH3u7A=="
+        "resolved": "9.0.39",
+        "contentHash": "NiBrwzjHgtBj1XxTVQrWrxn+XOUmiDRcpqxBG5/DtZn8c2vm29FS9aBaCPG5+hBTDYXEid1r0SAZd7a063oGWg=="
       },
       "MailKit": {
         "type": "Transitive",
-        "resolved": "4.17.0",
-        "contentHash": "1nUAVLxM9fhT/78we6/AGsCesnpn5dRNLLeRqOfr52Wnk87pzVwo5YMTMyqnmoXrYc7piGhmayiMA/OgDluIjg==",
+        "resolved": "4.18.0",
+        "contentHash": "Sk+n5f4uVKiQKECOCPcFcYtYpIt9rcli7dDboSkWM2TBbTYE7EpfudL+e5a6TFp9eMHOzNYOydzZh0b+zFGK4A==",
         "dependencies": {
-          "MimeKit": "4.17.0"
+          "MimeKit": "4.18.0"
         }
       },
       "Microsoft.Bcl.AsyncInterfaces": {
@@ -505,10 +505,10 @@
       },
       "MimeKit": {
         "type": "Transitive",
-        "resolved": "4.17.0",
-        "contentHash": "h/KXsCreJf8RpR/PSAtlbvYtZFndp9N8Wn1Bs248AL7ITyhn+AiIY5bLTvt60tbN2mu6g8KadtBNWygTji2lqg==",
+        "resolved": "4.18.0",
+        "contentHash": "foq2guy0YL0l0WuHrW4CuYicooXDpXlTOG1kuzlw9VcWfZpaf6zu3nX2kV3n6VKTrMy24vQJgE2TepszntVd3A==",
         "dependencies": {
-          "BouncyCastle.Cryptography": "2.6.2",
+          "BouncyCastle.Cryptography": "2.7.0",
           "System.Security.Cryptography.Pkcs": "10.0.0"
         }
       },
@@ -728,11 +728,11 @@
           "Bogus": "[35.6.5, )",
           "DistributedLock.Redis": "[1.1.1, )",
           "DistributedLock.SqlServer": "[1.0.7, )",
-          "MailKit": "[4.17.0, )",
+          "MailKit": "[4.18.0, )",
           "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.12, )",
           "Microsoft.EntityFrameworkCore.Tools": "[10.0.12, )",
-          "Microsoft.Extensions.Caching.Hybrid": "[10.9.0, )",
-          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.11, )",
+          "Microsoft.Extensions.Caching.Hybrid": "[10.10.0, )",
+          "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.12, )",
           "Microsoft.FeatureManagement": "[4.7.0, )",
           "Microsoft.IdentityModel.JsonWebTokens": "[8.22.0, )",
           "Microsoft.IdentityModel.Protocols.OpenIdConnect": "[8.22.0, )",
@@ -741,13 +741,13 @@
           "SEBT.Portal.Kernel": "[1.0.0, )",
           "SEBT.Portal.TestUtilities": "[1.0.0, )",
           "System.IdentityModel.Tokens.Jwt": "[8.22.0, )",
-          "libphonenumber-csharp": "[9.0.38, )"
+          "libphonenumber-csharp": "[9.0.39, )"
         }
       },
       "sebt.portal.infrastructure.seeding": {
         "type": "Project",
         "dependencies": {
-          "Microsoft.EntityFrameworkCore": "[10.0.11, )",
+          "Microsoft.EntityFrameworkCore": "[10.0.12, )",
           "SEBT.Portal.Core": "[1.0.0, )",
           "SEBT.Portal.TestUtilities": "[1.0.0, )"
         }

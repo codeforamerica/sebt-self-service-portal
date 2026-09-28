@@ -172,6 +172,19 @@ resource "aws_cloudfront_origin_access_control" "site" {
   signing_protocol                  = "sigv4"
 }
 
+# Rewrites extensionless route paths to the flat .html objects the static export
+# writes. Without it a direct request for /check misses in S3, the error
+# responses below serve index.html, and the app hydrates as the landing page —
+# so deep links show the wrong page, and a typo is indistinguishable from a real
+# route, leaving 404.html unreachable.
+resource "aws_cloudfront_function" "rewrite_uri" {
+  name    = "${var.project}-${var.state}-${var.environment}-enrollment-checker-uri"
+  runtime = "cloudfront-js-2.0"
+  comment = "Map route paths to the static export's flat .html objects"
+  publish = true
+  code    = file("${path.module}/functions/rewrite-static-export-uri.js")
+}
+
 # The CloudFront distribution serves the static site from S3 over HTTPS.
 # It acts as a CDN — caching files at edge locations close to users for
 # faster delivery — and handles TLS termination using our ACM certificate.
@@ -204,22 +217,27 @@ resource "aws_cloudfront_distribution" "site" {
         forward = "none"
       }
     }
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.rewrite_uri.arn
+    }
   }
 
-  # Handle client-side routing: when S3 returns a 404 (e.g. user navigates
-  # to /check directly), serve index.html instead so the Next.js client
-  # router can handle the path.
+  # A path that survives the rewrite above and still misses is genuinely not a
+  # page, so serve the export's 404.html with a 404 status. Both codes are
+  # mapped because a missing key reaches CloudFront as a 403, not a 404.
   custom_error_response {
     error_code            = 403
-    response_code         = 200
-    response_page_path    = "/index.html"
+    response_code         = 404
+    response_page_path    = "/404.html"
     error_caching_min_ttl = 10
   }
 
   custom_error_response {
     error_code            = 404
-    response_code         = 200
-    response_page_path    = "/index.html"
+    response_code         = 404
+    response_page_path    = "/404.html"
     error_caching_min_ttl = 10
   }
 
