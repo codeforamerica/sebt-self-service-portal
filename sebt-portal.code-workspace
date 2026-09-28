@@ -10,7 +10,7 @@
     },
   ],
   "settings": {
-    "dotnet.defaultSolution": "Portal/SEBT.slnx",
+    "dotnet.defaultSolution": "SEBT.slnx",
     "search.exclude": {
       "**/node_modules": true,
       "**/bin": true,
