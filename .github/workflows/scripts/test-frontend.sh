@@ -167,14 +167,23 @@ run_type_check() {
 # never fails, so without this a broken sheet cell ships. Both web apps are
 # checked here because this script runs inside the required "Build & Test" job,
 # and each app renders a different set of keys from the same state CSVs.
+# Both apps are checked before failing, so one run lists every defect.
 validate_content() {
   log_info "Validating locale content..."
 
   local app_dir
+  local failed=0
   for app_dir in "$FRONTEND_DIR" "$ENROLLMENT_CHECKER_DIR"; do
     cd "$app_dir"
-    pnpm run copy:validate
+    if ! pnpm run copy:validate; then
+      log_error "Content defects found in $(basename "$app_dir")"
+      failed=1
+    fi
   done
+
+  if [ "$failed" -ne 0 ]; then
+    exit 1
+  fi
 
   log_success "Locale content is valid"
 }
