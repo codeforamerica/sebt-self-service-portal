@@ -6,7 +6,7 @@
 // createContext() to be evaluated in the RSC layer (where it doesn't exist).
 
 // UI primitive types (defined in types.ts, not in the component files themselves)
-export type { ButtonProps, ButtonVariant, AlertProps, AlertVariant, InputFieldProps } from './components/ui/types'
+export type { ButtonProps, ButtonVariant, AlertProps, AlertVariant, DetailsProps, DetailsHeadingLevel, InputFieldProps } from './components/ui/types'
 
 // Layout component types
 export type { StateProps, HeaderProps, FooterProps, HelpSectionProps, LanguageSelectorProps } from './components/layout/types'
@@ -18,6 +18,7 @@ export type { I18nProviderProps } from './providers/types'
 export { Button } from './components/ui/Button'
 export { InputField } from './components/ui/InputField'
 export { Alert } from './components/ui/Alert'
+export { Details } from './components/ui/Details'
 export { TextLink } from './components/ui/TextLink'
 // TextLinkProps is defined in TextLink.tsx itself (not in ui/types.ts)
 export type { TextLinkProps } from './components/ui/TextLink'
