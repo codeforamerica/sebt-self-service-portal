@@ -249,7 +249,14 @@ json_value() {
 # The leading integer of a version string. `v25.6.1` and `>=10.0.0` both give
 # their major, which is the only part any of these pins constrains.
 major_of() {
-    printf '%s' "$1" | tr -cd '0-9.\n' | cut -d. -f1
+    # The first run of digits, not "strip to digits/dots and cut on the first
+    # dot": engines.pnpm and engines.node are two-clause ranges (">=10 <11"),
+    # and stripping the space before cutting on a dot concatenates both
+    # bounds into one number ("1011"). Matches the extraction
+    # check-toolchain.mjs's majorOf() already uses.
+    # `[0-9][0-9]*`, not `[0-9]\+`: the latter is a GNU BRE extension, not
+    # something plain POSIX grep has to support.
+    printf '%s' "$1" | grep -o '[0-9][0-9]*' | head -1
 }
 
 # Writes the operating system trust store to a PEM file and prints its path.
@@ -582,31 +589,34 @@ $PORTAL does not look like a checkout of this repository."
     installed=$(node --version 2>/dev/null || true)
     installed_major=$(major_of "$installed")
 
-    if [ -n "$installed_major" ] && [ "$installed_major" -ge "$required_major" ] 2>/dev/null; then
-        info "Node $installed satisfies the pin."
+    if [ -n "$installed_major" ] && [ "$installed_major" -eq "$required_major" ] 2>/dev/null; then
+        info "Node $installed matches the pin."
         return 0
     fi
 
     if [ -n "$installed" ]; then
-        info "Node $installed is installed, and this repository needs version ${required_major} or later."
+        info "Node $installed is installed, and this repository needs exactly version ${required_major}."
     else
-        info "Node is not installed, and this repository needs version ${required_major} or later."
+        info "Node is not installed, and this repository needs exactly version ${required_major}."
     fi
 
     if confirm "Download Node ${required_major} to $TOOLS_DIR/node? It needs no sudo and leaves any other Node alone."; then
         install_node "$required_major"
         installed=$(node --version 2>/dev/null || true)
         installed_major=$(major_of "$installed")
-        [ -n "$installed_major" ] && [ "$installed_major" -ge "$required_major" ] 2>/dev/null ||
-            fail "Node $installed is on PATH after the install, and the pin asks for ${required_major} or later."
-        info "Node $installed satisfies the pin."
+        [ -n "$installed_major" ] && [ "$installed_major" -eq "$required_major" ] 2>/dev/null ||
+            fail "Node $installed is on PATH after the install, and the pin asks for exactly ${required_major}."
+        info "Node $installed matches the pin."
         return 0
     fi
 
-    fail "Node ${required_major} or later is needed. Install it and run this script again:
-  macOS         brew install node
-  Windows       winget install OpenJS.NodeJS
-  any platform  https://nodejs.org/en/download"
+    # `brew install node` and a bare winget install both fetch the newest major,
+    # which is the thing this check exists to reject. Name version-pinned routes.
+    fail "Node ${required_major} (exactly) is needed. Install it and run this script again:
+  macOS         brew install node@${required_major}
+  Windows       winget install OpenJS.NodeJS --version ${required_major}
+  any platform  https://nodejs.org/dist/latest-v${required_major}.x/
+  or a manager  nvm install ${required_major}   (reads .nvmrc)"
 }
 
 # --- pnpm ------------------------------------------------------------------
@@ -649,6 +659,12 @@ Install pnpm ${required_major} yourself and run this script again: https://pnpm.
 }
 
 check_pnpm() {
+    # engines.pnpm is a check, not an enforcement: pnpm does not read it. A
+    # `packageManager` field would auto-switch a wrong pnpm, but it is
+    # deliberately not set here: pnpm/action-setup throws "Multiple versions of
+    # pnpm specified" when that field's version string does not exactly match
+    # the action's own `version:` input, and every workflow currently passes
+    # "10" rather than a full version. 
     local required required_major installed installed_major
     required=$(json_value "$PORTAL/package.json" engines.pnpm) ||
         fail "package.json has no engines.pnpm entry, so the pnpm version cannot be read."
@@ -659,28 +675,28 @@ check_pnpm() {
     installed=$(pnpm --version 2>/dev/null || true)
     installed_major=$(major_of "$installed")
 
-    if [ -n "$installed_major" ] && [ "$installed_major" -ge "$required_major" ] 2>/dev/null; then
-        info "pnpm $installed satisfies the pin."
+    if [ -n "$installed_major" ] && [ "$installed_major" -eq "$required_major" ] 2>/dev/null; then
+        info "pnpm $installed matches the pin."
         return 0
     fi
 
     if [ -n "$installed" ]; then
-        info "pnpm $installed is installed, and this repository needs version ${required_major} or later."
+        info "pnpm $installed is installed, and this repository needs exactly version ${required_major}."
     else
-        info "pnpm is not installed, and this repository needs version ${required_major} or later."
+        info "pnpm is not installed, and this repository needs exactly version ${required_major}."
     fi
 
     if confirm "Install pnpm ${required_major} to $TOOLS_DIR? It needs no sudo."; then
         install_pnpm "$required_major"
         installed=$(pnpm --version 2>/dev/null || true)
         installed_major=$(major_of "$installed")
-        [ -n "$installed_major" ] && [ "$installed_major" -ge "$required_major" ] 2>/dev/null ||
-            fail "pnpm $installed is on PATH after the install, and the pin asks for ${required_major} or later."
-        info "pnpm $installed satisfies the pin."
+        [ -n "$installed_major" ] && [ "$installed_major" -eq "$required_major" ] 2>/dev/null ||
+            fail "pnpm $installed is on PATH after the install, and the pin asks for exactly ${required_major}."
+        info "pnpm $installed matches the pin."
         return 0
     fi
 
-    fail "pnpm ${required_major} or later is needed. Install it and run this script again:
+    fail "pnpm ${required_major} (exactly) is needed. Install it and run this script again:
   npm install -g pnpm@${required_major}
   or read https://pnpm.io/installation"
 }
@@ -932,10 +948,13 @@ check_aspire() {
     export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
 
     if confirm "Install the Aspire CLI $pinned with pnpm, into $PNPM_HOME?"; then
-        mkdir -p "$PNPM_HOME"
+        mkdir -p "$PNPM_HOME/bin"
+        # pnpm refuses `add -g` when its global bin directory is not already on
+        # PATH (ERR_PNPM_GLOBAL_BIN_DIR_NOT_IN_PATH), so PATH comes first. The
+        # binaries land in $PNPM_HOME/bin, not $PNPM_HOME.
+        add_to_path "$PNPM_HOME/bin"
         pnpm add -g "@microsoft/aspire-cli@$pinned" ||
             fail "pnpm could not install @microsoft/aspire-cli@$pinned."
-        add_to_path "$PNPM_HOME"
         hash -r
         INSTALLED+=("Aspire CLI $pinned in $PNPM_HOME")
         ASPIRE_READY=1
@@ -989,7 +1008,11 @@ check_certificates() {
 
 profile_file() {
     case "$(basename "${SHELL:-}")" in
-        zsh)  printf '%s' "$HOME/.zshrc" ;;
+        # .zshenv, not .zshrc: zsh reads .zshrc only for interactive shells,
+        # and the Aspire CLI runs `pnpm install --ignore-workspace` in a plain
+        # non-interactive subprocess. A PATH in .zshrc is invisible there, which
+        # makes the tools resolve correctly by hand and wrongly under Aspire.
+        zsh)  printf '%s' "$HOME/.zshenv" ;;
         bash)
             # macOS login shells read .bash_profile and Linux reads .bashrc.
             # Writing to the one that already exists keeps the script out of
@@ -1010,8 +1033,11 @@ persist_path() {
     local profile block marker="# >>> sebt portal workspace >>>"
 
     step "Making this run's PATH permanent"
-    info "This run added these directories to PATH:"
-    printf '      %s\n' "${PATH_ADDITIONS[@]}"
+    # Prevent function running into an unbound variable under MacOS bash 3.2
+    if [ ${#PATH_ADDITIONS[@]} -gt 0 ]; then
+        info "This run added these directories to PATH:"
+        printf '      %s\n' "${PATH_ADDITIONS[@]}"
+    fi
     info "A new terminal does not have them, so 'pnpm aspire:dc' would not find these tools."
 
     if ! profile=$(profile_file); then
@@ -1030,13 +1056,16 @@ persist_path() {
     fi
 
     block=$(printf '\n%s\n' "$marker")
-    for dir in "${PATH_ADDITIONS[@]}"; do
+    # Same empty-array guard as above: this loop is reachable with zero
+    # elements whenever only the container runtime line needs writing.
+    for dir in ${PATH_ADDITIONS+"${PATH_ADDITIONS[@]}"}; do
         block=$(printf '%s\nexport PATH="%s:$PATH"' "$block" "$dir")
     done
     if [ -n "${PNPM_HOME:-}" ]; then
         block=$(printf '%s\nexport PNPM_HOME="%s"' "$block" "$PNPM_HOME")
     fi
-    if [ -d "$DOTNET_DIR" ]; then
+    # Prevent DOTNET_ROOT pointing at first-run sentinel files from package manager (throws error).
+    if [ -d "$DOTNET_DIR/sdk" ]; then
         block=$(printf '%s\nexport DOTNET_ROOT="%s"' "$block" "$DOTNET_DIR")
     fi
     if [ -n "$CONTAINER_RUNTIME_CHOICE" ]; then
@@ -1046,6 +1075,15 @@ persist_path() {
 
     printf '%s' "$block" >> "$profile"
     info "Added the block to $profile. Open a new terminal, or run: source $profile"
+
+    # zsh reads .zshenv before .zprofile, and a .zprofile that runs
+    # `brew shellenv` prepends Homebrew's bin ahead of everything written above.
+    # Re-assert there so the pinned toolchain wins in login shells too.
+    if [ "$(basename "${SHELL:-}")" = zsh ] && [ -f "$HOME/.zprofile" ] &&
+        ! grep -qF "$marker" "$HOME/.zprofile"; then
+        printf '%s' "$block" >> "$HOME/.zprofile"
+        info "Also re-asserted it in $HOME/.zprofile, which runs after .zshenv."
+    fi
 }
 
 summary() {

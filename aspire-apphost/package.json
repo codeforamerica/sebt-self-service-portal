@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": "^20.19.0 || ^22.13.0 || >=24"
+    "node": ">=24 <26"
   },
   "scripts": {
+    "preinstall": "node ../scripts/dev/check-toolchain.mjs",
     "aspire:lint": "eslint apphost.mts compose.mts config.mts \"capabilities/**/*.mts\" \"shared/**/*.mts\"",
     "aspire:start": "aspire run",
     "aspire:dc": "STATE=dc aspire run",
