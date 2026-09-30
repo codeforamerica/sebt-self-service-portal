@@ -190,11 +190,6 @@ docker compose down
 docker compose down -v
 ```
 
-### Documentation site
-
-A [docfx](https://dotnet.github.io/docfx/) site publishes the [guides](./docs/guides/), the ADRs, and the .NET API
-reference. It needs the docfx global tool (`dotnet tool install -g docfx`).
-
 ```bash
 pnpm docs:build     # generate everything and render to docs/docfx/_site
 pnpm docs:serve     # render and serve at http://localhost:8080

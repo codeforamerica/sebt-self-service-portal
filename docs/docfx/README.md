@@ -1,12 +1,11 @@
 # Engineering documentation site (docfx)
 
-A [docfx](https://dotnet.github.io/docfx/) site that publishes task-oriented guides, the architecture decision
-records, the .NET API reference, release pointers, and the compliance pages.
+[Docfx](https://dotnet.github.io/docfx/) provides a state site that includes architecture decision
+records, API reference, guides, and more.
 
 ## Prerequisites
 
-docfx is optional. The site is built and published by CI, and nothing else in the repository needs it, so no
-part of the normal setup installs it. Run these only to build the site yourself.
+docfx is optional. The site is built and published during the CI pipeline.
 
 ```bash
 pnpm docs:tools     # restores the pinned docfx into docs/docfx/
@@ -20,21 +19,19 @@ The version lives in `docs/docfx/.config/dotnet-tools.json`, a manifest scoped t
 
 ```bash
 pnpm docs:build     # generate everything, then render to docs/docfx/_site
-pnpm docs:serve     # render and serve at http://localhost:8080
+pnpm docs:serve     # to build and serve the site at http://localhost:8080
 ```
 
-`docs:build` runs six steps, each of which can be run on its own while iterating:
+`docs:build` runs six steps:
 
 | Step | Command | What it does |
 | --- | --- | --- |
-| Sections | `pnpm docs:sections` | Copies `docs/adr/` and `docs/guides/` into the site and writes each `toc.yml`. |
-| REST spec | `pnpm docs:spec` | Exports the API's OpenAPI document and stages the RapiDoc bundle. Takes ~20s. |
-| .NET API | `pnpm docs:api` | Runs `docfx metadata` over the C# projects. Takes ~15s. |
-| Render | `pnpm docs:render` | Renders the site. |
+| Sections | `pnpm docs:sections` | Copies `docs/adr/` and `docs/guides/` into the site and writes `toc.yml` |
+| REST spec | `pnpm docs:spec` | Exports the API's OpenAPI  |
+| .NET API | `pnpm docs:api` | Runs `docfx metadata` over the C# code |
+| Render | `pnpm docs:render` | Renders the site |
 | Search index | `pnpm docs:index` | Rewrites `_site/index.json`. See [Search indexing](#search-indexing). |
 | Manifest | `pnpm docs:manifest` | Writes `_site/.docs-manifest.json`. See [Publishing](#publishing). |
-
-`pnpm docs:serve` runs the full build and then serves the result, so the search index step is not skipped.
 
 Both docfx steps pass `--warningsAsErrors`, so a broken link or an unresolvable `cref` fails the build rather
 than scrolling past. Note that docfx still prints `Build succeeded with warning.` on its last line and then

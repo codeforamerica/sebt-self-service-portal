@@ -1,22 +1,13 @@
 ---
-description: The portal's HTTP endpoints, generated from the API's own OpenAPI document.
+description: The app's's HTTP endpoints, generated from the API's own OpenAPI document.
 keywords: swagger, openapi, rest, endpoints, http, api reference, curl
 ---
 
-# REST API Reference
+# Portal REST API Reference
 
-The HTTP surface of `SEBT.Portal.Api`, serving both the portal and the enrollment checker. This page is generated
-from the API's own OpenAPI document, so it describes the endpoints as the code exposes them rather than as anyone
-remembers them. This is the wire contract; for the C# types behind it, see the
-[.NET API reference](../api/index.md).
+The `SEBT.Portal.Api` powers both the self-service portal (`SEBT.Portal.Web`) and the enrollment checker (`SEBT.EnrollmentChecker.Web`)front end applications.
 
-Authentication is not described below. The security scheme is contributed by the state connector plugin through
-`IStateAuthenticationService`, and this site is state-neutral and builds with no connector loaded, so the document
-carries no security definitions even though most of these endpoints require a bearer token. Which endpoints are
-protected is a property of the deployment rather than of this document.
-
-[Download the OpenAPI document](portal.openapi.json) (OpenAPI 3.0.1, JSON). This is the same file the reference
-below renders, for use with a client generator, an editor, or a request tool.
+ This page is automatically generated based on the [OpenAPI spec](portal.openapi.json) (OpenAPI 3.0.1, JSON).
 
 <style>
   /* RapiDoc ships sized for a full page: 100vh with its own scrollbar. Inside an article

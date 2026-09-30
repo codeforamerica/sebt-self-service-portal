@@ -1,12 +1,11 @@
-- name: Docs
-  href: docs/
-- name: Decisions
-  href: adr/
-- name: Reference
+- name: API Reference
   items:
     - name: C# API
       href: api/
     - name: REST API
       href: rest/index.md
-- name: Compliance
-  href: compliance/
+- name: Docs
+  href: docs/
+- name: Architecture Decisions
+  href: adr/
+
