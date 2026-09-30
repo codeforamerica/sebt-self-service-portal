@@ -4,6 +4,7 @@
   "private": true,
   "description": "Summer EBT (SUN Bucks) Self-Service Portal - Root package for convenience scripts",
   "scripts": {
+    "preinstall": "node scripts/dev/check-toolchain.mjs",
     "predev": "./scripts/dev/gen-redis-certs.sh",
     "dev": "pnpm dev:kill-port && concurrently -n \"API,Web\" -c \"blue,green\" \"pnpm api:dev\" \"pnpm web:dev\"",
     "dev:co": "export STATE=co && export ENROLLMENT_CHECKER_ORIGIN=http://localhost:3001 && pnpm api:build-co && pnpm dev",
@@ -63,7 +64,7 @@
     "yaml": "~2.9.1"
   },
   "engines": {
-    "node": ">=24.0.0",
-    "pnpm": ">=10.0.0"
+    "node": ">=24 <26",
+    "pnpm": ">=10 <11"
   }
 }
