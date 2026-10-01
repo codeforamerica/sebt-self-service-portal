@@ -915,7 +915,7 @@ pnpm_global_bin_dir() {
 # above. PNPM_HOME is set here rather than through `pnpm setup`, because that
 # command edits a shell profile, and this script asks before it does that.
 check_aspire() {
-    local pinned installed bin_dir
+    local pinned installed bin_dir pnpm_home candidate
 
     # A checkout without this file has no AppHost to run, so there is nothing
     # for the CLI to do and its absence is not a failure.
@@ -936,14 +936,21 @@ check_aspire() {
     # install. It is added only when it holds a CLI, so a machine that gets the
     # CLI from somewhere else does not collect an empty directory in its
     # profile.
+    # The directory for the pnpm on PATH is checked first. Both conventions are
+    # checked after it, because an earlier run under the other pnpm major left
+    # the CLI in the other location: pnpm 10 puts a global bin directly in
+    # PNPM_HOME, pnpm 11 puts it in PNPM_HOME/bin.
     local fallback_home="$TOOLS_DIR/pnpm-global"
     if ! command -v aspire >/dev/null 2>&1; then
-        bin_dir=$(pnpm_global_bin_dir "${PNPM_HOME:-$fallback_home}")
-        if [ -x "$bin_dir/aspire" ]; then
-            export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
-            add_to_path "$bin_dir"
-            hash -r
-        fi
+        pnpm_home="${PNPM_HOME:-$fallback_home}"
+        for candidate in "$(pnpm_global_bin_dir "$pnpm_home")" "$pnpm_home" "$pnpm_home/bin"; do
+            if [ -x "$candidate/aspire" ]; then
+                export PNPM_HOME="$pnpm_home"
+                add_to_path "$candidate"
+                hash -r
+                break
+            fi
+        done
     fi
 
     # `aspire --version` prints the version with build metadata attached, as in
@@ -972,7 +979,9 @@ check_aspire() {
         # pnpm refuses `add -g` when its global bin directory is not already on
         # PATH (ERR_PNPM_GLOBAL_BIN_DIR_NOT_IN_PATH), so PATH comes first.
         # Which directory that is depends on the pnpm major, and
-        # pnpm_global_bin_dir holds that rule.
+        # pnpm_global_bin_dir holds that rule. Only that directory goes on
+        # PATH: every directory added here is written to the profile at the
+        # end of the run, and the other convention's directory would be empty.
         mkdir -p "$bin_dir"
         add_to_path "$bin_dir"
         pnpm add -g "@microsoft/aspire-cli@$pinned" ||
