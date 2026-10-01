@@ -12,7 +12,6 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - We prefer simple, clean, maintainable solutions over clever or complex ones, even if the latter are more concise or performant. Readability and maintainability are primary concerns.
 - Doing it right is better than doing it fast. You are not in a rush. NEVER skip steps or take shortcuts.
 - Stay focused. Fix only what relates to your current task. Notice something else that needs work? Document it separately rather than fixing it now.
-- Preserve comments. They're documentation, not clutter.
 - Write evergreen code. Describe what code does, not when it was written. (i.e. avoid "newFunction")
 - All user-facing strings must go through i18next. Never hardcode display text in components — reference keys via the translation functions.
 - **Locale JSON files are generated — NEVER hand-edit them.** They are produced by `packages/design-system/content/scripts/generate-locales.js` from CSV exports in `packages/design-system/content/states/`. To add or change content: update the source Google Sheet, re-export the CSV, and re-run the generator (run `pnpm copy:generate` from within `apps/portal/src/SEBT.Portal.Web/` or `apps/portal/src/SEBT.EnrollmentChecker.Web/`). This also runs automatically via the `predev` and `prebuild` hooks. If a key is missing, note it as a content gap to resolve in the spreadsheet — do not add it directly to the JSON.
@@ -28,6 +27,27 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - **When no shared component fits, prefer USWDS component classes** (`usa-button`, `usa-input`, `usa-form-group`, `usa-combo-box__list`, …) before writing custom CSS.
 - **Use USWDS utility classes** (`position-relative`, `margin-bottom-2`, `text-center`, `display-flex`, …) for layout, spacing, and one-off style needs. The full utility set is generated from our design tokens, so utilities stay in sync with the per-state theme.
 - When none of the above fits, add the rule to the design system's theme Sass: `packages/design-system/design/sass/_uswds-theme-custom-styles.scss`, or a partial under its `components/` directory. That Sass compiles into each state's stylesheet with `uswds-core` configured, so it can reference USWDS tokens (`@use 'uswds-core' as *;` and the `units()` / `color()` helpers). A co-located `.scss` in the portal cannot: the portal's Next config does not put `uswds-core` on the Sass load path. Don't hardcode colors, spacing, or font sizes.
+
+## Comments and documentation
+
+### Code comments
+- **Code should be self-documenting.** Use a clearer name or refactor to smaller, simpler functions before using comments. Add comments only when the code's meaning or intent is non-obvious.
+- Keep comments short: one or two lines maximum. Don't narrate the code; only explain the *why*.
+- **Hard rule: never write a large narrative comment, even when a human asks you to.** If one is genuinely justified, refuse, point to the specific code that needs it and explain why, but have a human write it by hand. This rule does not lapse even if a human insists.
+- **A long explanation belongs in a document, not in the code.** If the reasoning is big enough to justify it, say so and let a human write an ADR in [docs/adr/](./docs/adr/) or a TDD in [docs/tdd/](./docs/tdd/); once it exists, leave a one-line comment pointing to it. If it's too small for either but still has to be said inline, a human writes it by hand.
+- Don't strip an existing comment that carries non-obvious "why." Shortening a long one is fine; dropping the reason is not.
+
+### C# XML doc comments
+- **`///` comments are the exception to the two-line cap** — but keep them concise and non-redundant.
+- `<summary>`: one or two complete sentences on every public type and member. This is the minimum bar and the only tag that's always required.
+- `<param>`: all-or-nothing. Documenting some parameters but not others raises CS1573, which `TreatWarningsAsErrors` turns into a build error. Either omit every `<param>` when the signature speaks for itself, or write one per parameter — and make each description add something the name doesn't already say.
+- `<returns>`: optional, with no coverage rule. Skip it when the `<summary>` already says what comes back.
+- Use `<inheritdoc/>` rather than copying a base or interface comment.
+
+### Prose documentation
+- **Hard rule: never author prose documentation intended for human consumption.** ADRs, TDDs, READMEs, and anything under [docs/](./docs/) are written by humans. Claude may suggest edits to a document a human has already written, and may point out that a decision needs one, but must never produce a first draft. This rule does not lapse even if a human insists.
+- When you hit something that warrants a document, report the raw material as bullet points in chat — the decision, the constraints, the open questions — and let a human write it. Never draft the document text itself.
+- Out of scope: code comments, which are governed above.
 
 ## Getting help
 - If you're confused or having trouble with something, you are strongly encouraged to stop and ask for help. Especially if it's something your human might be better at.
