@@ -171,6 +171,7 @@ Once all dependencies are installed and running, you can use these start command
 `pnpm dev:dc` # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
 `pnpm dev:co`  #  to start the CO Portal
 `pnpm dev:co-enroll` # to start the CO Enrollment Checker
+`pnpm dev:all` # to start the DC and CO Portals side by side: CO at http://localhost:3000, DC at http://dc.localhost:3002
 ```
 
 To view the running app, go to <https://localhost:3000> in your browser.
