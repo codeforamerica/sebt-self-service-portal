@@ -919,11 +919,19 @@ check_aspire() {
     # the lookup finds that install. It is added only when it holds a CLI, so a
     # machine that gets the CLI from somewhere else does not collect an empty
     # directory in its profile.
+    # Checked in both locations: pnpm 10.x puts a global bin directly in
+    # PNPM_HOME, pnpm 11+ puts it in PNPM_HOME/bin.
     local fallback_home="$TOOLS_DIR/pnpm-global"
-    if ! command -v aspire >/dev/null 2>&1 && [ -x "$fallback_home/aspire" ]; then
-        export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
-        add_to_path "$fallback_home"
-        hash -r
+    if ! command -v aspire >/dev/null 2>&1; then
+        if [ -x "$fallback_home/aspire" ]; then
+            export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
+            add_to_path "$fallback_home"
+            hash -r
+        elif [ -x "$fallback_home/bin/aspire" ]; then
+            export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
+            add_to_path "$fallback_home/bin"
+            hash -r
+        fi
     fi
 
     # `aspire --version` prints the version with build metadata attached, as in
@@ -948,10 +956,11 @@ check_aspire() {
     export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
 
     if confirm "Install the Aspire CLI $pinned with pnpm, into $PNPM_HOME?"; then
+        # pnpm 10.x puts a global bin directly in PNPM_HOME; pnpm 11+ puts it
+        # in PNPM_HOME/bin. Both are added so either convention is on PATH
+        # before `add -g` runs, since it refuses to install otherwise.
         mkdir -p "$PNPM_HOME/bin"
-        # pnpm refuses `add -g` when its global bin directory is not already on
-        # PATH (ERR_PNPM_GLOBAL_BIN_DIR_NOT_IN_PATH), so PATH comes first. The
-        # binaries land in $PNPM_HOME/bin, not $PNPM_HOME.
+        add_to_path "$PNPM_HOME"
         add_to_path "$PNPM_HOME/bin"
         pnpm add -g "@microsoft/aspire-cli@$pinned" ||
             fail "pnpm could not install @microsoft/aspire-cli@$pinned."
