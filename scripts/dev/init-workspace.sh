@@ -895,11 +895,27 @@ Start Docker Desktop and run this script again. The local stack needs it for the
 
 # --- Aspire ----------------------------------------------------------------
 
+# The directory pnpm puts global binaries in, for the pnpm on PATH and the
+# given PNPM_HOME. pnpm 10 uses PNPM_HOME itself. pnpm 11 moved them to a bin/
+# subdirectory. This repository pins 10, and check_pnpm enforces that before
+# check_aspire runs, but deciding by the running major keeps a future bump to
+# the pin from landing the CLI where PATH does not point, with no error from
+# anywhere.
+pnpm_global_bin_dir() {
+    local home="$1" major
+    major=$(major_of "$(pnpm --version 2>/dev/null)")
+    if [ -n "$major" ] && [ "$major" -ge 11 ] 2>/dev/null; then
+        printf '%s/bin' "$home"
+    else
+        printf '%s' "$home"
+    fi
+}
+
 # The CLI comes from pnpm, so it lands in a user directory like everything else
 # above. PNPM_HOME is set here rather than through `pnpm setup`, because that
 # command edits a shell profile, and this script asks before it does that.
 check_aspire() {
-    local pinned installed
+    local pinned installed bin_dir
 
     # A checkout without this file has no AppHost to run, so there is nothing
     # for the CLI to do and its absence is not a failure.
@@ -914,16 +930,20 @@ check_aspire() {
 
     step "Checking the Aspire CLI (aspire.config.json pins $pinned)"
 
-    # An earlier run of this script puts the CLI here, and that directory is not
-    # on PATH in a new terminal until the profile block goes in. Adding it for
-    # the lookup finds that install. It is added only when it holds a CLI, so a
-    # machine that gets the CLI from somewhere else does not collect an empty
-    # directory in its profile.
+    # An earlier run of this script puts the CLI in pnpm's global bin directory
+    # under this home, and that directory is not on PATH in a new terminal
+    # until the profile block goes in. Adding it for the lookup finds that
+    # install. It is added only when it holds a CLI, so a machine that gets the
+    # CLI from somewhere else does not collect an empty directory in its
+    # profile.
     local fallback_home="$TOOLS_DIR/pnpm-global"
-    if ! command -v aspire >/dev/null 2>&1 && [ -x "$fallback_home/aspire" ]; then
-        export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
-        add_to_path "$fallback_home"
-        hash -r
+    if ! command -v aspire >/dev/null 2>&1; then
+        bin_dir=$(pnpm_global_bin_dir "${PNPM_HOME:-$fallback_home}")
+        if [ -x "$bin_dir/aspire" ]; then
+            export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
+            add_to_path "$bin_dir"
+            hash -r
+        fi
     fi
 
     # `aspire --version` prints the version with build metadata attached, as in
@@ -946,17 +966,27 @@ check_aspire() {
     # running `pnpm setup` keeps the profile edit in one place, at the end of
     # the run, where the script asks before it writes.
     export PNPM_HOME="${PNPM_HOME:-$fallback_home}"
+    bin_dir=$(pnpm_global_bin_dir "$PNPM_HOME")
 
-    if confirm "Install the Aspire CLI $pinned with pnpm, into $PNPM_HOME?"; then
-        mkdir -p "$PNPM_HOME/bin"
+    if confirm "Install the Aspire CLI $pinned with pnpm, into $bin_dir?"; then
         # pnpm refuses `add -g` when its global bin directory is not already on
-        # PATH (ERR_PNPM_GLOBAL_BIN_DIR_NOT_IN_PATH), so PATH comes first. The
-        # binaries land in $PNPM_HOME/bin, not $PNPM_HOME.
-        add_to_path "$PNPM_HOME/bin"
+        # PATH (ERR_PNPM_GLOBAL_BIN_DIR_NOT_IN_PATH), so PATH comes first.
+        # Which directory that is depends on the pnpm major, and
+        # pnpm_global_bin_dir holds that rule.
+        mkdir -p "$bin_dir"
+        add_to_path "$bin_dir"
         pnpm add -g "@microsoft/aspire-cli@$pinned" ||
             fail "pnpm could not install @microsoft/aspire-cli@$pinned."
         hash -r
-        INSTALLED+=("Aspire CLI $pinned in $PNPM_HOME")
+        # The add's exit code says pnpm finished, not that the CLI answers from
+        # PATH. Ask it, the way check_node and check_pnpm do after their
+        # installs, so a wrong directory shows up here and not at 'pnpm aspire:dc'.
+        installed=$(aspire --version 2>/dev/null | head -1 | tr -d ' \t\r' | cut -d+ -f1 || true)
+        [ "$installed" = "$pinned" ] ||
+            fail "pnpm installed the Aspire CLI $pinned to $bin_dir, and 'aspire --version' on PATH reports '${installed:-nothing}'.
+Run 'command -v aspire' to see which CLI PATH finds first."
+        info "The Aspire CLI $installed matches the pin."
+        INSTALLED+=("Aspire CLI $pinned in $bin_dir")
         ASPIRE_READY=1
         return 0
     fi
@@ -1027,10 +1057,76 @@ profile_file() {
     esac
 }
 
+PROFILE_MARKER="# >>> sebt portal workspace >>>"
+PROFILE_END_MARKER="# <<< sebt portal workspace <<<"
+
+# The export lines a profile needs after this run: one PATH line per directory
+# this run added, then the variables the tools read.
+profile_lines() {
+    local dir
+    # Empty-array guard for macOS bash 3.2, which treats an empty array as an
+    # unbound variable under set -u.
+    for dir in ${PATH_ADDITIONS+"${PATH_ADDITIONS[@]}"}; do
+        printf 'export PATH="%s:$PATH"\n' "$dir"
+    done
+    if [ -n "${PNPM_HOME:-}" ]; then
+        printf 'export PNPM_HOME="%s"\n' "$PNPM_HOME"
+    fi
+    # Prevent DOTNET_ROOT pointing at first-run sentinel files from package manager (throws error).
+    if [ -d "$DOTNET_DIR/sdk" ]; then
+        printf 'export DOTNET_ROOT="%s"\n' "$DOTNET_DIR"
+    fi
+    if [ -n "$CONTAINER_RUNTIME_CHOICE" ]; then
+        printf 'export ASPIRE_CONTAINER_RUNTIME="%s"\n' "$CONTAINER_RUNTIME_CHOICE"
+    fi
+}
+
+# The lines from profile_lines that the file does not hold yet, one per line.
+# Whole-line matches, so a PATH line for one directory never stands in for
+# another.
+missing_profile_lines() {
+    local file="$1" line
+    profile_lines | while IFS= read -r line; do
+        [ -n "$line" ] || continue
+        if [ ! -f "$file" ] || ! grep -qxF -- "$line" "$file"; then
+            printf '%s\n' "$line"
+        fi
+    done
+}
+
+# Puts the lines in the file: a new marked block when the file has none, and
+# new lines inside the existing block otherwise. An earlier run's block stays,
+# so a run that installs one more tool adds one more line, and not a second
+# block or nothing at all. A run that stopped at the Aspire step, and a later
+# run that got past it, is the usual way a machine ends up here.
+write_profile_block() {
+    local file="$1" lines="$2" tmp
+
+    if [ ! -f "$file" ] || ! grep -qF "$PROFILE_MARKER" "$file" || ! grep -qF "$PROFILE_END_MARKER" "$file"; then
+        printf '\n%s\n%s\n%s\n' "$PROFILE_MARKER" "$lines" "$PROFILE_END_MARKER" >> "$file"
+        return 0
+    fi
+
+    # Insert ahead of the closing marker. The result is built in a temporary
+    # directory and copied over, not moved: a copy keeps the profile's
+    # permissions and keeps a symlinked dotfile pointing where it did, and it
+    # leaves the profile whole if anything here stops partway. The new lines
+    # reach awk through a file, because the awk on macOS rejects a newline in
+    # a -v value.
+    tmp=$(mktemp -d)
+    CLEANUP_DIRS+=("$tmp")
+    printf '%s\n' "$lines" > "$tmp/lines"
+    awk -v linesfile="$tmp/lines" -v end="$PROFILE_END_MARKER" '
+        $0 == end { while ((getline line < linesfile) > 0) { print line } }
+        { print }
+    ' "$file" > "$tmp/profile" || fail "Could not build the new contents of $file."
+    cat "$tmp/profile" > "$file" || fail "Could not write $file."
+}
+
 persist_path() {
     [ ${#PATH_ADDITIONS[@]} -gt 0 ] || [ -n "$CONTAINER_RUNTIME_CHOICE" ] || return 0
 
-    local profile block marker="# >>> sebt portal workspace >>>"
+    local profile missing count
 
     step "Making this run's PATH permanent"
     # Prevent function running into an unbound variable under MacOS bash 3.2
@@ -1045,44 +1141,37 @@ persist_path() {
         return 0
     fi
 
-    if [ -f "$profile" ] && grep -qF "$marker" "$profile"; then
-        info "$profile already has the block from an earlier run. Leaving it as it is."
+    missing=$(missing_profile_lines "$profile")
+    if [ -z "$missing" ]; then
+        info "$profile already has every line this run needs, from an earlier run."
         return 0
     fi
+    count=$(printf '%s\n' "$missing" | grep -c .)
+
+    if [ -f "$profile" ] && grep -qF "$PROFILE_MARKER" "$profile"; then
+        info "$profile has the block from an earlier run. These lines are not in it yet:"
+    else
+        info "These lines would go in a new block at the end of $profile:"
+    fi
+    printf '%s\n' "$missing" | sed 's/^/      /'
 
     if ! confirm "Add them to $profile?"; then
         notice "PATH is unchanged. This run works, and a new terminal needs the directories above on PATH."
         return 0
     fi
 
-    block=$(printf '\n%s\n' "$marker")
-    # Same empty-array guard as above: this loop is reachable with zero
-    # elements whenever only the container runtime line needs writing.
-    for dir in ${PATH_ADDITIONS+"${PATH_ADDITIONS[@]}"}; do
-        block=$(printf '%s\nexport PATH="%s:$PATH"' "$block" "$dir")
-    done
-    if [ -n "${PNPM_HOME:-}" ]; then
-        block=$(printf '%s\nexport PNPM_HOME="%s"' "$block" "$PNPM_HOME")
-    fi
-    # Prevent DOTNET_ROOT pointing at first-run sentinel files from package manager (throws error).
-    if [ -d "$DOTNET_DIR/sdk" ]; then
-        block=$(printf '%s\nexport DOTNET_ROOT="%s"' "$block" "$DOTNET_DIR")
-    fi
-    if [ -n "$CONTAINER_RUNTIME_CHOICE" ]; then
-        block=$(printf '%s\nexport ASPIRE_CONTAINER_RUNTIME="%s"' "$block" "$CONTAINER_RUNTIME_CHOICE")
-    fi
-    block=$(printf '%s\n# <<< sebt portal workspace <<<\n' "$block")
-
-    printf '%s' "$block" >> "$profile"
-    info "Added the block to $profile. Open a new terminal, or run: source $profile"
+    write_profile_block "$profile" "$missing"
+    info "Added $count line(s) to $profile. Open a new terminal, or run: source $profile"
 
     # zsh reads .zshenv before .zprofile, and a .zprofile that runs
     # `brew shellenv` prepends Homebrew's bin ahead of everything written above.
     # Re-assert there so the pinned toolchain wins in login shells too.
-    if [ "$(basename "${SHELL:-}")" = zsh ] && [ -f "$HOME/.zprofile" ] &&
-        ! grep -qF "$marker" "$HOME/.zprofile"; then
-        printf '%s' "$block" >> "$HOME/.zprofile"
-        info "Also re-asserted it in $HOME/.zprofile, which runs after .zshenv."
+    if [ "$(basename "${SHELL:-}")" = zsh ] && [ -f "$HOME/.zprofile" ]; then
+        missing=$(missing_profile_lines "$HOME/.zprofile")
+        if [ -n "$missing" ]; then
+            write_profile_block "$HOME/.zprofile" "$missing"
+            info "Also re-asserted it in $HOME/.zprofile, which runs after .zshenv."
+        fi
     fi
 }
 

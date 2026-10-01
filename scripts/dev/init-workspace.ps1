@@ -974,6 +974,21 @@ A container runtime is needed. Install one and run this script again:
 
 # --- Aspire ----------------------------------------------------------------
 
+# The directory pnpm puts global binaries in, for the pnpm on PATH and the given
+# PNPM_HOME. pnpm 10 uses PNPM_HOME itself. pnpm 11 moved them to a bin
+# subdirectory. This repository pins 10, and Test-Pnpm enforces that before
+# Test-Aspire runs, but deciding by the running major keeps a future bump to the
+# pin from landing the CLI where PATH does not point, with no error from anywhere.
+function Get-PnpmGlobalBinDir {
+    param([Parameter(Mandatory)] [string] $PnpmHome)
+
+    $major = Get-MajorVersion (Get-CommandOutput 'pnpm' @('--version'))
+    if ($null -ne $major -and $major -ge 11) {
+        return Join-Path $PnpmHome 'bin'
+    }
+    return $PnpmHome
+}
+
 function Test-Aspire {
     # A checkout without this file has no AppHost to run, so there is nothing
     # for the CLI to do and its absence is not a failure.
@@ -991,15 +1006,19 @@ function Test-Aspire {
 
     Write-Step "Checking the Aspire CLI (aspire.config.json pins $pinned)"
 
-    # An earlier run of this script puts the CLI here, and that directory is not
-    # on PATH in a new terminal until the profile block goes in. Adding it for the
-    # lookup finds that install. It is added only when it holds a CLI, so a machine
-    # that gets the CLI from somewhere else does not collect an empty directory in
-    # its profile.
+    # An earlier run of this script puts the CLI in pnpm's global bin directory
+    # under this home, and that directory is not on PATH in a new terminal until
+    # the user PATH is updated. Adding it for the lookup finds that install. It is
+    # added only when it holds a CLI, so a machine that gets the CLI from somewhere
+    # else does not collect an empty directory in its PATH.
     $fallbackHome = Join-Path $ToolsDir 'pnpm-global'
-    if (-not (Test-CommandExists 'aspire') -and (Test-Path -LiteralPath (Join-Path $fallbackHome 'aspire.exe'))) {
-        if (-not $env:PNPM_HOME) { $env:PNPM_HOME = $fallbackHome }
-        Add-ToPath $fallbackHome
+    if (-not (Test-CommandExists 'aspire')) {
+        $pnpmHome = if ($env:PNPM_HOME) { $env:PNPM_HOME } else { $fallbackHome }
+        $binDir = Get-PnpmGlobalBinDir $pnpmHome
+        if (Test-Path -LiteralPath (Join-Path $binDir 'aspire.exe')) {
+            if (-not $env:PNPM_HOME) { $env:PNPM_HOME = $fallbackHome }
+            Add-ToPath $binDir
+        }
     }
 
     # `aspire --version` prints the version with build metadata attached, as in
@@ -1024,13 +1043,29 @@ function Test-Aspire {
     # running `pnpm setup` keeps the profile edit in one place, at the end of the
     # run, where the script asks before it writes.
     if (-not $env:PNPM_HOME) { $env:PNPM_HOME = $fallbackHome }
+    $binDir = Get-PnpmGlobalBinDir $env:PNPM_HOME
 
-    if (Confirm-Action "Install the Aspire CLI $pinned with pnpm, into ${env:PNPM_HOME}?") {
-        New-Item -ItemType Directory -Force -Path $env:PNPM_HOME | Out-Null
+    if (Confirm-Action "Install the Aspire CLI $pinned with pnpm, into ${binDir}?") {
+        # pnpm refuses `add -g` when its global bin directory is not already on
+        # PATH (ERR_PNPM_GLOBAL_BIN_DIR_NOT_IN_PATH), so PATH comes first. Which
+        # directory that is depends on the pnpm major, and Get-PnpmGlobalBinDir
+        # holds that rule.
+        New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+        Add-ToPath $binDir
         Invoke-Native 'pnpm' @('add', '-g', "@microsoft/aspire-cli@$pinned") `
             -ErrorMessage "pnpm could not install @microsoft/aspire-cli@$pinned."
-        Add-ToPath $env:PNPM_HOME
-        $script:Installed += "Aspire CLI $pinned in $env:PNPM_HOME"
+        # The add's exit code says pnpm finished, not that the CLI answers from
+        # PATH. Ask it, the way Test-Node and Test-Pnpm do after their installs,
+        # so a wrong directory shows up here and not at 'pnpm aspire:dc'.
+        $raw = (Get-CommandOutput 'aspire' @('--version')) -split "`n" | Select-Object -First 1
+        $installed = if ($raw) { ($raw.Trim() -split '\+')[0] } else { $null }
+        if ($installed -ne $pinned) {
+            $reported = if ($installed) { $installed } else { 'nothing' }
+            Stop-WithError "pnpm installed the Aspire CLI $pinned to $binDir, and 'aspire --version' on PATH reports '$reported'.
+Run 'Get-Command aspire' to see which CLI PATH finds first."
+        }
+        Write-Info "The Aspire CLI $installed matches the pin."
+        $script:Installed += "Aspire CLI $pinned in $binDir"
         $script:AspireReady = $true
         return
     }
