@@ -1,4 +1,4 @@
-# 7. Feature Flag System with Priority Tiers and State-Specific Configuration
+# 24. Feature Flag System with Priority Tiers and State-Specific Configuration
 
 Date: 2026-01-13
 
@@ -50,4 +50,4 @@ If the app is relying on using AWS AppConfig, flag names must follow alphanumeri
 
 ## Related ADRs
 - **ADR 0002**: Adopt Clean Architecture - Feature flag system follows clean architecture patterns
-- **ADR 0004**: State-based CI Architecture - State-specific JSON files integrate with state-based deployment
+- **ADR 0022**: State-based CI Architecture - State-specific JSON files integrate with state-based deployment

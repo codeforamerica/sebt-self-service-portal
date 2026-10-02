@@ -1,4 +1,4 @@
-# 9. State Backend Health Checks Report Degraded, Not Unhealthy
+# 26. State Backend Health Checks Report Degraded, Not Unhealthy
 
 Date: 2026-03-17
 

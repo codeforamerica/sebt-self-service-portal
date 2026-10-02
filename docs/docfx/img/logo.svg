@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Site mark for the Summer EBT engineering docs. A sun, for summer, drawn in
+  USWDS gold-20v (#ffbe2e) so it reads against the teal masthead. Not a state
+  seal and not a program logo: this site avoids either state's official brand.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Summer EBT documentation">
+  <g fill="none" stroke="#ffbe2e" stroke-width="2.25" stroke-linecap="round">
+    <path d="M16 2.5v4" />
+    <path d="M16 25.5v4" />
+    <path d="M2.5 16h4" />
+    <path d="M25.5 16h4" />
+    <path d="M6.4 6.4l2.9 2.9" />
+    <path d="M22.7 22.7l2.9 2.9" />
+    <path d="M6.4 25.6l2.9-2.9" />
+    <path d="M22.7 9.3l2.9-2.9" />
+  </g>
+  <circle cx="16" cy="16" r="7" fill="#ffbe2e" />
+</svg>

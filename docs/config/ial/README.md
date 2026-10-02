@@ -4,7 +4,7 @@ This document describes how to configure identity proofing requirements for the
 SEBT Self-Service Portal. These settings control what users can see and do based
 on how thoroughly they've verified their identity.
 
-For architectural context, see [ADR-0012](../../adr/0012-unified-id-proofing-requirements.md).
+For architectural context, see [ADR-0012](../../adr/0027-unified-id-proofing-requirements.md).
 
 ## Overview
 
