@@ -12,6 +12,7 @@ namespace SEBT.Portal.Infrastructure.StateBackends;
 public class ConfigurableStateBackend :
     IHouseholdLookupBackend,
     ICardReplacementBackend,
+    IAddressUpdateBackend,
     IStateBackendHealth
 {
     private readonly StateBackendConfiguration _configuration;
@@ -202,6 +203,41 @@ public class ConfigurableStateBackend :
         }
     }
 
+    public async Task<WriteResult> UpdateAddressAsync(AddressUpdateRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Capabilities.AddressUpdate)
+        {
+            throw new NotSupportedException("Address update is not supported by the state backend.");
+        }
+
+        AddressUpdateOperationConfig operation = _configuration.Operations.AddressUpdate
+            ?? throw new NotSupportedException("Address update is not configured for the state backend.");
+
+        ResultClassifier classifier = operation.Result
+            ?? throw new NotSupportedException("Address update has no result classifier configured.");
+
+        return await ExecuteWriteAsync(
+            operation,
+            operation.Request,
+            classifier,
+            binding =>
+            {
+                // Decode the opaque caseIds into routing fields; token-carried fields stay the
+                // binding source.
+                IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
+                    .Select(OpaqueCaseId.Decode)
+                    .ToList();
+
+                Dictionary<string, string> addressInputs = BuildAddressInputs(request.Address);
+
+                return StateBackendRequestBinder.BuildAddressBody(binding, decodedCaseIds, addressInputs);
+            },
+            policyRejectionMessage: "The household is not eligible to update their address via the portal.",
+            cancellationToken).ConfigureAwait(false);
+    }
+
     // Shared write pipeline: build request + optional bound body, attach the Idempotency-Key
     // (guards against a duplicate write on retry), send, classify the response into a WriteResult.
     private async Task<WriteResult> ExecuteWriteAsync(
@@ -233,6 +269,40 @@ public class ConfigurableStateBackend :
             classifier, (int)response.StatusCode, responseBody);
 
         return ToWriteResult(classification, policyRejectionMessage);
+    }
+
+    // Only non-null address scalars are included; a config mapping a field the address lacks fails
+    // loud in the binder.
+    private static Dictionary<string, string> BuildAddressInputs(AddressUpdateAddress address)
+    {
+        var inputs = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        if (address.Line1 is { } line1)
+        {
+            inputs["line1"] = line1;
+        }
+
+        if (address.Line2 is { } line2)
+        {
+            inputs["line2"] = line2;
+        }
+
+        if (address.City is { } city)
+        {
+            inputs["city"] = city;
+        }
+
+        if (address.State is { } state)
+        {
+            inputs["state"] = state;
+        }
+
+        if (address.Zip is { } zip)
+        {
+            inputs["zip"] = zip;
+        }
+
+        return inputs;
     }
 
     // The backend's own message text wins; generic text applies only when the backend supplied none.
