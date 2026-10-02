@@ -25,7 +25,6 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:a11y": "pa11y-ci",
-    "lighthouse": "lhci autorun",
     "analyze": "ANALYZE=true pnpm build",
     "size": "size-limit",
     "knip": "knip",
@@ -53,7 +52,6 @@
   },
   "devDependencies": {
     "@axe-core/react": "^4.13.0",
-    "@lhci/cli": "^0.15.1",
     "@next/bundle-analyzer": "^16.3.6",
     "@opentelemetry/sdk-trace-base": "^2.11.0",
     "@playwright/test": "^1.63.0",
