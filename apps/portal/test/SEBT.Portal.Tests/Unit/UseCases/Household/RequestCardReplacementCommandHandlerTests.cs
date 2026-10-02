@@ -486,6 +486,60 @@ public class RequestCardReplacementCommandHandlerTests
         Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
     }
 
+    // --- Case membership tests ---
+
+    [Fact]
+    public async Task Handle_ReturnsConflict_WhenRequestedCaseIsNotInHousehold()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-STALE" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsConflict_WhenAnyRequestedCaseIsNotInHousehold()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-001", "SEBT-STALE" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCheckCooldownOrCallConnector_WhenRequestedCaseIsNotInHousehold()
+    {
+        var handler = CreateHandler();
+        var command = CreateValidCommand(caseIds: new List<string> { "SEBT-STALE" });
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ChildFirstName = "John", ChildLastName = "Doe" }
+        ));
+
+        await handler.Handle(command, CancellationToken.None);
+
+        await _cardReplacementRepo.DidNotReceive().HasRecentRequestAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>());
+        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>());
+        await _cardReplacementRepo.DidNotReceive().CreateAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+    }
+
     // --- Success tests ---
 
     [Fact]
