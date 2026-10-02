@@ -1,0 +1,140 @@
+baseUrl: http://localhost:8085
+auth:
+  scheme: api_key
+  header: X-Api-Key
+  keyRef: dc-api-key
+operations:
+  householdLookup:
+    method: post
+    path: /households/lookup
+    request:
+      constants:
+        includePendingApplicantDetails: false
+      map:
+        email: guardianEmail
+        ic: guardianIdentifiers.IC
+        dob: guardianIdentifiers.DOB
+        portalUuid: guardianIdentifiers.PortalUUID
+        isProofed: isIdentityProofed
+      # Bound only when the signal is present; omitted from the body entirely when absent.
+      mapOptional:
+        socureUuid: guardianIdentifiers.SocureUUID
+    response:
+      root: $.resultSets[0]
+      fields:
+        summerEBTCaseID:
+          from: SummerEBTCaseID
+        childFirstName:
+          from: ChildFirstName
+        childLastName:
+          from: ChildLastName
+        ebtCardIssueDate:
+          from: EbtCardIssueDate
+          # The wrapper serializes DC's DATE column as ISO 8601 (System.Text.Json default).
+          format: yyyy-MM-ddTHH:mm:ss
+        ebtCardStatus:
+          from: EbtCardStatus
+          enum: cardStatus
+        # Issuance type is inferred from free-text fields via contains-match, first-match-wins.
+        # `from` lists one OR MORE source fields; a keyword found in ANY of them counts.
+        issuanceType:
+          from: [HouseholdType, EligibilityType]
+          keywordRules:
+            order: [SummerEbt, SnapEbtCard, TanfEbtCard]  # first-match-wins — order is load-bearing
+            map:
+              SummerEbt:   [OSSE, NSLP]                   # OUR value -> substrings that indicate it
+              SnapEbtCard: [FOOD, SNAP]
+              TanfEbtCard: [CASH, TANF]
+            default: Unknown
+      disaggregation:
+        rule: presence
+        discriminatorField: ApplicationId
+        groupApplicationsBy: ApplicationId
+        caseInclusion: all
+      # The case's id is an OPAQUE, self-describing token composed from the routing fields a write
+      # needs. Config lists WHICH fields; encode/decode is a fixed platform primitive.
+      caseId:
+        fields:
+          caseId: SummerEBTCaseID
+          applicationId: ApplicationId
+        # The lookup response never echoes the household email DC's writes bind, so it packs from
+        # the lookup's caller context. Context names are a closed set — today only householdIdentifier.
+        fromContext:
+          householdEmail: householdIdentifier
+  cardReplacement:
+    method: post
+    path: /card-replacements
+    request:
+      # Map LHS are the decoded caseId routing fields; RHS are the wrapper's request keys
+      # (bound 1:1 to the sproc's @householdEmail / @summerEbtCaseId params). The canonical
+      # contract carries no replacement reason, so the wrapper's `reason` key is unbound (SQL NULL).
+      map:
+        caseId: summerEbtCaseId
+        householdEmail: householdEmail
+    result:
+      # Ordered, first-match-wins. Each condition is EXACTLY ONE of three closed kinds:
+      # statusIn / valueIn(field) / messageContains(messageField). NO combinators, NO nesting.
+      # The wrapper returns HTTP 200 with the sproc's raw OUTPUT params: numeric resultCode
+      # (0 = success) and resultMessage (policy rejections carry "policy" wording).
+      conditions:
+        # DC: a "policy" message is a policy rejection — evaluated BEFORE success (order matters).
+        - outcome: policyRejection
+          messageField: resultMessage
+          messageContains: [policy]
+        - outcome: success
+          field: resultCode
+          valueIn: ["0"]  # numeric 0 — JsonRead stringifies numbers
+      default: backendError
+  addressUpdate:
+    method: post
+    path: /households/address
+    request:
+      constants:
+        source: portal
+      # Batch shape: one household identifier resolved across ALL decoded caseIds; the binder fails
+      # loud if the cases disagree. LHS is a decoded routing field; RHS is the write-body path.
+      shared:
+        householdEmail: householdIdentifier
+      # Scalar address fields bind through the same map vocabulary as other writes.
+      map:
+        line1: address.line1
+        city: address.city
+        state: address.state
+        zip: address.zip
+    result:
+      # Same capped 3-kind classifier as card replacement — reused, not a second classifier.
+      conditions:
+        - outcome: success
+          field: resultCode
+          valueIn: [OK]
+      default: backendError
+  enrollmentCheck:
+    method: post
+    path: /enrollment/check
+    # PerChild fan-out: the driver loops the batch, one call per child. No correlation index, no DOB expansion.
+    callMode: perChild
+    request:
+      map:
+        firstName: firstName
+        lastName: lastName
+        dob: dateOfBirth
+      # DC's sproc match also reads the school name; optional because the portal may not have it.
+      mapOptional:
+        schoolIdentifier: schoolName
+    response:
+      # The single result object is the response root; the anyRowValueIn strategy reads the boolean
+      # eligibility flag (one result, so no fan-in).
+      root: $
+      match:
+        strategy: anyRowValueIn
+        field: isEligible
+        valueIn: ["true"]
+  health:
+    method: get
+    path: /health
+enums:
+  cardStatus:
+    map:
+      Active: [ACTIVE]
+      Lost: [LOST, "LOST, AUTO REISSUE"]
+    default: Unknown
