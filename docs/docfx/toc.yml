@@ -1,0 +1,11 @@
+- name: API Reference
+  items:
+    - name: C# API
+      href: api/
+    - name: REST API
+      href: rest/index.md
+- name: Docs
+  href: docs/
+- name: Architecture Decisions
+  href: adr/
+

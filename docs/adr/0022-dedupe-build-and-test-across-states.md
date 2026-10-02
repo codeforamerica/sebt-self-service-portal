@@ -4,7 +4,7 @@ Date: 2026-09-08
 
 ## Status
 
-Accepted. Narrows the per-state matrix decision in [ADR 0004](0004-state-based-ci-architecture.md) for one specific job (`build-and-test`). This ADR documents what changed and why.
+Accepted. Narrows the per-state matrix decision in [ADR 0022](0022-state-based-ci-architecture.md) for one specific job (`build-and-test`). This ADR documents what changed and why.
 
 ## Context
 
@@ -38,4 +38,4 @@ Removing `build-and-test`'s matrix left `discover-states` (the job resolving `de
 - `.github/workflows/scripts/post-coverage-comment.js` — updated comments reflecting single-report coverage.
 - `.github/config/states/state-config.yaml`, `_template.yaml` — the remaining state config files.
 - `docs/development/state-ci.md` — updated to describe the single-run job.
-- [ADR 0004](0004-state-based-ci-architecture.md) — the per-state matrix architecture this narrows for one job; left unedited as the historical record.
+- [ADR 0022](0022-state-based-ci-architecture.md) — the per-state matrix architecture this narrows for one job; left unedited as the historical record.

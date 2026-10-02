@@ -1,4 +1,4 @@
-# 7. Multi-state Plugin Approach
+# 23. Multi-state Plugin Approach
 
 Date: 2026-01-07
 
