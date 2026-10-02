@@ -57,8 +57,13 @@ needed.
 }
 
 .usa-details__content {
-  background-color: color('primary-lightest');
-  border: units('2px') solid color('primary');
+  @include set-text-and-bg(
+    $bg-color: 'primary-lightest',
+    $preferred-text-color: 'ink',
+    $context: 'SEBT Details'
+  );
+  @include u-border(2px, 'primary');
+
   border-radius: radius('md');
   margin-top: units(1);
 }
