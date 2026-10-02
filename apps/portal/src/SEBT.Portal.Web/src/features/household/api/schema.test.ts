@@ -8,7 +8,9 @@ import {
   HouseholdDataSchema,
   interpolateDate,
   IssuanceTypeSchema,
-  toAnalyticsCohort
+  toAnalyticsCohort,
+  type Child,
+  type UserProfile
 } from './schema'
 
 /**
@@ -228,5 +230,81 @@ describe('interpolateDate', () => {
 
   it('strips a placeholder at the start of a template', () => {
     expect(interpolateDate('[MM/DD/YYYY] requested', null, 'en')).toBe('requested')
+  })
+})
+
+describe('HouseholdDataSchema person-name casing', () => {
+  const householdWith = ({
+    userProfile,
+    child
+  }: {
+    userProfile?: Partial<UserProfile>
+    child?: Partial<Child>
+  }) => ({
+    userProfile,
+    applications: [
+      {
+        applicationStatus: 'Approved' as const,
+        children: [{ firstName: 'DELLA', lastName: 'ALDEN', ...child }],
+        childrenOnApplication: 1
+      }
+    ]
+  })
+
+  it('re-cases an all-caps guardian and child name', () => {
+    const data = HouseholdDataSchema.parse(
+      householdWith({
+        userProfile: { firstName: 'DELLA', middleName: 'MAE', lastName: 'ALDEN' },
+        child: { firstName: 'HILDE', lastName: 'KEIGWIN' }
+      })
+    )
+
+    expect(data).toMatchObject({
+      userProfile: { firstName: 'Della', middleName: 'Mae', lastName: 'Alden' },
+      applications: [{ children: [{ firstName: 'Hilde', lastName: 'Keigwin' }] }]
+    })
+  })
+
+  it('leaves the MOCK persona suffix intact, since it is already mixed case', () => {
+    const data = HouseholdDataSchema.parse(
+      householdWith({
+        userProfile: { firstName: 'Maria', lastName: 'MartinezMOCK' },
+        child: { firstName: 'John', lastName: 'DoeMOCK' }
+      })
+    )
+
+    expect(data).toMatchObject({
+      userProfile: { lastName: 'MartinezMOCK' },
+      applications: [{ children: [{ lastName: 'DoeMOCK' }] }]
+    })
+  })
+
+  it('re-cases child names on a summer EBT case', () => {
+    const data = HouseholdDataSchema.parse({
+      applications: [],
+      summerEbtCases: [
+        {
+          childFirstName: 'HILDE',
+          childLastName: 'KEIGWIN',
+          householdType: 'SNAP',
+          eligibilityType: 'DirectCertification',
+          ebtCardStatus: 'Active'
+        }
+      ]
+    })
+
+    expect(data).toMatchObject({
+      summerEbtCases: [{ childFirstName: 'Hilde', childLastName: 'Keigwin' }]
+    })
+  })
+
+  it('tolerates null guardian middle and last names, as the mononym-friendly schema allows', () => {
+    const data = HouseholdDataSchema.parse(
+      householdWith({ userProfile: { firstName: 'PRINCE', middleName: null, lastName: null } })
+    )
+
+    expect(data).toMatchObject({
+      userProfile: { firstName: 'Prince', middleName: null, lastName: null }
+    })
   })
 })

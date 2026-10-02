@@ -57,6 +57,8 @@ export {
   getStateAssetPath
 } from './lib/state'
 
+export { formatPersonName } from './lib/names'
+
 // External links
 export type { StateLinks, LinkItem } from './lib/links'
 export { getStateLinks, getFooterLinks, getHelpLinks } from './lib/links'

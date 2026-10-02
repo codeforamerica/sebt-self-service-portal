@@ -1,4 +1,15 @@
+import { formatPersonName } from '@sebt/design-system'
 import { z } from 'zod'
+
+/**
+ * Display-cases a person's name via {@link formatPersonName}. Applied at this parse boundary
+ * so every screen that renders a household name gets it without opting in.
+ *
+ * @example
+ * PersonNameSchema.parse('DELLA ALDEN') // 'Della Alden'
+ * PersonNameSchema.parse('MacDonald')   // 'MacDonald'
+ */
+const PersonNameSchema = z.string().transform(formatPersonName)
 
 // Backend enum values map to these strings. The API serializes these enums as integers, so the
 // ordinals below are a contract with SEBT.Portal.Core.Models.Household. Changing either side
@@ -146,8 +157,8 @@ export function isReplacementEligible(cardStatus: CardStatus): boolean {
 }
 
 export const ChildSchema = z.object({
-  firstName: z.string(),
-  lastName: z.string(),
+  firstName: PersonNameSchema,
+  lastName: PersonNameSchema,
   status: ApplicationStatusSchema.nullable().optional()
 })
 
@@ -167,8 +178,8 @@ export const SummerEbtCaseSchema = z.object({
   summerEBTCaseID: z.string().nullable().optional(),
   applicationId: z.string().nullable().optional(),
   applicationStudentId: z.string().nullable().optional(),
-  childFirstName: z.string(),
-  childLastName: z.string(),
+  childFirstName: PersonNameSchema,
+  childLastName: PersonNameSchema,
   childDateOfBirth: z.string().nullable().optional(),
   householdType: z.string(),
   eligibilityType: z.string(),
@@ -209,9 +220,9 @@ export const ApplicationSchema = z.object({
 export type Application = z.infer<typeof ApplicationSchema>
 
 export const UserProfileSchema = z.object({
-  firstName: z.string(),
-  middleName: z.string().nullable().optional(),
-  lastName: z.string().nullable().optional()
+  firstName: PersonNameSchema,
+  middleName: PersonNameSchema.nullable().optional(),
+  lastName: PersonNameSchema.nullable().optional()
 })
 
 export type UserProfile = z.infer<typeof UserProfileSchema>
