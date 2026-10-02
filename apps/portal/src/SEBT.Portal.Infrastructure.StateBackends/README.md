@@ -11,12 +11,12 @@ Every state backend speaks JSON over HTTP. Per-state variation — different end
 The Core ports are transport-free. Core has no HTTP or plugin-contract dependencies. They define the operations; the adapter decides how to serialize and transport them. One port per operation:
 
 - [`IHouseholdLookupBackend`](../SEBT.Portal.Core/StateBackends/IHouseholdLookupBackend.cs) — resolve a household from identity signals (email, phone, IC, DOB, …) plus caller context into canonical household data.
-- [`ICardReplacementBackend`](../SEBT.Portal.Core/StateBackends/ICardReplacementBackend.cs) — request replacement cards for a batch of opaque `caseId` tokens; the driver fans out one call per decoded token, failing fast on the first non-success.
-- [`IAddressUpdateBackend`](../SEBT.Portal.Core/StateBackends/IAddressUpdateBackend.cs) — household-routed mailing-address update: the envelope carries the household identifier plus the household's opaque `caseId` tokens (which may be empty).
+- [`ICardReplacementBackend`](../SEBT.Portal.Core/StateBackends/ICardReplacementBackend.cs) — request replacement cards for opaque `caseId` tokens. `callMode: perCase` (default, DC) fans out one call per token; `callMode: batch` (CO) sends one call collecting every decoded case. The household identifier rides on the write envelope, not inside the tokens.
+- [`IAddressUpdateBackend`](../SEBT.Portal.Core/StateBackends/IAddressUpdateBackend.cs) — household-routed mailing-address update: the envelope carries `householdIdentifier`. Case tokens may be empty when the binding does not need per-case fields (`collect` / token `shared` still require them).
 - [`IEnrollmentCheckBackend`](../SEBT.Portal.Core/StateBackends/IEnrollmentCheckBackend.cs) — check enrollment eligibility for a batch of children; one match verdict per child.
-- [`IStateBackendHealth`](../SEBT.Portal.Core/StateBackends/IStateBackendHealth.cs) — liveness probe; returns healthy/unhealthy. The shared handler chain applies the state's auth scheme to health calls too. DC's open `/health` ignores it, but a backend may require it.
+- [`IStateBackendHealth`](../SEBT.Portal.Core/StateBackends/IStateBackendHealth.cs) — liveness probe; returns healthy/unhealthy, including when the socket times out. The shared handler chain applies the state's auth scheme to health calls too. DC's open `/health` ignores it, but a backend may require it.
 
-`Capabilities` is derived from which operations the config declares — the presence of an operation *is* its capability.
+`Capabilities` is derived from which operations the config declares — the presence of a **complete** operation *is* its capability. A path-only stub is rejected at load, so the portal cannot advertise a feature the adapter cannot actually perform. Card replacement reports `PerCase` or `Batch` from `callMode`.
 
 Card data is batch-loaded today: both DC and CO return card details inline in the household lookup, so there is no per-case card fetch port. A state that only exposes cards via a per-case endpoint needs a new port method plus a `cardDetails` operation config — deferred until a real state needs it.
 
@@ -28,8 +28,8 @@ Config picks from a fixed set of narrow, named primitives. It never exposes comp
 - **Field mapping.** `from` (source property), optional exact date `format`, optional named `enum` table. LHS is our canonical field name, RHS is the state's flavor.
 - **Enum tables.** Top-level `enums:` — domain-centered `OurValue: [state tokens]` plus an optional `default` (absent default + unlisted token fails fast). Inverted to a token→our-value lookup at load.
 - **`keywordRules`.** Ordered, first-match-wins, case-insensitive substring-contains over one or more `from` sources. Used for DC issuance-type inference. No regex, no conditionals.
-- **Disaggregation.** Group records into applications and decide case inclusion via a closed `rule` (`presence` / `valueInSet`) and named `caseInclusion` predicates — not an expression DSL.
-- **Opaque `caseId`.** A self-describing token. Config lists the routing `fields` (response columns) plus `fromContext` entries for identifiers a write routes by that the response never echoes. Those context names are a closed vocabulary, today only `householdIdentifier`. Encode/decode is fixed platform code. The portal and UI treat it as opaque.
+- **Disaggregation.** Group records into applications and decide case inclusion via a closed `rule` (`presence` / `valueInSet`) and named `caseInclusion` predicates — not an expression DSL. `valueInSet` requires a non-empty `applicationValues` list at load (a missing list would silently treat every row as not application-based); matching is case-insensitive, matching Colorado's existing classifier.
+- **Opaque `caseId`.** A self-describing token of backend-issued routing ids (case keys, application ids). Encode/decode is fixed platform code. The portal and UI treat it as opaque. It must not pack PII — writes bind `householdIdentifier` from the request envelope. `fromContext` remains as a primitive for non-PII caller context; packing `householdIdentifier` is rejected at load.
 - **Request binding.** `constants` (fixed literals), `map` (our input → dotted target path, fail-fast when unresolved), `mapOptional` (bind-if-present / omit-if-absent; rejected on write ops), and the two batch shapes `shared` (one value across the batch, fail-fast on disagreement) and `collect` (per-case values into an array).
 - **Result classifier.** Ordered, first-match-wins `conditions`, each exactly one closed kind (`statusIn` / `valueIn`+`field` / `messageContains`+`messageField`), plus a `default`.
 - **Enrollment.** `callMode` (`batch` / `perChild`), closed candidate `expand` (`transposeMonthDay`), and named match strategies (`anyRowValueIn` / `confidenceThreshold`).
@@ -40,9 +40,11 @@ Config loads from YAML via YamlDotNet in [`StateBackendConfigurationLoader`](./C
 
 - **Field mappings** — every canonical target is a known field; date-typed targets carry an exact `format`.
 - **Enum tables** — the referenced table exists, targets an enum-typed field, every canonical key is a real enum member, and no state token is listed under two canonical values.
-- **`keywordRules`** — enum-typed target, `order` covers every `map` key, and every named value (including `default`) is a real enum member.
+- **`keywordRules`** — enum-typed target, `order` covers every `map` key, every named value (including `default`) is a real enum member, and no keyword is empty.
 - **Result classifiers** (each configured write op) — every condition is exactly one closed kind; `valueIn` names a `field`; `messageContains` names a `messageField`.
-- **`caseId` compositions** — every `fromContext` entry names a known context name; no token field is sourced from both `fields` and `fromContext`.
+- **`caseId` compositions** — every `fromContext` entry names a known context name that is not `householdIdentifier` (PII); no token field is sourced from both `fields` and `fromContext`.
+- **Disaggregation** — `valueInSet` carries a non-empty `applicationValues` list.
+- **Incomplete operations** — a declared write/enrollment/lookup op must include its request and result/response mappings; unmatched YAML properties fail at load.
 - **`mapOptional` on writes** — rejected on `cardReplacement` / `addressUpdate` (the write body builders don't read it; a silent no-op would be worse).
 - **Enrollment coherence** — `batch` requires an `indexField` on both sides; `perChild` forbids one and forbids `expand`; each match strategy carries its required params, and `confidenceThreshold`'s optional eligibility check takes `field` + `valueIn` together or not at all.
 
@@ -54,10 +56,10 @@ When a real state needs something no primitive covers, stop and add a **new name
 
 ## Status
 
-Spike / prototype (DC-568), dark behind a feature flag.
+Spike / prototype (DC-568). The adapter is not yet wired into the portal composition root.
 
-- **Wired:** the write/enrollment ports and the household read path flip atomically behind `FeatureManagement:use_configurable_state_backend` — read per resolve, so a toggle takes effect without a restart. The YAML path comes from `StateBackend:ConfigPath`.
-- **Default:** MEF plugins serve all traffic while the flag is off. Nothing dispatches through `ConfigurableStateBackend` until it flips.
+- **Not wired:** `FeatureManagement:use_configurable_state_backend` and `StateBackend:ConfigPath` are the intended integration seam — they do not exist in this stack yet. MEF plugins serve all traffic. Nothing dispatches through `ConfigurableStateBackend` until a later stack adds the flag, the YAML path, and the resolve-time flip.
+- **Follow-up:** move `Core/StateBackends/Configuration/` into `Infrastructure.StateBackends` (ADR-0002: Core should not carry HTTP concepts). Deferred so this stack does not reshuffle types.
 - **Validation:** the DC wrapper surface is complete; CO UAT smoke testing is underway. Test green is still substantially mock-based (MockHttp + self-authored fixtures) — the adapter is unvalidated against production traffic.
 - **Config trust model:** the YAML defines egress targets and constants. It is deployment-owned config, sitting inside the same trust boundary as appsettings secrets. It is not user- or state-supplied input.
 

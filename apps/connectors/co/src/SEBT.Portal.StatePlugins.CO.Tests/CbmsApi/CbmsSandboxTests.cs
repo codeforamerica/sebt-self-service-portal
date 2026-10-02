@@ -120,11 +120,11 @@ public class CbmsSandboxTests(CbmsSandboxFixture fixture)
 
     /// <summary>
     /// Live PATCH <c>update-std-dtls</c> with a real CBMS-shaped body.
-    /// Temporarily skipped: CBMS UAT returns HTTP 500 for this example payload
-    /// (reproduced with a single array element on 2026-08-31). Remove the Skip
-    /// when UAT accepts known-good ids.
+    /// Run: <c>dotnet test --filter "FullyQualifiedName~UpdateStdDtls_ReturnsSuccess_WhenUatAcceptsExampleBody"</c>
+    /// with <c>Cbms:ClientId</c> / <c>Cbms:ClientSecret</c> and without <c>Cbms:UseMockResponses</c>.
+    /// Temporarily skipped: CBMS UAT is returning <c>respCd 01</c> (<c>Index: 0, Size: 0</c>) for a previously accepted payload.
     /// </summary>
-    [SkippableFact(Skip = "CBMS UAT currently returns HTTP 500 for the example update-std-dtls payload.")]
+    [SkippableFact(Skip = "CBMS UAT update-std-dtls is currently broken (respCd 01: Index: 0, Size: 0). Re-enable when the API is healthy.")]
     public async Task UpdateStdDtls_ReturnsSuccess_WhenUatAcceptsExampleBody()
     {
         Skip.If(!fixture.CredentialsConfigured, SkipReason);

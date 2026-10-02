@@ -4,7 +4,7 @@ Date: 2026-07-31
 
 ## Status
 
-Proposed — the adapter is dark behind `FeatureManagement:use_configurable_state_backend`; phase-5 validation against real state backends is in progress. It is unproven against production traffic.
+Proposed — the adapter is not yet wired into the composition root. The intended dark-launch seam is `FeatureManagement:use_configurable_state_backend` plus `StateBackend:ConfigPath`; those settings land in a later stack. It is unproven against production traffic.
 
 ## Context
 
@@ -34,7 +34,7 @@ We make every state backend speak JSON over HTTP, and we drive all of them throu
 - **JSON over HTTP, everywhere.** A backend that can't (DC's stored procedures) gets a thin exact-passthrough REST wrapper — raw column names out, zero canonical mapping in the wrapper. Once every backend is JSON-over-HTTP, the only thing that varies is the mapping, and mapping is data.
 - **One adapter.** [`ConfigurableStateBackend`](../../apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs) implements the five Core ports, parameterized entirely by a per-state YAML bundle. Adding a state means authoring config and supplying secrets — no plugin, no cross-repo CI pairing.
 - **A closed catalog of named primitives.** Auth schemes, field mappings, enum tables, `keywordRules`, disaggregation rules, the opaque `caseId` token, request binding, result classifiers, enrollment match strategies. Config names a primitive and supplies its parameters; every algorithm lives in fixed code.
-- **Capabilities derived from config.** An operation's presence in the YAML *is* its capability — no separate manifest to keep in sync, no MEF-export inference. This replaces the implicit capability model above with declared data.
+- **Capabilities derived from complete config.** An operation's presence in the YAML *is* its capability — no separate manifest to keep in sync, no MEF-export inference. Incomplete operations (path but no request/result) are rejected at load, so the portal cannot advertise a feature the adapter cannot perform. This replaces the implicit capability model above with declared data.
 - **The config/code line sits at the shape of the data, not the meaning of the values.** Anything reducible to "read field X, apply table/predicate Y, emit canonical value Z" is config over a primitive. Anything that inspects state-specific structure in a way no table captures stays code.
 - **The anti-DSL cap.** Config never gets comparison operators, boolean combinators, or an expression language. The grounding is empirical: two states in, disaggregation already needed two predicate shapes (`presence`, `valueInSet`) — an open predicate vocabulary drifts into a boolean-expression DSL no one can audit. The cap keeps every config finite: the behaviors a config can express equal the primitives that exist in code.
 - **YAML for mapping rulesets.** Comments and anchors matter in mapping config; operational values and secrets stay in JSON/env with key *references*, never values. Config validates at load and fails fast — a bad bundle stops startup, not the first user request.
@@ -53,7 +53,8 @@ We make every state backend speak JSON over HTTP, and we drive all of them throu
 ## Consequences
 
 - **Unproven against production traffic.** Phase-5 real-backend validation is in progress; test green is still substantially mock-based. "Proposed" means exactly that.
-- **Dual-path coexistence.** MEF plugins remain the default and serve all traffic while the flag is off. Two integration paths coexist until the plugins delete (~19k LOC of eventual deletion). Until then, both paths carry maintenance and drift risk.
+- **Dual-path coexistence.** MEF plugins remain the default and serve all traffic until the flag and config path are wired. Two integration paths will coexist until the plugins delete (~19k LOC of eventual deletion). Until then, both paths carry maintenance and drift risk.
+- **Config types currently live in Core.** `StateBackends/Configuration/` carries HTTP concepts (`BaseUrl`, auth schemes) that ADR-0002 keeps out of Core. They move into `Infrastructure.StateBackends` as a follow-up.
 - **Promotion rules.** A real need no primitive covers means a *new named primitive* in code, with tests — never operators in the YAML. Promote a bespoke concern to a primitive only when a **third** state exhibits the *same shape* — the same shape, not the same concern. The trap is dressing a one-off up as config: DC's date-presence card status looks parameterizable but is a semantic choice, not a mapping table.
 - **The documented limit.** Multi-signal fuzzy matching is irreducibly state-specific. We don't pretend it into config. It belongs across the wire, on the state's side of the lookup.
 - **Deferred options.** Extracting the adapter to an out-of-process service per state (dual-mode); per-case card fetch — both current states batch-load card data inline in the lookup, so a per-case state needs a new port method plus a `cardDetails` operation config when one appears.

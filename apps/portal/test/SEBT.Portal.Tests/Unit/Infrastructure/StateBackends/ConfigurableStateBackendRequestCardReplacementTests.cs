@@ -26,7 +26,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
                 Map = new Dictionary<string, string>
                 {
                     ["caseId"] = "summerEbtCaseId",
-                    ["householdEmail"] = "householdEmail",
+                    ["householdIdentifier"] = "householdEmail",
                 },
             },
             Result = new ResultClassifier
@@ -72,6 +72,9 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             mockHttp.ToHttpClient(),
             () => FixedIdempotencyKey);
 
+    private static CardReplacementRequest ReplacementFor(params string[] caseIds) =>
+        new(caseIds) { HouseholdIdentifier = "family@example.test" };
+
     // An opaque caseId carrying the DC routing fields most tests decode on write. The token also
     // carries applicationId (composed on read for DC) even though card replacement doesn't bind it.
     private static string DefaultCaseId() =>
@@ -79,7 +82,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         {
             ["caseId"] = "SEBT-001",
             ["applicationId"] = "APP-100",
-            ["householdEmail"] = "family@example.test",
         });
 
     // ---- 1. Opaque caseId round-trip ----------------------------------------------------------
@@ -181,15 +183,14 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         Assert.Equal(string.Empty, decoded["householdEmail"]);
     }
 
-    // The DC write-path gap: DC's lookup response has NO household-email column, but both DC
-    // writes bind householdEmail. fromContext packs it off the lookup's caller context so the
-    // write can bind it from the decoded token.
+    // The DC write-path gap: DC's lookup response has NO household-email column, but the write
+    // binds householdIdentifier from the request envelope — not from a PII-bearing case token.
     [Fact]
-    public async Task RequestCardReplacementAsync_BindsHouseholdEmail_PackedFromLookupContext()
+    public async Task RequestCardReplacementAsync_BindsHouseholdIdentifier_FromWriteEnvelope()
     {
         // Arrange — one config carrying both operations, DC-shaped.
         StateBackendConfiguration configuration =
-            LookupWithFromContextComposition().WithCardReplacement(DcCardReplacement());
+            LookupWithCaseIdComposition().WithCardReplacement(DcCardReplacement());
 
         string? capturedBody = null;
         var mockHttp = new MockHttpMessageHandler();
@@ -218,10 +219,10 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act — replay the composed token into the write, exactly as the portal would.
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId }));
+            ReplacementFor(caseId));
 
-        // Assert — the write body binds the context-packed email even though the lookup
-        // response never carried one.
+        // Assert — the write body binds the envelope household identifier even though the
+        // lookup response never carried one.
         Assert.True(result.IsSuccess);
         Assert.NotNull(capturedBody);
         using JsonDocument document = JsonDocument.Parse(capturedBody);
@@ -301,7 +302,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             .Respond("application/json", """{ "resultCode": 0, "resultMessage": null }""");
 
         var backend = BuildBackend(mockHttp, DcCardReplacement());
-        var request = new CardReplacementRequest(new List<string> { caseId });
+        var request = ReplacementFor(caseId);
 
         // Act
         await backend.RequestCardReplacementAsync(request);
@@ -341,7 +342,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         var backend = BuildBackend(mockHttp, DcCardReplacement());
 
         // Act
-        await backend.RequestCardReplacementAsync(new CardReplacementRequest(new List<string> { caseId }));
+        await backend.RequestCardReplacementAsync(ReplacementFor(caseId));
 
         // Assert — the injected key is attached (a per-call UUID in production).
         Assert.Equal(FixedIdempotencyKey, capturedKey);
@@ -382,7 +383,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId }));
+            ReplacementFor(caseId));
 
         // Assert
         Assert.Equal(isSuccess, result.IsSuccess);
@@ -418,7 +419,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId }));
+            ReplacementFor(caseId));
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -454,7 +455,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId }));
+            ReplacementFor(caseId));
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -486,7 +487,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { DefaultCaseId() }));
+            ReplacementFor(DefaultCaseId()));
 
         // Assert
         Assert.False(result.IsSuccess);
@@ -521,7 +522,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId }));
+            ReplacementFor(caseId));
 
         // Assert
         Assert.False(result.IsSuccess);
@@ -559,7 +560,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId }));
+            ReplacementFor(caseId));
 
         // Assert
         Assert.True(result.IsPolicyRejection);
@@ -577,12 +578,10 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         string caseId1 = OpaqueCaseId.Compose(new Dictionary<string, string>
         {
             ["caseId"] = "SEBT-001",
-            ["householdEmail"] = "family@example.test",
         });
         string caseId2 = OpaqueCaseId.Compose(new Dictionary<string, string>
         {
             ["caseId"] = "SEBT-002",
-            ["householdEmail"] = "family@example.test",
         });
 
         var capturedCaseIds = new List<string?>();
@@ -602,7 +601,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId1, caseId2 }));
+            ReplacementFor(caseId1, caseId2));
 
         // Assert — one POST per decoded caseId, in request order.
         Assert.True(result.IsSuccess);
@@ -616,12 +615,10 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         string caseId1 = OpaqueCaseId.Compose(new Dictionary<string, string>
         {
             ["caseId"] = "SEBT-001",
-            ["householdEmail"] = "family@example.test",
         });
         string caseId2 = OpaqueCaseId.Compose(new Dictionary<string, string>
         {
             ["caseId"] = "SEBT-002",
-            ["householdEmail"] = "family@example.test",
         });
 
         int callCount = 0;
@@ -642,11 +639,55 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
-            new CardReplacementRequest(new List<string> { caseId1, caseId2 }));
+            ReplacementFor(caseId1, caseId2));
 
         // Assert — the failing result is returned and the loop stops.
         Assert.False(result.IsSuccess);
         Assert.Equal(1, callCount);
+    }
+
+    [Fact]
+    public async Task RequestCardReplacementAsync_BatchCallMode_SendsOneCall_CollectingCaseIds()
+    {
+        string caseId1 = OpaqueCaseId.Compose(new Dictionary<string, string> { ["writeId"] = "CWIN-1" });
+        string caseId2 = OpaqueCaseId.Compose(new Dictionary<string, string> { ["writeId"] = "CWIN-2" });
+
+        string? capturedBody = null;
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Patch, "http://backend.test/sebt/update-std-dtls")
+            .With(message =>
+            {
+                capturedBody = message.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                return true;
+            })
+            .Respond("application/json", """{ "respCd": "00" }""");
+
+        var cardReplacement = new CardReplacementOperationConfig
+        {
+            Method = StateBackendHttpMethod.Patch,
+            Path = "/sebt/update-std-dtls",
+            CallMode = CardReplacementCallMode.Batch,
+            Request = new RequestBinding
+            {
+                Collect = new Dictionary<string, string> { ["writeId"] = "cases" },
+                Constants = new Dictionary<string, object> { ["reqNewCard"] = "Y" },
+            },
+            Result = CoResultClassifier(),
+        };
+
+        var backend = BuildBackend(mockHttp, cardReplacement);
+
+        WriteResult result = await backend.RequestCardReplacementAsync(ReplacementFor(caseId1, caseId2));
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(capturedBody);
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        JsonElement cases = document.RootElement.GetProperty("cases");
+        Assert.Equal(2, cases.GetArrayLength());
+        Assert.Equal("CWIN-1", cases[0].GetString());
+        Assert.Equal("CWIN-2", cases[1].GetString());
+        Assert.Equal("Y", document.RootElement.GetProperty("reqNewCard").GetString());
     }
 
     [Fact]

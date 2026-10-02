@@ -30,6 +30,19 @@ operations:
   cardReplacement:
     method: patch
     path: /sebt/update-std-dtls
+    # One PATCH carrying every decoded case — matches ColoradoCardReplacementService.
+    callMode: batch
+    request:
+      collect:
+        writeId: cases
+      constants:
+        reqNewCard: "Y"
+    result:
+      conditions:
+        - outcome: success
+          field: respCd
+          valueIn: ["200", "00"]
+      default: backendError
   addressUpdate:
     method: patch
     path: /sebt/update-std-dtls
