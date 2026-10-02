@@ -1,0 +1,69 @@
+/*
+----------------------------------------
+Details
+----------------------------------------
+Disclosure widget on the USWDS accordion structure, styled as an inline link
+rather than USWDS's grey block button. Loads after the USWDS bundle (see
+uswds-bundle.scss), so equal specificity resolves here and no !important is
+needed.
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+// .usa-accordion__heading and .usa-button both set line-height for single-line
+// block buttons; Details triggers are sentences that wrap.
+.usa-details__heading {
+  line-height: inherit;
+}
+
+.usa-details__button {
+  // .usa-button is inline-flex, which makes the label and chevron separate flex
+  // items and parks the chevron beside the wrapped block instead of after the
+  // final character.
+  display: inline-block;
+  line-height: inherit;
+  font-weight: font-weight('bold');
+
+  // _buttons.scss resolves usa-button + usa-button--unstyled to ink; a Details
+  // trigger reads as a link. Hover and active still win on specificity.
+  color: color('primary');
+}
+
+// USWDS sets no global vertical-align on .usa-icon — .usa-button's flex layout
+// covered for it. Both sprite glyphs are centered in their viewBox, so `middle`
+// centers the visible mark at any size; `top` is the optical lift off x-height.
+.usa-details__button .usa-icon {
+  height: units(2);
+  width: units(2);
+  vertical-align: middle;
+  top: -0.1em;
+}
+
+.usa-details__button .usa-details__chevron {
+  height: units(2.5);
+  width: units(2.5);
+  margin-left: units(0.5);
+  transition: transform 200ms ease-in-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+// `expand_more` points down at rest, so only the expanded state transforms.
+.usa-details__button[aria-expanded='true'] .usa-details__chevron {
+  transform: rotate(180deg);
+}
+
+.usa-details__content {
+  @include set-text-and-bg(
+    $bg-color: 'primary-lightest',
+    $preferred-text-color: 'ink',
+    $context: 'SEBT Details'
+  );
+  @include u-border(2px, 'primary');
+
+  border-radius: radius('md');
+  margin-top: units(1);
+}
