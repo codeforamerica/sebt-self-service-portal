@@ -15,12 +15,13 @@ This product enables parents/guardians of children eligible for [Summer EBT / SU
   - Request a replacement Summer EBT card
 
 This product is currently in use by:
- - [Colorado](https://cdhs.colorado.gov/summer-ebt)
- - [Washington, DC](https://sunbucks.dc.gov/)
 
-## Repository structure
+- [Colorado](https://cdhs.colorado.gov/summer-ebt)
+- [Washington, DC](https://sunbucks.dc.gov/)
 
-This is a monorepo containing all core product code, shared state connector code, and the CO-specific connector code. The DC connector code is in an external repository, ([`sebt-self-service-portal-dc-connector`](https://github.com/codeforamerica/sebt-self-service-portal-dc-connector)).
+### Repository structure
+
+This project contains all of the code for the enrollment checker and self-service portal products, shared state connector code, and the connector code used in the Colorado implementation. The DC connector code is in an external repository, ([`sebt-self-service-portal-dc-connector`](https://github.com/codeforamerica/sebt-self-service-portal-dc-connector)).
 
 ```text
 apps/
@@ -39,7 +40,7 @@ apps/
     state/                # MEF plugin contract (interfaces), NuGet-packaged for external consumers
     co/                   # Colorado connector implementation
     dc/                   # placeholder README — the DC connector lives in its external repo
-packages/                 # shared JS libraries: @sebt/design-system (design tokens, locale generation, content), @sebt/analytics
+packages/                 # shared JS libraries: @sebt/design-system (design tokens, locale generation, content), @sebt/analytics, observability
 scripts/                  # repo-wide dev, CI, and git helper scripts
 tofu/                     # infrastructure as code scripts (OpenTofu)
 SEBT.slnx                 # top-level .NET solution: portal + in-repo connectors
@@ -48,61 +49,169 @@ SEBT.slnx                 # top-level .NET solution: portal + in-repo connectors
 
 Other configuration files live in the repository root: `pnpm-workspace.yaml`, `package.json`, `nuget.config`, `global.json`, `Directory.Build.props`.
 
-## Technology stack overview
+### Technology stack overview
 
-### Backend
+#### Backend
 
 - Language / framework: [C# with .NET 10](https://dotnet.microsoft.com/en-us/languages/csharp)
 - Key libraries: [ASP.NET Core](https://dotnet.microsoft.com/en-us/apps/aspnet), [Serilog](https://serilog.net/), [Managed Extensibility Framework (MEF)](https://learn.microsoft.com/en-us/dotnet/standard/mef/), [EntityFramework (EF) Core](https://learn.microsoft.com/en-us/ef/core/)
 - Package manager: [NuGet](https://www.nuget.org/)
 
-### Frontend
+#### Frontend
 
 - Language / framework: [NextJS 16](https://nextjs.org/) with TypeScript
 - Key libraries: next, react, [i18next](https://www.i18next.com/), react-i18next, tanstack/react-query, zod
 - Package manager: [pnpm](https://pnpm.io/)
 - Design system: [USWDS](https://designsystem.digital.gov/), with design tokens for each state
 
-### Infrastructure
+#### Infrastructure
 
 - Infrastructure as code with [OpenTofu](https://opentofu.org/) (Terraform). See [tofu](./tofu/)
-- Docker with [docker-compose](https://docs.docker.com/compose/) for local development
+- Containers for local development: Docker with [docker-compose](https://docs.docker.com/compose/) or [Podman](https://podman.io/docs/installation)
 
-## Local development environment setup
+------
 
-> **Note:** These steps are for macOS using [Homebrew package manager](https://brew.sh/). Steps may differ on a different operating system.
+## Local dev set up option 1: ⚡️ Quickstart (recommended)
 
-> **On Windows:** Make long paths available using `git config core.longpaths true`, since the nested `apps/portal/...` paths can exceed the legacy limit of 260 characters.
+### 1. Install git
 
+Make sure you have installed [Git](https://git-scm.com/install/) on your local machine
+
+### 2. Run set up script
+
+To set up this project for the very first time, create an empty directory, and run the `init-workspace` script in
+it:
+
+On Mac/Linux:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/codeforamerica/sebt-self-service-portal/main/scripts/dev/init-workspace.sh
+bash init-workspace.sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/codeforamerica/sebt-self-service-portal/main/scripts/dev/init-workspace.ps1 -OutFile init-workspace.ps1
+.\init-workspace.ps1
+```
+
+If you've already cloned this project locally, run `./scripts/dev/init-workspace.sh` from inside the root of the repository.
+
+The script will go through the following steps:
+
+- clone this repository, if not already cloned
+- clone the separate DC Connector repository as a sibling, if applicable
+- check for and install the needed version of any missing software
+- install npm DevDependencies
+- build the .NET solution
+- install Aspire, an open-source tool for setting up and running the app locally. It includes a dashboard UI for accessing the different parts of the app, as well console logs, errors, and telemetry
+- issues a local developer certificate to satisfy TLS for Redis caching
+
+### 3. Start application
+
+When the script finishes, run this command to start the application:
+
+```bash
+cd sebt-portal-workspace/sebt-self-service-portal
+pnpm aspire:dc      #  to start the DC enrollment checker and portal
+# OR
+pnpm aspire:co      #  to start the Colorado enrollment checker and portal
+```
+
+### 4. Access Aspire dashboard
+
+Aspire controls all of the resources that are needed for building and running each state's implementation locally - managing configuration and secrets, creating and seeding databases, starting relevant containers, building the product, running the API, and running the web apps.
+
+Once Aspire is running, go to the dashboard in your browser at <https://localhost:17273>. From there, you can access the enrollment checker web app, portal web app, portal api, and more.
+
+You're set up!
+
+------
+
+### About the set up script
+
+The script will prompt you to install each of these in your home directory:
+
+| Tool | Version from | Installed to |
+| ---- | ------------ | ------------ |
+| Node | `.nvmrc` | `~/.local/share/sebt/node` |
+| pnpm | `engines.pnpm` in `package.json` | `~/.local/share/sebt` |
+| .NET SDK | `global.json` | `~/.dotnet` |
+| Aspire CLI | `sdk.version` in `aspire.config.json` | the pnpm global directory |
+| Podman | not pinned, so the platform package manager picks | wherever that puts it |
+
+Those directories are not on the PATH of a new terminal, so the script offers to add them
+to your shell profile at the end. If you decline, the script still works.
+
+If Docker Desktop is not already installed and running, it will offer to install Podman.
+
+#### Options
+
+`--yes` takes every offer without asking, for an unattended run. `--check-only` declines
+every offer, which is the way to see what a machine is missing. `--ssh` clones the repo using SSH.
+
+Behind a firewall that inspects TLS, add `--system-certs`. That one flag is the whole
+answer: git, Node, pnpm, curl, and .NET each read a different trust store, and the script
+points all of them at the one your machine already has. Reach for `--ca-bundle <file>`
+only when the proxy root is a file that was never added to that store. Run the script with
+`--help` for the rest.
+
+The DC connector is a private repository. If you cannot access it, the script will skip installing it.
+
+### Using Aspire for local development
+
+- Aspire does not require you to create local `.env` and `appsettings` files. The AppHost provides every value that the API needs at startup. If you have local `appsettings` files, the values from the AppHost win, because an environment variable has a higher priority than a JSON file
+- Aspire selects the host ports for each run, so the URL you use to access the portal and enrollment checker may vary each time you restart
+- The API does not have hot reloading, so after you change C# code, run `aspire resource api rebuild`. The portal web and enrollment checker web applications keep hot reload from their own development servers.
+- To control just one resource, run `aspire resource <name> stop`, `start`, or `rebuild`. The other running resources will not be affected
+- Currently, running the Colorado app with Aspire only supports Keycloak for the login, not MyColorado OIDC. Read the [Keycloak guide](./docs/development/keycloak-oidc.md) for info about users and passwords. To use MyColorado and test with CBMS, please follow the manual install steps below.
+
+Some other helpful CLI commands:
+
+- `pnpm aspire:status` to show the graph and address of each resource
+- `pnpm aspire:stop` to stop all running resources
+
+------
+
+## Local dev set up option 2: manual install / legacy process
+
+Below are steps to manually install and set up all of the software and configuration for running the app locally. If you've already got the app running with Aspire, you can skip these steps.
+
+You may need to run these steps if you cannot run the setup script / Aspire, or if you need to utilize functionality that is not yet supported in the Aspire set up.
+
+**Important**:
+
+- These steps are for macOS using [Homebrew package manager](https://brew.sh/). Steps may differ on a different operating system.
+- On Windows, make long paths available using `git config core.longpaths true`, since the nested `apps/portal/...` paths can exceed the legacy limit of 260 characters.
 
 ### 1. Install prerequisite software
 
 - [Git](https://git-scm.com/install/)
-- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for the backend
+- [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for the backend, see `global.json` for the version
   - To install it with Homebrew, run `brew install dotnet`
-- [nodeJS](https://nodejs.org/en) 24
+- [nvm](https://github.com/nvm-sh/nvm) for nodeJS version management
+  - `brew install nvm`
+- [nodeJS](https://nodejs.org/en), see `.nvmrc` for the version
   - `brew install node`
-- [pnpm](https://pnpm.io/installation/) for frontend package management and development scripts
-  - `brew install pnpm`
-- [Docker](https://www.docker.com/) Desktop to run and manage local containers (including MSSQL db, Redis, and keycloak).
+- [pnpm](https://pnpm.io/installation/) 10 or later for frontend package management and
+  development scripts. `engines.pnpm` in `package.json` contains the minimum version.
+  - `brew install pnpm`, or `npm install -g pnpm@10`
+- A container runtime for local development: either [Podman](https://podman.io/docs/installation) or [Docker Desktop](https://www.docker.com/)
 
 ### 2. Clone the repository
-
-This repo includes the self-service portal, the enrollment checker, the common state connector contract, and Colorado-specific connector code. This means one clone action contains the full Colorado implementation:
 
 ```bash
 git clone git@github.com:codeforamerica/sebt-self-service-portal.git
 ```
 
-#### To install the DC-specific portal code
+#### To run the DC implementation
 
 The state connector for DC has its own repository. See [apps/connectors/dc/README.md](./apps/connectors/dc/README.md). Clone it into the same parent folder as this repository on your local machine, so it can be used when building and running the DC app.
 
 ```bash
 git clone git@github.com:codeforamerica/sebt-self-service-portal-dc-connector.git
 ```
-
-The current DC enrollment checker is a standalone app, in a [separate repository](https://github.com/codeforamerica/cfa-dc-sebt-portal).
 
 ### 3. Configure your local environment
 
@@ -114,7 +223,7 @@ To create your local `.env` file with configurations for the database and the AP
 cp .env.example .env
 ```
 
-Do the same in `apps/portal/src/SEBT.Portal.Web`:
+Do the same in `apps/portal/src/SEBT.Portal.Web` and `apps/portal/src/SEBT.EnrollmentChecker.Web`:
 
 ```bash
 cp .env.example .env.local
@@ -139,13 +248,13 @@ For more details about how appsettings work, see [state-specific configuration](
 - To install all JavaScript package dependencies, run `pnpm install` from the root of this repository.
 - For more details about the frontend, see the [SEBT.Portal.Web README](./apps/portal/src/SEBT.Portal.Web/README.md).
 
-
 #### Backend
 
 - .NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). This project uses the [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool to audit the licenses of the backend dependencies. The manifest in `.config/dotnet-tools.json` defines the necessary tools. To install them, run `dotnet tool restore` at the root of the repository.
 - Before you start the app locally for the first time, run `dotnet build SEBT.slnx` from the root of the repository. This command builds the portal and the in-repo connectors together.
 
 ### 5. Start services
+
 Make sure that Docker is installed and the Docker daemon is running. Several components of the app are containerized for local development.
 
 #### Start the database in Docker
@@ -169,64 +278,12 @@ Once all dependencies are installed and running, you can use these start command
 
 ```bash
 `pnpm dev:dc` # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
+`pnpm dev:dc-enroll` # to start the DC Enrollment Checker (using the external `dc-connector` repo alongside this repo)
 `pnpm dev:co`  #  to start the CO Portal
 `pnpm dev:co-enroll` # to start the CO Enrollment Checker
 ```
 
 To view the running app, go to <https://localhost:3000> in your browser.
-
-## Development
-
-### Useful commands
-
-```bash
-# View logs
-docker compose logs -f
-
-# Stop all services
-docker compose down
-
-# Stop and remove volumes (clears database - do this only if you're OK with dropping your seeded data)
-docker compose down -v
-```
-
-### Testing
-
-#### Run backend tests
-
-```bash
-# from repo root
-pnpm api:test         # Run all backend tests
-pnpm api:test:unit    # Run backend unit tests only
-```
-
-#### Run frontend tests: portal
-
-```bash
-# from within SEBT.Portal.Web:
-pnpm test            # Run frontend tests (vitest)
-pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
-pnpm test:a11y       # Run accessibility (pa11y) tests
-```
-
-#### Run frontend tests: enrollment checker
-
-```bash
-# from within SEBT.EnrollmentChecker.Web:
-pnpm test            # Run frontend tests (vitest)
-pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
-pnpm test:a11y       # Run accessibility (pa11y) tests
-
-```
-
-#### Run tests locally as CI runs them (Release mode)
-
-```bash
-# from repo root
-pnpm ci:test          # Test frontend + backend
-pnpm ci:test:frontend    # Test frontend only
-pnpm ci:test:backend     # Test backend only
-```
 
 ### Local Redis (distributed cache)
 
@@ -277,55 +334,7 @@ If you don't configure either of these, the application falls back to in-memory 
 
 The Next.js web apps (`SEBT.Portal.Web` and `SEBT.EnrollmentChecker.Web`) also emit OTLP here, but only if `OTEL_EXPORTER_OTLP_ENDPOINT` is set. If the variable is not set, the apps send no data. In `.env.example`, the variable points to `http://localhost:4317`. To see web-tier traces alongside the API's, copy that value into your `.env.local` file.
 
-### CI/CD (via GitHub Actions)
-
-- `state-ci.yaml` builds / tests the portal and connectors on all pull requests and pushes. PRs are path-filtered: portal-only changes skip connector-irrelevant jobs and vice versa. A push always runs all of the jobs.
-- `deploy-ecr.yaml` builds Docker images and deploys **DC** and **CO** to their development environments. It builds the in-repo state and CO connectors, and it checks out the external DC connector.
-- `release-iis-dc.yaml` produces the DC IIS release bundle (validated on every PR).
-- `deploy-enrollment-checker.yaml` builds and deploys the static enrollment checker.
-- `playwright-e2e.yaml` runs Playwright end-to-end (E2E) tests for each state and Pa11y accessibility checks.
-- `build-and-seed-dc-source.yaml` builds the DC seed / source image from the external DC repository.
-
-#### State-based CI tests
-
-```bash
-pnpm ci:test:states   # Run the build-and-test job
-
-# Utility commands
-pnpm ci:list          # List all ACT workflows
-pnpm ci:validate      # Validate workflows (dry-run)
-```
-
-### Warnings as errors
-
-The .NET solution is configured with `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` in `Directory.Build.props`.  Any compiler warning makes the build fail.
-
-To let a specific warning code through, change it back to a warning in the applicable `.csproj` file:
-
-```xml
-<PropertyGroup>
-  <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
-</PropertyGroup>
-```
-
-Use this property, and not `<NoWarn>`, which silences the warning entirely.
-
-## Branch Strategy 
-
-```bash
-feature/*      # new product feature or enhancement
-chore/*        # maintenance tasks that aren't user-facing - e.g., package or security updates, refactors
-fix/*          # bug fixes
-main           # production code 
-```
-
-See [labeler.yml](.github/labeler.yml) for a complete list of possible branch prefixes.
-
-**How it works:** `main` contains both shared code and state-specific code. Each state deployment uses only the code that it needs, via configuration and feature flags.
-
-For the full CI documentation, see [docs/development/state-ci.md](docs/development/state-ci.md).
-
-## State-specific configuration
+### State-specific configuration
 
 The API loads the state-specific configuration based on the `STATE` environment variable:
 
@@ -403,9 +412,9 @@ The `IdProofingRequirements` configuration section sets the IAL (Identity Assura
 
 For all available keys, the syntax for each case type, coherence validation rules, and state-specific examples, see the [full configuration guide](docs/config/ial/README.md). For working state configurations, see [`appsettings.dc.example.json`](apps/portal/src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](apps/portal/src/SEBT.Portal.Api/appsettings.co.example.json).
 
-## Database setup
+### Database setup
 
-### MSSQL Server DB
+#### MSSQL Server DB
 
 The application uses Microsoft SQL Server as its database. This is containerized using Docker for local development environments.
 
@@ -428,7 +437,7 @@ Environment variables are available in the `.env` file at the root of the reposi
 - `JWTSETTINGS__SECRETKEY` - secret key that signs the JWT token. It must have a minimum of 32 characters.
 - `IDENTIFIERHASHER__SECRETKEY` - secret key for HMAC-SHA256 hashing of household identifiers, if configured. It must have a minimum of 32 characters.
 
-### Database migrations
+#### Database migrations
 
 The application uses [EF, or Entity Framework Core migrations](https://learn.microsoft.com/en-us/ef/core/managing-schemas/migrations/?tabs=dotnet-core-cli) to manage changes to the database schema.
 
@@ -523,6 +532,109 @@ docker exec -it sebt_mssql /opt/mssql-tools18/bin/sqlcmd \
 ```
 
 A tool such as [LINQPad](https://www.linqpad.net/) is helpful with database tasks.
+
+-----
+
+## Development
+
+### Useful commands
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (clears database - do this only if you're OK with dropping your seeded data)
+docker compose down -v
+```
+
+### Testing
+
+#### Run backend tests
+
+```bash
+# from repo root
+pnpm api:test         # Run all backend tests
+pnpm api:test:unit    # Run backend unit tests only
+```
+
+#### Run frontend tests: portal
+
+```bash
+# from within SEBT.Portal.Web:
+pnpm test            # Run frontend tests (vitest)
+pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
+pnpm test:a11y       # Run accessibility (pa11y) tests
+```
+
+#### Run frontend tests: enrollment checker
+
+```bash
+# from within SEBT.EnrollmentChecker.Web:
+pnpm test            # Run frontend tests (vitest)
+pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
+pnpm test:a11y       # Run accessibility (pa11y) tests
+
+```
+
+#### Run tests locally as CI runs them (Release mode)
+
+```bash
+# from repo root
+pnpm ci:test          # Test frontend + backend
+pnpm ci:test:frontend    # Test frontend only
+pnpm ci:test:backend     # Test backend only
+```
+
+### CI/CD (via GitHub Actions)
+
+- `state-ci.yaml` builds / tests the portal and connectors on all pull requests and pushes. PRs are path-filtered: portal-only changes skip connector-irrelevant jobs and vice versa. A push always runs all of the jobs.
+- `deploy-ecr.yaml` builds Docker images and deploys **DC** and **CO** to their development environments. It builds the in-repo state and CO connectors, and it checks out the external DC connector.
+- `release-iis-dc.yaml` produces the DC IIS release bundle (validated on every PR).
+- `deploy-enrollment-checker.yaml` builds and deploys the static enrollment checker.
+- `playwright-e2e.yaml` runs Playwright end-to-end (E2E) tests for each state and Pa11y accessibility checks.
+- `build-and-seed-dc-source.yaml` builds the DC seed / source image from the external DC repository.
+
+#### State-based CI tests
+
+```bash
+pnpm ci:test:states   # Run the build-and-test job
+
+# Utility commands
+pnpm ci:list          # List all ACT workflows
+pnpm ci:validate      # Validate workflows (dry-run)
+```
+
+### Warnings as errors
+
+The .NET solution is configured with `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` in `Directory.Build.props`.  Any compiler warning makes the build fail.
+
+To let a specific warning code through, change it back to a warning in the applicable `.csproj` file:
+
+```xml
+<PropertyGroup>
+  <WarningsNotAsErrors>$(WarningsNotAsErrors);CS1591</WarningsNotAsErrors>
+</PropertyGroup>
+```
+
+Use this property, and not `<NoWarn>`, which silences the warning entirely.
+
+## Branch Strategy
+
+```bash
+feature/*      # new product feature or enhancement
+chore/*        # maintenance tasks that aren't user-facing - e.g., package or security updates, refactors
+fix/*          # bug fixes
+main           # production code 
+```
+
+See [labeler.yml](.github/labeler.yml) for a complete list of possible branch prefixes.
+
+**How it works:** `main` contains both shared code and state-specific code. Each state deployment uses only the code that it needs, via configuration and feature flags.
+
+For the full CI documentation, see [docs/development/state-ci.md](docs/development/state-ci.md).
 
 ## Documentation
 

@@ -11,6 +11,7 @@ Accepted
 The Summer EBT Self-Service Portal web application requires a production-ready foundation that supports server-side rendering, multi-state deployment, USWDS integration, and comprehensive quality assurance. Government web applications have stringent requirements for accessibility (WCAG 2.1 AA), security hardening, SEO optimization, and deployment flexibility across different state infrastructures.
 
 Key requirements:
+
 - **Server-side rendering (SSR)**: SEO optimization and accessibility compliance through server-rendered HTML
 - **Multi-state support**: Build-time state configuration with design token injection
 - **USWDS integration**: Seamless SASS compilation with Figma design tokens
@@ -24,6 +25,7 @@ Key requirements:
 We will implement the web application using **Next.js 16 with App Router** as the foundation, with comprehensive tooling for production quality assurance.
 
 **Core Architecture**:
+
 - **Framework**: Next.js 16 with App Router and React Server Components
 - **React Optimization**: React 19 with React Compiler 1.0 for automatic memoization
 - **Build System**: Turbopack for development, standalone output for deployment
@@ -31,6 +33,7 @@ We will implement the web application using **Next.js 16 with App Router** as th
 - **State Management**: Build-time state injection via `NEXT_PUBLIC_STATE` environment variable
 
 **Quality Infrastructure**:
+
 - **Type Safety**: @t3-oss/env-nextjs with Zod schemas for environment validation
 - **Unit Testing**: Vitest with jsdom environment and React Testing Library
 - **E2E Testing**: Playwright with cross-browser support (Chrome, Firefox, Safari, Edge)
@@ -40,6 +43,7 @@ We will implement the web application using **Next.js 16 with App Router** as th
 - **Security**: ESLint security plugin, no `x-powered-by` header, strict CSP-ready
 
 **Developer Experience**:
+
 - **Hot Module Replacement**: Sub-second updates during development
 - **Path Aliases**: `@/` imports for clean module resolution
 - **Bundle Analysis**: `@next/bundle-analyzer` for production optimization
@@ -50,28 +54,36 @@ We will implement the web application using **Next.js 16 with App Router** as th
 ## Implementation Details
 
 ### Environment Management
+
 Type-safe environment variables with runtime validation prevent deployment errors:
+
 - Server-only variables: `NODE_ENV`
 - Client variables: `NEXT_PUBLIC_STATE` (validated as 'dc' | 'co')
 - Build-time transformation: `STATE` → `NEXT_PUBLIC_STATE` in next.config.ts
 - Zod schema validation catches misconfigurations at build time
 
 ### USWDS Integration
+
 Custom SASS configuration maintains full USWDS compatibility:
+
 - Include paths: `sass/`, `node_modules/@uswds/uswds/packages/`, `node_modules/`
 - Global `sass:math` injection for USWDS calculations
 - State-specific token files compiled at build time
 - Design tokens from Figma synchronized via ADR 0003 workflow
 
 ### Testing Strategy
+
 Comprehensive testing pyramid with separation of concerns:
+
 - **Unit Tests**: `tests/**/*.test.{ts,tsx}` via Vitest with jsdom
 - **E2E Tests**: `tests-e2e/**/*.spec.ts` via Playwright
 - **Coverage**: v8 provider with HTML/JSON/text reports (excluded from git)
 - **CI Integration**: Pre-commit hooks run unit tests before commit
 
 ### Pre-commit Quality Gates
+
 Eight-step validation pipeline via lint-staged:
+
 1. **ESLint**: Auto-fix TypeScript/TSX issues with security rules
 2. **Prettier**: Format code, CSS, SCSS, JSON, Markdown
 3. **TypeScript**: Type checking with strict mode (no `any` types allowed)
@@ -82,14 +94,18 @@ Eight-step validation pipeline via lint-staged:
 8. **Dead Code**: Knip validation (manual, not in pre-commit)
 
 ### React Compiler Integration
+
 Automatic optimization without manual memoization:
+
 - Enabled via `reactCompiler: true` in next.config.ts
 - React Compiler 1.0 stable as of Next.js 16
 - SWC optimization only processes relevant files (JSX/Hooks)
 - Build time increase: ~15-30% (acceptable for automatic optimization)
 
 ### Multi-State Build Support
+
 Seamless integration with ADR 0004 state-based CI:
+
 - `STATE=dc pnpm build` → DC-specific build with mint-cool-60v primary color
 - `STATE=co pnpm build` → CO-specific build with state tokens
 - Standalone output mode: Self-contained `.next/standalone/` directory
@@ -98,6 +114,7 @@ Seamless integration with ADR 0004 state-based CI:
 ## Consequences
 
 ### Positive
+
 - **Production-ready foundation**: SSR, type safety, testing, security out-of-the-box
 - **Quality assurance**: Pre-commit gates prevent broken code from reaching repository
 - **Accessibility compliance**: WCAG 2.1 AA rules enforced via ESLint and runtime testing
@@ -108,12 +125,14 @@ Seamless integration with ADR 0004 state-based CI:
 - **Comprehensive testing**: Unit + E2E coverage with cross-browser validation
 
 ### Negative
+
 - **Pre-commit overhead**: 3-8 seconds per commit (mitigated by lint-staged file filtering)
 - **React Compiler build time**: 15-30% slower than pure SWC (acceptable trade-off)
 - **Learning curve**: Team must understand App Router, Server Components, SSR patterns
 - **SASS configuration**: Manual USWDS path setup required (documented in next.config.ts)
 
 ### Risks and Mitigation
+
 **Risk**: Pre-commit hooks slow down rapid development
 **Mitigation**: lint-staged only processes changed files. Git hooks can be bypassed with `--no-verify` for emergency commits (discouraged).
 
@@ -128,9 +147,26 @@ Seamless integration with ADR 0004 state-based CI:
 
 ## References
 
+# 1. Install (once)
+
+pnpm install --frozen-lockfile
+
+# 2. Remove the SSR-only API routes — a static export can't emit them.
+
+# This deletes tracked files; step 4 restores them.
+
+rm -rf apps/portal/src/SEBT.EnrollmentChecker.Web/src/app/api
+
+STATE=dc NEXT_PUBLIC_STATE=dc BASE_PATH="" NEXT_PUBLIC_API_BASE_URL="https://portal.sunbucks.dc.gov" NEXT_PUBLIC_PORTAL_URL="https://portal.sunbucks.dc.gov" NEXT_PUBLIC_APPLICATION_URL="" NEXT_PUBLIC_BUILD_SHA="$(git rev-parse main)" NEXT_PUBLIC_SITEIMPROVE_ID="6002505" NEXT_PUBLIC_AMPLITUDE_API_KEY="" NEXT_PUBLIC_MIXPANEL_TOKEN="" BUILD_STATIC=true pnpm --filter @sebt/enrollment-checker build
+
+# 4. Restore the API routes
+
+git restore apps/portal/src/SEBT.EnrollmentChecker.Web/src/app/api
+
 **Implementation Location**: `src/SEBT.Portal.Web/`
 
 **Key Configuration Files**:
+
 - `next.config.ts` - Next.js with React Compiler, SASS, and bundle analyzer
 - `src/env.ts` - Type-safe environment validation with Zod schemas
 - `vitest.config.ts` - Unit testing with jsdom and React Testing Library
@@ -140,13 +176,16 @@ Seamless integration with ADR 0004 state-based CI:
 - `tsconfig.json` - TypeScript strict mode with 9 strict checks enabled
 
 **Documentation**:
+
 - [Next.js 16 Documentation](https://nextjs.org/docs)
 - [React Compiler Documentation](https://react.dev/learn/react-compiler)
 - [USWDS Documentation](https://designsystem.digital.gov/)
 
 ## Related ADRs
+
 - **ADR 0003**: Design Token Management - USWDS SASS integration with Figma tokens
 - **ADR 0004**: State-based CI Architecture - Standalone builds for multi-state deployment
 
 ## Notes
+
 This ADR documents the production-ready web application foundation with DC as the reference implementation. All quality gates, testing infrastructure, and USWDS integration are operational. The foundation supports future features including authentication, server-side data fetching, API integration, and progressive enhancement for the multi-state portal system.

@@ -149,6 +149,11 @@ services:
       - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
       - KC_HTTP_ENABLED=true
       - KC_HEALTH_ENABLED=true
+      # sebt-realm.json registers the portal's redirect URI, web origin, and post-logout
+      # URI as ${SEBT_PORTAL_ORIGIN}, which Keycloak resolves from the environment during
+      # realm import. Fixed here because compose always serves the portal on 3000; the
+      # Aspire AppHost passes the portal's allocated endpoint instead.
+      - SEBT_PORTAL_ORIGIN=http://localhost:3000
     volumes:
       - ./docker/keycloak/sebt-realm.json:/opt/keycloak/data/import/sebt-realm.json:ro
       - ./docker/keycloak/themes:/opt/keycloak/themes:ro

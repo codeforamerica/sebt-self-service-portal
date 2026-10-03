@@ -9,7 +9,7 @@
     "tokens:all": "node ../../../../packages/design-system/design/scripts/generate-all-tokens.js",
     "copy:generate": "node ../../../../packages/design-system/content/scripts/generate-locales.js --out-dir content/locales --ts-out src/lib/generated-locale-resources.ts --app portal && node ../../../../packages/design-system/content/scripts/generate-backend-email.js --out-dir ../SEBT.Portal.Infrastructure/Templates/Email",
     "copy:validate": "node ../../../../packages/design-system/content/scripts/generate-locales.js --out-dir content/locales --ts-out src/lib/generated-locale-resources.ts --app portal --validate",
-    "postinstall": "sh ../../../../packages/design-system/design/scripts/copy-uswds-assets.sh",
+    "postinstall": "node ../../../../packages/design-system/design/scripts/copy-uswds-assets.mjs",
     "predev": "node ../../../../packages/design-system/design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:themes && pnpm --silent copy:generate",
     "dev": "next dev --turbopack",
     "prebuild": "node ../../../../packages/design-system/design/scripts/state-banner.js && pnpm --silent tokens && pnpm --silent tokens:sass && pnpm --silent tokens:themes && pnpm --silent copy:generate",
