@@ -11,11 +11,8 @@ overrides:
   # (GHSA-6g55-p6wh-862q, -r28c-9q8g-f849, -fxqj-rqcc-2cmp) and the earlier `</style>` XSS.
   postcss: '>=8.5.23'
   vite: '>=8.0.16' # CVEs — path traversal, dev-server WS arbitrary read, server.fs.deny bypass; Dependabot alerts #156 #157
-  # Two entries because js-yaml patches its maintained lines separately: @lhci/utils needs
-  # the pre-4.0 API, everything else is on 4.x. Upper bounds keep both off the 5.x rewrite.
-  '@lhci/utils>js-yaml': '>=3.15.1 <4.0.0' # GHSA-5p4m-2wfm-xmqj — O(n^2) key scan in !!omap resolution; Dependabot alerts #170 #242
-  js-yaml: '>=4.3.1 <5.0.0' # same advisory on the 4.x line; Dependabot alerts #173 #243
-  # Split by line like js-yaml above: minimatch 3 pulls the 1.x line, minimatch 10 the 5.x.
+  js-yaml: '>=4.3.1 <5.0.0' # GHSA-5p4m-2wfm-xmqj — O(n^2) key scan in !!omap resolution; upper bound keeps it off the 5.x rewrite; Dependabot alerts #173 #243
+  # Split by line: minimatch 3 pulls the 1.x line, minimatch 10 the 5.x.
   # Each floor is the later of the two DoS advisories, so it covers GHSA-mh99-v99m-4gvg too.
   'minimatch@3>brace-expansion': '>=1.1.18 <2.0.0' # GHSA-rgw5-rvv9-x895 — unbounded intermediate arrays; Dependabot alerts #227 #228
   brace-expansion: '>=5.0.9 <6.0.0' # same advisory on the 5.x line; Dependabot alerts #226 #229
@@ -24,6 +21,10 @@ overrides:
   uuid: '>=11.1.1' # CVE — missing buffer bounds check
   ip-address: '>=10.3.1' # GHSA-mwp4-54f8-5fhr — Address4 reads a leading-zero octet as decimal while resolvers read it as octal, so an SSRF guard passes a host that resolves internally; floor also covers the CIDR-suffix and NAT64 misclassifications; Dependabot alerts #239 #240 #241
   shell-quote: '>=1.9.0' # GHSA-395f-4hp3-45gv O(n^2) concat-in-reduce in parse(); floor also covers the earlier quote() newline-escaping CVE-2026-9277; Dependabot alerts #150 #174
+  # GHSA-jmr9-qjv8-65gv: extract-zip has no fixed release and only Puppeteer 24 pulls it in. pa11y-ci 4.1.1 still
+  # pins Puppeteer 24, so move it to pa11y 10 and Puppeteer 25, which dropped extract-zip; Dependabot alert #246
+  'pa11y-ci>pa11y': '^10.0.0'
+  'pa11y-ci>puppeteer': '^25.9.0'
 
 # [SECURITY] Enforce minimum package age. Consult Security Team before updating.
 minimumReleaseAge: 10080 # 7 days (minutes)
