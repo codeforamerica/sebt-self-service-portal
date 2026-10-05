@@ -97,6 +97,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pages: read
       id-token: write
     steps:
       - name: Fetch docs bot credentials from Doppler
@@ -119,19 +120,14 @@ jobs:
 
       - name: Download candidate manifest
         env:
-          GH_TOKEN: ${{ steps.docs-token.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-        run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::docs bot token is empty — check the create-github-app-token step above"
-            exit 1
-          fi
-          gh run download "${{ github.run_id }}" --name docs-manifest --dir candidate
+        run: gh run download "${{ github.run_id }}" --name docs-manifest --dir candidate
 
       - name: Fetch published manifest
         id: published
         env:
-          GH_TOKEN: ${{ steps.docs-token.outputs.token }}
+          GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           url=$(gh api "repos/${GH_REPO}/pages" -q .html_url 2>/dev/null || true)
