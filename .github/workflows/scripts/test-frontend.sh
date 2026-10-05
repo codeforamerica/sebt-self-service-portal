@@ -198,11 +198,11 @@ main() {
   check_prerequisites
   install_dependencies
   generate_locales
+  validate_content
   run_type_check
   run_lint
   run_tests
   run_package_tests
-  validate_content
 
   echo ""
   log_success "=== All frontend tests passed ==="
