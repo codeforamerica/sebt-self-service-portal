@@ -4,8 +4,6 @@
       href: api/
     - name: REST API
       href: rest/index.md
-- name: Docs
-  href: docs/
 - name: Architecture Decisions
   href: adr/
 
