@@ -99,9 +99,14 @@ export function parseAdr(file: string, markdown: string): Omit<AdrRecord, 'autho
     throw new Error(`${file}: no "## Status" section with a value under it.`);
   }
 
+  const number = Number(heading[1]);
+  if (number !== Number(file.slice(0, 4))) {
+    throw new Error(`${file}: the H1 numbers it ${number}, but the filename numbers it ${file.slice(0, 4)}.`);
+  }
+
   return {
     file,
-    number: Number(heading[1]),
+    number,
     title: heading[2],
     date: date[1],
     status: normalizeStatus(status[1]),

@@ -59,6 +59,9 @@ jobs:
 
       - run: pnpm docs:tools
 
+      - name: Test docs generators
+        run: pnpm exec tsx --test scripts/docs/*.test.ts
+
       - name: Build documentation
         # docfx prints "Build succeeded with warning." and exits 255 under --warningsAsErrors.
         run: pnpm docs:build

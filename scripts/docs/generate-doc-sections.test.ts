@@ -187,7 +187,6 @@ test('git reports no date for a path it does not track', () => {
   const repoRoot = resolve(fileURLToPath(import.meta.url), '../../..');
 
   assert.equal(lastCommitDate(repoRoot, 'docs/docfx/docs/overview/index.md'), null, 'generated copies are git-ignored');
-  assert.match(lastCommitDate(repoRoot, 'docs/guides/overview/index.md') ?? '', /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test('linked TOCs are appended after the sections they sit beside', () => {

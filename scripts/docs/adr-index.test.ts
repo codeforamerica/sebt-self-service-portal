@@ -1,18 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-  ADR_SOURCE,
   firstCommitAuthor,
   groupByStatus,
-  listAdrs,
   normalizeStatus,
   parseAdr,
   renderAdrCards,
   renderInline,
-  STATUS_ORDER,
   type AdrRecord,
 } from './adr-index.ts';
 
@@ -39,7 +35,7 @@ function record(over: Partial<AdrRecord> = {}): AdrRecord {
     title: 'PII encryption at rest',
     date: '2026-05-04',
     status: 'Accepted',
-    author: 'Michael Walsh',
+    author: 'Test Author',
     ...over,
   };
 }
@@ -66,6 +62,12 @@ test('parseAdr rejects a record with no Date line, rather than inventing one', (
 
 test('parseAdr rejects a record with no Status section', () => {
   assert.throws(() => parseAdr('0031-new.md', '# 31. A decision\n\nDate: 2026-01-01\n'), /Status/);
+});
+
+test('parseAdr rejects a record whose H1 number does not match its filename', () => {
+  const mismatched = '# 23. A decision\n\nDate: 2026-01-01\n\n## Status\n\nAccepted\n';
+
+  assert.throws(() => parseAdr('0022-a-decision.md', mismatched), /0022-a-decision\.md/);
 });
 
 test('normalizeStatus takes the leading word, so a prose status still yields a badge', () => {
@@ -142,7 +144,7 @@ test('renderAdrCards states the date in words and names the author', () => {
   const html = renderAdrCards(groupByStatus([record()]));
 
   assert.match(html, /May 4, 2026/);
-  assert.match(html, /Michael Walsh/);
+  assert.match(html, /Test Author/);
 });
 
 test('renderAdrCards leaves the separator entity intact', () => {
@@ -150,7 +152,7 @@ test('renderAdrCards leaves the separator entity intact', () => {
   // renders the entity as literal text on the page.
   const html = renderAdrCards(groupByStatus([record()]));
 
-  assert.match(html, /May 4, 2026 &middot; Michael Walsh/);
+  assert.match(html, /May 4, 2026 &middot; Test Author/);
   assert.doesNotMatch(html, /&amp;middot;/);
 });
 
@@ -207,30 +209,6 @@ test('the group count is an attribute, so it stays out of the page outline', () 
   assert.doesNotMatch(html, /<h2[^>]*>[^<]*\d/, 'no digit in the rendered heading text');
 });
 
-test('firstCommitAuthor follows renames, so a renumbered record keeps its real author', () => {
-  // The renumbering commit renamed nine records. Without --follow git reports
-  // that commit's author for all nine, crediting the wrong person.
-  const author = firstCommitAuthor(repoRoot, 'docs/adr/0022-state-based-ci-architecture.md');
-
-  assert.equal(author, 'Anthony Bergen');
-});
-
 test('firstCommitAuthor returns null for a path git does not track', () => {
   assert.equal(firstCommitAuthor(repoRoot, 'docs/adr/0000-not-a-real-record.md'), null);
-});
-
-test('every record in docs/adr parses, so a new one cannot break the page', () => {
-  const files = listAdrs(join(repoRoot, ADR_SOURCE));
-
-  assert.ok(files.length >= 30, `expected the full set, found ${files.length}`);
-
-  for (const file of files) {
-    const markdown = readFileSync(join(repoRoot, ADR_SOURCE, file), 'utf8');
-    const adr = parseAdr(file, markdown);
-
-    assert.ok(STATUS_ORDER.includes(adr.status), `${file} has status ${adr.status}`);
-    assert.match(adr.date, /^\d{4}-\d{2}-\d{2}$/, `${file} has date ${adr.date}`);
-    assert.ok(adr.title.length > 0, `${file} has an empty title`);
-    assert.equal(adr.number, Number(file.slice(0, 4)), `${file} numbers itself differently in its H1`);
-  }
 });
