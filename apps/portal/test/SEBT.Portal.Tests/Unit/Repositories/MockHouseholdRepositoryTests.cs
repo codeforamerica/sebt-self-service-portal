@@ -161,6 +161,29 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(expectedChildFirstName, result.Applications.First().Children.First().FirstName);
     }
 
+    /// <summary>
+    /// Pins the name-casing persona's odd casing; tidying it into Title Case would silently make
+    /// the scenario useless.
+    /// </summary>
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_NameCasingScenario_SuppliesBothUniformAndMixedCaseNames()
+    {
+        // Arrange & Act
+        var email = new SeedingSettings().BuildEmail(SeedScenarios.NameCasing.Name);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotNull(result.UserProfile);
+        Assert.Equal("DELLA", result.UserProfile.FirstName);
+        Assert.Equal("ALDENMOCK", result.UserProfile.LastName);
+
+        var caseNames = result.SummerEbtCases.Select(c => $"{c.ChildFirstName} {c.ChildLastName}").ToList();
+        Assert.Contains("HILDE MCNAMARAMOCK", caseNames);
+        Assert.Contains("isidro keigwinmock", caseNames);
+        Assert.Contains("Angus MacDonaldMOCK", caseNames);
+    }
+
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenDcCoLoadedPendingIdProofing_UsesDistinctPhoneAndCoLoadedCases()
     {

@@ -23,6 +23,30 @@ describe('ChildReviewCard', () => {
     expect(screen.getByText('Jane M. Doe')).toBeInTheDocument()
   })
 
+  it('renders an all-caps entry in sentence casing', () => {
+    const shouting = { ...child, firstName: 'JANE', middleName: 'MARIE', lastName: 'DOE' }
+    render(
+      <ChildReviewCard
+        child={shouting}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Jane M. Doe')).toBeInTheDocument()
+  })
+  
+  it('leaves a deliberately mixed-case name exactly as the guardian typed it', () => {
+    const mixed = { ...child, firstName: 'LaToya', lastName: 'MacDonald' }
+    render(
+      <ChildReviewCard
+        child={mixed}
+        onEdit={vi.fn()}
+        onRemove={vi.fn()}
+      />
+    )
+    expect(screen.getByText('LaToya MacDonald')).toBeInTheDocument()
+  })
+
   it('calls onEdit with child id when update link is clicked', async () => {
     const onEdit = vi.fn()
     render(<ChildReviewCard child={child} onEdit={onEdit} onRemove={vi.fn()} />)
