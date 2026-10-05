@@ -966,6 +966,59 @@ public class MockHouseholdRepository : IHouseholdRepository
         _households[coActiveEmail] = coActive;
         IndexByPhone(coActive);
 
+        // Scenario: names cased as state backends supply them (CBMS sends all caps). Other personas
+        // are already well-cased, so this is the only mock household that exercises display casing.
+        var nameCasingEmail = _settings.BuildEmail(SeedScenarios.NameCasing.Name);
+        var nameCasing = HouseholdFactory.CreateHouseholdDataWithStatus(ApplicationStatus.Approved, h =>
+        {
+            h.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
+            var app = h.Applications.FirstOrDefault();
+            if (app != null)
+            {
+                app.IssuanceType = IssuanceType.SummerEbt;
+                app.BenefitIssueDate = now.AddDays(-20);
+                app.BenefitExpirationDate = now.AddDays(70);
+                app.Children = new List<Child>
+                {
+                    new Child { FirstName = "HILDE", LastName = "MCNAMARAMOCK" },
+                    new Child { FirstName = "Angus", LastName = "MacDonaldMOCK" }
+                };
+            }
+            h.AddressOnFile = new Address
+            {
+                StreetAddress1 = "1200 Pennsylvania Avenue NW",
+                City = "Washington",
+                State = "DC",
+                PostalCode = "20004"
+            };
+            h.SummerEbtCases = new List<SummerEbtCase>
+            {
+                // All caps → displays as "Hilde Mcnamaramock".
+                HouseholdFactory.CreateSummerEbtCase("HILDE", "MCNAMARAMOCK", "Medicaid", c =>
+                {
+                    c.IssuanceType = IssuanceType.SummerEbt;
+                    c.EbtCardStatus = CardStatus.Active;
+                }),
+                // All lowercase → displays as "Isidro Keigwinmock".
+                HouseholdFactory.CreateSummerEbtCase("isidro", "keigwinmock", "NSLP", c =>
+                {
+                    c.IssuanceType = IssuanceType.SummerEbt;
+                    c.EbtCardStatus = CardStatus.Lost;
+                }),
+                // Mixed case → displays unchanged.
+                HouseholdFactory.CreateSummerEbtCase("Angus", "MacDonaldMOCK", "NSLP", c =>
+                {
+                    c.IssuanceType = IssuanceType.SummerEbt;
+                    c.EbtCardStatus = CardStatus.Active;
+                })
+            };
+        });
+        nameCasing.Email = nameCasingEmail;
+        // All-caps guardian, since the dashboard headline is where mis-casing is most visible.
+        nameCasing.UserProfile = new UserProfile { FirstName = "DELLA", MiddleName = "MAE", LastName = "ALDENMOCK" };
+        _households[nameCasingEmail] = nameCasing;
+        IndexByPhone(nameCasing);
+
         // DC-only SummerEbt scenarios 13-14 and Simple scenarios 1-7 below are seeded only when STATE=dc.
         if (string.Equals(_settings.State, "dc", StringComparison.OrdinalIgnoreCase))
         {

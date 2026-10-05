@@ -1,5 +1,6 @@
 'use client'
 
+import { formatPersonName } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import type { Child } from '../context/EnrollmentContext'
 
@@ -22,8 +23,8 @@ export function ChildReviewCard({ child, onEdit, onRemove }: ChildReviewCardProp
   const { t, i18n } = useTranslation('confirmInfo')
   const { t: tCommon } = useTranslation('common')
 
-  const middleInitial = child.middleName ? ` ${child.middleName.charAt(0)}.` : ''
-  const fullName = `${child.firstName}${middleInitial} ${child.lastName}`
+  const middleInitial = child.middleName ? ` ${child.middleName.charAt(0).toUpperCase()}.` : ''
+  const fullName = `${formatPersonName(child.firstName)}${middleInitial} ${formatPersonName(child.lastName)}`
 
   return (
     <div className="child-review-card">
