@@ -31,7 +31,7 @@ pnpm docs:serve     # to build and serve the site at http://localhost:8080
 | .NET API | `pnpm docs:api` | Runs `docfx metadata` over the C# code |
 | Render | `pnpm docs:render` | Renders the site |
 | Search index | `pnpm docs:index` | Rewrites `_site/index.json`. See [Search indexing](#search-indexing). |
-| Manifest | `pnpm docs:manifest` | Writes `_site/.docs-manifest.json`. See [Publishing](#publishing). |
+| Manifest | `pnpm docs:manifest` | Writes `_site/docs-manifest.json`. See [Publishing](#publishing). |
 
 Both docfx steps pass `--warningsAsErrors`, so a broken link or an unresolvable `cref` fails the build rather
 than scrolling past. Note that docfx still prints `Build succeeded with warning.` on its last line and then
@@ -225,7 +225,7 @@ OpenAPI export test, so a broken `///` comment or a deleted link target fails be
 The checkout uses `fetch-depth: 0`. The page dates come from a per-file `git log`, and at the default depth of 1
 every page would silently report the date of the last push.
 
-`docs:manifest` writes `_site/.docs-manifest.json`: a sha256 per file, plus one rollup hash over the sorted list.
+`docs:manifest` writes `_site/docs-manifest.json`: a sha256 per file, plus one rollup hash over the sorted list.
 It publishes with the site, so a pull request can fetch the manifest from the live site and diff its own build
 against what is actually deployed, without a retained artifact to expire. Files rewritten on every build regardless
 of content — `index.json`, `manifest.json`, `xrefmap.yml` — are excluded, or every comparison would report the whole

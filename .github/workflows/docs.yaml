@@ -69,7 +69,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs-manifest
-          path: docs/docfx/_site/.docs-manifest.json
+          path: docs/docfx/_site/docs-manifest.json
           retention-days: 14
 
       - if: github.event_name == 'pull_request'
@@ -135,7 +135,7 @@ jobs:
             echo "found=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          if curl -fsSL "${url%/}/.docs-manifest.json" -o published.json; then
+          if curl -fsSL "${url%/}/docs-manifest.json" -o published.json; then
             echo "found=true" >> "$GITHUB_OUTPUT"
           else
             echo "found=false" >> "$GITHUB_OUTPUT"
@@ -157,7 +157,7 @@ jobs:
           }
 
           jq -r '.files | to_entries[] | "\(.key) \(.value)"' published.json | clean | sort > old.txt
-          jq -r '.files | to_entries[] | "\(.key) \(.value)"' candidate/.docs-manifest.json | clean | sort > new.txt
+          jq -r '.files | to_entries[] | "\(.key) \(.value)"' candidate/docs-manifest.json | clean | sort > new.txt
 
           cut -d' ' -f1 old.txt | sort > old-paths.txt
           cut -d' ' -f1 new.txt | sort > new-paths.txt
@@ -185,7 +185,7 @@ jobs:
               echo
               printf 'Published `%s` → candidate `%s`\n\n' \
                 "$(jq -r .site published.json | cut -c1-12)" \
-                "$(jq -r .site candidate/.docs-manifest.json | cut -c1-12)"
+                "$(jq -r .site candidate/docs-manifest.json | cut -c1-12)"
               for kind in added removed changed; do
                 [ -s "$kind.txt" ] || continue
                 count=$(wc -l < "$kind.txt")

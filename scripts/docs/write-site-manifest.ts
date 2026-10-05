@@ -1,5 +1,5 @@
 /**
- * Writes `_site/.docs-manifest.json`: a sha256 per published file, plus one rollup
+ * Writes `_site/docs-manifest.json`: a sha256 per published file, plus one rollup
  * hash over the sorted list.
  *
  * The manifest ships with the site, so CI can diff a candidate build against the
@@ -14,7 +14,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const MANIFEST = '.docs-manifest.json';
+const MANIFEST = 'docs-manifest.json';
 const EXCLUDE = new Set(['index.json', 'manifest.json', 'xrefmap.yml', MANIFEST]);
 
 const siteRoot = resolve(fileURLToPath(import.meta.url), '../../..', 'docs/docfx/_site');
