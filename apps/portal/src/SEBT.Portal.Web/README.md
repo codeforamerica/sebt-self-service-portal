@@ -219,7 +219,6 @@ Automatic checks on changed files:
 pnpm lint             # ESLint check
 pnpm knip             # Find unused dependencies
 pnpm analyze          # Bundle size analysis
-pnpm lighthouse       # Lighthouse performance audit
 ```
 
 ## Documentation
