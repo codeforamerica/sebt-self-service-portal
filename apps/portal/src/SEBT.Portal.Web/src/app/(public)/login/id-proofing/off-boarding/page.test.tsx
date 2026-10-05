@@ -34,8 +34,8 @@ const POPULATED_KEYS = new Set([
   'offBoarding:coLoadedAction1',
   'offBoarding:coLoadedBody2',
   'offBoarding:coLoadedAction2',
-  'offBoarding:docVerificationFailedTitle',
-  'offBoarding:docVerificationFailedBody',
+  'dev:alertVerifyIdentity',
+  'dev:alertDocVerify',
   'stepUpFailure:title',
   'stepUpFailure:body',
   'common:linkContactUs',
@@ -333,8 +333,8 @@ describe('OffBoardingPage', () => {
       await renderPage({ reason: 'docVerificationEgregiousFailed' })
 
       const content = screen.getByTestId('off-boarding-content')
-      expect(content).toHaveAttribute('data-title', 'offBoarding:docVerificationFailedTitle')
-      expect(content).toHaveAttribute('data-body', 'offBoarding:docVerificationFailedBody')
+      expect(content).toHaveAttribute('data-title', 'dev:alertVerifyIdentity')
+      expect(content).toHaveAttribute('data-body', 'dev:alertDocVerify')
       expect(content).toHaveAttribute('data-can-apply', 'false')
     })
 
