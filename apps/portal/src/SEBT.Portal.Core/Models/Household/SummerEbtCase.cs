@@ -22,6 +22,18 @@ public class SummerEbtCase
     public string? ApplicationStudentId { get; set; }
 
     /// <summary>
+    /// The state system's application identifier for this child, set whatever the eligibility source.
+    /// Unlike <see cref="ApplicationId"/>, it does not imply the child applied.
+    /// </summary>
+    public string? SourceApplicationId { get; set; }
+
+    /// <summary>
+    /// The state system's identifier for this child for the season, set whatever the eligibility source.
+    /// Unlike <see cref="ApplicationStudentId"/>, it does not imply the child applied.
+    /// </summary>
+    public string? SourceChildId { get; set; }
+
+    /// <summary>
     /// The child's first name.
     /// </summary>
     public string ChildFirstName { get; set; } = string.Empty;

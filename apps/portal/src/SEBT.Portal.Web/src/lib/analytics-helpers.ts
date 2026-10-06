@@ -46,18 +46,23 @@ export function syncHouseholdUserData(
   isCoLoaded: boolean | null | undefined,
   household: Pick<
     HouseholdData,
-    'summerEbtCases' | 'applications' | 'coLoadedCohort' | 'hashedAppId'
+    | 'summerEbtCases'
+    | 'applications'
+    | 'coLoadedCohort'
+    | 'hashedAppId'
+    | 'hashedAppIds'
+    | 'hashedCaseIds'
   >
 ): void {
   setUserData('household_linked_children', household.summerEbtCases.length, ANALYTICS_SCOPE)
   setUserData('co_loaded_cohort', toAnalyticsCohort(household.coLoadedCohort), ANALYTICS_SCOPE)
   setUserData('coloading_status', getColoadingStatus(isCoLoaded, household), ANALYTICS_SCOPE)
 
-  // Absent whenever the API resolved no application number for the household.
-  // Null means "do not emit" rather than "emit empty".
-  if (household.hashedAppId) {
-    setUserData('hashed_app_id', household.hashedAppId, ANALYTICS_SCOPE)
-  }
+  // Null from the API means "do not emit". Clearing with undefined, rather than skipping,
+  // keeps a previous household's ids off this one's events.
+  setUserData('hashed_app_id', household.hashedAppId ?? undefined, ANALYTICS_SCOPE)
+  setUserData('hashed_app_ids', household.hashedAppIds ?? undefined, ANALYTICS_SCOPE)
+  setUserData('hashed_case_ids', household.hashedCaseIds ?? undefined, ANALYTICS_SCOPE)
 }
 
 function addressUpdateStatusFromResult(

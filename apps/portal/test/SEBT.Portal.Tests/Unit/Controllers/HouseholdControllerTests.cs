@@ -24,6 +24,9 @@ namespace SEBT.Portal.Tests.Unit.Controllers;
 
 public class HouseholdControllerTests
 {
+    private static readonly IIdentifierHasher AnalyticsHasher = new IdentifierHasher(
+        Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
+
     private readonly IPiiVisibilityService _piiVisibilityService;
     private readonly IIdProofingService _idProofingService;
     private readonly ISelfServiceEvaluator _selfServiceEvaluator;
@@ -686,20 +689,27 @@ public class HouseholdControllerTests
     }
 
     [Fact]
-    public async Task GetHouseholdData_WhenStateIsCo_PopulatesHashedAppIdFromFirstApplicationNumber()
+    public async Task GetHouseholdData_WhenStateIsCo_PopulatesHashedIdentifiers()
     {
         var email = "user@example.com";
         SetupAuthenticatedUser(email);
         _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
-        _identifierHasher.HashForAnalytics("APP-123").Returns("digest-123");
 
         var householdData = new HouseholdData
         {
             Email = email,
             Applications = new List<Application>
             {
-                new Application { ApplicationNumber = "APP-123", Children = new List<Child>() }
+                new Application
+                {
+                    ApplicationNumber = "APP-123",
+                    Children = new List<Child> { new Child { SourceChildId = "CHILD-PENDING" } }
+                }
+            },
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase { SourceApplicationId = "APP-456", SourceChildId = "CHILD-1" }
             }
         };
         var resolverMock = CreateResolverMock(email);
@@ -714,26 +724,26 @@ public class HouseholdControllerTests
             .Build();
 
         var result = await _controller.GetHouseholdData(
-            CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, coConfig);
+            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, coConfig);
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
-        Assert.Equal("digest-123", response.HashedAppId);
-        _identifierHasher.Received(1).HashForAnalytics("APP-123");
+        Assert.Equal(AnalyticsHasher.HashForAnalytics("APP-123"), response.HashedAppId);
+        Assert.Equal(2, response.HashedAppIds?.Split(',').Length);
+        Assert.Equal(2, response.HashedCaseIds?.Split(',').Length);
     }
 
     [Fact]
     public async Task GetHouseholdData_WhenStateIsCoAndMultipleApplications_HashesLexFirstApplicationNumber()
     {
         // Multi-application households can show up if the connector returns
-        // applications in non-deterministic order. The controller sorts
-        // lexicographically before hashing so hashed_app_id is stable across
-        // page loads even when the connector reshuffles the list.
+        // applications in non-deterministic order. Sorting lexicographically
+        // before hashing keeps hashed_app_id stable across page loads even
+        // when the connector reshuffles the list.
         var email = "user@example.com";
         SetupAuthenticatedUser(email);
         _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
             .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
-        _identifierHasher.HashForAnalytics("APP-001").Returns("digest-001");
 
         var householdData = new HouseholdData
         {
@@ -758,20 +768,52 @@ public class HouseholdControllerTests
             .Build();
 
         var result = await _controller.GetHouseholdData(
-            CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, coConfig);
+            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, coConfig);
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
-        Assert.Equal("digest-001", response.HashedAppId);
-        // Only the lex-first ApplicationNumber should be hashed; the others
-        // stay out of the analytics digest entirely.
-        _identifierHasher.Received(1).HashForAnalytics("APP-001");
-        _identifierHasher.DidNotReceive().HashForAnalytics("APP-077");
-        _identifierHasher.DidNotReceive().HashForAnalytics("APP-042");
+        Assert.Equal(AnalyticsHasher.HashForAnalytics("APP-001"), response.HashedAppId);
     }
 
     [Fact]
-    public async Task GetHouseholdData_WhenStateIsNotCo_LeavesHashedAppIdNull()
+    public async Task GetHouseholdData_WhenStateIsCoAndNoChildApplied_HashesCaseApplicationId()
+    {
+        var email = "user@example.com";
+        SetupAuthenticatedUser(email);
+        _piiVisibilityService.GetVisibility(Arg.Any<UserIalLevel>())
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase { IsStreamlineCertified = true, SourceApplicationId = "1199181", SourceChildId = "1200736" }
+            }
+        };
+        var resolverMock = CreateResolverMock(email);
+        var repositoryMock = Substitute.For<IHouseholdRepository>();
+        repositoryMock.GetHouseholdByIdentifierAsync(
+            Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        var coConfig = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["STATE"] = "co" })
+            .Build();
+
+        var result = await _controller.GetHouseholdData(
+            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, coConfig);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
+        Assert.Equal(AnalyticsHasher.HashForAnalytics("1199181"), response.HashedAppId);
+        Assert.NotNull(response.HashedAppIds);
+        Assert.NotNull(response.HashedCaseIds);
+    }
+
+    [Fact]
+    public async Task GetHouseholdData_WhenStateIsNotCo_LeavesHashedIdentifiersNull()
     {
         var email = "user@example.com";
         SetupAuthenticatedUser(email);
@@ -784,6 +826,10 @@ public class HouseholdControllerTests
             Applications = new List<Application>
             {
                 new Application { ApplicationNumber = "APP-123", Children = new List<Child>() }
+            },
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase { SourceApplicationId = "APP-123", SourceChildId = "CHILD-1" }
             }
         };
         var resolverMock = CreateResolverMock(email);
@@ -803,6 +849,8 @@ public class HouseholdControllerTests
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
         Assert.Null(response.HashedAppId);
+        Assert.Null(response.HashedAppIds);
+        Assert.Null(response.HashedCaseIds);
         _identifierHasher.DidNotReceive().HashForAnalytics(Arg.Any<string?>());
     }
 }
