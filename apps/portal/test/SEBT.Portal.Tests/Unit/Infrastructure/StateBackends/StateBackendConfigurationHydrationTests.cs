@@ -331,6 +331,25 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("ISSUED", ex.Message);
     }
 
+    [Fact]
+    public void Validate_FailsLoud_WhenTokenIsAmbiguous_IgnoringCase()
+    {
+        StateBackendConfiguration config = BuildEnumConfig(
+            new StateBackendEnumTable
+            {
+                Map = new Dictionary<string, List<string>>
+                {
+                    ["Active"] = new() { "ACTIVE" },
+                    ["Processed"] = new() { "Active" },
+                },
+                Default = "Unknown",
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("Active", ex.Message);
+    }
+
     // A keywordRules value that is NOT a real IssuanceType member must fail loud at load.
     [Fact]
     public void Validate_FailsLoud_WhenKeywordRuleValueIsNotARealIssuanceType()

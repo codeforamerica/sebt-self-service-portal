@@ -486,13 +486,12 @@ internal static class StateBackendResponseMapper
         return (enumType, ordered, defaultValue);
     }
 
-    // Inverts a table into a token → our-value lookup, rejecting non-member values and ambiguous tokens.
     private static (Dictionary<string, object> TokenLookup, object? Default) BuildTokenLookup(
         string tableName,
         StateBackendEnumTable table,
         Type enumType)
     {
-        var tokenLookup = new Dictionary<string, object>(StringComparer.Ordinal);
+        var tokenLookup = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
         foreach ((string ourValue, List<string> tokens) in table.Map)
         {

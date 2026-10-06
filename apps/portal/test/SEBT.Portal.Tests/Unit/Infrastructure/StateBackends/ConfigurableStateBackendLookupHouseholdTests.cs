@@ -83,6 +83,8 @@ public class ConfigurableStateBackendLookupHouseholdTests
 
     [Theory]
     [InlineData("ACTIVE", CardStatus.Active)]
+    // A mixed-case token should still map.
+    [InlineData("Active", CardStatus.Active)]
     // "LOST, AUTO REISSUE" is one of several tokens the table maps to CardStatus.Lost.
     [InlineData("LOST, AUTO REISSUE", CardStatus.Lost)]
     // An unmapped token falls through to the enum table's default.
