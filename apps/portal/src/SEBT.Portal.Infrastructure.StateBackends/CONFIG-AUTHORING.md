@@ -308,7 +308,7 @@ CO — `batch`, correlated rows via `indexField`, DOB `expand`, eligibility-gate
         lastName: stdLastName
         dob: stdDob
       mapOptional:
-        schoolIdentifier: StdSchlCd
+        schoolIdentifier: stdSchlCd
     response:
       root: $.stdntDtls
       indexField: stdReqInd

@@ -267,7 +267,7 @@ public class StateBackendConfigurationHydrationTests
 
         // schoolIdentifier is optional: the portal may not carry it, but CO's match reads it when sent.
         Assert.NotNull(coEnrollment.Request.MapOptional);
-        Assert.Equal("StdSchlCd", coEnrollment.Request.MapOptional["schoolIdentifier"]);
+        Assert.Equal("stdSchlCd", coEnrollment.Request.MapOptional["schoolIdentifier"]);
 
         Assert.NotNull(coEnrollment.Response);
         Assert.Equal("$.stdntDtls", coEnrollment.Response.Root);

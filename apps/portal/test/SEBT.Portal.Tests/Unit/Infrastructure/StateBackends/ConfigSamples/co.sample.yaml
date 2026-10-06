@@ -75,8 +75,9 @@ operations:
         lastName: stdLastName
         dob: stdDob
       # CO's match also reads the school code; optional because the portal may not have it.
+      # JSON key is camelCase (stdSchlCd), matching stdFirstName / stdLastName / stdDob.
       mapOptional:
-        schoolIdentifier: StdSchlCd
+        schoolIdentifier: stdSchlCd
     response:
       root: $.stdntDtls
       indexField: stdReqInd
