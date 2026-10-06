@@ -36,12 +36,14 @@ describe('NotEnrolledSection', () => {
     expect(screen.getByText(/Melinda Smith/i)).toBeInTheDocument()
   })
 
-  it('renders the heading emphasis as strong text, not literal asterisks', () => {
-    const { container } = render(<NotEnrolledSection results={notEnrolled} />)
+  it('renders the heading without literal asterisks', () => {
+    render(<NotEnrolledSection results={notEnrolled} />)
 
     const heading = screen.getByRole('heading', { level: 4 })
     expect(heading.textContent).not.toContain('**')
-    expect(container.querySelector('strong')?.textContent).toBe('were NOT enrolled')
+    expect(heading).toHaveTextContent(
+      'The following children are NOT enrolled in Summer EBT for 2026'
+    )
   })
 
   it('renders nothing when empty', () => {
