@@ -2,7 +2,7 @@
 
 CI configuration system that lets state deployments customize infrastructure preferences (Docker vs native builds) and build configuration through YAML files.
 
-`build-and-test` (the job this doc mostly covers) runs **once** per PR/push, not once per state — DC and CO's build/test configuration was byte-identical, so matrixing it just doubled CI time for no extra coverage. See [ADR 0022](../adr/0022-dedupe-build-and-test-across-states.md) for why, and [ADR 0004](../adr/0004-state-based-ci-architecture.md) for the original per-state matrix architecture this narrows. Playwright E2E (`playwright-e2e.yaml`) and the enrollment-checker job are genuinely state-aware (they set `STATE`/`NEXT_PUBLIC_STATE`) and still run per state — this doc doesn't cover them.
+`build-and-test` (the job this doc mostly covers) runs **once** per PR/push, not once per state — DC and CO's build/test configuration was byte-identical, so matrixing it just doubled CI time for no extra coverage. See [ADR 0033](../adr/0033-dedupe-build-and-test-across-states.md) for why, and [ADR 0032](../adr/0032-state-based-ci-architecture.md) for the original per-state matrix architecture this narrows. Playwright E2E (`playwright-e2e.yaml`) and the enrollment-checker job are genuinely state-aware (they set `STATE`/`NEXT_PUBLIC_STATE`) and still run per state — this doc doesn't cover them.
 
 ## Quick Start
 
