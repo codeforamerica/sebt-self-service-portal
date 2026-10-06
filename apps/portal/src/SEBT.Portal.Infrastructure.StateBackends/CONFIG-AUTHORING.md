@@ -71,7 +71,7 @@ operations:
           enum: cardStatus
 ```
 
-The mapping is **domain-centered**: the left-hand side is *our* canonical field name; the right-hand side (`from`) is the state's property name. A field mapping has three optional modifiers:
+The mapping is **domain-centered**: the left-hand side is *our* canonical field name; the right-hand side (`from`) is the state's property name. The `fields` left-hand keys are a closed set: `summerEBTCaseID` / `childFirstName` / `childLastName` / `applicationId` / `ebtCardIssueDate` / `benefitExpirationDate` / `ebtCardStatus` / `applicationStatus` / `issuanceType`. A field mapping has three optional modifiers:
 
 - `from` — the source property on the record. Required. A scalar unless the field uses `keywordRules`, which may list several sources.
 - `format` — an exact date parse format (e.g. `MM/dd/yyyy`) for date-typed fields. Exact parse, no fallback.
