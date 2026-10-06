@@ -181,30 +181,11 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 
 ### Request binding
 
-The binding vocabulary:
+- `constants` — For literals (bool, number, string etc.) that are not likely to change
+- `map` — Required fields for the request; the intention being that it will, at minimum, fail if not present.
+- `mapOptional` — Functionally the same as `map`, with the caveeat that unresolved input is dropped from the body without failing.  
 
-- `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
-- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus the write envelope (`householdIdentifier`) plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. The binder rejects an input that resolves to no value.
-- `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing fast. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
-
-The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid` (`ic` is a case identifier used by D.C.), plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
-
-DC card replacement — a scalar `map` whose left-hand names are the decoded `caseId` fields plus the envelope `householdIdentifier`:
-
-```yaml
-    request:
-      map:
-        caseId: summerEbtCaseId
-        householdIdentifier: householdEmail
-```
-
-Card replacement also has `callMode`: `perCase` (default — one call per token, DC) or `batch` (one call collecting every token, CO).
-
-Address update spans every case a household owns, so it adds two **batch shapes**:
-
-- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **refuses the request if the decoded caseIds disagree** on the value.
-
-DC binds the household identifier from the write envelope instead, so a zero-case household can still update:
+An example of what this looks can be seen (as an `Update Address` example):
 
 ```yaml
     request:
@@ -216,9 +197,11 @@ DC binds the household identifier from the write envelope instead, so a zero-cas
         city: address.city
         state: address.state
         zip: address.zip
+      mapOptional:
+        line2: address.line2
 ```
 
-- `collect` — a per-case routing field gathered into an **array** at a target path, one element per decoded `caseId`. CO collects each case's per-case write-id into a PATCH array:
+- `collect` — a per-case routing field gathered into an **array** at a target path, one element per decoded `caseId`:
 
 ```yaml
     request:
@@ -229,9 +212,6 @@ DC binds the household identifier from the write envelope instead, so a zero-cas
         zip: stdZip
 ```
 
-`shared` and `collect` are the only two batch shapes. There are no per-case conditionals, filters, or transforms.
-
-Note the read/write asymmetry: reads bind by walking the *response* shape (Step 3), while writes bind by building the *produced payload's* shape — the binding is keyed by the target path in the body you're constructing.
 
 ### Result classifier
 
@@ -364,7 +344,6 @@ Config validates at **load** via `StateBackendConfigurationValidator`, immediate
 - A `valueInSet` disaggregation missing a non-empty `applicationValues` list.
 - A declared write/enrollment/lookup operation missing its request and result/response mappings — listing the path is not enough to advertise the feature.
 - An unmatched YAML property (unknown keys fail at load, they are not ignored).
-- A `mapOptional` on a write op (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so it's rejected rather than silently ignored.
 - An incoherent enrollment op: `batch` missing an `indexField` on either side, `perChild` that sets one, `perChild` combined with `expand`, a match strategy missing its required params (`anyRowValueIn` without `field` + `valueIn`, `confidenceThreshold` without `scoreField` + `threshold`), or a `confidenceThreshold` eligibility check with `field` or `valueIn` alone — they come together or not at all.
 
 [^canonical]: The portal's own field and enum names, identical across every state — as opposed to each state's own names for the same things.

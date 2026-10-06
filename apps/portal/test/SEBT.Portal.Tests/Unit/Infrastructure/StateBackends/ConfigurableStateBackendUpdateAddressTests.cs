@@ -33,6 +33,10 @@ public class ConfigurableStateBackendUpdateAddressTests
                     ["state"] = "address.state",
                     ["zip"] = "address.zip",
                 },
+                MapOptional = new Dictionary<string, string>
+                {
+                    ["line2"] = "address.line2",
+                },
             },
             Result = new ResultClassifier
             {
@@ -193,11 +197,50 @@ public class ConfigurableStateBackendUpdateAddressTests
         Assert.Equal("family@example.test", root.GetProperty("householdIdentifier").GetString());
         JsonElement address = root.GetProperty("address");
         Assert.Equal("123 Main St", address.GetProperty("line1").GetString());
+        Assert.False(address.TryGetProperty("line2", out _));
         Assert.Equal("Washington", address.GetProperty("city").GetString());
         Assert.Equal("DC", address.GetProperty("state").GetString());
         Assert.Equal("20001", address.GetProperty("zip").GetString());
 
         Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task UpdateAddressAsync_Dc_BindsLine2_WhenPresent()
+    {
+        var caseIds = new List<string>
+        {
+            OpaqueCaseId.Compose(new Dictionary<string, string>
+            {
+                ["writeId"] = "W-1",
+            }),
+        };
+
+        string? capturedBody = null;
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/households/address")
+            .With(message =>
+            {
+                capturedBody = message.Content?.ReadAsStringAsync().GetAwaiter().GetResult();
+                return true;
+            })
+            .Respond("application/json", """{ "resultCode": "OK" }""");
+
+        var backend = BuildBackend(mockHttp, DcAddressUpdate());
+        var request = new AddressUpdateRequest(
+            "IC10001",
+            caseIds,
+            SampleAddress() with { Line2 = "Apt 4B" });
+
+        WriteResult result = await backend.UpdateAddressAsync(request);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(capturedBody);
+        using JsonDocument document = JsonDocument.Parse(capturedBody);
+        Assert.Equal(
+            "Apt 4B",
+            document.RootElement.GetProperty("address").GetProperty("line2").GetString());
     }
 
     [Fact]

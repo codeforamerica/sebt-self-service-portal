@@ -30,7 +30,7 @@ Config picks from a fixed set of narrow, named primitives. It never exposes comp
 - **`keywordRules`.** Ordered, first-match-wins, case-insensitive substring-contains over one or more `from` sources. Used for DC issuance-type inference. No regex, no conditionals.
 - **Disaggregation.** Group records into applications and decide case inclusion via a closed `rule` (`presence` / `valueInSet`) and named `caseInclusion` predicates — not an expression DSL. `valueInSet` requires a non-empty `applicationValues` list at load (a missing list would silently treat every row as not application-based); matching is case-insensitive, matching Colorado's existing classifier.
 - **Opaque `caseId`.** A self-describing token of backend-issued routing ids (case keys, application ids). Encode/decode is fixed platform code. The portal and UI treat it as opaque. It must not pack PII — writes bind `householdIdentifier` from the request envelope. `fromContext` remains as a primitive for non-PII caller context; packing `householdIdentifier` is rejected at load.
-- **Request binding.** `constants` (fixed literals), `map` (our input → dotted target path, fail-fast when unresolved), `mapOptional` (bind-if-present / omit-if-absent; rejected on write ops), and the two batch shapes `shared` (one value across the batch, fail-fast on disagreement) and `collect` (per-case values into an array).
+- **Request binding.** `constants` (for fixed literals), `map` (required fields; assumes that we want to fail-fast when unresolved), `mapOptional` (functionally the same as `map`, but with optionality options), and two batch shapes `shared` (one value across the batch, fail-fast on disagreement) and `collect` (per-case values into an array).
 - **Result classifier.** Ordered, first-match-wins `conditions`, each exactly one closed kind (`statusIn` / `valueIn`+`field` / `messageContains`+`messageField`), plus a `default`.
 - **Enrollment.** `callMode` (`batch` / `perChild`), closed candidate `expand` (`transposeMonthDay`), and named match strategies (`anyRowValueIn` / `confidenceThreshold`).
 
@@ -45,7 +45,6 @@ Config loads from YAML via YamlDotNet in [`StateBackendConfigurationLoader`](./C
 - **`caseId` compositions** — every `fromContext` entry names a known context name that is not `householdIdentifier` (PII); no token field is sourced from both `fields` and `fromContext`.
 - **Disaggregation** — `valueInSet` carries a non-empty `applicationValues` list.
 - **Incomplete operations** — a declared write/enrollment/lookup op must include its request and result/response mappings; unmatched YAML properties fail at load.
-- **`mapOptional` on writes** — rejected on `cardReplacement` / `addressUpdate` (the write body builders don't read it; a silent no-op would be worse).
 - **Enrollment coherence** — `batch` requires an `indexField` on both sides; `perChild` forbids one and forbids `expand`; each match strategy carries its required params, and `confidenceThreshold`'s optional eligibility check takes `field` + `valueIn` together or not at all.
 
 ## The anti-DSL discipline

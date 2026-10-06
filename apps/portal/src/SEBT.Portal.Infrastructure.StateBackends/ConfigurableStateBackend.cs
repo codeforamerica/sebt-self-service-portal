@@ -354,8 +354,6 @@ public class ConfigurableStateBackend :
             cancellationToken).ConfigureAwait(false);
     }
 
-    // Shared write pipeline: build request + optional bound body, attach the Idempotency-Key
-    // (guards against a duplicate write on retry), send, classify the response into a WriteResult.
     private async Task<WriteResult> ExecuteWriteAsync(
         StateBackendOperationConfig operation,
         RequestBinding? binding,
@@ -387,8 +385,6 @@ public class ConfigurableStateBackend :
         return ToWriteResult(classification, policyRejectionMessage);
     }
 
-    // Only non-null address scalars are included; a config mapping a field the address lacks fails
-    // loud in the binder.
     private static Dictionary<string, string> BuildAddressInputs(AddressUpdateAddress address)
     {
         var inputs = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -421,7 +417,6 @@ public class ConfigurableStateBackend :
         return inputs;
     }
 
-    // Write-envelope fields the binder can map without packing them into client-visible case tokens.
     private static Dictionary<string, string> EnvelopeInputs(string? householdIdentifier)
     {
         var inputs = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -446,7 +441,6 @@ public class ConfigurableStateBackend :
         return inputs;
     }
 
-    // The backend's own message text wins; generic text applies only when the backend supplied none.
     private static WriteResult ToWriteResult(WriteClassification classification, string policyRejectionMessage) =>
         classification.Outcome switch
         {

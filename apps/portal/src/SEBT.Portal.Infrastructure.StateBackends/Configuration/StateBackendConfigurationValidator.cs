@@ -36,22 +36,9 @@ internal static class StateBackendConfigurationValidator
             WriteResultClassifier.Validate(addressUpdateClassifier);
         }
 
-        // Write-path body builders don't read mapOptional yet; fail loud rather than silently no-op.
-        RejectMapOptional(operations.CardReplacement?.Request, "cardReplacement");
-        RejectMapOptional(operations.AddressUpdate?.Request, "addressUpdate");
-
         if (operations.EnrollmentCheck is { Request: { } binding, Response: { } mapping } enrollment)
         {
             EnrollmentOperationValidator.Validate(enrollment.CallMode, binding, mapping);
-        }
-    }
-
-    private static void RejectMapOptional(RequestBinding? request, string operationName)
-    {
-        if (request?.MapOptional is { Count: > 0 })
-        {
-            throw new InvalidOperationException(
-                $"mapOptional is not supported on write operations ({operationName}).");
         }
     }
 

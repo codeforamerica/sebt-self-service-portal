@@ -130,6 +130,8 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("address.city", dcAddressUpdate.Request.Map["city"]);
         Assert.Equal("address.state", dcAddressUpdate.Request.Map["state"]);
         Assert.Equal("address.zip", dcAddressUpdate.Request.Map["zip"]);
+        Assert.NotNull(dcAddressUpdate.Request.MapOptional);
+        Assert.Equal("address.line2", dcAddressUpdate.Request.MapOptional["line2"]);
 
         ResultClassifier dcAddressClassifier = Assert.IsType<ResultClassifier>(dcAddressUpdate.Result);
         ResultCondition dcAddressSuccess = Assert.Single(dcAddressClassifier.Conditions);
@@ -366,20 +368,18 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("exactly one", ex.Message);
     }
 
-    // The write-path body builders ignore mapOptional, so a config setting it — on EITHER write
-    // op — must fail at load rather than silently dropping the binding.
+    // mapOptional on a write is bind-if-present. Address line2 is optional, so setting it on
+    // either write op must load rather than fail.
     [Theory]
     [InlineData(true)] // card replacement
     [InlineData(false)] // address update
-    public void Validate_FailsLoud_WhenWriteRequestSetsMapOptional(bool onCardReplacement)
+    public void Validate_AllowsMapOptional_OnWriteOperations(bool onCardReplacement)
     {
         StateBackendConfiguration config = BuildWriteMapOptionalConfig(
             cardReplacementRequest: onCardReplacement ? MapOptionalRequestBinding() : null,
             addressUpdateRequest: onCardReplacement ? null : MapOptionalRequestBinding());
 
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("mapOptional", ex.Message);
+        StateBackendConfigurationValidator.Validate(config);
     }
 
     // A fromContext entry packing householdIdentifier puts PII in a client-visible token.
@@ -644,7 +644,7 @@ public class StateBackendConfigurationHydrationTests
             },
         });
 
-    // A write-op request binding carrying a mapOptional entry — unsupported on the write path.
+    // A write-op request binding carrying a mapOptional entry.
     private static RequestBinding MapOptionalRequestBinding() =>
         new()
         {

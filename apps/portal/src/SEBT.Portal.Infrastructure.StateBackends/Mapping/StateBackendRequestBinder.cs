@@ -5,9 +5,7 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Builds an outgoing request body from a <see cref="RequestBinding"/>: a map input resolving to
-/// nothing fails loud, a mapOptional input is omitted. <c>isProofed</c> passes straight through —
-/// never an authorization decision here.
+/// Builds an outgoing request body from a <see cref="RequestBinding"/>.
 /// </summary>
 internal static class StateBackendRequestBinder
 {
@@ -47,8 +45,8 @@ internal static class StateBackendRequestBinder
     }
 
     /// <summary>
-    /// Write-path binding: constants plus the routing fields decoded from the opaque caseId; an
-    /// unmatched map input fails loud.
+    /// Write-path binding: constants plus the routing fields decoded from the opaque caseId. An
+    /// unmatched <c>map</c> input fails loud.
     /// </summary>
     public static JsonObject BuildBody(RequestBinding binding, IReadOnlyDictionary<string, string> inputs)
     {
@@ -76,6 +74,17 @@ internal static class StateBackendRequestBinder
                 }
 
                 JsonPathWriter.Write(body, targetPath, JsonValue.Create(value));
+            }
+        }
+
+        if (binding.MapOptional is { } mapOptional)
+        {
+            foreach ((string inputName, string targetPath) in mapOptional)
+            {
+                if (inputs.TryGetValue(inputName, out string? value))
+                {
+                    JsonPathWriter.Write(body, targetPath, JsonValue.Create(value));
+                }
             }
         }
 
