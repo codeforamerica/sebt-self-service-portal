@@ -1,7 +1,7 @@
 # Engineering documentation site (docfx)
 
-[Docfx](https://dotnet.github.io/docfx/) provides a state site that includes architecture decision
-records, API reference, guides, and more.
+[Docfx](https://dotnet.github.io/docfx/) builds a static site containing the architecture decision
+records, the .NET API reference, and the REST API reference.
 
 ## Prerequisites
 
@@ -26,7 +26,7 @@ pnpm docs:serve     # to build and serve the site at http://localhost:8080
 
 | Step | Command | What it does |
 | --- | --- | --- |
-| Sections | `pnpm docs:sections` | Copies `docs/adr/` and `docs/guides/` into the site and writes `toc.yml` |
+| Sections | `pnpm docs:sections` | Copies `docs/adr/` into the site and writes `toc.yml` |
 | REST spec | `pnpm docs:spec` | Exports the API's OpenAPI  |
 | .NET API | `pnpm docs:api` | Runs `docfx metadata` over the C# code |
 | Render | `pnpm docs:render` | Renders the site |
@@ -111,17 +111,17 @@ writes a `toc.yml` listing the files. Adding a section means adding one entry th
 does not read ADR contents: TOC entries carry an `href` and no `name`, and docfx fills the name in from each file's
 H1, rendering any Markdown in that heading. The script exists because docfx TOC files have no glob support.
 
+No section uses this today; it supports the guides, which are being restored separately.
 Sections with a `parent` share one sidebar, and their `nav` array says where each sits in it. The names are given
 explicitly because the H1 trick only works for entries that point at a file, and a heading node points at nothing.
-Sections that share a leading name share that heading node, so `Get started` holds every guide filed under it.
+Sections that share a leading name share that heading node, so a shared heading holds every section filed under it.
 The last name in the array labels the section itself, and its pages become that node's children.
 
-`adr/index.md` is authored and tracked in git; the generator preserves it while clearing stale copies. Each guide has
-an authored `index.md` that becomes its section landing page. `docs/adr/` and `docs/guides/` remain authoritative,
+`adr/index.md` is authored and tracked in git; the generator preserves it while clearing stale copies. `docs/adr/` remains authoritative,
 the copies are never edited, and stale ones are cleared on each run so renamed or deleted files don't linger.
 
 The copy is load-bearing. docfx can map an outside directory in with a `src`/`dest` content rule, but a TOC pointing
-at mapped files resolves neither the H1 (all 30 entries render unnamed) nor the output path (hrefs stay `.md`), and
+at mapped files resolves neither the H1 (every entry renders unnamed) nor the output path (hrefs stay `.md`), and
 links between records break the same way.
 
 ADRs are sorted by **filename**. Numbers are zero-padded to four digits, so that is also numeric order.
@@ -129,20 +129,20 @@ ADRs are sorted by **filename**. Numbers are zero-padded to four digits, so that
 Two rounds of cleanup got the records to a single format, and `adr/index.md` documents the template new ones should
 follow:
 
-- **Headers.** All 30 now use `# N. Title`, a `Date:` line, then `## Status`. Six were normalized: five titled
+- **Headers.** Every record now uses `# N. Title`, a `Date:` line, then `## Status`. Six were normalized: five titled
   `# ADR 0007: Title`, one `# 0018 - Title`, one using an inline `**Status:**` line, and four missing a date,
   recovered from the commit that added each file.
-- **Numbers.** All 30 are now unique and cover 0001-0030 with no gaps. Nine collided before that (three numbered 7,
-  three numbered 9, three numbered 12, and pairs at 4, 15, and 18). In each collision the earliest-dated record kept
-  the number and the later ones moved to 0022-0030 in date order, so numbers already cited elsewhere stayed valid.
-  The tradeoff is that 0022-0030 are chronologically out of sequence.
+- **Numbers.** All are now unique and cover 0001-0034 with no gaps. Six numbers were reused before that (three
+  records each at 7, 9, and 12, and pairs at 4, 15, and 18). In each collision the earliest-dated record kept the
+  number and the others moved to unused numbers (0022, 0025-0030, 0032, 0034), and `main`'s own 0022 moved to 0033
+  when it collided with this branch. The tradeoff is that moved records are chronologically out of sequence.
 
 ## Page dates and search
 
 ### Last updated dates
 
 Each copied page carries a "last updated" line below its H1, written by the section generator from
-`git log -1 --format=%cI` on the **source** file. The source matters: the copies under `adr/` and `guides/` are
+`git log -1 --format=%cI` on the **source** file. The source matters: the copies under `adr/` are
 git-ignored, so asking git about one returns nothing. A page that is new and uncommitted gets no stamp rather than an
 invented date.
 
@@ -158,15 +158,15 @@ scratch. The site describes whatever commit last built it.
 
 `pnpm docs:index` rewrites `_site/index.json` after the build, fixing two docfx behaviors:
 
-- **Every indexed title ended with the site title**, because the extractor reads `<title>` verbatim. With 553 entries
-  carrying "Summer EBT Self-Service Portal Documentation", a search for "portal" or "EBT" matched every
+- **Every indexed title ended with the site title**, because the extractor reads `<title>` verbatim. With every entry
+  carrying the site title, a search for "portal" or "EBT" matched every
   document on the field lunr weighs most. The suffix is stripped, anchored to the end so the home page keeps its own
   title.
 - **The provenance line landed in every summary**, which put a date in each result blurb and made "updated" and
   "source" match every page. It is removed from the indexed copy only; the rendered page keeps it.
 
 Pages may also declare `keywords:` in front matter. docfx drops the key, and this step appends the terms to the
-indexed summary, which is what lets the content guide be found by "i18n" or "translation". They go at the end because
+indexed summary, which lets a page be found by terms that never appear in its text. They go at the end because
 lunr scores a term the same wherever it sits, while the search UI shows the front of the summary as the blurb.
 
 The step also adds one entry per REST operation, read from `_site/rest/portal.openapi.json`. RapiDoc renders in the
@@ -178,8 +178,8 @@ duplicates them. If the spec is missing the step skips this and says so in its o
 
 The step is idempotent, so running it against an already-processed index changes nothing.
 
-Ranking caveat: 513 of the 553 indexed pages are API reference against 40 conceptual pages, so a conceptual query can
-still surface types ahead of guides. Keywords make a guide appear in results; they do not make it rank first. Field
+Ranking caveat: 522 of the 559 indexed pages are API reference against 37 conceptual pages, so a conceptual query can
+still surface types ahead of prose pages. Keywords make a page appear in results; they do not make it rank first. Field
 boosts live in docfx's client bundle and are not reachable from `index.json`.
 
 ## Styling
@@ -198,12 +198,8 @@ No webfont is loaded. The apps use Urbanist (DC) and Atkinson Hyperlegible (CO),
 
 ## What's generated, what's committed
 
-Committed: `docfx.json`, `filterConfig.yml`, `toc.yml`, `index.md`, `compliance/`, `api/index.md`, `adr/index.md`,
+Committed: `docfx.json`, `filterConfig.yml`, `toc.yml`, `index.md`, `api/index.md`, `adr/index.md`,
 `rest/index.md`, `img/`, `template/`, this README.
-
-The `compliance/` pages are authored rather than copied, so they carry no "last updated" line. That matches the other authored
-pages. Its dependency figures were measured rather than estimated, and the page says so, because they drift with the
-lockfile.
 
 There is no Releases page. Release notes live on GitHub, and the footer links straight to them. An earlier
 `releases.md` also documented how the notes are generated, which `scripts/release-notes/README.md` and
@@ -213,8 +209,8 @@ tag list itself if you need them. Note that a footer link must be an absolute UR
 `_appFooter` is raw-inserted into the template with `{{{...}}}`, so docfx neither re-renders `{{_rel}}` inside it nor
 rewrites a relative href per page, and a relative one would break on every page below the root.
 
-Generated and git-ignored (see `.gitignore`): `_site/`, `api/*.yml`, `adr/*.md` except `index.md`, `adr/toc.yml`,
-`guides/`, `rest/portal.openapi.json`, `rest/rapidoc-min.js`.
+Generated and git-ignored (see `.gitignore`): `_site/`, `.docfx/`, `api/*.yml`, `api/.manifest`, `adr/*.md` except
+`index.md`, `adr/toc.yml`, `rest/portal.openapi.json`, `rest/rapidoc-min.js`.
 
 ## Publishing
 

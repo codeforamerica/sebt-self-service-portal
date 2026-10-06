@@ -58,4 +58,3 @@ The app always emits OTLP to `localhost:4317`. A collector sits there and routes
 
 - [DC-341](https://codeforamerica.atlassian.net/browse/DC-341) — this work
 - `SEBT.Portal.Api/Telemetry/` — the backend OpenTelemetry setup this mirrors
-- Numbered 0018 because `0017` is the merged monorepo-consolidation ADR.
