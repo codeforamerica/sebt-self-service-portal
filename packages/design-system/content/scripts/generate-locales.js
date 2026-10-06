@@ -8,6 +8,7 @@
  * Usage:
  *   node packages/design-system/content/scripts/generate-locales.js           # Generate all locales
  *   node packages/design-system/content/scripts/generate-locales.js --watch   # Watch mode (future)
+ *   node packages/design-system/content/scripts/generate-locales.js --validate  # Check content only: writes nothing, exits 1 on a content error
  *
  * CSV Files:
  *   content/states/dc.csv  # DC-specific content (downloaded from DC tab)
@@ -41,6 +42,9 @@
  *  -- to regenerate without caching, comment out any use of saveHash below
  * - Namespace splitting: Organizes by page/component for lazy loading
  * - Variable interpolation: Preserves {state}, {year} placeholders for runtime
+ * - Content checks: every run reports content defects, cached or not (see
+ *   validate-content.js); only --validate fails on them, so a sheet typo never
+ *   blocks dev or a build
  */
 
 // load-env.js is portal-specific and not needed in the shared package.
@@ -57,6 +61,7 @@ import {
 import * as path from 'path';
 import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { validateStateContent } from './validate-content.js';
 
 // Parse CLI arguments
 const cliArgs = process.argv.slice(2)
@@ -70,6 +75,8 @@ const tsOutOverride  = getCliArg('--ts-out')
 const appFilter      = getCliArg('--app')   // 'portal' | 'enrollment' | null (all)
 const sectionsFilter = getCliArg('--sections')  // comma-separated, e.g., 'S1,GLOBAL'
 const allowedSections = sectionsFilter ? sectionsFilter.split(',').map(s => s.trim()) : null
+// Boolean flag, so it is not read with getCliArg (which expects a value after the name)
+const validateOnly = cliArgs.includes('--validate')
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -611,6 +618,68 @@ function filterStateDataForApp(stateData, app) {
 }
 
 /**
+ * Read one state's CSV into this app's locale data and check its content.
+ * Returns: { entryCount, stateData, errors }
+ */
+function readStateContent({ state, csvPath }) {
+  const rows = parseCSV(readFileSync(csvPath, 'utf8'));
+  const stateData = filterStateDataForApp(buildStateLocaleData(rows, state), appFilter);
+  const { errors } = validateStateContent(stateData, state);
+
+  return { entryCount: rows.length - 1, stateData, errors };
+}
+
+/**
+ * One line per finding: which rule, where, and why; then the offending copy.
+ * Completeness warnings are already plain strings and pass through.
+ */
+function formatFinding(finding) {
+  if (typeof finding === 'string') return finding;
+  const { rule, state, locale, key, detail, value } = finding;
+  const line = `[${rule}] ${state}/${locale} ${key}: ${detail}`;
+  return value ? `${line}\n       copy: ${JSON.stringify(value)}` : line;
+}
+
+function reportFindings(errors, warnings) {
+  if (warnings.length > 0) {
+    console.log('⚠️  Validation warnings:');
+    warnings.forEach((w) => console.log(`   - ${formatFinding(w)}`));
+    console.log();
+  }
+  if (errors.length > 0) {
+    console.error(`❌ Content errors (${errors.length}). Fix the cell in the content sheet and the state CSV:`);
+    errors.forEach((e) => console.error(`   - ${formatFinding(e)}`));
+    console.error();
+  }
+}
+
+/**
+ * --validate: check every state's content without writing anything. Always reads
+ * the CSVs, so a cached output directory cannot hide a defect. A missing
+ * translation is reported as a warning; a content error fails the run.
+ * Returns the process exit code.
+ */
+function validateContentOnly(stateFiles) {
+  console.log('🔎 Validating locale content (no files written)...');
+
+  const allErrors = [];
+  const allWarnings = [];
+  for (const stateFile of stateFiles) {
+    const { stateData, errors } = readStateContent(stateFile);
+    allErrors.push(...errors);
+    allWarnings.push(...validateStateCompleteness(stateData, stateFile.state));
+  }
+
+  reportFindings(allErrors, allWarnings);
+
+  if (allErrors.length > 0) {
+    return 1;
+  }
+  console.log(`✅ Content checks passed for ${stateFiles.map((f) => f.state).join(', ')}\n`);
+  return 0;
+}
+
+/**
  * Generate TypeScript resource file from locale directory
  *
  * Scans content/locales/ for all JSON files and generates a TypeScript file
@@ -733,10 +802,19 @@ function generateResourceFile() {
  * Main entry point
  */
 function main() {
-  console.log('🌐 Generating i18n locale files...');
-
   // Discover state CSV files
   const stateFiles = discoverStateCsvFiles();
+
+  if (validateOnly) {
+    if (stateFiles.length === 0) {
+      console.error('❌ No state CSV files found to validate');
+      process.exit(1);
+    }
+    process.exit(validateContentOnly(stateFiles));
+    return;
+  }
+
+  console.log('🌐 Generating i18n locale files...');
 
   if (stateFiles.length === 0) {
     console.log('⚠️  No state CSV files found in content/states/');
@@ -760,6 +838,7 @@ function main() {
       cleanOutputDir();
 
       let totalFileCount = 0;
+      const allErrors = [];
       const allWarnings = [];
 
       // Process each state CSV
@@ -767,16 +846,12 @@ function main() {
         console.log(`📖 Processing ${state.toUpperCase()}:`);
         console.log(`   Reading: ${rel(csvPath)}`);
 
-        const csvContent = readFileSync(csvPath, 'utf8');
-        const rows = parseCSV(csvContent);
-        console.log(`   Found ${rows.length - 1} content entries`);
-
-        // Build locale data for this state, keeping only this app's namespaces
-        const stateData = filterStateDataForApp(buildStateLocaleData(rows, state), appFilter);
-
-        // Validate completeness
-        const warnings = validateStateCompleteness(stateData, state);
-        allWarnings.push(...warnings);
+        // Build locale data for this state, keeping only this app's namespaces,
+        // and check its content
+        const { entryCount, stateData, errors } = readStateContent({ state, csvPath });
+        console.log(`   Found ${entryCount} content entries`);
+        allErrors.push(...errors);
+        allWarnings.push(...validateStateCompleteness(stateData, state));
 
         // Write locale files
         const fileCount = writeStateLocaleFiles(stateData, state);
@@ -784,12 +859,8 @@ function main() {
         console.log(`   Generated ${fileCount} files\n`);
       }
 
-      // Show validation warnings
-      if (allWarnings.length > 0) {
-        console.log('⚠️  Validation warnings:');
-        allWarnings.forEach((w) => console.log(`   - ${w}`));
-        console.log();
-      }
+      // Report content findings. They never fail a generate run; --validate does.
+      reportFindings(allErrors, allWarnings);
 
       // Save hash for caching
       saveHash(stateFiles);
@@ -820,6 +891,9 @@ function main() {
       console.log(`   Existing: ${locales.join(', ')}`);
     }
     console.log();
+
+    // Nothing is rewritten, but a content defect is still in the CSV: keep reporting it.
+    reportFindings(stateFiles.flatMap((stateFile) => readStateContent(stateFile).errors), []);
   }
 
   // Always generate the TypeScript resource file from whatever JSON files exist on disk
