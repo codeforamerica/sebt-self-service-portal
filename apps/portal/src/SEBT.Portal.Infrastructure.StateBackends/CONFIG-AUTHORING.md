@@ -51,7 +51,6 @@ operations:
 
 ## Step 3: Map the response fields
 
-Under a read operation's `response:`, `root` is a path to the record (or array of records) inside the raw response — dotted property access and `[index]` element access only. For a household lookup, `root` must select an **array** of records; a selection that isn't an array maps zero cases, which the lookup reads as not-found. `fields` maps each of our canonical field names to how to pull it from that record.
 
 ```yaml
     response:
@@ -186,7 +185,7 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 
 - `constants` — For literals (bool, number, string etc.) that are not likely to change
 - `map` — Required fields for the request; the intention being that it will, at minimum, fail if not present.
-- `mapOptional` — Functionally the same as `map`, with the caveeat that unresolved input is dropped from the body without failing.  
+- `mapOptional` — Functionally the same as `map`, with the caveeat that unresolved input is dropped from the body without failing.
 
 An example of what this looks can be seen (as an `Update Address` example):
 
@@ -340,7 +339,7 @@ The worked precedent is `confidenceThreshold`. CO needed a match that couldn't b
 Config validates at **load** via `StateBackendConfigurationValidator`, immediately after deserialization. Every check is a function of the config alone, so a bad config fails at **startup**, not on the first user request. What fails fast:
 
 - A response field mapping that targets an unknown canonical field, a date-typed field without an exact `format`, or a sequence `from` without `keywordRules`.
-- An enum table that doesn't exist, is referenced by a non-enum field, has a canonical key that isn't a real enum member, or lists an ambiguous state token under two canonical values.
+- A malformed JSON path
 - A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, that names a non-member (including its `default`), or that lists an empty keyword.
 - A result classifier condition that isn't exactly one of `statusIn` / `valueIn` / `messageContains`, or a `valueIn` without `field`, or a `messageContains` without `messageField`.
 - A `valueInSet` disaggregation missing a non-empty `applicationValues` list.

@@ -39,6 +39,8 @@ internal static class StateBackendConfigurationValidator
         {
             EnrollmentOperationValidator.Validate(enrollment.CallMode, binding, mapping);
         }
+
+        ValidateJsonPaths(operations);
     }
 
     private static void RejectIncompleteWrite(StateBackendOperationConfig? operation, string operationName)
@@ -95,6 +97,76 @@ internal static class StateBackendConfigurationValidator
         {
             throw new InvalidOperationException(
                 "Operation 'householdLookup' is incomplete: 'response' is required when the operation is declared.");
+        }
+    }
+    private static void ValidateJsonPaths(StateBackendOperations operations)
+    {
+        if (operations.HouseholdLookup is { } lookup)
+        {
+            ValidateWriteBinding(lookup.Request);
+            if (lookup.Response is { } response)
+            {
+                JsonPathSelector.Validate(response.Root);
+            }
+        }
+
+        ValidateWriteBinding(operations.CardReplacement?.Request);
+        ValidateWriteBinding(operations.AddressUpdate?.Request);
+
+        if (operations.EnrollmentCheck is { } enrollment)
+        {
+            if (enrollment.Request is { } request)
+            {
+                ValidateWriteTargets(request.Map.Values);
+                ValidateWriteTargets(request.MapOptional?.Values);
+                if (!string.IsNullOrEmpty(request.IndexField))
+                {
+                    JsonPathWriter.Validate(request.IndexField);
+                }
+            }
+
+            if (enrollment.Response is { } mapping)
+            {
+                JsonPathSelector.Validate(mapping.Root);
+                if (!string.IsNullOrEmpty(mapping.MessageField))
+                {
+                    JsonPathSelector.Validate(mapping.MessageField);
+                }
+            }
+        }
+    }
+
+    private static void ValidateWriteBinding(RequestBinding? binding)
+    {
+        if (binding is null)
+        {
+            return;
+        }
+
+        if (binding.Constants is { } constants)
+        {
+            foreach (string path in constants.Keys)
+            {
+                JsonPathWriter.Validate(path);
+            }
+        }
+
+        ValidateWriteTargets(binding.Map?.Values);
+        ValidateWriteTargets(binding.MapOptional?.Values);
+        ValidateWriteTargets(binding.Shared?.Values);
+        ValidateWriteTargets(binding.Collect?.Values);
+    }
+
+    private static void ValidateWriteTargets(IEnumerable<string>? paths)
+    {
+        if (paths is null)
+        {
+            return;
+        }
+
+        foreach (string path in paths)
+        {
+            JsonPathWriter.Validate(path);
         }
     }
 }

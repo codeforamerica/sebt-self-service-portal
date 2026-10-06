@@ -35,9 +35,10 @@ Config picks from a fixed set of narrow, named primitives. It never exposes comp
 
 ## Load and validate
 
-Config loads from YAML via YamlDotNet in [`StateBackendConfigurationLoader`](./Configuration/StateBackendConfigurationLoader.cs). Immediately after deserialization, [`StateBackendConfigurationValidator`](./Configuration/StateBackendConfigurationValidator.cs) runs and fails fast. A bad config throws at load, not on the first request. Every check is a function of the config alone, so startup surfaces the failure. What it checks:
+Config loads from YAML in `StateBackendConfigurationLoader`. Immediately after deserialization, `StateBackendConfigurationValidator` runs. A bad config throws at load time. Some examples of what it checks are:
 
 - **Field mappings** — every canonical target is a known field; date-typed targets carry an exact `format`; a sequence `from` is only valid with `keywordRules`.
+- **JSON paths** — read `root` / enrollment `messageField` are dotted segments and `[index]` only; write targets are dotted properties only
 - **Enum tables** — the referenced table exists, targets an enum-typed field, every canonical key is a real enum member, and no state token is listed under two canonical values.
 - **`keywordRules`** — enum-typed target, `order` covers every `map` key, every named value (including `default`) is a real enum member, and no keyword is empty.
 - **Result classifiers** (each configured write op) — every condition is exactly one closed kind; `valueIn` names a `field`; `messageContains` names a `messageField`.

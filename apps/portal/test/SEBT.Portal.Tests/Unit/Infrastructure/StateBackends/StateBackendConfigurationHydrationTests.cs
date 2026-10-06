@@ -578,6 +578,37 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("keywordRules", ex.Message);
     }
 
+    [Fact]
+    public void Validate_FailsLoud_WhenResponseRootPathIsMalformed()
+    {
+        StateBackendConfiguration config = BuildLookupFieldsConfig(
+            new Dictionary<string, FieldMapping>
+            {
+                ["childFirstName"] = new() { From = "ChildFirstName" },
+            });
+        config = config.WithLookupResponse(
+            config.Operations.HouseholdLookup!.Response! with { Root = "$.resultSets[-1]" });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("$.resultSets[-1]", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenRequestMapPathHasEmptySegment()
+    {
+        StateBackendConfiguration config = BuildWriteMapOptionalConfig(
+            cardReplacementRequest: new RequestBinding
+            {
+                Map = new Dictionary<string, string> { ["caseId"] = "summer..EbtCaseId" },
+            },
+            addressUpdateRequest: null);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("summer..EbtCaseId", ex.Message);
+    }
+
     // A messageContains condition without a messageField has no body property to read.
     [Fact]
     public void Validate_FailsLoud_WhenMessageContainsHasNoMessageField()

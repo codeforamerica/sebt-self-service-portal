@@ -35,4 +35,24 @@ public class JsonPathWriterTests
 
         Assert.Equal("replacement", root["name"]!.GetValue<string>());
     }
+
+    [Fact]
+    public void Write_Throws_WhenPathHasEmptySegment()
+    {
+        var root = new JsonObject();
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => JsonPathWriter.Write(root, "a..b", JsonValue.Create("value")));
+        Assert.Contains("a..b", ex.Message);
+    }
+
+    [Fact]
+    public void Write_Throws_WhenPathUsesIndexGrammar()
+    {
+        var root = new JsonObject();
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => JsonPathWriter.Write(root, "rows[0]", JsonValue.Create("value")));
+        Assert.Contains("rows[0]", ex.Message);
+    }
 }
