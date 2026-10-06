@@ -28,7 +28,7 @@ Config picks from a fixed set of narrow, named primitives. It never exposes comp
 - **Field mapping.** `from` (source property), optional exact date `format`, optional named `enum` table. LHS is our canonical field name, RHS is the state's flavor.
 - **Enum tables.** Top-level `enums:` domain-centered `OurValue: [state tokens]` plus an optional `default` (absent default + unlisted token fails fast). Matching is case-insensitive substring-contains over one or more `from` sources.
 - **Disaggregation.** Group records into applications and decide case inclusion via a closed `rule` (`presence` / `valueInSet`) and named `caseInclusion` predicates — not an expression DSL. `valueInSet` requires a non-empty `applicationValues` list at load (a missing list would silently treat every row as not application-based); matching is case-insensitive, matching Colorado's existing classifier.
-- **Opaque `caseId`.** A self-describing token of backend-issued routing ids (case keys, application ids). Encode/decode is fixed platform code. The portal and UI treat it as opaque. It must not pack PII — writes bind `householdIdentifier` from the request envelope.
+- **Opaque `caseId`.** A self-describing token of backend-issued routing ids. It should not not pack PII
 - **Request binding.** `constants` (for fixed literals), `map` (required fields; assumes that we want to fail-fast when unresolved), `mapOptional` (functionally the same as `map`, but with optionality options), and two batch shapes `shared` (one value across the batch, fail-fast on disagreement) and `collect` (per-case values into an array).
 - **Result classifier.** Ordered, first-match-wins `conditions`, each exactly one closed kind (`statusIn` / `valueIn`+`field` / `messageContains`+`messageField`), plus a `default`.
 - **Enrollment.** `callMode` (`batch` / `perChild`), closed candidate `expand` (`transposeMonthDay`), and named match strategies (`anyRowValueIn` / `confidenceThreshold`).
@@ -37,7 +37,7 @@ Config picks from a fixed set of narrow, named primitives. It never exposes comp
 
 Config loads from YAML via YamlDotNet in [`StateBackendConfigurationLoader`](./Configuration/StateBackendConfigurationLoader.cs). Immediately after deserialization, [`StateBackendConfigurationValidator`](./Configuration/StateBackendConfigurationValidator.cs) runs and fails fast. A bad config throws at load, not on the first request. Every check is a function of the config alone, so startup surfaces the failure. What it checks:
 
-- **Field mappings** — every canonical target is a known field; date-typed targets carry an exact `format`.
+- **Field mappings** — every canonical target is a known field; date-typed targets carry an exact `format`; a sequence `from` is only valid with `keywordRules`.
 - **Enum tables** — the referenced table exists, targets an enum-typed field, every canonical key is a real enum member, and no state token is listed under two canonical values.
 - **`keywordRules`** — enum-typed target, `order` covers every `map` key, every named value (including `default`) is a real enum member, and no keyword is empty.
 - **Result classifiers** (each configured write op) — every condition is exactly one closed kind; `valueIn` names a `field`; `messageContains` names a `messageField`.

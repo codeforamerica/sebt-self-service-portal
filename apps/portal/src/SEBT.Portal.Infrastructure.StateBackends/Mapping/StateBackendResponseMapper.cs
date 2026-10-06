@@ -58,8 +58,8 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Fails loud at load on a field mapping naming an unknown canonical target, or a date-typed
-    /// target missing an exact <c>format</c>.
+    /// Fails loud at load on a field mapping naming an unknown canonical target, a date-typed
+    /// target missing an exact <c>format</c>, or a sequence <c>from</c> without <c>keywordRules</c>.
     /// </summary>
     internal static void ValidateFieldMappings(StateBackendConfiguration configuration)
     {
@@ -72,6 +72,13 @@ internal static class StateBackendResponseMapper
                     throw new InvalidOperationException(
                         $"Response mapping targets unknown canonical field '{canonicalField}'. " +
                         $"Known fields: {string.Join(", ", FieldTargets.Keys)}.");
+                }
+
+                if (fieldMapping.KeywordRules is null && fieldMapping.From.All.Count > 1)
+                {
+                    throw new InvalidOperationException(
+                        $"Field '{canonicalField}' lists {fieldMapping.From.All.Count} sources; " +
+                        "a sequence 'from' is only valid with keywordRules.");
                 }
 
                 // A keywordRules primitive on a date target gets its (more precise) rejection from

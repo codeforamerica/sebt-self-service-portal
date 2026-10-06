@@ -560,6 +560,24 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("ebtCardIssueDte", ex.Message);
     }
 
+    [Fact]
+    public void Validate_FailsLoud_WhenFromSequenceHasNoKeywordRules()
+    {
+        StateBackendConfiguration config = BuildLookupFieldsConfig(
+            new Dictionary<string, FieldMapping>
+            {
+                ["childFirstName"] = new()
+                {
+                    From = new[] { "HouseholdType", "EligibilityType" },
+                },
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("childFirstName", ex.Message);
+        Assert.Contains("keywordRules", ex.Message);
+    }
+
     // A messageContains condition without a messageField has no body property to read.
     [Fact]
     public void Validate_FailsLoud_WhenMessageContainsHasNoMessageField()

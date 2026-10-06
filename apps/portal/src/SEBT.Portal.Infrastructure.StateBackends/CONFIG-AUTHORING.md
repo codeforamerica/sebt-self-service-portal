@@ -74,7 +74,7 @@ Under a read operation's `response:`, `root` is a path to the record (or array o
 
 The mapping is **domain-centered**: the left-hand side is *our* canonical field name; the right-hand side (`from`) is the state's property name. A field mapping has three optional modifiers:
 
-- `from` — the source property on the record. Required.
+- `from` — the source property on the record. Required. A scalar unless the field uses `keywordRules`, which may list several sources.
 - `format` — an exact date parse format (e.g. `MM/dd/yyyy`) for date-typed fields. Exact parse, no fallback.
 - `enum` — the name of an enum table (see Step 4) that translates the source token into a canonical value.
 
@@ -339,7 +339,7 @@ The worked precedent is `confidenceThreshold`. CO needed a match that couldn't b
 
 Config validates at **load** via `StateBackendConfigurationValidator`, immediately after deserialization. Every check is a function of the config alone, so a bad config fails at **startup**, not on the first user request. What fails fast:
 
-- A response field mapping that targets an unknown canonical field, or a date-typed field without an exact `format`.
+- A response field mapping that targets an unknown canonical field, a date-typed field without an exact `format`, or a sequence `from` without `keywordRules`.
 - An enum table that doesn't exist, is referenced by a non-enum field, has a canonical key that isn't a real enum member, or lists an ambiguous state token under two canonical values.
 - A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, that names a non-member (including its `default`), or that lists an empty keyword.
 - A result classifier condition that isn't exactly one of `statusIn` / `valueIn` / `messageContains`, or a `valueIn` without `field`, or a `messageContains` without `messageField`.
