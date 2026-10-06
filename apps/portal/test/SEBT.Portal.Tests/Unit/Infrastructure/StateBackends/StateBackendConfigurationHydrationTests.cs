@@ -94,7 +94,6 @@ public class StateBackendConfigurationHydrationTests
         CaseIdComposition caseId = Assert.IsType<CaseIdComposition>(response.CaseId);
         Assert.Equal("SummerEBTCaseID", caseId.Fields["caseId"]);
         Assert.Equal("ApplicationId", caseId.Fields["applicationId"]);
-        Assert.Null(caseId.FromContext);
 
         CardReplacementOperationConfig? cardReplacement = config.Operations.CardReplacement;
         Assert.NotNull(cardReplacement);
@@ -409,20 +408,35 @@ public class StateBackendConfigurationHydrationTests
         StateBackendConfigurationValidator.Validate(config);
     }
 
-    // A fromContext entry packing householdIdentifier puts PII in a client-visible token.
     [Fact]
-    public void Validate_FailsLoud_WhenCaseIdFromContextPacksHouseholdIdentifier()
+    public void Load_FailsLoud_WhenCaseIdDeclaresFromContext()
     {
-        StateBackendConfiguration config = BuildCaseIdConfig(new CaseIdComposition
-        {
-            Fields = new Dictionary<string, string> { ["caseId"] = "SummerEBTCaseID" },
-            FromContext = new Dictionary<string, string> { ["householdEmail"] = "householdIdentifier" },
-        });
+        const string yaml = """
+            baseUrl: http://backend.test
+            auth:
+              scheme: api_key
+              header: X-Api-Key
+              keyRef: test-api-key
+            operations:
+              householdLookup:
+                method: post
+                path: /lookup
+                request:
+                  map:
+                    email: guardianEmail
+                response:
+                  root: $.records
+                  fields:
+                    childFirstName:
+                      from: ChildFirstName
+                  caseId:
+                    fields:
+                      caseId: SummerEBTCaseID
+                    fromContext:
+                      householdEmail: householdIdentifier
+            """;
 
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("householdIdentifier", ex.Message);
-        Assert.Contains("PII", ex.Message);
+        Assert.ThrowsAny<Exception>(() => StateBackendConfigurationLoader.Load(yaml));
     }
 
     // valueInSet without a list would silently treat every row as not application-based.
@@ -511,37 +525,6 @@ public class StateBackendConfigurationHydrationTests
             """;
 
         Assert.ThrowsAny<Exception>(() => StateBackendConfigurationLoader.Load(yaml));
-    }
-
-    // The fromContext entry referencing a context name outside the closed vocabulary fails at load —
-    // context names are resolved in fixed code, never expressions.
-    [Fact]
-    public void Validate_FailsLoud_WhenCaseIdFromContextNameIsUnknown()
-    {
-        StateBackendConfiguration config = BuildCaseIdConfig(new CaseIdComposition
-        {
-            Fields = new Dictionary<string, string> { ["caseId"] = "SummerEBTCaseID" },
-            FromContext = new Dictionary<string, string> { ["householdEmail"] = "guardianEmail" },
-        });
-
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("guardianEmail", ex.Message);
-    }
-
-    // The same token field sourced from BOTH a response column and caller context is ambiguous.
-    [Fact]
-    public void Validate_FailsLoud_WhenCaseIdFieldIsInBothFieldsAndFromContext()
-    {
-        StateBackendConfiguration config = BuildCaseIdConfig(new CaseIdComposition
-        {
-            Fields = new Dictionary<string, string> { ["householdEmail"] = "GuardianEmail" },
-            FromContext = new Dictionary<string, string> { ["householdEmail"] = "householdIdentifier" },
-        });
-
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("householdEmail", ex.Message);
     }
 
     // A date-typed target without an exact 'format' must fail at LOAD, not on the first mapped
@@ -651,23 +634,6 @@ public class StateBackendConfigurationHydrationTests
             {
                 Root = "$.records",
                 Fields = fields,
-            },
-        });
-
-    // Minimal config whose household lookup composes caseId tokens with the supplied composition.
-    private static StateBackendConfiguration BuildCaseIdConfig(CaseIdComposition caseId) =>
-        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
-        {
-            Method = StateBackendHttpMethod.Post,
-            Path = "/lookup",
-            Response = new StateBackendResponseMapping
-            {
-                Root = "$.records",
-                Fields = new Dictionary<string, FieldMapping>
-                {
-                    ["childFirstName"] = new() { From = "ChildFirstName" },
-                },
-                CaseId = caseId,
             },
         });
 

@@ -176,7 +176,7 @@ A write (card replacement, address update) has to route its call, but the portal
 
 On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8), **alongside** the write envelope's `householdIdentifier`. The portal and UI treat the token as opaque throughout — a malformed token fails fast on decode.
 
-Do **not** pack PII (email, phone, SSN) into the token — it is client-visible. Writes bind `householdIdentifier` from the request envelope. `fromContext` is reserved for non-PII caller context; packing `householdIdentifier` fails at load.
+Do **not** pack PII (email, phone, SSN) into the token. Writes bind `householdIdentifier` from the request envelope.
 
 ## Step 8: Writes — request binding and result classification
 
@@ -343,7 +343,6 @@ Config validates at **load** via `StateBackendConfigurationValidator`, immediate
 - An enum table that doesn't exist, is referenced by a non-enum field, has a canonical key that isn't a real enum member, or lists an ambiguous state token under two canonical values.
 - A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, that names a non-member (including its `default`), or that lists an empty keyword.
 - A result classifier condition that isn't exactly one of `statusIn` / `valueIn` / `messageContains`, or a `valueIn` without `field`, or a `messageContains` without `messageField`.
-- A `caseId` composition whose `fromContext` names an unknown context name, packs `householdIdentifier` (PII), or that sources one token field from both `fields` and `fromContext`.
 - A `valueInSet` disaggregation missing a non-empty `applicationValues` list.
 - A declared write/enrollment/lookup operation missing its request and result/response mappings — listing the path is not enough to advertise the feature.
 - An unmatched YAML property (unknown keys fail at load, they are not ignored).

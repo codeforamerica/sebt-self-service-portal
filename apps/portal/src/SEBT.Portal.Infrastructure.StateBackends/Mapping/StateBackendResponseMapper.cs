@@ -28,62 +28,11 @@ internal static class StateBackendResponseMapper
             ["issuanceType"] = FieldTarget.Enum<IssuanceType>((c, v) => c.IssuanceType = v),
         };
 
-    /// <summary>
-    /// The closed vocabulary of caller-context names a caseId <c>fromContext</c> entry may reference;
-    /// a new context value means a new entry here and on the record — never expressions in config.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<string, Func<CaseIdContext, string?>> ContextSources =
-        new Dictionary<string, Func<CaseIdContext, string?>>(StringComparer.Ordinal)
-        {
-            ["householdIdentifier"] = context => context.HouseholdIdentifier,
-        };
-
     private enum FieldKind
     {
         String,
         DateTime,
         Enum,
-    }
-
-    /// <summary>
-    /// Fails loud at load when a <c>fromContext</c> entry references an unknown context name, packs
-    /// <c>householdIdentifier</c> (PII), or a token
-    /// field is sourced from both a response column and caller context.
-    /// </summary>
-    internal static void ValidateCaseIdCompositions(StateBackendConfiguration configuration)
-    {
-        foreach (StateBackendResponseMapping mapping in ResponseMappings(configuration))
-        {
-            if (mapping.CaseId is not { FromContext: { } fromContext } composition)
-            {
-                continue;
-            }
-
-            foreach ((string routingName, string contextName) in fromContext)
-            {
-                if (!ContextSources.ContainsKey(contextName))
-                {
-                    throw new InvalidOperationException(
-                        $"caseId fromContext references unknown context name '{contextName}'. " +
-                        $"Known names: {string.Join(", ", ContextSources.Keys)}.");
-                }
-
-                if (composition.Fields.ContainsKey(routingName))
-                {
-                    throw new InvalidOperationException(
-                        $"caseId token field '{routingName}' is sourced from both a response " +
-                        "column (fields) and caller context (fromContext) — pick one.");
-                }
-
-                if (string.Equals(contextName, "householdIdentifier", StringComparison.Ordinal))
-                {
-                    throw new InvalidOperationException(
-                        "caseId fromContext must not pack 'householdIdentifier' — that value is always going to be PII " +
-                        "(email, phone, or SSN depending on the state) and the token is client-visible. " +
-                        "Bind it from the write request envelope as 'householdIdentifier'.");
-                }
-            }
-        }
     }
 
     /// <summary>
@@ -179,8 +128,7 @@ internal static class StateBackendResponseMapper
     public static HouseholdData MapHousehold(
         JsonElement root,
         StateBackendConfiguration configuration,
-        StateBackendResponseMapping mapping,
-        CaseIdContext context)
+        StateBackendResponseMapping mapping)
     {
         JsonElement records = JsonPathSelector.Select(root, mapping.Root);
         var household = new HouseholdData();
@@ -207,7 +155,7 @@ internal static class StateBackendResponseMapper
 
             if (mapping.CaseId is { } caseIdComposition)
             {
-                summerEbtCase.SummerEBTCaseID = ComposeCaseId(record, caseIdComposition, context);
+                summerEbtCase.SummerEBTCaseID = ComposeCaseId(record, caseIdComposition);
             }
 
             if (disaggregation is null)
@@ -287,29 +235,14 @@ internal static class StateBackendResponseMapper
         return string.IsNullOrEmpty(value) ? null : value;
     }
 
-    // Packs record + context routing fields into an opaque caseId token. A missing value packs
-    // empty; a later write that needs it fails loud.
-    private static string ComposeCaseId(JsonElement record, CaseIdComposition composition, CaseIdContext context)
+    // Packs record routing fields into an opaque caseId token. A missing value packs empty;
+    // a later write that needs it fails loud.
+    private static string ComposeCaseId(JsonElement record, CaseIdComposition composition)
     {
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach ((string routingName, string sourceProperty) in composition.Fields)
         {
             fields[routingName] = JsonRead.AsString(record, sourceProperty) ?? string.Empty;
-        }
-
-        if (composition.FromContext is { } fromContext)
-        {
-            foreach ((string routingName, string contextName) in fromContext)
-            {
-                if (!ContextSources.TryGetValue(contextName, out Func<CaseIdContext, string?>? source))
-                {
-                    // Unreachable for validated configs; hand-built configs fail loud here too.
-                    throw new InvalidOperationException(
-                        $"caseId fromContext references unknown context name '{contextName}'.");
-                }
-
-                fields[routingName] = source(context) ?? string.Empty;
-            }
         }
 
         return OpaqueCaseId.Compose(fields);

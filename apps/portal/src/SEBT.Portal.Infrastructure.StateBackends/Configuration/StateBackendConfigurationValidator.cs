@@ -16,7 +16,6 @@ internal static class StateBackendConfigurationValidator
 
         StateBackendResponseMapper.ValidateFieldMappings(configuration);
         StateBackendResponseMapper.ValidateEnumTables(configuration);
-        StateBackendResponseMapper.ValidateCaseIdCompositions(configuration);
         StateBackendResponseMapper.ValidateDisaggregation(configuration);
 
         StateBackendOperations operations = configuration.Operations;

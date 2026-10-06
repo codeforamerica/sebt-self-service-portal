@@ -121,66 +121,13 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         using JsonDocument document = JsonDocument.Parse(raw);
         var mapping = configuration.Operations.HouseholdLookup!.Response!;
         var household = StateBackendResponseMapper.MapHousehold(
-            document.RootElement, configuration, mapping, new CaseIdContext());
+            document.RootElement, configuration, mapping);
 
         // Assert — the case's id is an opaque token decoding to the two routing fields.
         string token = Assert.Single(household.SummerEbtCases).SummerEBTCaseID!;
         IReadOnlyDictionary<string, string> decoded = OpaqueCaseId.Decode(token);
         Assert.Equal("SEBT-001", decoded["caseId"]);
         Assert.Equal("APP-100", decoded["applicationId"]);
-    }
-
-    [Fact]
-    public void ResponseMapper_ComposesContextSourcedFields_AlongsideResponseFields()
-    {
-        // Arrange — the lookup response echoes no household email; fromContext sources it from the
-        // lookup's caller context instead of a response column.
-        StateBackendConfiguration configuration = LookupWithFromContextComposition();
-
-        const string raw =
-            """
-            { "resultSets": [ [ { "CaseKey": "SEBT-001" } ] ] }
-            """;
-
-        // Act
-        using JsonDocument document = JsonDocument.Parse(raw);
-        var mapping = configuration.Operations.HouseholdLookup!.Response!;
-        var household = StateBackendResponseMapper.MapHousehold(
-            document.RootElement,
-            configuration,
-            mapping,
-            new CaseIdContext { HouseholdIdentifier = "family@example.test" });
-
-        // Assert — the token carries the response-sourced and context-sourced fields side by side.
-        string token = Assert.Single(household.SummerEbtCases).SummerEBTCaseID!;
-        IReadOnlyDictionary<string, string> decoded = OpaqueCaseId.Decode(token);
-        Assert.Equal("SEBT-001", decoded["caseId"]);
-        Assert.Equal("family@example.test", decoded["householdEmail"]);
-    }
-
-    [Fact]
-    public void ResponseMapper_PacksEmptyContextField_WhenContextValueIsAbsent()
-    {
-        // Arrange — an existence-check lookup carries no household identifier; composition still
-        // succeeds and packs empty, mirroring an absent response column. A later write that needs
-        // the field fails loud instead.
-        StateBackendConfiguration configuration = LookupWithFromContextComposition();
-
-        const string raw =
-            """
-            { "resultSets": [ [ { "CaseKey": "SEBT-001" } ] ] }
-            """;
-
-        // Act
-        using JsonDocument document = JsonDocument.Parse(raw);
-        var mapping = configuration.Operations.HouseholdLookup!.Response!;
-        var household = StateBackendResponseMapper.MapHousehold(
-            document.RootElement, configuration, mapping, new CaseIdContext());
-
-        // Assert
-        string token = Assert.Single(household.SummerEbtCases).SummerEBTCaseID!;
-        IReadOnlyDictionary<string, string> decoded = OpaqueCaseId.Decode(token);
-        Assert.Equal(string.Empty, decoded["householdEmail"]);
     }
 
     // The DC write-path gap: DC's lookup response has NO household-email column, but the write
@@ -230,34 +177,6 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         Assert.Equal("SEBT-001", root.GetProperty("summerEbtCaseId").GetString());
         Assert.Equal("family@example.test", root.GetProperty("householdEmail").GetString());
     }
-
-    // DC-shaped composition whose householdEmail is context-sourced: the lookup response carries
-    // only the case key, never the identifier the portal searched with.
-    private static StateBackendConfiguration LookupWithFromContextComposition() =>
-        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
-        {
-            Method = StateBackendHttpMethod.Post,
-            Path = "/households/lookup",
-            Response = new StateBackendResponseMapping
-            {
-                Root = "$.resultSets[0]",
-                Fields = new Dictionary<string, FieldMapping>
-                {
-                    ["childFirstName"] = new() { From = "CaseKey" }, // placeholder to keep a field present
-                },
-                CaseId = new CaseIdComposition
-                {
-                    Fields = new Dictionary<string, string>
-                    {
-                        ["caseId"] = "CaseKey",
-                    },
-                    FromContext = new Dictionary<string, string>
-                    {
-                        ["householdEmail"] = "householdIdentifier",
-                    },
-                },
-            },
-        });
 
     private static StateBackendConfiguration LookupWithCaseIdComposition() =>
         StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig

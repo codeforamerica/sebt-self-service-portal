@@ -1,6 +1,5 @@
 using System.Text.Json;
 using SEBT.Portal.Core.Models.Household;
-using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.Core.StateBackends.Configuration;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends.Mapping;
@@ -28,8 +27,7 @@ public class StateBackendResponseMapperTests
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
             document.RootElement,
             configuration,
-            configuration.Operations.HouseholdLookup!.Response!,
-            new CaseIdContext());
+            configuration.Operations.HouseholdLookup!.Response!);
 
         SummerEbtCase mapped = Assert.Single(household.SummerEbtCases);
         Assert.Equal("1001", mapped.SummerEBTCaseID);
@@ -69,8 +67,7 @@ public class StateBackendResponseMapperTests
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
             document.RootElement,
             configuration,
-            configuration.Operations.HouseholdLookup!.Response!,
-            new CaseIdContext());
+            configuration.Operations.HouseholdLookup!.Response!);
 
         Assert.Equal(IssuanceType.SummerEbt, household.SummerEbtCases[0].IssuanceType);
         Assert.Equal(IssuanceType.SnapEbtCard, household.SummerEbtCases[1].IssuanceType);
@@ -91,8 +88,7 @@ public class StateBackendResponseMapperTests
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
             document.RootElement,
             configuration,
-            configuration.Operations.HouseholdLookup!.Response!,
-            new CaseIdContext());
+            configuration.Operations.HouseholdLookup!.Response!);
 
         SummerEbtCase mapped = Assert.Single(household.SummerEbtCases);
         Assert.Equal(new DateTime(2026, 8, 5), mapped.BenefitExpirationDate);
@@ -146,8 +142,7 @@ public class StateBackendResponseMapperTests
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
             document.RootElement,
             configuration,
-            configuration.Operations.HouseholdLookup!.Response!,
-            new CaseIdContext());
+            configuration.Operations.HouseholdLookup!.Response!);
 
         Assert.Equal(2, household.SummerEbtCases.Count);
         Assert.Equal("A-1", household.SummerEbtCases[0].ApplicationId);
