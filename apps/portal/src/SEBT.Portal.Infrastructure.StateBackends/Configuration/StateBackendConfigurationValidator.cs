@@ -155,6 +155,13 @@ internal static class StateBackendConfigurationValidator
         ValidateWriteTargets(binding.MapOptional?.Values);
         ValidateWriteTargets(binding.Shared?.Values);
         ValidateWriteTargets(binding.Collect?.Values);
+
+        if (binding.EachCase
+            && (binding.Shared is { Count: > 0 } || binding.Collect is { Count: > 0 }))
+        {
+            throw new InvalidOperationException(
+                "Request binding 'eachCase' cannot be combined with 'shared' or 'collect'.");
+        }
     }
 
     private static void ValidateWriteTargets(IEnumerable<string>? paths)

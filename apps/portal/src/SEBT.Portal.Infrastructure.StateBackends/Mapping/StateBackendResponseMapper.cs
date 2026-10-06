@@ -20,8 +20,17 @@ internal static class StateBackendResponseMapper
             ["summerEBTCaseID"] = FieldTarget.String((c, v) => c.SummerEBTCaseID = v),
             ["childFirstName"] = FieldTarget.String((c, v) => c.ChildFirstName = v),
             ["childLastName"] = FieldTarget.String((c, v) => c.ChildLastName = v),
+            ["childDateOfBirth"] = FieldTarget.DateTime((c, v) => c.ChildDateOfBirth = v),
             ["applicationId"] = FieldTarget.String((c, v) => c.ApplicationId = v),
+            ["applicationStudentId"] = FieldTarget.String((c, v) => c.ApplicationStudentId = v),
+            ["householdType"] = FieldTarget.String((c, v) => c.HouseholdType = v),
+            ["eligibilityType"] = FieldTarget.String((c, v) => c.EligibilityType = v),
+            ["ebtCaseNumber"] = FieldTarget.String((c, v) => c.EbtCaseNumber = v),
+            ["caseDisplayNumber"] = FieldTarget.String((c, v) => c.CaseDisplayNumber = v),
+            ["ebtCardLastFour"] = FieldTarget.String((c, v) => c.EbtCardLastFour = v),
             ["ebtCardIssueDate"] = FieldTarget.DateTime((c, v) => c.EbtCardIssueDate = v),
+            ["ebtCardBalance"] = FieldTarget.Decimal((c, v) => c.EbtCardBalance = v),
+            ["benefitAvailableDate"] = FieldTarget.DateTime((c, v) => c.BenefitAvailableDate = v),
             ["benefitExpirationDate"] = FieldTarget.DateTime((c, v) => c.BenefitExpirationDate = v),
             ["ebtCardStatus"] = FieldTarget.Enum<CardStatus>((c, v) => c.EbtCardStatus = v),
             ["applicationStatus"] = FieldTarget.Enum<ApplicationStatus>((c, v) => c.ApplicationStatus = v),
@@ -32,6 +41,7 @@ internal static class StateBackendResponseMapper
     {
         String,
         DateTime,
+        Decimal,
         Enum,
     }
 
@@ -74,10 +84,14 @@ internal static class StateBackendResponseMapper
                         $"Known fields: {string.Join(", ", FieldTargets.Keys)}.");
                 }
 
-                if (fieldMapping.KeywordRules is null && fieldMapping.From.All.Count > 1)
+                ValidateFieldSource(canonicalField, fieldMapping, target);
+
+                if (fieldMapping.KeywordRules is null
+                    && fieldMapping.From is { } sources
+                    && sources.All.Count > 1)
                 {
                     throw new InvalidOperationException(
-                        $"Field '{canonicalField}' lists {fieldMapping.From.All.Count} sources; " +
+                        $"Field '{canonicalField}' lists {sources.All.Count} sources; " +
                         "a sequence 'from' is only valid with keywordRules.");
                 }
 
@@ -159,6 +173,11 @@ internal static class StateBackendResponseMapper
         {
             // Map to canonical first — the inclusion predicate never reads raw state fields.
             SummerEbtCase summerEbtCase = MapCase(record, mapping.Fields, enumResolvers, keywordResolvers);
+            ApplyMailingAddress(summerEbtCase, record, mapping.MailingAddress);
+            if (household.AddressOnFile is null && summerEbtCase.MailingAddress is not null)
+            {
+                household.AddressOnFile = summerEbtCase.MailingAddress;
+            }
 
             if (mapping.CaseId is { } caseIdComposition)
             {
@@ -172,6 +191,7 @@ internal static class StateBackendResponseMapper
             }
 
             bool isApplicationBased = IsApplicationBased(record, disaggregation);
+            summerEbtCase.IsStreamlineCertified = !isApplicationBased;
 
             // Application-based records join their grouped application even when excluded as cases.
             if (isApplicationBased && GroupKey(record, disaggregation) is { } key)
@@ -267,6 +287,12 @@ internal static class StateBackendResponseMapper
         {
             FieldTarget target = ResolveTarget(canonicalField);
 
+            if (fieldMapping.Value is { } constant)
+            {
+                ApplyConstant(summerEbtCase, canonicalField, target, fieldMapping, constant);
+                continue;
+            }
+
             // keywordRules always yields a value (match or default), so it skips the presence guard.
             if (fieldMapping.KeywordRules is not null)
             {
@@ -274,8 +300,15 @@ internal static class StateBackendResponseMapper
                 continue;
             }
 
-            if (!record.TryGetProperty(fieldMapping.From.Single, out JsonElement value)
+            if (!record.TryGetProperty(fieldMapping.From!.Single, out JsonElement value)
                 || value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            {
+                continue;
+            }
+
+            if (target.Kind == FieldKind.DateTime
+                && value.ValueKind == JsonValueKind.String
+                && string.IsNullOrWhiteSpace(value.GetString()))
             {
                 continue;
             }
@@ -301,7 +334,11 @@ internal static class StateBackendResponseMapper
                 break;
 
             case FieldKind.DateTime:
-                fieldTarget.SetDateTime!(target, ParseDate(canonicalField, fieldMapping, value));
+                fieldTarget.SetDateTime!(target, ParseDate(canonicalField, fieldMapping, JsonRead.AsString(value)));
+                break;
+
+            case FieldKind.Decimal:
+                fieldTarget.SetDecimal!(target, ParseDecimal(canonicalField, JsonRead.AsString(value)));
                 break;
 
             case FieldKind.Enum:
@@ -314,9 +351,124 @@ internal static class StateBackendResponseMapper
         }
     }
 
-    private static DateTime ParseDate(string canonicalField, FieldMapping fieldMapping, JsonElement value)
+    private static void ApplyConstant(
+        SummerEbtCase target,
+        string canonicalField,
+        FieldTarget fieldTarget,
+        FieldMapping fieldMapping,
+        string constant)
     {
-        string? raw = JsonRead.AsString(value);
+        switch (fieldTarget.Kind)
+        {
+            case FieldKind.String:
+                fieldTarget.SetString!(target, constant);
+                break;
+
+            case FieldKind.DateTime:
+                fieldTarget.SetDateTime!(target, ParseDate(canonicalField, fieldMapping, constant));
+                break;
+
+            case FieldKind.Decimal:
+                fieldTarget.SetDecimal!(target, ParseDecimal(canonicalField, constant));
+                break;
+
+            case FieldKind.Enum:
+                fieldTarget.SetEnum!(target, Enum.Parse(fieldTarget.EnumType!, constant));
+                break;
+
+            default:
+                throw new NotSupportedException(
+                    $"Field kind '{fieldTarget.Kind}' is not supported by the response mapper.");
+        }
+    }
+
+    private static void ApplyMailingAddress(
+        SummerEbtCase summerEbtCase, JsonElement record, MailingAddressMapping? mapping)
+    {
+        if (mapping is null)
+        {
+            return;
+        }
+
+        string? line1 = ReadAddressPart(record, mapping.Line1);
+        string? line2 = ReadAddressPart(record, mapping.Line2);
+        string? city = ReadAddressPart(record, mapping.City);
+        string? state = ReadAddressPart(record, mapping.State);
+        string? zip = ReadAddressPart(record, mapping.Zip);
+        string? zip4 = ReadAddressPart(record, mapping.Zip4);
+
+        if (string.IsNullOrEmpty(line1) && string.IsNullOrEmpty(city))
+        {
+            return;
+        }
+
+        summerEbtCase.MailingAddress = new Address
+        {
+            StreetAddress1 = line1,
+            StreetAddress2 = line2,
+            City = city,
+            State = state,
+            PostalCode = string.IsNullOrEmpty(zip)
+                ? null
+                : string.IsNullOrEmpty(zip4) ? zip : $"{zip}-{zip4}",
+        };
+    }
+
+    private static string? ReadAddressPart(JsonElement record, string? property) =>
+        property is null ? null : JsonRead.AsString(record, property);
+
+    private static void ValidateFieldSource(string canonicalField, FieldMapping fieldMapping, FieldTarget target)
+    {
+        bool hasValue = fieldMapping.Value is not null;
+        bool hasFrom = fieldMapping.From is not null;
+
+        if (fieldMapping.KeywordRules is not null)
+        {
+            if (hasValue)
+            {
+                throw new InvalidOperationException(
+                    $"Field '{canonicalField}' declares keywordRules and a constant value; use one.");
+            }
+
+            if (!hasFrom)
+            {
+                throw new InvalidOperationException(
+                    $"Field '{canonicalField}' declares keywordRules but names no 'from' source.");
+            }
+
+            return;
+        }
+
+        if (hasValue && hasFrom)
+        {
+            throw new InvalidOperationException(
+                $"Field '{canonicalField}' sets both 'value' and 'from'; use one.");
+        }
+
+        if (!hasValue && !hasFrom)
+        {
+            throw new InvalidOperationException(
+                $"Field '{canonicalField}' requires 'from' or 'value'.");
+        }
+
+        if (hasValue && fieldMapping.Enum is not null)
+        {
+            throw new InvalidOperationException(
+                $"Field '{canonicalField}' sets a constant value and an enum table; " +
+                "a constant is already the canonical value.");
+        }
+
+        if (hasValue
+            && target.Kind == FieldKind.Enum
+            && !Enum.IsDefined(target.EnumType!, fieldMapping.Value!))
+        {
+            throw new InvalidOperationException(
+                $"Field '{canonicalField}' constant '{fieldMapping.Value}' is not a {target.EnumType!.Name} value.");
+        }
+    }
+
+    private static DateTime ParseDate(string canonicalField, FieldMapping fieldMapping, string? raw)
+    {
         if (fieldMapping.Format is not { } format)
         {
             throw new InvalidOperationException(
@@ -325,6 +477,17 @@ internal static class StateBackendResponseMapper
 
         // Exact parse with the one configured format under InvariantCulture — no fallback.
         return DateTime.ParseExact(raw!, format, CultureInfo.InvariantCulture, DateTimeStyles.None);
+    }
+
+    private static decimal ParseDecimal(string canonicalField, string? raw)
+    {
+        if (!decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal parsed))
+        {
+            throw new InvalidOperationException(
+                $"Decimal field '{canonicalField}' could not parse '{raw}'.");
+        }
+
+        return parsed;
     }
 
     // A validated token → canonical-value resolver per enum field, fail-loud before any record maps.
@@ -375,7 +538,7 @@ internal static class StateBackendResponseMapper
                 ValidateKeywordRules(canonicalField, keywordRules);
 
             resolvers[canonicalField] = new KeywordRuleResolver(
-                fieldMapping.From.All, ordered, defaultValue);
+                fieldMapping.From!.All, ordered, defaultValue);
         }
 
         return resolvers;
@@ -514,6 +677,8 @@ internal static class StateBackendResponseMapper
 
         public Action<SummerEbtCase, DateTime>? SetDateTime { get; private init; }
 
+        public Action<SummerEbtCase, decimal>? SetDecimal { get; private init; }
+
         public Action<SummerEbtCase, object>? SetEnum { get; private init; }
 
         public static FieldTarget String(Action<SummerEbtCase, string> setter) =>
@@ -521,6 +686,9 @@ internal static class StateBackendResponseMapper
 
         public static FieldTarget DateTime(Action<SummerEbtCase, DateTime> setter) =>
             new(FieldKind.DateTime) { SetDateTime = setter };
+
+        public static FieldTarget Decimal(Action<SummerEbtCase, decimal> setter) =>
+            new(FieldKind.Decimal) { SetDecimal = setter };
 
         public static FieldTarget Enum<TEnum>(Action<SummerEbtCase, TEnum> setter) where TEnum : struct, Enum =>
             new(FieldKind.Enum)

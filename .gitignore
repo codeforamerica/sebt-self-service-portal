@@ -33,6 +33,7 @@ certs/
 apps/portal/src/SEBT.Portal.Api/appsettings.Development.json
 apps/portal/src/SEBT.Portal.Api/appsettings.dc.json
 apps/portal/src/SEBT.Portal.Api/appsettings.co.json
+apps/portal/src/SEBT.Portal.Api/cbms.local.yaml
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

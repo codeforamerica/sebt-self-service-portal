@@ -13,7 +13,7 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.StateBackends;
 public class StateBackendConfigurationHydrationTests
 {
     [Fact]
-    public void Hydrates_StateBackendConfiguration_FromEmbeddedYaml()
+    public void Hydrates_ApiKeySample_FromEmbeddedYaml()
     {
         string yaml = SampleLoader.Load("dc.sample.yaml");
         var config = StateBackendConfigurationLoader.Load(yaml);
@@ -36,7 +36,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(false, request.Constants["includePendingApplicantDetails"]);
 
         // isIdentityProofed must be a per-request map pass-through, never a constant — hardcoding it
-        // would bypass the DC lookup's proofing gate.
+        // would bypass the lookup's proofing gate.
         Assert.DoesNotContain("isIdentityProofed", request.Constants.Keys);
 
         Assert.NotNull(request.Map);
@@ -56,7 +56,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("SummerEBTCaseID", response.Fields["summerEBTCaseID"].From);
         Assert.Equal("ChildFirstName", response.Fields["childFirstName"].From);
 
-        // The wrapper passes DC's raw column names through and serializes DATE columns as ISO 8601.
+        // Date fields keep their source names and use an ISO 8601 format.
         FieldMapping issueDate = response.Fields["ebtCardIssueDate"];
         Assert.Equal("EbtCardIssueDate", issueDate.From);
         Assert.Equal("yyyy-MM-ddTHH:mm:ss", issueDate.Format);
@@ -70,7 +70,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("cardStatus", cardStatus.Enum);
 
         FieldMapping issuanceType = response.Fields["issuanceType"];
-        Assert.Equal(new[] { "HouseholdType", "EligibilityType" }, issuanceType.From.All);
+        Assert.Equal(new[] { "HouseholdType", "EligibilityType" }, issuanceType.From!.All);
         KeywordRules keywordRules = Assert.IsType<KeywordRules>(issuanceType.KeywordRules);
         Assert.Equal(new[] { "SummerEbt", "SnapEbtCard", "TanfEbtCard" }, keywordRules.Order);
         Assert.Equal(new[] { "OSSE", "NSLP" }, keywordRules.Map["SummerEbt"]);
@@ -118,58 +118,58 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "0" }, classifier.Conditions[1].ValueIn);
         Assert.Equal(WriteOutcome.BackendError, classifier.Default);
 
-        // DC address update uses the SHARED batch shape (one household field across all cases).
-        AddressUpdateOperationConfig? dcAddressUpdate = config.Operations.AddressUpdate;
-        Assert.NotNull(dcAddressUpdate);
-        Assert.Equal(StateBackendHttpMethod.Post, dcAddressUpdate.Method);
-        Assert.Equal("/households/address", dcAddressUpdate.Path);
+        // Address update posts one object. Household identifier and address scalars come from the map.
+        AddressUpdateOperationConfig? addressUpdate = config.Operations.AddressUpdate;
+        Assert.NotNull(addressUpdate);
+        Assert.Equal(StateBackendHttpMethod.Post, addressUpdate.Method);
+        Assert.Equal("/households/address", addressUpdate.Path);
 
-        Assert.NotNull(dcAddressUpdate.Request);
-        Assert.Equal("portal", dcAddressUpdate.Request.Constants!["source"]);
-        Assert.Null(dcAddressUpdate.Request.Shared);
-        Assert.Null(dcAddressUpdate.Request.Collect);
-        Assert.Equal("householdIdentifier", dcAddressUpdate.Request.Map!["householdIdentifier"]);
-        Assert.Equal("address.line1", dcAddressUpdate.Request.Map["line1"]);
-        Assert.Equal("address.city", dcAddressUpdate.Request.Map["city"]);
-        Assert.Equal("address.state", dcAddressUpdate.Request.Map["state"]);
-        Assert.Equal("address.zip", dcAddressUpdate.Request.Map["zip"]);
-        Assert.NotNull(dcAddressUpdate.Request.MapOptional);
-        Assert.Equal("address.line2", dcAddressUpdate.Request.MapOptional["line2"]);
+        Assert.NotNull(addressUpdate.Request);
+        Assert.Equal("portal", addressUpdate.Request.Constants!["source"]);
+        Assert.Null(addressUpdate.Request.Shared);
+        Assert.Null(addressUpdate.Request.Collect);
+        Assert.Equal("householdIdentifier", addressUpdate.Request.Map!["householdIdentifier"]);
+        Assert.Equal("address.line1", addressUpdate.Request.Map["line1"]);
+        Assert.Equal("address.city", addressUpdate.Request.Map["city"]);
+        Assert.Equal("address.state", addressUpdate.Request.Map["state"]);
+        Assert.Equal("address.zip", addressUpdate.Request.Map["zip"]);
+        Assert.NotNull(addressUpdate.Request.MapOptional);
+        Assert.Equal("address.line2", addressUpdate.Request.MapOptional["line2"]);
 
-        ResultClassifier dcAddressClassifier = Assert.IsType<ResultClassifier>(dcAddressUpdate.Result);
-        ResultCondition dcAddressSuccess = Assert.Single(dcAddressClassifier.Conditions);
-        Assert.Equal(WriteOutcome.Success, dcAddressSuccess.Outcome);
-        Assert.Equal("resultCode", dcAddressSuccess.Field);
-        Assert.Equal(new[] { "OK" }, dcAddressSuccess.ValueIn);
-        Assert.Equal(WriteOutcome.BackendError, dcAddressClassifier.Default);
+        ResultClassifier addressClassifier = Assert.IsType<ResultClassifier>(addressUpdate.Result);
+        ResultCondition addressSuccess = Assert.Single(addressClassifier.Conditions);
+        Assert.Equal(WriteOutcome.Success, addressSuccess.Outcome);
+        Assert.Equal("resultCode", addressSuccess.Field);
+        Assert.Equal(new[] { "OK" }, addressSuccess.ValueIn);
+        Assert.Equal(WriteOutcome.BackendError, addressClassifier.Default);
 
-        // DC enrollment uses PerChild fan-out (no index, no expansion).
-        EnrollmentCheckOperationConfig? dcEnrollment = config.Operations.EnrollmentCheck;
-        Assert.NotNull(dcEnrollment);
-        Assert.Equal(StateBackendHttpMethod.Post, dcEnrollment.Method);
-        Assert.Equal("/enrollment/check", dcEnrollment.Path);
-        Assert.Equal(EnrollmentCallMode.PerChild, dcEnrollment.CallMode);
+        // Enrollment fans out per child: no index field and no candidate expansion.
+        EnrollmentCheckOperationConfig? enrollment = config.Operations.EnrollmentCheck;
+        Assert.NotNull(enrollment);
+        Assert.Equal(StateBackendHttpMethod.Post, enrollment.Method);
+        Assert.Equal("/enrollment/check", enrollment.Path);
+        Assert.Equal(EnrollmentCallMode.PerChild, enrollment.CallMode);
 
-        Assert.NotNull(dcEnrollment.Request);
-        Assert.Equal(CandidateExpansion.None, dcEnrollment.Request.Expand);
-        Assert.Null(dcEnrollment.Request.IndexField);
-        Assert.Equal("firstName", dcEnrollment.Request.Map["firstName"]);
-        Assert.Equal("dateOfBirth", dcEnrollment.Request.Map["dob"]);
+        Assert.NotNull(enrollment.Request);
+        Assert.Equal(CandidateExpansion.None, enrollment.Request.Expand);
+        Assert.Null(enrollment.Request.IndexField);
+        Assert.Equal("firstName", enrollment.Request.Map["firstName"]);
+        Assert.Equal("dateOfBirth", enrollment.Request.Map["dob"]);
 
-        // schoolIdentifier is optional: the portal may not carry it, but DC's match reads it when sent.
-        Assert.NotNull(dcEnrollment.Request.MapOptional);
-        Assert.Equal("schoolName", dcEnrollment.Request.MapOptional["schoolIdentifier"]);
+        // schoolIdentifier is optional: it binds when present and is omitted otherwise.
+        Assert.NotNull(enrollment.Request.MapOptional);
+        Assert.Equal("schoolName", enrollment.Request.MapOptional["schoolIdentifier"]);
 
-        Assert.NotNull(dcEnrollment.Response);
-        Assert.Equal("$", dcEnrollment.Response.Root);
-        Assert.Null(dcEnrollment.Response.IndexField);
-        Assert.Equal(EnrollmentMatchStrategy.AnyRowValueIn, dcEnrollment.Response.Match.Strategy);
-        Assert.Equal("isEligible", dcEnrollment.Response.Match.Field);
-        Assert.Equal(new[] { "true" }, dcEnrollment.Response.Match.ValueIn);
+        Assert.NotNull(enrollment.Response);
+        Assert.Equal("$", enrollment.Response.Root);
+        Assert.Null(enrollment.Response.IndexField);
+        Assert.Equal(EnrollmentMatchStrategy.AnyRowValueIn, enrollment.Response.Match.Strategy);
+        Assert.Equal("isEligible", enrollment.Response.Match.Field);
+        Assert.Equal(new[] { "true" }, enrollment.Response.Match.ValueIn);
 
-        // DC's backend never reported per-row or result-level messages — carriers stay unconfigured.
-        Assert.Null(dcEnrollment.Response.StatusMessageField);
-        Assert.Null(dcEnrollment.Response.MessageField);
+        // This response declares no per-row or result-level message carriers.
+        Assert.Null(enrollment.Response.StatusMessageField);
+        Assert.Null(enrollment.Response.MessageField);
 
         Assert.NotNull(config.Operations.Health);
 
@@ -181,14 +181,14 @@ public class StateBackendConfigurationHydrationTests
     }
 
     [Fact]
-    public void Hydrates_CoStateBackendConfiguration_FromEmbeddedYaml()
+    public void Hydrates_ClientCredentialsSample_FromEmbeddedYaml()
     {
         string yaml = SampleLoader.Load("co.sample.yaml");
         var config = StateBackendConfigurationLoader.Load(yaml);
 
         Assert.Equal(new Uri("http://localhost:8086"), config.BaseUrl);
 
-        // Covers the client_credentials auth branch (DC covers api_key).
+        // This sample uses client_credentials. The api-key sample covers the other auth branch.
         StateBackendOAuthClientCredentialsAuthScheme oauthAuth =
             Assert.IsType<StateBackendOAuthClientCredentialsAuthScheme>(config.Auth);
         Assert.Equal(new Uri("http://localhost:8086/oauth/token"), oauthAuth.TokenUrl);
@@ -203,11 +203,11 @@ public class StateBackendConfigurationHydrationTests
         RequestBinding? request = householdLookup.Request;
         Assert.NotNull(request);
         Assert.NotNull(request.Map);
-        Assert.Equal("PhnNm", request.Map["phone"]);
+        Assert.Equal("phnNm", request.Map["phone"]);
 
         Assert.Equal("sebtChldCwin", householdLookup.Response?.Fields["summerEBTCaseID"].From);
 
-        // Covers the valueInSet disaggregation branch (DC covers presence).
+        // This sample disaggregates with valueInSet. The api-key sample uses presence.
         StateBackendDisaggregation? disaggregation = householdLookup.Response?.Disaggregation;
         Assert.NotNull(disaggregation);
         Assert.Equal(DisaggregationRule.ValueInSet, disaggregation.Rule);
@@ -219,8 +219,12 @@ public class StateBackendConfigurationHydrationTests
 
         // The status the WhenApprovedOrNotApplicationBased predicate reads.
         FieldMapping applicationStatus = householdLookup.Response!.Fields["applicationStatus"];
-        Assert.Equal("sebtAppSts", applicationStatus.From);
+        Assert.Equal("stdntEligSts", applicationStatus.From);
         Assert.Equal("applicationStatus", applicationStatus.Enum);
+        Assert.Equal("stdLstNm", householdLookup.Response.Fields["childLastName"].From);
+        Assert.Equal("SummerEbt", householdLookup.Response.Fields["issuanceType"].Value);
+        Assert.Equal("addrLn1", householdLookup.Response.MailingAddress!.Line1);
+        Assert.Equal("zip4", householdLookup.Response.MailingAddress.Zip4);
 
         FieldMapping expirationDate = householdLookup.Response.Fields["benefitExpirationDate"];
         Assert.Equal("benExpDt", expirationDate.From);
@@ -229,68 +233,83 @@ public class StateBackendConfigurationHydrationTests
         Assert.NotNull(config.Enums);
         StateBackendEnumTable applicationStatusTable = config.Enums["applicationStatus"];
         Assert.Equal(new[] { "AP" }, applicationStatusTable.Map["Approved"]);
-        Assert.Equal(new[] { "DE" }, applicationStatusTable.Map["Denied"]);
+        Assert.Equal(new[] { "DE", "OT" }, applicationStatusTable.Map["Denied"]);
+        Assert.Equal(new[] { "AI", "AM", "PD", "PE", "PG", "PS" }, applicationStatusTable.Map["Pending"]);
         Assert.Equal("Unknown", applicationStatusTable.Default);
+        Assert.Equal(new[] { "ACTIVE" }, config.Enums["cardStatus"].Map["Active"]);
 
         AddressUpdateOperationConfig? addressUpdate = config.Operations.AddressUpdate;
         Assert.NotNull(addressUpdate);
         Assert.Equal(StateBackendHttpMethod.Patch, addressUpdate.Method);
         Assert.Equal("/sebt/update-std-dtls", addressUpdate.Path);
 
-        // CO uses the COLLECT batch shape: per-case write-ids into an array (DC uses shared).
+        // Address update PATCHes one object per case. Address scalars bind under a nested addr object.
         Assert.NotNull(addressUpdate.Request);
-        Assert.Equal("cases", addressUpdate.Request.Collect!["writeId"]);
+        Assert.True(addressUpdate.Request.EachCase);
+        Assert.Null(addressUpdate.Request.Collect);
         Assert.Null(addressUpdate.Request.Shared);
-        Assert.Equal("stdAddr", addressUpdate.Request.Map!["line1"]);
-        Assert.Equal("stdZip", addressUpdate.Request.Map["zip"]);
+        Assert.Equal("sebtChldId", addressUpdate.Request.Map!["sebtChldId"]);
+        Assert.Equal("sebtAppId", addressUpdate.Request.Map["sebtAppId"]);
+        Assert.Equal("addr.addrLn1", addressUpdate.Request.Map["line1"]);
+        Assert.Equal("addr.cty", addressUpdate.Request.Map["city"]);
+        Assert.Equal("addr.staCd", addressUpdate.Request.Map["state"]);
+        Assert.Equal("addr.zip", addressUpdate.Request.Map["zip"]);
+        Assert.Equal("addr.addrLn2", addressUpdate.Request.MapOptional!["line2"]);
+        Assert.Equal("addr.zip4", addressUpdate.Request.MapOptional["zip4"]);
 
-        ResultClassifier coAddressClassifier = Assert.IsType<ResultClassifier>(addressUpdate.Result);
-        ResultCondition coAddressSuccess = Assert.Single(coAddressClassifier.Conditions);
-        Assert.Equal(WriteOutcome.Success, coAddressSuccess.Outcome);
-        Assert.Equal("respCd", coAddressSuccess.Field);
-        Assert.Equal(new[] { "200", "00" }, coAddressSuccess.ValueIn);
+        CaseIdComposition caseId = Assert.IsType<CaseIdComposition>(householdLookup.Response.CaseId);
+        Assert.Equal("sebtChldId", caseId.Fields["sebtChldId"]);
+        Assert.Equal("sebtAppId", caseId.Fields["sebtAppId"]);
 
-        CardReplacementOperationConfig? coCardReplacement = config.Operations.CardReplacement;
-        Assert.NotNull(coCardReplacement);
-        Assert.Equal(StateBackendHttpMethod.Patch, coCardReplacement.Method);
-        Assert.Equal("/sebt/update-std-dtls", coCardReplacement.Path);
-        Assert.Equal(CardReplacementCallMode.Batch, coCardReplacement.CallMode);
-        Assert.Equal("cases", coCardReplacement.Request!.Collect!["writeId"]);
-        Assert.Equal("Y", coCardReplacement.Request.Constants!["reqNewCard"]);
+        ResultClassifier addressClassifier = Assert.IsType<ResultClassifier>(addressUpdate.Result);
+        ResultCondition addressSuccess = Assert.Single(addressClassifier.Conditions);
+        Assert.Equal(WriteOutcome.Success, addressSuccess.Outcome);
+        Assert.Equal("respCd", addressSuccess.Field);
+        Assert.Equal(new[] { "200", "00" }, addressSuccess.ValueIn);
 
-        // CO enrollment uses batch + transposeMonthDay expansion + confidenceThreshold match.
-        EnrollmentCheckOperationConfig? coEnrollment = config.Operations.EnrollmentCheck;
-        Assert.NotNull(coEnrollment);
-        Assert.Equal(StateBackendHttpMethod.Post, coEnrollment.Method);
-        Assert.Equal("/sebt/check-enrollment", coEnrollment.Path);
+        CardReplacementOperationConfig? cardReplacement = config.Operations.CardReplacement;
+        Assert.NotNull(cardReplacement);
+        Assert.Equal(StateBackendHttpMethod.Patch, cardReplacement.Method);
+        Assert.Equal("/sebt/update-std-dtls", cardReplacement.Path);
+        Assert.Equal(CardReplacementCallMode.Batch, cardReplacement.CallMode);
+        Assert.True(cardReplacement.Request!.EachCase);
+        Assert.Null(cardReplacement.Request.Collect);
+        Assert.Equal("sebtChldId", cardReplacement.Request.Map!["sebtChldId"]);
+        Assert.Equal("sebtAppId", cardReplacement.Request.Map["sebtAppId"]);
+        Assert.Equal("Y", cardReplacement.Request.Constants!["reqNewCard"]);
 
-        Assert.Equal(EnrollmentCallMode.Batch, coEnrollment.CallMode);
-        Assert.NotNull(coEnrollment.Request);
-        Assert.Equal(CandidateExpansion.TransposeMonthDay, coEnrollment.Request.Expand);
-        Assert.Equal("stdReqInd", coEnrollment.Request.IndexField);
-        Assert.Equal("stdFirstName", coEnrollment.Request.Map["firstName"]);
-        Assert.Equal("stdLastName", coEnrollment.Request.Map["lastName"]);
-        Assert.Equal("stdDob", coEnrollment.Request.Map["dob"]);
+        // Enrollment is one batch call: transposeMonthDay expansion and a confidenceThreshold match.
+        EnrollmentCheckOperationConfig? enrollment = config.Operations.EnrollmentCheck;
+        Assert.NotNull(enrollment);
+        Assert.Equal(StateBackendHttpMethod.Post, enrollment.Method);
+        Assert.Equal("/sebt/check-enrollment", enrollment.Path);
 
-        // schoolIdentifier is optional: the portal may not carry it, but CO's match reads it when sent.
-        Assert.NotNull(coEnrollment.Request.MapOptional);
-        Assert.Equal("stdSchlCd", coEnrollment.Request.MapOptional["schoolIdentifier"]);
+        Assert.Equal(EnrollmentCallMode.Batch, enrollment.CallMode);
+        Assert.NotNull(enrollment.Request);
+        Assert.Equal(CandidateExpansion.TransposeMonthDay, enrollment.Request.Expand);
+        Assert.Equal("stdReqInd", enrollment.Request.IndexField);
+        Assert.Equal("stdFirstName", enrollment.Request.Map["firstName"]);
+        Assert.Equal("stdLastName", enrollment.Request.Map["lastName"]);
+        Assert.Equal("stdDob", enrollment.Request.Map["dob"]);
 
-        Assert.NotNull(coEnrollment.Response);
-        Assert.Equal("$.stdntDtls", coEnrollment.Response.Root);
-        Assert.Equal("stdReqInd", coEnrollment.Response.IndexField);
+        // schoolIdentifier is optional: it binds when present and is omitted otherwise.
+        Assert.NotNull(enrollment.Request.MapOptional);
+        Assert.Equal("stdSchlCd", enrollment.Request.MapOptional["schoolIdentifier"]);
 
-        // CO surfaces the winning row's eligibility text per child and CBMS's root RespMsg
-        // result-level — the carriers the plugin exposed on the wire.
-        Assert.Equal("sebtEligSts", coEnrollment.Response.StatusMessageField);
-        Assert.Equal("RespMsg", coEnrollment.Response.MessageField);
-        Assert.Equal(EnrollmentMatchStrategy.ConfidenceThreshold, coEnrollment.Response.Match.Strategy);
-        Assert.Equal("mtchCnfd", coEnrollment.Response.Match.ScoreField);
-        Assert.Equal(90.0, coEnrollment.Response.Match.Threshold);
+        Assert.NotNull(enrollment.Response);
+        Assert.Equal("$.stdntDtls", enrollment.Response.Root);
+        Assert.Equal("stdReqInd", enrollment.Response.IndexField);
 
-        // CO's real rule also requires the best row's eligibility flag — not score alone.
-        Assert.Equal("sebtEligSts", coEnrollment.Response.Match.Field);
-        Assert.Equal(new[] { "Y" }, coEnrollment.Response.Match.ValueIn);
+        // The winning row's eligibility text is per child. The root respMsg is the result-level message.
+        Assert.Equal("sebtEligSts", enrollment.Response.StatusMessageField);
+        Assert.Equal("respMsg", enrollment.Response.MessageField);
+        Assert.Equal(EnrollmentMatchStrategy.ConfidenceThreshold, enrollment.Response.Match.Strategy);
+        Assert.Equal("mtchCnfd", enrollment.Response.Match.ScoreField);
+        Assert.Equal(90.0, enrollment.Response.Match.Threshold);
+
+        // A match also requires the best row's eligibility flag, not the score alone.
+        Assert.Equal("sebtEligSts", enrollment.Response.Match.Field);
+        Assert.Equal(new[] { "Y" }, enrollment.Response.Match.ValueIn);
 
         StateBackendCapabilities capabilities = config.Capabilities;
         Assert.Equal(CardReplacementCapability.Batch, capabilities.CardReplacement);

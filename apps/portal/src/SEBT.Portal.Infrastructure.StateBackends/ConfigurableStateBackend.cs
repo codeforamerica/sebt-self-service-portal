@@ -250,8 +250,10 @@ public class ConfigurableStateBackend :
                         .Select(OpaqueCaseId.Decode)
                         .ToList();
 
-                    return StateBackendRequestBinder.BuildBatchWriteBody(
-                        binding, decodedCaseIds, EnvelopeInputs(request.HouseholdIdentifier));
+                    IReadOnlyDictionary<string, string> envelope = EnvelopeInputs(request.HouseholdIdentifier);
+                    return binding.EachCase
+                        ? StateBackendRequestBinder.BuildEachCaseBody(binding, decodedCaseIds, envelope)
+                        : StateBackendRequestBinder.BuildBatchWriteBody(binding, decodedCaseIds, envelope);
                 },
                 policyRejectionMessage: "The household is not eligible to request a replacement via the portal.",
                 cancellationToken).ConfigureAwait(false);
@@ -344,7 +346,9 @@ public class ConfigurableStateBackend :
                     addressInputs[key] = value;
                 }
 
-                return StateBackendRequestBinder.BuildBatchWriteBody(binding, decodedCaseIds, addressInputs);
+                return binding.EachCase
+                    ? StateBackendRequestBinder.BuildEachCaseBody(binding, decodedCaseIds, addressInputs)
+                    : StateBackendRequestBinder.BuildBatchWriteBody(binding, decodedCaseIds, addressInputs);
             },
             policyRejectionMessage: "The household is not eligible to update their address via the portal.",
             cancellationToken).ConfigureAwait(false);
@@ -354,7 +358,7 @@ public class ConfigurableStateBackend :
         StateBackendOperationConfig operation,
         RequestBinding? binding,
         ResultClassifier classifier,
-        Func<RequestBinding, JsonObject> buildBody,
+        Func<RequestBinding, JsonNode> buildBody,
         string policyRejectionMessage,
         CancellationToken cancellationToken)
     {
@@ -362,7 +366,7 @@ public class ConfigurableStateBackend :
 
         if (binding is not null)
         {
-            JsonObject body = buildBody(binding);
+            JsonNode body = buildBody(binding);
             httpRequest.Content = new StringContent(
                 body.ToJsonString(), Encoding.UTF8, "application/json");
         }
@@ -407,10 +411,35 @@ public class ConfigurableStateBackend :
 
         if (address.Zip is { } zip)
         {
-            inputs["zip"] = zip;
+            (string? primary, string? zip4) = SplitPostalCode(zip);
+            if (primary is not null)
+            {
+                inputs["zip"] = primary;
+            }
+
+            if (zip4 is not null)
+            {
+                inputs["zip4"] = zip4;
+            }
         }
 
         return inputs;
+    }
+
+    private static (string? Zip, string? Zip4) SplitPostalCode(string postalCode)
+    {
+        string trimmed = postalCode.Trim();
+        int dash = trimmed.IndexOf('-');
+        if (dash < 0)
+        {
+            return (trimmed.Length == 0 ? null : trimmed, null);
+        }
+
+        string zip = trimmed[..dash].Trim();
+        string zip4 = trimmed[(dash + 1)..].Trim();
+        return (
+            zip.Length == 0 ? null : zip,
+            zip4.Length == 0 ? null : zip4);
     }
 
     private static Dictionary<string, string> EnvelopeInputs(string? householdIdentifier)
