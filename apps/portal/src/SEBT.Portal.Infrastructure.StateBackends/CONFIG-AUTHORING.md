@@ -64,6 +64,9 @@ Under a read operation's `response:`, `root` is a path to the record (or array o
         ebtCardIssueDate:
           from: EbtCardIssueDate
           format: yyyy-MM-ddTHH:mm:ss
+        benefitExpirationDate:
+          from: BenefitExpirationDate
+          format: yyyy-MM-ddTHH:mm:ss
         ebtCardStatus:
           from: EbtCardStatus
           enum: cardStatus

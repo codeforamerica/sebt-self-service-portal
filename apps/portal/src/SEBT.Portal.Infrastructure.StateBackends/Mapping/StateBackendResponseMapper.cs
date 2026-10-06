@@ -13,7 +13,7 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 /// </summary>
 internal static class StateBackendResponseMapper
 {
-    /// <summary>The closed set of canonical field targets; a new canonical field means a new entry here — never reflection.</summary>
+    /// <summary>The closed set of canonical field targets; a new canonical field means a new entry here.</summary>
     private static readonly IReadOnlyDictionary<string, FieldTarget> FieldTargets =
         new Dictionary<string, FieldTarget>(StringComparer.Ordinal)
         {
@@ -22,6 +22,7 @@ internal static class StateBackendResponseMapper
             ["childLastName"] = FieldTarget.String((c, v) => c.ChildLastName = v),
             ["applicationId"] = FieldTarget.String((c, v) => c.ApplicationId = v),
             ["ebtCardIssueDate"] = FieldTarget.DateTime((c, v) => c.EbtCardIssueDate = v),
+            ["benefitExpirationDate"] = FieldTarget.DateTime((c, v) => c.BenefitExpirationDate = v),
             ["ebtCardStatus"] = FieldTarget.Enum<CardStatus>((c, v) => c.EbtCardStatus = v),
             ["applicationStatus"] = FieldTarget.Enum<ApplicationStatus>((c, v) => c.ApplicationStatus = v),
             ["issuanceType"] = FieldTarget.Enum<IssuanceType>((c, v) => c.IssuanceType = v),

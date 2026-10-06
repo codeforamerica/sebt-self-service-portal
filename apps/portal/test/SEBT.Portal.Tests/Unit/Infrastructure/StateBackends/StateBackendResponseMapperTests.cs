@@ -77,6 +77,28 @@ public class StateBackendResponseMapperTests
     }
 
     [Fact]
+    public void MapHousehold_MapsBenefitExpirationDate()
+    {
+        StateBackendConfiguration configuration = LookupFields(new Dictionary<string, FieldMapping>
+        {
+            ["summerEBTCaseID"] = new() { From = "id" },
+            ["benefitExpirationDate"] = new() { From = "benExpDt", Format = "yyyy-MM-dd" },
+        });
+
+        using JsonDocument document = JsonDocument.Parse(
+            """{ "records": [ { "id": "1", "benExpDt": "2026-08-05" } ] }""");
+
+        HouseholdData household = StateBackendResponseMapper.MapHousehold(
+            document.RootElement,
+            configuration,
+            configuration.Operations.HouseholdLookup!.Response!,
+            new CaseIdContext());
+
+        SummerEbtCase mapped = Assert.Single(household.SummerEbtCases);
+        Assert.Equal(new DateTime(2026, 8, 5), mapped.BenefitExpirationDate);
+    }
+
+    [Fact]
     public void MapHousehold_ValueInSet_IsCaseInsensitive()
     {
         StateBackendConfiguration configuration = StateBackendTestConfig.Base().WithLookup(

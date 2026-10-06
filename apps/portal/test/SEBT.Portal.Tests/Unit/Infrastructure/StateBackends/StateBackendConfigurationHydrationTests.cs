@@ -61,6 +61,10 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("EbtCardIssueDate", issueDate.From);
         Assert.Equal("yyyy-MM-ddTHH:mm:ss", issueDate.Format);
 
+        FieldMapping expirationDate = response.Fields["benefitExpirationDate"];
+        Assert.Equal("BenefitExpirationDate", expirationDate.From);
+        Assert.Equal("yyyy-MM-ddTHH:mm:ss", expirationDate.Format);
+
         FieldMapping cardStatus = response.Fields["ebtCardStatus"];
         Assert.Equal("EbtCardStatus", cardStatus.From);
         Assert.Equal("cardStatus", cardStatus.Enum);
@@ -218,6 +222,10 @@ public class StateBackendConfigurationHydrationTests
         FieldMapping applicationStatus = householdLookup.Response!.Fields["applicationStatus"];
         Assert.Equal("sebtAppSts", applicationStatus.From);
         Assert.Equal("applicationStatus", applicationStatus.Enum);
+
+        FieldMapping expirationDate = householdLookup.Response.Fields["benefitExpirationDate"];
+        Assert.Equal("benExpDt", expirationDate.From);
+        Assert.Equal("yyyy-MM-dd", expirationDate.Format);
 
         Assert.NotNull(config.Enums);
         StateBackendEnumTable applicationStatusTable = config.Enums["applicationStatus"];

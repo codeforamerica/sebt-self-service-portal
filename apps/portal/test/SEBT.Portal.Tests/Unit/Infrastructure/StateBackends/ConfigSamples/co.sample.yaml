@@ -21,6 +21,9 @@ operations:
         applicationStatus:
           from: sebtAppSts
           enum: applicationStatus
+        benefitExpirationDate:
+          from: benExpDt
+          format: yyyy-MM-dd
       disaggregation:
         rule: valueInSet
         discriminatorField: eligSrc

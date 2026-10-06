@@ -31,6 +31,9 @@ operations:
           from: EbtCardIssueDate
           # The wrapper serializes DC's DATE column as ISO 8601 (System.Text.Json default).
           format: yyyy-MM-ddTHH:mm:ss
+        benefitExpirationDate:
+          from: BenefitExpirationDate
+          format: yyyy-MM-ddTHH:mm:ss
         ebtCardStatus:
           from: EbtCardStatus
           enum: cardStatus
