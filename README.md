@@ -96,7 +96,7 @@ git clone git@github.com:codeforamerica/sebt-self-service-portal.git
 
 #### To install the DC-specific portal code
 
-The state connector for DC has its own repository. See [apps/connectors/dc/README.md](./apps/connectors/dc/README.md). Clone it into the same parent folder as this repository on your local machine, so it can be used when building and running the DC app.
+The state connector for DC has its own repository. See [apps/connectors/dc/README.md](./apps/connectors/dc/README.md). Clone it into the same parent folder as this repository on your local machine, so it can be used when building and running the DC app. `./scripts/dev/setup.sh --state dc` (or `--state both`) clones it when the checkout is missing.
 
 ```bash
 git clone git@github.com:codeforamerica/sebt-self-service-portal-dc-connector.git
@@ -104,68 +104,25 @@ git clone git@github.com:codeforamerica/sebt-self-service-portal-dc-connector.gi
 
 The current DC enrollment checker is a standalone app, in a [separate repository](https://github.com/codeforamerica/cfa-dc-sebt-portal).
 
-### 3. Configure your local environment
+### 3. Run first-time setup
 
-This project uses **`.env` files** to set environment variables (for example, local database configurations). This is a preferred pattern for [12-factor Apps](https://www.12factor.net/config). The variables are also set to fall back to a generic default.
-
-To create your local `.env` file with configurations for the database and the API, you can start with the `.env.example` file. Run this command from the root of the repository:
+From the repository root, with Docker Desktop running:
 
 ```bash
-cp .env.example .env
+./scripts/dev/setup.sh --state co    # Colorado
+./scripts/dev/setup.sh --state dc    # DC
+./scripts/dev/setup.sh --state both  # both states
 ```
 
-Do the same in `apps/portal/src/SEBT.Portal.Web`:
+Add `--with-redis` to generate local Redis TLS certs and start Redis. See [Local Redis](#local-redis-distributed-cache).
 
-```bash
-cp .env.example .env.local
-```
+The script copies example `.env` and `appsettings` files when they are not already present, installs JavaScript and .NET dependencies, builds, and starts Docker (`mssql`, and `mailpit` for DC). Start the app with the commands below.
 
-You should also create the API **`appsettings.json` files** in your local environment with certain values set, based on the example files:
+For more details about how appsettings work, see [state-specific configuration](#state-specific-configuration). Mailpit (DC OTP emails) is at <http://localhost:8025>. Jaeger is optional; see [Jaeger](#jaeger-local-opentelemetry-tracing).
 
-```bash
-cd apps/portal/src/SEBT.Portal.Api
+### 4. Start the app
 
-cp appsettings.Development.example.json appsettings.Development.json
-cp appsettings.co.example.json appsettings.co.json   # for colorado local development
-cp appsettings.dc.example.json appsettings.dc.json   # for DC local development
-```
-
-For more details about how appsettings work, see [state-specific configuration](#state-specific-configuration) below.
-
-### 4. Install dependencies
-
-#### Frontend
-
-- To install all JavaScript package dependencies, run `pnpm install` from the root of this repository.
-- For more details about the frontend, see the [SEBT.Portal.Web README](./apps/portal/src/SEBT.Portal.Web/README.md).
-
-
-#### Backend
-
-- .NET tools are CLI utilities installed and managed using [NuGet](https://www.nuget.org/). This project uses the [`nuget-license`](https://www.nuget.org/packages/nuget-license) tool to audit the licenses of the backend dependencies. The manifest in `.config/dotnet-tools.json` defines the necessary tools. To install them, run `dotnet tool restore` at the root of the repository.
-- Before you start the app locally for the first time, run `dotnet build SEBT.slnx` from the root of the repository. This command builds the portal and the in-repo connectors together.
-
-### 5. Start services
-Make sure that Docker is installed and the Docker daemon is running. Several components of the app are containerized for local development.
-
-#### Start the database in Docker
-
-Before you start the app, start the container for the MSSQL database with `docker compose up -d mssql`. When the database starts locally, it runs all migrations and seeds test data automatically (see [database setup](#database-setup) section below).
-
-#### Start Mailpit in Docker (DC Portal only)
-
-[Mailpit](https://mailpit.axllent.org/) is a development tool that captures all outgoing emails from the application. It's used to simulate one-time-password (OTP) authentication in local development.
-
-To start the Mailpit Docker container, run `docker compose up -d mailpit`. Once the container is running, access its UI in your browser at <http://localhost:8025>.
-
-#### Other services for local dev in Docker
-
-- Redis (caching). See below
-- Jaeger (telemetry). See below
-
-### 6. Build and run the app
-
-Once all dependencies are installed and running, you can use these start commands:
+Start commands:
 
 ```bash
 `pnpm dev:dc` # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
@@ -180,6 +137,12 @@ To view the running app, go to <https://localhost:3000> in your browser.
 ### Useful commands
 
 ```bash
+# Start the local database
+docker compose up -d mssql
+
+# Start Mailpit for DC OTP emails (http://localhost:8025)
+docker compose up -d mailpit
+
 # View logs
 docker compose logs -f
 
