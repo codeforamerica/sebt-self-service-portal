@@ -133,7 +133,7 @@ describe('HouseholdDataSchema coLoadedCohort', () => {
   })
 })
 
-describe('HouseholdDataSchema hashedAppId', () => {
+describe('HouseholdDataSchema hashed identifiers', () => {
   const baseFixture = {
     email: 'user@example.com',
     summerEbtCases: [],
@@ -159,6 +159,16 @@ describe('HouseholdDataSchema hashedAppId', () => {
   it('passes null through as null', () => {
     const parsed = HouseholdDataSchema.parse({ ...baseFixture, hashedAppId: null })
     expect(parsed.hashedAppId).toBeNull()
+  })
+
+  it('passes the id lists through and coerces blank ones to null', () => {
+    const parsed = HouseholdDataSchema.parse({
+      ...baseFixture,
+      hashedAppIds: 'aaa,bbb',
+      hashedCaseIds: '  '
+    })
+    expect(parsed.hashedAppIds).toBe('aaa,bbb')
+    expect(parsed.hashedCaseIds).toBeNull()
   })
 })
 

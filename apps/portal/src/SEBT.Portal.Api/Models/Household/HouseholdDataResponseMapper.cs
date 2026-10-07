@@ -18,9 +18,10 @@ public static class HouseholdDataResponseMapper
     /// <summary>
     /// Maps domain HouseholdData to the API response model. The mapper stays a
     /// pure projection. The controller decides which states emit the analytics
-    /// digest and which App ID to feed in.
+    /// digests.
     /// </summary>
-    public static HouseholdDataResponse ToResponse(this HouseholdData domain, string? hashedAppId = null)
+    public static HouseholdDataResponse ToResponse(
+        this HouseholdData domain, HouseholdAnalyticsIdentifiers? analyticsIdentifiers = null)
     {
         return new HouseholdDataResponse
         {
@@ -33,7 +34,9 @@ public static class HouseholdDataResponseMapper
             BenefitIssuanceType = domain.BenefitIssuanceType,
             AllowedActions = domain.AllowedActions?.ToResponse(),
             CoLoadedCohort = domain.CoLoadedCohort,
-            HashedAppId = hashedAppId
+            HashedAppId = analyticsIdentifiers?.HashedAppId,
+            HashedAppIds = analyticsIdentifiers?.HashedAppIds,
+            HashedCaseIds = analyticsIdentifiers?.HashedCaseIds
         };
     }
 

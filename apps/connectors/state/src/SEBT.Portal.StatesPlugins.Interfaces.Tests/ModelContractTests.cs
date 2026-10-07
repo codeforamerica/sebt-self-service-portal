@@ -40,7 +40,7 @@ public class ModelContractTests
             "ChildFirstName", "ChildLastName", "EbtCardBalance", "EbtCardIssueDate", "EbtCardLastFour",
             "EbtCardStatus", "EbtCaseNumber", "EligibilityType", "HouseholdType",
             "EligibilitySource", "IsCoLoaded", "IsStreamlineCertified", "IssuanceType",
-            "MailingAddress", "SummerEBTCaseID"
+            "MailingAddress", "SourceApplicationId", "SourceChildId", "SummerEBTCaseID"
         };
         foreach (var name in expected)
             Assert.Contains(name, names);
@@ -97,7 +97,7 @@ public class ModelContractTests
     public void Child_has_expected_properties()
     {
         var names = GetPublicInstancePropertyNames(typeof(Child));
-        var expected = new[] { "FirstName", "LastName", "Status" };
+        var expected = new[] { "FirstName", "LastName", "SourceChildId", "Status" };
         Assert.Equal(expected, names);
     }
 
