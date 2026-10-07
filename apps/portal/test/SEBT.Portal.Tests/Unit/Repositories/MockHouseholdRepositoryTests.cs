@@ -161,6 +161,29 @@ public class MockHouseholdRepositoryTests
         Assert.Equal(expectedChildFirstName, result.Applications.First().Children.First().FirstName);
     }
 
+    /// <summary>
+    /// Pins the name-casing persona's odd casing; tidying it into Title Case would silently make
+    /// the scenario useless.
+    /// </summary>
+    [Fact]
+    public async Task GetHouseholdByEmailAsync_NameCasingScenario_SuppliesBothUniformAndMixedCaseNames()
+    {
+        // Arrange & Act
+        var email = new SeedingSettings().BuildEmail(SeedScenarios.NameCasing.Name);
+        var result = await _repository.GetHouseholdByEmailAsync(email, FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.NotNull(result.UserProfile);
+        Assert.Equal("DELLA", result.UserProfile.FirstName);
+        Assert.Equal("ALDENMOCK", result.UserProfile.LastName);
+
+        var caseNames = result.SummerEbtCases.Select(c => $"{c.ChildFirstName} {c.ChildLastName}").ToList();
+        Assert.Contains("HILDE MCNAMARAMOCK", caseNames);
+        Assert.Contains("isidro keigwinmock", caseNames);
+        Assert.Contains("Angus MacDonaldMOCK", caseNames);
+    }
+
     [Fact]
     public async Task GetHouseholdByEmailAsync_WhenDcCoLoadedPendingIdProofing_UsesDistinctPhoneAndCoLoadedCases()
     {
@@ -570,6 +593,36 @@ public class MockHouseholdRepositoryTests
         Assert.NotNull(result.Applications);
         Assert.NotEmpty(result.Applications);
         Assert.Equal(ApplicationStatus.Denied, result.Applications.First().ApplicationStatus);
+    }
+
+    [Fact]
+    public async Task UpsertHouseholdAsync_KeepsSourceIdsOnCasesAndApplicationChildren()
+    {
+        var household = new HouseholdData
+        {
+            Email = "source-ids@example.com",
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase { ChildFirstName = "Dolly", SourceApplicationId = "1192789", SourceChildId = "1233721" }
+            },
+            Applications = new List<Application>
+            {
+                new Application
+                {
+                    ApplicationNumber = "1199119",
+                    Children = new List<Child> { new Child { FirstName = "Polly", SourceChildId = "1200686" } }
+                }
+            }
+        };
+
+        await _repository.UpsertHouseholdAsync(household);
+
+        var result = await _repository.GetHouseholdByEmailAsync(household.Email, FullPiiVisibility, UserIalLevel.IAL1plus);
+        Assert.NotNull(result);
+        var dolly = Assert.Single(result.SummerEbtCases);
+        Assert.Equal("1192789", dolly.SourceApplicationId);
+        Assert.Equal("1233721", dolly.SourceChildId);
+        Assert.Equal("1200686", Assert.Single(Assert.Single(result.Applications).Children).SourceChildId);
     }
 
     [Fact]

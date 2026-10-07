@@ -20,6 +20,7 @@ export default function OffBoardingPage() {
   const { t: tDashboard } = useTranslation('dashboard')
   const { t: tCommon } = useTranslation('common')
   const { t: tStepUpFailure } = useTranslation('stepUpFailure')
+  const { t: tDev } = useTranslation('dev')
 
   const state = getState()
   const links = getStateLinks(state)
@@ -85,11 +86,8 @@ export default function OffBoardingPage() {
     applySkipBody = undefined
     applyLabel = undefined
   } else if (reason === 'docVerificationEgregiousFailed') {
-    // i18next returns '' (not the fallback arg) when a key exists with an empty value.
-    title = t('docVerificationFailedTitle') || "We couldn't verify your identity"
-    body =
-      t('docVerificationFailedBody') ||
-      "Your document couldn't be verified. You can try again with a different ID, or contact us if you need help."
+    title = tDev('alertVerifyIdentity')
+    body = tDev('alertDocVerify')
     canApply = false
     contactLabel = tCommon('linkContactUs')
     applyBody = undefined

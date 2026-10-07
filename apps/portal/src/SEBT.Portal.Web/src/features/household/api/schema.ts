@@ -1,4 +1,15 @@
+import { formatPersonName } from '@sebt/design-system'
 import { z } from 'zod'
+
+/**
+ * Display-cases a person's name via {@link formatPersonName}. Applied at this parse boundary
+ * so every screen that renders a household name gets it without opting in.
+ *
+ * @example
+ * PersonNameSchema.parse('DELLA ALDEN') // 'Della Alden'
+ * PersonNameSchema.parse('MacDonald')   // 'MacDonald'
+ */
+const PersonNameSchema = z.string().transform(formatPersonName)
 
 // Backend enum values map to these strings. The API serializes these enums as integers, so the
 // ordinals below are a contract with SEBT.Portal.Core.Models.Household. Changing either side
@@ -146,8 +157,8 @@ export function isReplacementEligible(cardStatus: CardStatus): boolean {
 }
 
 export const ChildSchema = z.object({
-  firstName: z.string(),
-  lastName: z.string(),
+  firstName: PersonNameSchema,
+  lastName: PersonNameSchema,
   status: ApplicationStatusSchema.nullable().optional()
 })
 
@@ -167,8 +178,8 @@ export const SummerEbtCaseSchema = z.object({
   summerEBTCaseID: z.string().nullable().optional(),
   applicationId: z.string().nullable().optional(),
   applicationStudentId: z.string().nullable().optional(),
-  childFirstName: z.string(),
-  childLastName: z.string(),
+  childFirstName: PersonNameSchema,
+  childLastName: PersonNameSchema,
   childDateOfBirth: z.string().nullable().optional(),
   householdType: z.string(),
   eligibilityType: z.string(),
@@ -209,9 +220,9 @@ export const ApplicationSchema = z.object({
 export type Application = z.infer<typeof ApplicationSchema>
 
 export const UserProfileSchema = z.object({
-  firstName: z.string(),
-  middleName: z.string().nullable().optional(),
-  lastName: z.string().nullable().optional()
+  firstName: PersonNameSchema,
+  middleName: PersonNameSchema.nullable().optional(),
+  lastName: PersonNameSchema.nullable().optional()
 })
 
 export type UserProfile = z.infer<typeof UserProfileSchema>
@@ -225,6 +236,13 @@ export const AllowedActionsSchema = z.object({
 
 export type AllowedActions = z.infer<typeof AllowedActionsSchema>
 
+// HMAC-SHA256 digests (lowercase hex) the backend emits only for states configured to surface
+// them (CO today). Whitespace becomes null so a blank string never reaches analytics.
+const AnalyticsDigestSchema = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim().length === 0 ? null : v),
+  z.string().nullable().optional()
+)
+
 export const HouseholdDataSchema = z.object({
   // email is optional to support IAL authorization where user may not have access to PII
   email: z.string().nullable().optional(),
@@ -237,15 +255,11 @@ export const HouseholdDataSchema = z.object({
   allowedActions: AllowedActionsSchema.nullable().optional(),
   // Missing/null preprocess to Unknown so analytics never collapse broken payloads into NonCoLoaded (PR #208).
   coLoadedCohort: CoLoadedCohortSchema,
-  // HMAC-SHA256 digest of the SEBT App ID (lowercase hex). Backend emits this
-  // only for states configured to surface it (CO today). Null otherwise.
-  // Whitespace is coerced to null defensively so a future backend change that
-  // forgets the IsNullOrWhiteSpace guard cannot leak a blank string into
-  // analytics. See docs/analytics/hashed-sebt-app-id.md.
-  hashedAppId: z.preprocess(
-    (v) => (typeof v === 'string' && v.trim().length === 0 ? null : v),
-    z.string().nullable().optional()
-  )
+  // Digest of the SEBT App ID. See docs/analytics/hashed-sebt-app-id.md.
+  hashedAppId: AnalyticsDigestSchema,
+  // Comma-joined 16-character digest prefixes, one per distinct id in the household.
+  hashedAppIds: AnalyticsDigestSchema,
+  hashedCaseIds: AnalyticsDigestSchema
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

@@ -510,7 +510,7 @@ describe('SuggestedAddress', () => {
       expect(radio).toBeDisabled()
     }
     expect(container.querySelector('fieldset.usa-fieldset')).toHaveClass('opacity-50')
-    expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+    expect(screen.getByText('Please wait')).toHaveClass('usa-sr-only')
 
     release()
     await waitFor(() => expect(mockPush).toHaveBeenCalled())
