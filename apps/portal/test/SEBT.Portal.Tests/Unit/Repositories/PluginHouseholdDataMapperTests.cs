@@ -1,7 +1,9 @@
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Infrastructure.Repositories;
 
+using InterfaceApplication = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Application;
 using InterfaceCardStatus = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardStatus;
+using InterfaceChild = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Child;
 using InterfaceHouseholdData = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdData;
 using InterfaceSummerEbtCase = SEBT.Portal.StatesPlugins.Interfaces.Data.Cases.SummerEbtCase;
 
@@ -265,5 +267,67 @@ public class PluginHouseholdDataMapperTests
         Assert.NotNull(core);
         Assert.Single(core!.SummerEbtCases);
         Assert.Null(core.SummerEbtCases[0].EbtCardStatus);
+    }
+
+    [Fact]
+    public void ToCore_WhenInterfaceSourceHasSourceIds_MapsThemOnCasesAndApplicationChildren()
+    {
+        var source = new InterfaceHouseholdData
+        {
+            Email = "a@b.com",
+            SummerEbtCases = new List<InterfaceSummerEbtCase>
+            {
+                new InterfaceSummerEbtCase
+                {
+                    ChildFirstName = "Dolly",
+                    ChildLastName = "Rivera",
+                    ChildDateOfBirth = DateOnly.FromDateTime(DateTime.Today.AddYears(-10)),
+                    HouseholdType = "SEBT",
+                    EligibilityType = "AP",
+                    SourceApplicationId = "1192789",
+                    SourceChildId = "1233721"
+                }
+            },
+            Applications = new List<InterfaceApplication>
+            {
+                new InterfaceApplication
+                {
+                    ApplicationNumber = "1199119",
+                    Children = new List<InterfaceChild>
+                    {
+                        new InterfaceChild { FirstName = "Polly", LastName = "Rivera", SourceChildId = "1200686" }
+                    }
+                }
+            }
+        };
+
+        var core = PluginHouseholdDataMapper.ToCore(source);
+
+        Assert.NotNull(core);
+        var dolly = Assert.Single(core.SummerEbtCases);
+        Assert.Equal("1192789", dolly.SourceApplicationId);
+        Assert.Equal("1233721", dolly.SourceChildId);
+        var polly = Assert.Single(Assert.Single(core.Applications).Children);
+        Assert.Equal("1200686", polly.SourceChildId);
+    }
+
+    [Fact]
+    public void ToCore_WhenPluginPredatesSourceIds_MapsThemToNull()
+    {
+        // A plugin built against an older contract exposes neither property.
+        var source = new
+        {
+            Email = "a@b.com",
+            SummerEbtCases = new[] { new { ChildFirstName = "Alex", ApplicationId = "APP-1" } },
+            Applications = new[] { new { ApplicationNumber = "APP-1", Children = new[] { new { FirstName = "Alex" } } } }
+        };
+
+        var core = PluginHouseholdDataMapper.ToCore(source);
+
+        Assert.NotNull(core);
+        var @case = Assert.Single(core.SummerEbtCases);
+        Assert.Null(@case.SourceApplicationId);
+        Assert.Null(@case.SourceChildId);
+        Assert.Null(Assert.Single(Assert.Single(core.Applications).Children).SourceChildId);
     }
 }
