@@ -67,3 +67,15 @@ needed.
   border-radius: radius('md');
   margin-top: units(1);
 }
+
+// Panel links are ink in both states per design; the persistent underline
+// carries the affordance. Pseudo-classes are spelled out to outrank
+// .usa-link:visited and :hover, which are more specific than a bare `a`.
+.usa-details__content {
+  a,
+  a:visited,
+  a:hover,
+  a:active {
+    color: color('ink');
+  }
+}
