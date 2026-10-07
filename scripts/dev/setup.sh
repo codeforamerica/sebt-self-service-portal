@@ -111,9 +111,9 @@ Options:
   --no-art             Do not print the potato banner.
   -h, --help           Show this help.
 
-The script copies example configs only when the destination is missing, installs
-JS and .NET dependencies, builds, and starts Docker services. It does not start
-the app — run pnpm dev:co or pnpm dev:dc after it finishes.
+The script copies example configs when the destination is missing, installs
+JS and .NET dependencies, builds, and starts Docker services. After it finishes,
+run pnpm dev:co or pnpm dev:dc.
 EOF
 }
 
