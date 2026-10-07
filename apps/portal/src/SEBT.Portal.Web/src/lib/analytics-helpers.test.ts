@@ -1,9 +1,10 @@
 import { ApiError } from '@/api/client'
 import type { AddressUpdateResponse } from '@/features/address/api/schema'
-import { AnalyticsEvents } from '@sebt/analytics'
+import { AnalyticsEvents, DataLayer } from '@sebt/analytics'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  ANALYTICS_SCOPE,
   apiErrorCodeFromUnknown,
   classifyAddressState,
   syncHouseholdUserData,
@@ -188,7 +189,9 @@ describe('syncHouseholdUserData', () => {
     summerEbtCases: [{}, {}],
     applications: [],
     coLoadedCohort: 'Unknown',
-    hashedAppId: 'abc123'
+    hashedAppId: 'abc123',
+    hashedAppIds: 'aaa,bbb',
+    hashedCaseIds: 'ccc'
   } as unknown as Parameters<typeof syncHouseholdUserData>[2]
 
   beforeEach(() => {
@@ -207,6 +210,8 @@ describe('syncHouseholdUserData', () => {
 
     expect(valueFor('household_linked_children')).toBe(2)
     expect(valueFor('hashed_app_id')).toBe('abc123')
+    expect(valueFor('hashed_app_ids')).toBe('aaa,bbb')
+    expect(valueFor('hashed_case_ids')).toBe('ccc')
     expect(valueFor('coloading_status')).toBeDefined()
     expect(valueFor('co_loaded_cohort')).toBeDefined()
   })
@@ -219,12 +224,43 @@ describe('syncHouseholdUserData', () => {
     }
   })
 
-  it('omits hashed_app_id when the API did not supply one', () => {
-    // Null is the documented "do not emit" signal — a state or household with no
-    // application number must not surface an empty value to analytics.
-    syncHouseholdUserData(setUserData, true, { ...household, hashedAppId: undefined })
+  it('clears the hashed ids when the API did not supply them', () => {
+    // Clearing rather than skipping keeps a previous household's ids off this one's
+    // events; the data layer leaves undefined fields out of the payload.
+    syncHouseholdUserData(setUserData, true, {
+      ...household,
+      hashedAppId: null,
+      hashedAppIds: undefined,
+      hashedCaseIds: undefined
+    })
 
-    expect(setUserData.mock.calls.some(([p]) => p === 'hashed_app_id')).toBe(false)
+    for (const path of ['hashed_app_id', 'hashed_app_ids', 'hashed_case_ids']) {
+      expect(setUserData).toHaveBeenCalledWith(path, undefined, ANALYTICS_SCOPE)
+    }
     expect(valueFor('household_linked_children')).toBe(2)
+  })
+
+  it('puts the hashed ids on tracked events and drops them once a household has none', () => {
+    delete (window as unknown as Record<string, unknown>).digitalData
+    new DataLayer('digitalData')
+    const dataLayer = window.digitalData!
+
+    syncHouseholdUserData(dataLayer.user.set, true, household)
+    dataLayer.trackEvent('cta_click')
+    syncHouseholdUserData(dataLayer.user.set, true, {
+      ...household,
+      hashedAppId: null,
+      hashedAppIds: null,
+      hashedCaseIds: null
+    })
+    dataLayer.trackEvent('cta_click')
+
+    const [withIds, withoutIds] = dataLayer.event.map((e) => e.eventData)
+    expect(withIds).toMatchObject({
+      hashed_app_id: 'abc123',
+      hashed_app_ids: 'aaa,bbb',
+      hashed_case_ids: 'ccc'
+    })
+    expect(Object.keys(withoutIds ?? {}).filter((key) => key.startsWith('hashed_'))).toEqual([])
   })
 })

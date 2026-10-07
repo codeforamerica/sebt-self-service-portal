@@ -102,6 +102,8 @@ internal static class CbmsResponseMapper
                 ? s.SebtAppId?.ToString() : null,
             ApplicationStudentId = isApplicationBased
                 ? s.SebtChldId?.ToString() : null,
+            SourceApplicationId = s.SebtAppId?.ToString(),
+            SourceChildId = s.SebtChldId?.ToString(),
             ChildFirstName = s.StdFstNm ?? string.Empty,
             ChildLastName = s.StdLstNm ?? string.Empty,
             ChildDateOfBirth = ParseDateOnly(s.StdDob) ?? DateOnly.MinValue,
@@ -172,7 +174,8 @@ internal static class CbmsResponseMapper
                 {
                     FirstName = c.StdFstNm ?? string.Empty,
                     LastName = c.StdLstNm ?? string.Empty,
-                    Status = MapCaseStatus(c.StdntEligSts, logger, seenUnmappedTokens)
+                    Status = MapCaseStatus(c.StdntEligSts, logger, seenUnmappedTokens),
+                    SourceChildId = c.SebtChldId?.ToString()
                 }).ToList()
             };
         }).ToList();
