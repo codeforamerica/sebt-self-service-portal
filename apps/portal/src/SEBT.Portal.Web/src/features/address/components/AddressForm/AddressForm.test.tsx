@@ -744,7 +744,7 @@ describe('AddressForm', () => {
       expect(fieldset).toHaveClass('opacity-50')
 
       // One polite live region announces; the spinner itself is decorative
-      const label = screen.getByText('Processing')
+      const label = screen.getByText('Please wait')
       expect(label).toHaveClass('usa-sr-only')
       expect(label.closest('[role="status"]')).toHaveAttribute('aria-live', 'polite')
       const spinner = container.querySelector('.usa-spinner')
@@ -775,7 +775,7 @@ describe('AddressForm', () => {
       expect(screen.getByRole('button', { name: 'Continue' })).not.toBeDisabled()
       expect(screen.getByRole('button', { name: /back/i })).not.toBeDisabled()
       expect(container.querySelector('fieldset.usa-fieldset')).not.toHaveClass('opacity-50')
-      expect(screen.queryByText('Processing')).not.toBeInTheDocument()
+      expect(screen.queryByText('Please wait')).not.toBeInTheDocument()
       expect(container.querySelector('.usa-spinner')).toBeNull()
     })
   })

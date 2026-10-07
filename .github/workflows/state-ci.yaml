@@ -352,6 +352,12 @@ jobs:
       - name: Test
         run: pnpm ci:test:enrollment-checker
 
+      # "Build & Test" validates both apps whenever the portal or a shared package changes,
+      # so this runs only for a change that touches the checker alone.
+      - name: Validate locale content
+        if: needs.changes.outputs.frontend != 'true'
+        run: pnpm --filter @sebt/enrollment-checker copy:validate
+
       # The static export cannot include SSR-only route handlers; the deploy
       # workflow removes them before building, so do the same here for parity.
       - name: Remove SSR-only API routes

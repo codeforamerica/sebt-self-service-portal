@@ -74,7 +74,7 @@ export async function fillChildForm(page: Page, child: ChildFormEntry): Promise<
 /** Walks landing → disclaimer → child form for the first child of a session. */
 export async function startCheckFlow(page: Page): Promise<void> {
   await page.goto('/')
-  await page.getByRole('button', { name: /check enrollment/i }).click()
+  await page.getByRole('button', { name: /apply now/i }).click()
   await page.waitForURL('**/disclaimer')
   await page.getByRole('button', { name: /continue/i }).click()
   await page.waitForURL('**/check')

@@ -1,7 +1,10 @@
-# 0018 — OpenTelemetry for the Web Tier
+# 30. OpenTelemetry for the Web Tier
 
-**Status:** Accepted
-**Date:** 2026-07-15
+Date: 2026-07-15
+
+## Status
+
+Accepted
 
 ## Context
 
@@ -55,4 +58,3 @@ The app always emits OTLP to `localhost:4317`. A collector sits there and routes
 
 - [DC-341](https://codeforamerica.atlassian.net/browse/DC-341) — this work
 - `SEBT.Portal.Api/Telemetry/` — the backend OpenTelemetry setup this mirrors
-- Numbered 0018 because `0017` is the merged monorepo-consolidation ADR.

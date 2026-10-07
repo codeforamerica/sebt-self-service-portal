@@ -457,7 +457,7 @@ describe('ConfirmRequest', () => {
     // The label stays "Order card"; no dev-namespace "Loading..." swap
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
-    expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+    expect(screen.getByText('Please wait')).toHaveClass('usa-sr-only')
 
     resolveRequest!()
     await waitFor(() => {

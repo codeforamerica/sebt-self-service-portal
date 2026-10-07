@@ -190,6 +190,13 @@ docker compose down
 docker compose down -v
 ```
 
+```bash
+pnpm docs:build     # generate everything and render to docs/docfx/_site
+pnpm docs:serve     # render and serve at http://localhost:8080
+```
+
+See [docs/docfx/README.md](./docs/docfx/README.md) for how each section is wired and how to add more.
+
 ### Testing
 
 #### Run backend tests
