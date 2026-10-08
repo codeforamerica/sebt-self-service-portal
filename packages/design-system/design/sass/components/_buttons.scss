@@ -36,7 +36,9 @@ a state to configure.
   // on a light fill and fail WCAG contrast, so visited buttons keep the
   // state's resting text color. Outline and unstyled buttons are left on the
   // USWDS default because their visited state already meets contrast.
-  &:visited:where(:not(.usa-button--outline, .usa-button--unstyled)) {
+  &:visited:where(
+      :not(:hover, :active, .usa-button--outline, .usa-button--unstyled)
+    ) {
     color: color(semantic.$theme-button-text);
   }
 
