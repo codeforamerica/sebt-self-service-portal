@@ -236,6 +236,13 @@ export const AllowedActionsSchema = z.object({
 
 export type AllowedActions = z.infer<typeof AllowedActionsSchema>
 
+// HMAC-SHA256 digests (lowercase hex) the backend emits only for states configured to surface
+// them (CO today). Whitespace becomes null so a blank string never reaches analytics.
+const AnalyticsDigestSchema = z.preprocess(
+  (v) => (typeof v === 'string' && v.trim().length === 0 ? null : v),
+  z.string().nullable().optional()
+)
+
 export const HouseholdDataSchema = z.object({
   // email is optional to support IAL authorization where user may not have access to PII
   email: z.string().nullable().optional(),
@@ -248,15 +255,11 @@ export const HouseholdDataSchema = z.object({
   allowedActions: AllowedActionsSchema.nullable().optional(),
   // Missing/null preprocess to Unknown so analytics never collapse broken payloads into NonCoLoaded (PR #208).
   coLoadedCohort: CoLoadedCohortSchema,
-  // HMAC-SHA256 digest of the SEBT App ID (lowercase hex). Backend emits this
-  // only for states configured to surface it (CO today). Null otherwise.
-  // Whitespace is coerced to null defensively so a future backend change that
-  // forgets the IsNullOrWhiteSpace guard cannot leak a blank string into
-  // analytics. See docs/analytics/hashed-sebt-app-id.md.
-  hashedAppId: z.preprocess(
-    (v) => (typeof v === 'string' && v.trim().length === 0 ? null : v),
-    z.string().nullable().optional()
-  )
+  // Digest of the SEBT App ID. See docs/analytics/hashed-sebt-app-id.md.
+  hashedAppId: AnalyticsDigestSchema,
+  // Comma-joined 16-character digest prefixes, one per distinct id in the household.
+  hashedAppIds: AnalyticsDigestSchema,
+  hashedCaseIds: AnalyticsDigestSchema
 })
 
 export type HouseholdData = z.infer<typeof HouseholdDataSchema>

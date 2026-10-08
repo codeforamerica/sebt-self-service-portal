@@ -243,7 +243,7 @@ public class HouseholdDataResponseMapperTests
     }
 
     [Fact]
-    public void ToResponse_PassesHashedAppIdThrough_WhenProvided()
+    public void ToResponse_PassesAnalyticsIdentifiersThrough_WhenProvided()
     {
         var domain = new HouseholdData
         {
@@ -251,14 +251,20 @@ public class HouseholdDataResponseMapperTests
             SummerEbtCases = new List<SummerEbtCase>(),
             Applications = new List<Application>()
         };
+        var identifiers = new HouseholdAnalyticsIdentifiers(
+            HashedAppId: "ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861",
+            HashedAppIds: "0a1b2c3d4e5f6071,ca383d90647e3715",
+            HashedCaseIds: "1f2e3d4c5b6a7980");
 
-        var response = domain.ToResponse(hashedAppId: "ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861");
+        var response = domain.ToResponse(identifiers);
 
-        Assert.Equal("ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861", response.HashedAppId);
+        Assert.Equal(identifiers.HashedAppId, response.HashedAppId);
+        Assert.Equal(identifiers.HashedAppIds, response.HashedAppIds);
+        Assert.Equal(identifiers.HashedCaseIds, response.HashedCaseIds);
     }
 
     [Fact]
-    public void ToResponse_DefaultsHashedAppIdToNull_WhenNotProvided()
+    public void ToResponse_DefaultsAnalyticsIdentifiersToNull_WhenNotProvided()
     {
         var domain = new HouseholdData
         {
@@ -270,5 +276,7 @@ public class HouseholdDataResponseMapperTests
         var response = domain.ToResponse();
 
         Assert.Null(response.HashedAppId);
+        Assert.Null(response.HashedAppIds);
+        Assert.Null(response.HashedCaseIds);
     }
 }

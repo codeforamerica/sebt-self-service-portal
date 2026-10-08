@@ -383,6 +383,25 @@ describe('DataLayer', () => {
 
       expect(window.digitalData!.event[0]!.eventData).not.toHaveProperty('email')
     })
+
+    it('omits fields cleared with undefined', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.user.set('hashed_case_ids', 'abc', ['default', 'analytics'])
+      window.digitalData!.user.set('hashed_case_ids', undefined, ['default', 'analytics'])
+
+      window.digitalData!.trackEvent('cta_click')
+
+      expect(window.digitalData!.event[0]!.eventData).not.toHaveProperty('hashed_case_ids')
+    })
+
+    it('still forwards fields set to null', () => {
+      new DataLayer('digitalData')
+      window.digitalData!.page.set('error_code', null)
+
+      window.digitalData!.trackEvent('cta_click')
+
+      expect(window.digitalData!.event[0]!.eventData).toEqual({ error_code: null })
+    })
   })
 
   // ── pageLoad ──

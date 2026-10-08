@@ -923,6 +923,97 @@ public class CbmsResponseMapperTests
         Assert.Contains("denied-duplicate", log.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public void MapToHouseholdData_directly_certified_children_carry_source_ids_without_looking_like_applicants()
+    {
+        var result = MapHousehold(
+            EnrollmentRow(appId: 1199181, childId: 1200736, "Kid", "AP", "PW", "DIRC"),
+            EnrollmentRow(appId: 1199180, childId: 1200732, "Tilly", "AP", "PW", "DIRC"));
+
+        Assert.Empty(result.Applications);
+        Assert.Collection(result.SummerEbtCases,
+            kid =>
+            {
+                Assert.Equal("1199181", kid.SourceApplicationId);
+                Assert.Equal("1200736", kid.SourceChildId);
+                Assert.Null(kid.ApplicationId);
+                Assert.Null(kid.ApplicationStudentId);
+            },
+            tilly =>
+            {
+                Assert.Equal("1199180", tilly.SourceApplicationId);
+                Assert.Equal("1200732", tilly.SourceChildId);
+                Assert.Null(tilly.ApplicationId);
+                Assert.Null(tilly.ApplicationStudentId);
+            });
+    }
+
+    [Fact]
+    public void MapToHouseholdData_children_on_one_application_share_its_id_and_keep_their_own_child_ids()
+    {
+        var result = MapHousehold(
+            EnrollmentRow(appId: 1199189, childId: 1200786, "Gene", "AP", "PW", "PK"),
+            EnrollmentRow(appId: 1199189, childId: 1200721, "Lucille", "AP", "PW", "PK"));
+
+        Assert.All(result.SummerEbtCases, c => Assert.Equal("1199189", c.SourceApplicationId));
+        Assert.Equal(["1200786", "1200721"], result.SummerEbtCases.Select(c => c.SourceChildId));
+        var application = Assert.Single(result.Applications);
+        Assert.Equal("1199189", application.ApplicationNumber);
+        Assert.Equal(["1200786", "1200721"], application.Children.Select(c => c.SourceChildId));
+    }
+
+    [Fact]
+    public void MapToHouseholdData_pending_applicant_is_identified_through_its_application_child()
+    {
+        var result = MapHousehold(
+            EnrollmentRow(appId: 1199119, childId: 1200686, "Polly", "PE", "PI", "PK"),
+            EnrollmentRow(appId: 1192789, childId: 1233721, "Dolly", "AP", "PW", "DIRC"),
+            EnrollmentRow(appId: 111682, childId: 125726, "Adelaide", "AP", "PW", "PK"),
+            EnrollmentRow(appId: 111682, childId: 1203589, "Anthony", "AP", "PW", "PK"));
+
+        // A pending applicant has no case, so its application child is the only place its id survives.
+        Assert.DoesNotContain(result.SummerEbtCases, c => c.ChildFirstName == "Polly");
+        var pending = Assert.Single(result.Applications, a => a.ApplicationNumber == "1199119");
+        Assert.Equal("1200686", Assert.Single(pending.Children).SourceChildId);
+
+        var dolly = Assert.Single(result.SummerEbtCases, c => c.ChildFirstName == "Dolly");
+        Assert.Equal("1192789", dolly.SourceApplicationId);
+        Assert.Equal("1233721", dolly.SourceChildId);
+    }
+
+    [Fact]
+    public void MapToHouseholdData_missing_source_ids_map_to_null()
+    {
+        var student = CreateMinimalStudent();
+        student.SebtAppId = null;
+        student.SebtChldId = null;
+
+        var result = MapHousehold(student);
+
+        var @case = Assert.Single(result.SummerEbtCases);
+        Assert.Null(@case.SourceApplicationId);
+        Assert.Null(@case.SourceChildId);
+    }
+
+    private static HouseholdData MapHousehold(params GetAccountStudentDetail[] rows) =>
+        CbmsResponseMapper.MapToHouseholdData(
+            new GetAccountDetailsResponse { StdntEnrollDtls = rows.ToList() },
+            "8185551234",
+            new PiiVisibility(IncludeAddress: false, IncludeEmail: false, IncludePhone: false));
+
+    private static GetAccountStudentDetail EnrollmentRow(
+        int appId, int childId, string firstName, string eligibilityStatus, string applicationStatus, string eligibilitySource) =>
+        new()
+        {
+            SebtAppId = appId,
+            SebtChldId = childId,
+            StdFstNm = firstName,
+            StdLstNm = "Household",
+            StdntEligSts = eligibilityStatus,
+            SebtAppSts = applicationStatus,
+            EligSrc = eligibilitySource
+        };
+
     private static GetAccountStudentDetail CreateMinimalStudent()
     {
         return new GetAccountStudentDetail

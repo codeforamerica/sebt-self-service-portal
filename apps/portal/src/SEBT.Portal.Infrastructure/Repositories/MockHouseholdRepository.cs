@@ -1279,6 +1279,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 SummerEBTCaseID = sec.SummerEBTCaseID,
                 ApplicationId = sec.ApplicationId,
                 ApplicationStudentId = sec.ApplicationStudentId,
+                SourceApplicationId = sec.SourceApplicationId,
+                SourceChildId = sec.SourceChildId,
                 ChildFirstName = sec.ChildFirstName,
                 ChildLastName = sec.ChildLastName,
                 ChildDateOfBirth = sec.ChildDateOfBirth,
@@ -1334,7 +1336,8 @@ public class MockHouseholdRepository : IHouseholdRepository
                 {
                     FirstName = c.FirstName,
                     LastName = c.LastName,
-                    Status = c.Status
+                    Status = c.Status,
+                    SourceChildId = c.SourceChildId
                 }).ToList()
             }).ToList()
         };

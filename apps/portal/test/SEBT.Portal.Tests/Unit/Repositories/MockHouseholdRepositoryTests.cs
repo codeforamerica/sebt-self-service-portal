@@ -596,6 +596,36 @@ public class MockHouseholdRepositoryTests
     }
 
     [Fact]
+    public async Task UpsertHouseholdAsync_KeepsSourceIdsOnCasesAndApplicationChildren()
+    {
+        var household = new HouseholdData
+        {
+            Email = "source-ids@example.com",
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase { ChildFirstName = "Dolly", SourceApplicationId = "1192789", SourceChildId = "1233721" }
+            },
+            Applications = new List<Application>
+            {
+                new Application
+                {
+                    ApplicationNumber = "1199119",
+                    Children = new List<Child> { new Child { FirstName = "Polly", SourceChildId = "1200686" } }
+                }
+            }
+        };
+
+        await _repository.UpsertHouseholdAsync(household);
+
+        var result = await _repository.GetHouseholdByEmailAsync(household.Email, FullPiiVisibility, UserIalLevel.IAL1plus);
+        Assert.NotNull(result);
+        var dolly = Assert.Single(result.SummerEbtCases);
+        Assert.Equal("1192789", dolly.SourceApplicationId);
+        Assert.Equal("1233721", dolly.SourceChildId);
+        Assert.Equal("1200686", Assert.Single(Assert.Single(result.Applications).Children).SourceChildId);
+    }
+
+    [Fact]
     public async Task UpsertHouseholdAsync_NormalizesEmail()
     {
         // Arrange

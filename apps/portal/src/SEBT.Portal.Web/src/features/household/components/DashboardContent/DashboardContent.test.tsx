@@ -440,12 +440,17 @@ describe('DashboardContent', () => {
     })
   })
 
-  describe('hashed_app_id user data', () => {
-    it('sets user.hashed_app_id when the API includes hashedAppId', async () => {
+  describe('hashed identifier user data', () => {
+    it('sets the hashed ids on user data when the API includes them', async () => {
       const expectedDigest = 'ca383d90647e371547d6e66297cda8089b81fc1c5cb30da6cfcbdf744d9e2861'
       server.use(
         http.get('/api/household/data', () => {
-          return HttpResponse.json({ ...TEST_HOUSEHOLD_DATA, hashedAppId: expectedDigest })
+          return HttpResponse.json({
+            ...TEST_HOUSEHOLD_DATA,
+            hashedAppId: expectedDigest,
+            hashedAppIds: 'ca383d90647e3715',
+            hashedCaseIds: '0a1b2c3d4e5f6071,1f2e3d4c5b6a7980'
+          })
         })
       )
 
@@ -457,21 +462,28 @@ describe('DashboardContent', () => {
           'analytics'
         ])
       })
+      expect(mockSetUserData).toHaveBeenCalledWith('hashed_app_ids', 'ca383d90647e3715', [
+        'default',
+        'analytics'
+      ])
+      expect(mockSetUserData).toHaveBeenCalledWith(
+        'hashed_case_ids',
+        '0a1b2c3d4e5f6071,1f2e3d4c5b6a7980',
+        ['default', 'analytics']
+      )
     })
 
-    it('does not set user.hashed_app_id when the API omits it (e.g. non-CO state)', async () => {
-      // TEST_HOUSEHOLD_DATA has no hashedAppId — backend gates by state.
+    it('clears the hashed ids when the API omits them (e.g. non-CO state)', async () => {
+      // TEST_HOUSEHOLD_DATA has no hashed ids — backend gates by state.
       renderWithProviders(<DashboardContent />)
 
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith('household_result')
       })
 
-      expect(mockSetUserData).not.toHaveBeenCalledWith(
-        'hashed_app_id',
-        expect.anything(),
-        expect.anything()
-      )
+      for (const path of ['hashed_app_id', 'hashed_app_ids', 'hashed_case_ids']) {
+        expect(mockSetUserData).toHaveBeenCalledWith(path, undefined, ['default', 'analytics'])
+      }
     })
   })
 
