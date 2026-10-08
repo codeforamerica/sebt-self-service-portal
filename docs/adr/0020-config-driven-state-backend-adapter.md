@@ -8,7 +8,7 @@ Proposed — the adapter is dark behind `FeatureManagement:use_configurable_stat
 
 ## Context
 
-Each new state today costs a bespoke MEF connector — roughly 9k LOC of transport, mapping, and matching code, a paired cross-repo CI build, and its own deploy (see [0007-multi-state-plugin-approach.md](./0007-multi-state-plugin-approach.md)). To find out how much of that is real variation, we diffed the two existing connectors — Colorado CBMS over REST, DC stored procedures over ADO.NET — concern by concern. Bespoke code dominated the cost, front-loaded on transport and matching. The table below condenses that taxonomy (source anchors were `file:line` references valid as of the spike). Classification: **(a)** shared plumbing, **(b)** config over a shared primitive, **(c)** bespoke.
+Each new state today costs a bespoke MEF connector — roughly 9k LOC of transport, mapping, and matching code, a paired cross-repo CI build, and its own deploy (see [0022-multi-state-plugin-approach.md](./0022-multi-state-plugin-approach.md)). To find out how much of that is real variation, we diffed the two existing connectors — Colorado CBMS over REST, DC stored procedures over ADO.NET — concern by concern. Bespoke code dominated the cost, front-loaded on transport and matching. The table below condenses that taxonomy (source anchors were `file:line` references valid as of the spike). Classification: **(a)** shared plumbing, **(b)** config over a shared primitive, **(c)** bespoke.
 
 | # | Concern | CO | DC | Class |
 |---|---|---|---|---|
@@ -32,7 +32,7 @@ The plugin contract has no capability model. `IStatePlugin` is a bare marker; a 
 We make every state backend speak JSON over HTTP, and we drive all of them through one config-driven adapter.
 
 - **JSON over HTTP, everywhere.** A backend that can't (DC's stored procedures) gets a thin exact-passthrough REST wrapper — raw column names out, zero canonical mapping in the wrapper. Once every backend is JSON-over-HTTP, the only thing that varies is the mapping, and mapping is data.
-- **One adapter.** [`ConfigurableStateBackend`](../../apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs) implements the five Core ports, parameterized entirely by a per-state YAML bundle. Adding a state means authoring config and supplying secrets — no plugin, no cross-repo CI pairing.
+- **One adapter.** [`ConfigurableStateBackend`](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs) implements the five Core ports, parameterized entirely by a per-state YAML bundle. Adding a state means authoring config and supplying secrets — no plugin, no cross-repo CI pairing.
 - **A closed catalog of named primitives.** Auth schemes, field mappings, enum tables, `keywordRules`, disaggregation rules, the opaque `caseId` token, request binding, result classifiers, enrollment match strategies. Config names a primitive and supplies its parameters; every algorithm lives in fixed code.
 - **Capabilities derived from config.** An operation's presence in the YAML *is* its capability — no separate manifest to keep in sync, no MEF-export inference. This replaces the implicit capability model above with declared data.
 - **The config/code line sits at the shape of the data, not the meaning of the values.** Anything reducible to "read field X, apply table/predicate Y, emit canonical value Z" is config over a primitive. Anything that inspects state-specific structure in a way no table captures stays code.
@@ -44,7 +44,7 @@ We make every state backend speak JSON over HTTP, and we drive all of them throu
 1. **Canonical state contract (`spike/state-api`)** — every state implements one portal-defined REST spec.
    🔴 We reject it: it pushes conformance cost onto states, and the portal still needs per-state mediation for backends that can't or won't conform. The adapter keeps mediation on our side, where we can ship it.
 
-2. **Continue per-state MEF plugins** — the status quo per [0007-multi-state-plugin-approach.md](./0007-multi-state-plugin-approach.md).
+2. **Continue per-state MEF plugins** — the status quo per [0022-multi-state-plugin-approach.md](./0022-multi-state-plugin-approach.md).
    🔴 ~9k LOC per state, cross-repo CI pairing, and no capability model — capability stays implicit in exports and null returns.
 
 3. **General transform-expression engine (JSONata, JUST, JsonLogic)** — replace the primitive catalog with one expression evaluator.
@@ -61,9 +61,9 @@ We make every state backend speak JSON over HTTP, and we drive all of them throu
 
 ## Key files
 
-- Ports: [`apps/portal/src/SEBT.Portal.Core/StateBackends/`](../../apps/portal/src/SEBT.Portal.Core/StateBackends/) — `IHouseholdLookupBackend`, `ICardReplacementBackend`, `IAddressUpdateBackend`, `IEnrollmentCheckBackend`, `IStateBackendHealth`
-- Driver: [`apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs`](../../apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs)
-- Config model: [`apps/portal/src/SEBT.Portal.Core/StateBackends/Configuration/`](../../apps/portal/src/SEBT.Portal.Core/StateBackends/Configuration/)
-- Sample configs: [`dc.sample.yaml`](../../apps/portal/test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml), [`co.sample.yaml`](../../apps/portal/test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml)
-- Authoring guide: [`CONFIG-AUTHORING.md`](../../apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/CONFIG-AUTHORING.md)
+- Ports: [`apps/portal/src/SEBT.Portal.Core/StateBackends/`](https://github.com/codeforamerica/sebt-self-service-portal/tree/main/apps/portal/src/SEBT.Portal.Core/StateBackends) — `IHouseholdLookupBackend`, `ICardReplacementBackend`, `IAddressUpdateBackend`, `IEnrollmentCheckBackend`, `IStateBackendHealth`
+- Driver: [`apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs`](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs)
+- Config model: [`apps/portal/src/SEBT.Portal.Core/StateBackends/Configuration/`](https://github.com/codeforamerica/sebt-self-service-portal/tree/main/apps/portal/src/SEBT.Portal.Core/StateBackends/Configuration)
+- Sample configs: [`dc.sample.yaml`](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/apps/portal/test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml), [`co.sample.yaml`](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/apps/portal/test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml)
+- Authoring guide: [`CONFIG-AUTHORING.md`](https://github.com/codeforamerica/sebt-self-service-portal/blob/main/apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/CONFIG-AUTHORING.md)
 - DC REST wrapper: `src/SEBT.Portal.StatePlugins.DC.RestApi` in the `sebt-self-service-portal-dc-connector` repo
