@@ -1904,6 +1904,154 @@
     "ink": {
       "$type": "color",
       "$value": "{base-darkest}"
+    },
+    "theme-font-type-sans": {
+      "$type": "fontFamilies",
+      "$value": "Source Sans Pro"
+    },
+    "theme-font-type-serif": {
+      "$type": "fontFamilies",
+      "$value": "Merriweather"
+    },
+    "sans": {
+      "$type": "fontFamilies",
+      "$value": "{theme-font-type-sans}"
+    },
+    "serif": {
+      "$type": "fontFamilies",
+      "$value": "{theme-font-type-serif}"
+    },
+    "theme-font-role-ui": {
+      "$type": "fontFamilies",
+      "$value": "{sans}"
+    },
+    "theme-font-role-heading": {
+      "$type": "fontFamilies",
+      "$value": "{serif}"
+    },
+    "theme-font-role-body": {
+      "$type": "fontFamilies",
+      "$value": "{sans}"
+    },
+    "theme-font-role-alt": {
+      "$type": "fontFamilies",
+      "$value": "{serif}"
+    },
+    "theme-body-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{body}"
+    },
+    "ui": {
+      "$type": "fontFamilies",
+      "$value": "{theme-font-role-ui}"
+    },
+    "body": {
+      "$type": "fontFamilies",
+      "$value": "{theme-font-role-body}"
+    },
+    "heading": {
+      "$type": "fontFamilies",
+      "$value": "{theme-font-role-heading}"
+    },
+    "alt": {
+      "$type": "fontFamilies",
+      "$value": "{theme-font-role-alt}"
+    },
+    "theme-lead-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{heading}"
+    },
+    "theme-accordion-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{body}"
+    },
+    "theme-alert-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-banner-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-breadcrumb-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{body}"
+    },
+    "theme-button-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-card-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{body}"
+    },
+    "theme-collection-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-footer-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{body}"
+    },
+    "theme-form-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-icon-list-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{body}"
+    },
+    "theme-icon-list-title-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{heading}"
+    },
+    "theme-identifier-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-in-page-nav-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-navigation-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-pagination-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-process-list-counter-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-process-list-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-process-list-heading-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-search-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-sidenav-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-step-indicator-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-step-indicator-heading-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
+    },
+    "theme-summary-box-font-family": {
+      "$type": "fontFamilies",
+      "$value": "{ui}"
     }
   },
   "theme": {
