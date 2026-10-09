@@ -47,7 +47,7 @@ export function EnrolledChildren() {
       </p>
 
       <div
-        className="usa-accordion usa-accordion--bordered"
+        className="usa-accordion usa-accordion--bordered usa-accordion--icon-end"
         data-allow-multiple
       >
         {data.summerEbtCases.map((c, index) => (
