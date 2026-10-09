@@ -13,6 +13,32 @@
 KEYCLOAK_DEPLOY_CLIENT_ID_DEFAULT="sebt-preview-deploy"
 KEYCLOAK_DEPLOY_CLIENT_SECRET_DEFAULT="sebt-preview-deploy-secret"
 
+# JSON body for Admin API create of the preview deploy client.
+keycloak_deploy_client_create_payload() {
+  local client_id="$1"
+  local secret="$2"
+
+  jq -n \
+    --arg client_id "${client_id}" \
+    --arg secret "${secret}" \
+    '{
+      clientId: $client_id,
+      name: "SEBT Preview deploy (Admin API)",
+      enabled: true,
+      protocol: "openid-connect",
+      publicClient: false,
+      secret: $secret,
+      serviceAccountsEnabled: true,
+      clientAuthenticatorType: "client-secret",
+      standardFlowEnabled: false,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: false,
+      frontchannelLogout: false,
+      redirectUris: [],
+      webOrigins: []
+    }'
+}
+
 # Resolve deploy client id/secret once. Precedence per field:
 # explicit env → Secrets Manager JSON (PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID) → defaults.
 # SM JSON shape: { "clientId"|"client_id", "clientSecret"|"client_secret" }.
@@ -106,9 +132,8 @@ keycloak_deploy_token() {
   echo "${token}"
 }
 
-# Bootstrap-admin helpers (master realm). Used only by
-# bootstrap-keycloak-deploy-client.sh when seeding the deploy client onto an
-# already-imported live realm.
+# Bootstrap-admin helpers (master realm). Used by ensure_keycloak_deploy_client
+# when seeding the deploy client onto an already-imported live realm.
 resolve_keycloak_admin_secret_id() {
   if [ -n "${PREVIEW_KEYCLOAK_ADMIN_SECRET_ID:-}" ]; then
     echo "${PREVIEW_KEYCLOAK_ADMIN_SECRET_ID}"
@@ -264,6 +289,7 @@ keycloak_client_uuid() {
   local keycloak_hostname="$1"
   local token="$2"
   local client_id="$3"
+  local quiet="${4:-}"
   local body http_code uuid
 
   body="$(mktemp)"
@@ -290,7 +316,9 @@ keycloak_client_uuid() {
   rm -f "${body}"
 
   if [ -z "${uuid}" ]; then
-    log_error "Keycloak client not found: ${client_id}"
+    if [ "${quiet}" != "quiet" ]; then
+      log_error "Keycloak client not found: ${client_id}"
+    fi
     return 1
   fi
 
@@ -507,6 +535,124 @@ keycloak_update_client_preview_host() {
   return 1
 }
 
+# Seed sebt-preview-deploy on a live realm when client_credentials fail.
+# --import-realm does not overwrite an existing Postgres realm, so the client
+# from sebt-realm.preview.json is missing until this runs once.
+ensure_keycloak_deploy_client() {
+  local keycloak_hostname="$1"
+  local deploy_client_id deploy_client_secret admin_token existing_uuid client_uuid
+  local uuid_rc payload body http_code current updated sa_body sa_user_id
+  local rm_client_uuid roles_body role_payload map_body
+
+  IFS=$'\t' read -r deploy_client_id deploy_client_secret < <(keycloak_deploy_credentials)
+
+  if keycloak_deploy_token "${keycloak_hostname}" >/dev/null 2>&1; then
+    log_info "Keycloak deploy client ${deploy_client_id} already works"
+    return 0
+  fi
+
+  log_info "Keycloak deploy client ${deploy_client_id} missing or unauthorized; seeding via bootstrap admin"
+  admin_token="$(keycloak_admin_token "${keycloak_hostname}")"
+
+  existing_uuid=""
+  uuid_rc=0
+  existing_uuid="$(keycloak_client_uuid "${keycloak_hostname}" "${admin_token}" "${deploy_client_id}" quiet)" || uuid_rc=$?
+  if [ "${uuid_rc}" -eq 0 ] && [ -n "${existing_uuid}" ]; then
+    log_info "Client ${deploy_client_id} already exists (${existing_uuid}); will refresh secret and roles"
+    client_uuid="${existing_uuid}"
+  else
+    payload="$(mktemp)"
+    body="$(mktemp)"
+    keycloak_deploy_client_create_payload "${deploy_client_id}" "${deploy_client_secret}" >"${payload}"
+
+    http_code="$(keycloak_admin_request POST \
+      "${keycloak_hostname}/admin/realms/sebt/clients" \
+      "${admin_token}" "${body}" "${payload}")"
+    rm -f "${payload}"
+
+    if [ "${http_code}" = "409" ]; then
+      log_info "Deploy client create raced; using existing client"
+      rm -f "${body}"
+      client_uuid="$(keycloak_client_uuid "${keycloak_hostname}" "${admin_token}" "${deploy_client_id}")"
+    elif [ "${http_code}" != "201" ] && [ "${http_code}" != "200" ]; then
+      log_error "Failed to create deploy client (HTTP ${http_code}): $(head -c 500 "${body}")"
+      rm -f "${body}"
+      return 1
+    else
+      rm -f "${body}"
+      client_uuid="$(keycloak_client_uuid "${keycloak_hostname}" "${admin_token}" "${deploy_client_id}")"
+      log_info "Created deploy client ${deploy_client_id} (${client_uuid})"
+    fi
+  fi
+
+  current="$(keycloak_get_client "${keycloak_hostname}" "${admin_token}" "${client_uuid}")"
+  updated="$(echo "${current}" | jq --arg secret "${deploy_client_secret}" \
+    '.secret = $secret | .serviceAccountsEnabled = true | .publicClient = false | .clientAuthenticatorType = "client-secret"')"
+  keycloak_put_client "${keycloak_hostname}" "${admin_token}" "${client_uuid}" "${updated}"
+
+  sa_body="$(mktemp)"
+  http_code="$(keycloak_admin_request GET \
+    "${keycloak_hostname}/admin/realms/sebt/clients/${client_uuid}/service-account-user" \
+    "${admin_token}" "${sa_body}")"
+  if [ "${http_code}" != "200" ]; then
+    log_error "Failed to load service-account user (HTTP ${http_code}): $(head -c 500 "${sa_body}")"
+    rm -f "${sa_body}"
+    return 1
+  fi
+  sa_user_id="$(jq -r '.id // empty' "${sa_body}")"
+  rm -f "${sa_body}"
+  if [ -z "${sa_user_id}" ]; then
+    log_error "Service-account user id missing for ${deploy_client_id}"
+    return 1
+  fi
+
+  rm_client_uuid="$(keycloak_client_uuid "${keycloak_hostname}" "${admin_token}" "realm-management")"
+  if [ -z "${rm_client_uuid}" ]; then
+    log_error "realm-management client not found in sebt realm"
+    return 1
+  fi
+
+  roles_body="$(mktemp)"
+  http_code="$(keycloak_admin_request GET \
+    "${keycloak_hostname}/admin/realms/sebt/clients/${rm_client_uuid}/roles" \
+    "${admin_token}" "${roles_body}")"
+  if [ "${http_code}" != "200" ]; then
+    log_error "Failed to list realm-management roles (HTTP ${http_code})"
+    rm -f "${roles_body}"
+    return 1
+  fi
+
+  role_payload="$(mktemp)"
+  jq '[.[] | select(.name == "manage-clients" or .name == "view-clients" or .name == "query-clients")]' \
+    "${roles_body}" >"${role_payload}"
+  rm -f "${roles_body}"
+
+  if [ "$(jq 'length' "${role_payload}")" -lt 1 ]; then
+    log_error "Required realm-management roles not found"
+    rm -f "${role_payload}"
+    return 1
+  fi
+
+  map_body="$(mktemp)"
+  http_code="$(keycloak_admin_request POST \
+    "${keycloak_hostname}/admin/realms/sebt/users/${sa_user_id}/role-mappings/clients/${rm_client_uuid}" \
+    "${admin_token}" "${map_body}" "${role_payload}")"
+  rm -f "${role_payload}"
+  if [ "${http_code}" != "204" ] && [ "${http_code}" != "200" ] && [ "${http_code}" != "409" ]; then
+    log_error "Failed to assign service-account roles (HTTP ${http_code}): $(head -c 500 "${map_body}")"
+    rm -f "${map_body}"
+    return 1
+  fi
+  rm -f "${map_body}"
+
+  if ! keycloak_deploy_token "${keycloak_hostname}" >/dev/null; then
+    log_error "Deploy client still cannot obtain a token after bootstrap"
+    return 1
+  fi
+
+  log_info "Keycloak deploy client ${deploy_client_id} is ready"
+}
+
 ensure_keycloak_preview_host_redirects() {
   local keycloak_hostname="$1"
   local web_host="$2"
@@ -516,6 +662,7 @@ ensure_keycloak_preview_host_redirects() {
   require_command curl
 
   log_info "Registering Keycloak redirect URIs for https://${web_host}"
+  ensure_keycloak_deploy_client "${keycloak_hostname}"
   # Fresh token per client so step-up registration is not racing token TTL.
   keycloak_update_client_preview_host add \
     "${keycloak_hostname}" "${login_client_id}" "${web_host}"
@@ -532,6 +679,7 @@ remove_keycloak_preview_host_redirects() {
   require_command curl
 
   log_info "Removing Keycloak redirect URIs for https://${web_host}"
+  ensure_keycloak_deploy_client "${keycloak_hostname}"
   keycloak_update_client_preview_host remove \
     "${keycloak_hostname}" "${login_client_id}" "${web_host}"
   keycloak_update_client_preview_host remove \
