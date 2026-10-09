@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -10,7 +11,29 @@ namespace SEBT.Portal.Tests.Unit.Infrastructure.Services;
 
 public class SmartyAddressVerificationDiagnosticsTests
 {
-    private static SmartyAddressVerificationDiagnostics CreateDiagnostics()
+    private const string VerifiedCandidateJson =
+        """
+        [{
+          "input_index": 0,
+          "candidate_index": 0,
+          "delivery_line_1": "123 Main St",
+          "delivery_line_2": null,
+          "components": {
+            "primary_number": "123",
+            "street_name": "Main",
+            "street_suffix": "St",
+            "city_name": "Denver",
+            "state_abbreviation": "CO",
+            "zipcode": "80203",
+            "plus4_code": "1234"
+          },
+          "metadata": { "record_type": "S" },
+          "analysis": { "dpv_match_code": "Y" }
+        }]
+        """;
+
+    private static SmartyAddressVerificationDiagnostics CreateDiagnostics(
+        ILogger<SmartyAddressVerificationService>? logger = null)
     {
         var smartySnapshot = Substitute.For<IOptionsSnapshot<SmartySettings>>();
         smartySnapshot.Value.Returns(new SmartySettings
@@ -30,36 +53,15 @@ public class SmartyAddressVerificationDiagnosticsTests
         return new SmartyAddressVerificationDiagnostics(
             smartySnapshot,
             policySnapshot,
-            NullLogger<SmartyAddressVerificationService>.Instance);
+            logger ?? NullLogger<SmartyAddressVerificationService>.Instance);
     }
 
     [Fact]
     public async Task ValidateAgainstCannedSuccessAsync_ReturnsSuccess_WhenBodyContainsVerifiableCandidate()
     {
-        var json =
-            """
-            [{
-              "input_index": 0,
-              "candidate_index": 0,
-              "delivery_line_1": "123 Main St",
-              "delivery_line_2": null,
-              "components": {
-                "primary_number": "123",
-                "street_name": "Main",
-                "street_suffix": "St",
-                "city_name": "Denver",
-                "state_abbreviation": "CO",
-                "zipcode": "80203",
-                "plus4_code": "1234"
-              },
-              "metadata": { "record_type": "S" },
-              "analysis": { "dpv_match_code": "Y" }
-            }]
-            """;
-
         var diagnostics = CreateDiagnostics();
 
-        var result = await diagnostics.ValidateAgainstCannedSuccessAsync(json);
+        var result = await diagnostics.ValidateAgainstCannedSuccessAsync(VerifiedCandidateJson);
 
         var success = Assert.IsType<SuccessResult<AddressUpdateSuccess>>(result);
         Assert.Equal("123 Main St", success.Value.NormalizedAddress.StreetAddress1);
@@ -86,5 +88,51 @@ public class SmartyAddressVerificationDiagnosticsTests
 
         var failure = Assert.IsType<DependencyFailedResult<AddressUpdateSuccess>>(result);
         Assert.Equal(DependencyFailedReason.ConnectionFailed, failure.Reason);
+    }
+
+    [Fact]
+    public async Task ValidateAgainstCannedSuccessAsync_TagsLookupEventAsDiagnostic()
+    {
+        var logger = new CapturingLogger<SmartyAddressVerificationService>();
+        var diagnostics = CreateDiagnostics(logger);
+
+        await diagnostics.ValidateAgainstCannedSuccessAsync(VerifiedCandidateJson);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal("Verified", Assert.IsType<string>(entry.Properties["Outcome"]));
+        AssertDiagnosticScope(entry);
+    }
+
+    [Fact]
+    public async Task ValidateAgainstCannedServerErrorAsync_TagsLookupEventAsDiagnostic()
+    {
+        var logger = new CapturingLogger<SmartyAddressVerificationService>();
+        var diagnostics = CreateDiagnostics(logger);
+
+        await diagnostics.ValidateAgainstCannedServerErrorAsync();
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal("HttpError", Assert.IsType<string>(entry.Properties["Outcome"]));
+        AssertDiagnosticScope(entry);
+    }
+
+    [Fact]
+    public async Task RunningDiagnosticsTwice_DoesNotLeakTheScopeIntoTheSecondRun()
+    {
+        var logger = new CapturingLogger<SmartyAddressVerificationService>();
+        var diagnostics = CreateDiagnostics(logger);
+
+        await diagnostics.ValidateAgainstCannedSuccessAsync(VerifiedCandidateJson);
+        await diagnostics.ValidateAgainstCannedServerErrorAsync();
+
+        Assert.Equal(2, logger.Entries.Count);
+        Assert.All(logger.Entries, entry => Assert.Single(entry.Scopes));
+    }
+
+    private static void AssertDiagnosticScope(CapturedLogEntry entry)
+    {
+        Assert.Contains(entry.Scopes, scope =>
+            scope is IEnumerable<KeyValuePair<string, object>> pairs
+            && pairs.Any(pair => pair.Key == "IsDiagnostic" && pair.Value is true));
     }
 }
