@@ -31,7 +31,6 @@ internal static class StateBackendConfigurationLoader
             // `const: true` must hydrate as a real bool so the emitted JSON body is `true`, not "true").
             .WithAttemptingUnquotedStringTypeDeserialization()
             .WithEnforceRequiredMembers()
-            .IgnoreUnmatchedProperties()
             .WithTypeDiscriminatingNodeDeserializer(options =>
             {
                 options.AddKeyValueTypeDiscriminator<StateBackendAuthScheme>(

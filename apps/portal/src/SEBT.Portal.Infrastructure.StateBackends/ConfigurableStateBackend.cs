@@ -147,6 +147,11 @@ public class ConfigurableStateBackend :
         {
             return new StateBackendHealth(IsHealthy: false);
         }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient.Timeout surfaces as TaskCanceledException, not HttpRequestException.
+            return new StateBackendHealth(IsHealthy: false);
+        }
     }
 
     private static HttpMethod ToHttpMethod(StateBackendHttpMethod method) =>
@@ -200,12 +205,8 @@ public class ConfigurableStateBackend :
         using JsonDocument document = await SendAndParseAsync(httpRequest, cancellationToken)
             .ConfigureAwait(false);
 
-        // Caller context for caseId composition: identifiers a later write must route by that the
-        // lookup response never echoes.
-        var caseIdContext = new CaseIdContext { HouseholdIdentifier = request.HouseholdIdentifier };
-
         HouseholdData household = StateBackendResponseMapper.MapHousehold(
-            document.RootElement, _configuration, mapping, caseIdContext);
+            document.RootElement, _configuration, mapping);
 
         // A lookup mapping zero cases reads as NotFound — mirrors the plugin path's contract.
         if (household.SummerEbtCases.Count == 0)
@@ -236,12 +237,34 @@ public class ConfigurableStateBackend :
             throw new ArgumentException("CaseIds must contain at least one case token.", nameof(request));
         }
 
+        if (operation.CallMode == CardReplacementCallMode.Batch)
+        {
+            // One call carrying every decoded case — mirrors CO's PATCH array.
+            return await ExecuteWriteAsync(
+                operation,
+                operation.Request,
+                classifier,
+                binding =>
+                {
+                    IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds = request.CaseIds
+                        .Select(OpaqueCaseId.Decode)
+                        .ToList();
+
+                    return StateBackendRequestBinder.BuildBatchWriteBody(
+                        binding, decodedCaseIds, EnvelopeInputs(request.HouseholdIdentifier));
+                },
+                policyRejectionMessage: "The household is not eligible to request a replacement via the portal.",
+                cancellationToken).ConfigureAwait(false);
+        }
+
         // One call per decoded caseId, fail-fast on the first non-success — mirrors the DC
         // connector's per-case dispatch loop.
         foreach (string caseId in request.CaseIds)
         {
-            // Decode the opaque caseId into its routing fields, exposed to the binding.
-            var inputs = new Dictionary<string, string>(OpaqueCaseId.Decode(caseId), StringComparer.Ordinal);
+            // Decode the opaque caseId into its routing fields, then overlay the envelope
+            // householdIdentifier so PII does not have to live in the token.
+            Dictionary<string, string> inputs = MergeWriteInputs(
+                OpaqueCaseId.Decode(caseId), request.HouseholdIdentifier);
 
             WriteResult result = await ExecuteWriteAsync(
                 operation,
@@ -316,15 +339,17 @@ public class ConfigurableStateBackend :
                     .ToList();
 
                 Dictionary<string, string> addressInputs = BuildAddressInputs(request.Address);
+                foreach ((string key, string value) in EnvelopeInputs(request.HouseholdIdentifier))
+                {
+                    addressInputs[key] = value;
+                }
 
-                return StateBackendRequestBinder.BuildAddressBody(binding, decodedCaseIds, addressInputs);
+                return StateBackendRequestBinder.BuildBatchWriteBody(binding, decodedCaseIds, addressInputs);
             },
             policyRejectionMessage: "The household is not eligible to update their address via the portal.",
             cancellationToken).ConfigureAwait(false);
     }
 
-    // Shared write pipeline: build request + optional bound body, attach the Idempotency-Key
-    // (guards against a duplicate write on retry), send, classify the response into a WriteResult.
     private async Task<WriteResult> ExecuteWriteAsync(
         StateBackendOperationConfig operation,
         RequestBinding? binding,
@@ -356,8 +381,6 @@ public class ConfigurableStateBackend :
         return ToWriteResult(classification, policyRejectionMessage);
     }
 
-    // Only non-null address scalars are included; a config mapping a field the address lacks fails
-    // loud in the binder.
     private static Dictionary<string, string> BuildAddressInputs(AddressUpdateAddress address)
     {
         var inputs = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -390,7 +413,30 @@ public class ConfigurableStateBackend :
         return inputs;
     }
 
-    // The backend's own message text wins; generic text applies only when the backend supplied none.
+    private static Dictionary<string, string> EnvelopeInputs(string? householdIdentifier)
+    {
+        var inputs = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (!string.IsNullOrEmpty(householdIdentifier))
+        {
+            inputs["householdIdentifier"] = householdIdentifier;
+        }
+
+        return inputs;
+    }
+
+    private static Dictionary<string, string> MergeWriteInputs(
+        IReadOnlyDictionary<string, string> decodedCaseId,
+        string? householdIdentifier)
+    {
+        var inputs = new Dictionary<string, string>(decodedCaseId, StringComparer.Ordinal);
+        foreach ((string key, string value) in EnvelopeInputs(householdIdentifier))
+        {
+            inputs[key] = value;
+        }
+
+        return inputs;
+    }
+
     private static WriteResult ToWriteResult(WriteClassification classification, string policyRejectionMessage) =>
         classification.Outcome switch
         {

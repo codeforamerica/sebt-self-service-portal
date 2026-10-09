@@ -13,7 +13,7 @@ namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 /// </summary>
 internal static class StateBackendResponseMapper
 {
-    /// <summary>The closed set of canonical field targets; a new canonical field means a new entry here — never reflection.</summary>
+    /// <summary>The closed set of canonical field targets; a new canonical field means a new entry here.</summary>
     private static readonly IReadOnlyDictionary<string, FieldTarget> FieldTargets =
         new Dictionary<string, FieldTarget>(StringComparer.Ordinal)
         {
@@ -22,19 +22,10 @@ internal static class StateBackendResponseMapper
             ["childLastName"] = FieldTarget.String((c, v) => c.ChildLastName = v),
             ["applicationId"] = FieldTarget.String((c, v) => c.ApplicationId = v),
             ["ebtCardIssueDate"] = FieldTarget.DateTime((c, v) => c.EbtCardIssueDate = v),
+            ["benefitExpirationDate"] = FieldTarget.DateTime((c, v) => c.BenefitExpirationDate = v),
             ["ebtCardStatus"] = FieldTarget.Enum<CardStatus>((c, v) => c.EbtCardStatus = v),
             ["applicationStatus"] = FieldTarget.Enum<ApplicationStatus>((c, v) => c.ApplicationStatus = v),
             ["issuanceType"] = FieldTarget.Enum<IssuanceType>((c, v) => c.IssuanceType = v),
-        };
-
-    /// <summary>
-    /// The closed vocabulary of caller-context names a caseId <c>fromContext</c> entry may reference;
-    /// a new context value means a new entry here and on the record — never expressions in config.
-    /// </summary>
-    private static readonly IReadOnlyDictionary<string, Func<CaseIdContext, string?>> ContextSources =
-        new Dictionary<string, Func<CaseIdContext, string?>>(StringComparer.Ordinal)
-        {
-            ["householdIdentifier"] = context => context.HouseholdIdentifier,
         };
 
     private enum FieldKind
@@ -45,40 +36,30 @@ internal static class StateBackendResponseMapper
     }
 
     /// <summary>
-    /// Fails loud at load when a <c>fromContext</c> entry references an unknown context name, or a
-    /// token field is sourced from both a response column and caller context.
+    /// Fails loud at load when <c>valueInSet</c> is missing a non-empty <c>applicationValues</c>
+    /// list. Otherwise every row would silently classify as not application-based.
     /// </summary>
-    internal static void ValidateCaseIdCompositions(StateBackendConfiguration configuration)
+    internal static void ValidateDisaggregation(StateBackendConfiguration configuration)
     {
         foreach (StateBackendResponseMapping mapping in ResponseMappings(configuration))
         {
-            if (mapping.CaseId is not { FromContext: { } fromContext } composition)
+            if (mapping.Disaggregation is not { } disaggregation)
             {
                 continue;
             }
 
-            foreach ((string routingName, string contextName) in fromContext)
+            if (disaggregation.Rule == DisaggregationRule.ValueInSet
+                && disaggregation.ApplicationValues is not { Count: > 0 })
             {
-                if (!ContextSources.ContainsKey(contextName))
-                {
-                    throw new InvalidOperationException(
-                        $"caseId fromContext references unknown context name '{contextName}'. " +
-                        $"Known names: {string.Join(", ", ContextSources.Keys)}.");
-                }
-
-                if (composition.Fields.ContainsKey(routingName))
-                {
-                    throw new InvalidOperationException(
-                        $"caseId token field '{routingName}' is sourced from both a response " +
-                        "column (fields) and caller context (fromContext) — pick one.");
-                }
+                throw new InvalidOperationException(
+                    "Disaggregation rule 'valueInSet' requires a non-empty applicationValues list.");
             }
         }
     }
 
     /// <summary>
-    /// Fails loud at load on a field mapping naming an unknown canonical target, or a date-typed
-    /// target missing an exact <c>format</c>.
+    /// Fails loud at load on a field mapping naming an unknown canonical target, a date-typed
+    /// target missing an exact <c>format</c>, or a sequence <c>from</c> without <c>keywordRules</c>.
     /// </summary>
     internal static void ValidateFieldMappings(StateBackendConfiguration configuration)
     {
@@ -91,6 +72,13 @@ internal static class StateBackendResponseMapper
                     throw new InvalidOperationException(
                         $"Response mapping targets unknown canonical field '{canonicalField}'. " +
                         $"Known fields: {string.Join(", ", FieldTargets.Keys)}.");
+                }
+
+                if (fieldMapping.KeywordRules is null && fieldMapping.From.All.Count > 1)
+                {
+                    throw new InvalidOperationException(
+                        $"Field '{canonicalField}' lists {fieldMapping.From.All.Count} sources; " +
+                        "a sequence 'from' is only valid with keywordRules.");
                 }
 
                 // A keywordRules primitive on a date target gets its (more precise) rejection from
@@ -147,8 +135,7 @@ internal static class StateBackendResponseMapper
     public static HouseholdData MapHousehold(
         JsonElement root,
         StateBackendConfiguration configuration,
-        StateBackendResponseMapping mapping,
-        CaseIdContext context)
+        StateBackendResponseMapping mapping)
     {
         JsonElement records = JsonPathSelector.Select(root, mapping.Root);
         var household = new HouseholdData();
@@ -175,7 +162,7 @@ internal static class StateBackendResponseMapper
 
             if (mapping.CaseId is { } caseIdComposition)
             {
-                summerEbtCase.SummerEBTCaseID = ComposeCaseId(record, caseIdComposition, context);
+                summerEbtCase.SummerEBTCaseID = ComposeCaseId(record, caseIdComposition);
             }
 
             if (disaggregation is null)
@@ -238,7 +225,7 @@ internal static class StateBackendResponseMapper
             DisaggregationRule.ValueInSet =>
                 discriminator is not null
                 && disaggregation.ApplicationValues is { } values
-                && values.Contains(discriminator, StringComparer.Ordinal),
+                && values.Contains(discriminator, StringComparer.OrdinalIgnoreCase),
             _ => throw new NotSupportedException(
                 $"Disaggregation rule '{disaggregation.Rule}' is not supported by the response mapper."),
         };
@@ -255,29 +242,14 @@ internal static class StateBackendResponseMapper
         return string.IsNullOrEmpty(value) ? null : value;
     }
 
-    // Packs record + context routing fields into an opaque caseId token. A missing value packs
-    // empty; a later write that needs it fails loud.
-    private static string ComposeCaseId(JsonElement record, CaseIdComposition composition, CaseIdContext context)
+    // Packs record routing fields into an opaque caseId token. A missing value packs empty;
+    // a later write that needs it fails loud.
+    private static string ComposeCaseId(JsonElement record, CaseIdComposition composition)
     {
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach ((string routingName, string sourceProperty) in composition.Fields)
         {
             fields[routingName] = JsonRead.AsString(record, sourceProperty) ?? string.Empty;
-        }
-
-        if (composition.FromContext is { } fromContext)
-        {
-            foreach ((string routingName, string contextName) in fromContext)
-            {
-                if (!ContextSources.TryGetValue(contextName, out Func<CaseIdContext, string?>? source))
-                {
-                    // Unreachable for validated configs; hand-built configs fail loud here too.
-                    throw new InvalidOperationException(
-                        $"caseId fromContext references unknown context name '{contextName}'.");
-                }
-
-                fields[routingName] = source(context) ?? string.Empty;
-            }
         }
 
         return OpaqueCaseId.Compose(fields);
@@ -325,7 +297,7 @@ internal static class StateBackendResponseMapper
         switch (fieldTarget.Kind)
         {
             case FieldKind.String:
-                fieldTarget.SetString!(target, value.GetString() ?? string.Empty);
+                fieldTarget.SetString!(target, JsonRead.AsString(value) ?? string.Empty);
                 break;
 
             case FieldKind.DateTime:
@@ -333,7 +305,7 @@ internal static class StateBackendResponseMapper
                 break;
 
             case FieldKind.Enum:
-                fieldTarget.SetEnum!(target, enumResolvers[canonicalField].Resolve(value.GetString()));
+                fieldTarget.SetEnum!(target, enumResolvers[canonicalField].Resolve(JsonRead.AsString(value)));
                 break;
 
             default:
@@ -344,7 +316,7 @@ internal static class StateBackendResponseMapper
 
     private static DateTime ParseDate(string canonicalField, FieldMapping fieldMapping, JsonElement value)
     {
-        string? raw = value.GetString();
+        string? raw = JsonRead.AsString(value);
         if (fieldMapping.Format is not { } format)
         {
             throw new InvalidOperationException(
@@ -437,6 +409,16 @@ internal static class StateBackendResponseMapper
             List<string> keywords = keywordRules.Map.TryGetValue(ourValue, out List<string>? mapped)
                 ? mapped
                 : new List<string>();
+
+            foreach (string keyword in keywords)
+            {
+                if (string.IsNullOrWhiteSpace(keyword))
+                {
+                    throw new InvalidOperationException(
+                        $"Field '{canonicalField}' keywordRules map for '{ourValue}' contains an empty keyword.");
+                }
+            }
+
             ordered.Add((parsed, keywords));
         }
 
@@ -445,13 +427,12 @@ internal static class StateBackendResponseMapper
         return (enumType, ordered, defaultValue);
     }
 
-    // Inverts a table into a token → our-value lookup, rejecting non-member values and ambiguous tokens.
     private static (Dictionary<string, object> TokenLookup, object? Default) BuildTokenLookup(
         string tableName,
         StateBackendEnumTable table,
         Type enumType)
     {
-        var tokenLookup = new Dictionary<string, object>(StringComparer.Ordinal);
+        var tokenLookup = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
 
         foreach ((string ourValue, List<string> tokens) in table.Map)
         {

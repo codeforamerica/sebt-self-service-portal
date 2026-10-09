@@ -61,6 +61,10 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("EbtCardIssueDate", issueDate.From);
         Assert.Equal("yyyy-MM-ddTHH:mm:ss", issueDate.Format);
 
+        FieldMapping expirationDate = response.Fields["benefitExpirationDate"];
+        Assert.Equal("BenefitExpirationDate", expirationDate.From);
+        Assert.Equal("yyyy-MM-ddTHH:mm:ss", expirationDate.Format);
+
         FieldMapping cardStatus = response.Fields["ebtCardStatus"];
         Assert.Equal("EbtCardStatus", cardStatus.From);
         Assert.Equal("cardStatus", cardStatus.Enum);
@@ -91,11 +95,6 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("SummerEBTCaseID", caseId.Fields["caseId"]);
         Assert.Equal("ApplicationId", caseId.Fields["applicationId"]);
 
-        // The lookup response never echoes the household email DC's writes bind, so the token
-        // packs it from the lookup's caller context.
-        Assert.NotNull(caseId.FromContext);
-        Assert.Equal("householdIdentifier", caseId.FromContext["householdEmail"]);
-
         CardReplacementOperationConfig? cardReplacement = config.Operations.CardReplacement;
         Assert.NotNull(cardReplacement);
         Assert.Equal(StateBackendHttpMethod.Post, cardReplacement.Method);
@@ -106,7 +105,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.NotNull(cardReplacement.Request);
         Assert.Null(cardReplacement.Request.Constants);
         Assert.Equal("summerEbtCaseId", cardReplacement.Request.Map!["caseId"]);
-        Assert.Equal("householdEmail", cardReplacement.Request.Map["householdEmail"]);
+        Assert.Equal("householdEmail", cardReplacement.Request.Map["householdIdentifier"]);
 
         // The wrapper returns the sproc's raw OUTPUT params: numeric resultCode + resultMessage.
         ResultClassifier classifier = Assert.IsType<ResultClassifier>(cardReplacement.Result);
@@ -127,12 +126,15 @@ public class StateBackendConfigurationHydrationTests
 
         Assert.NotNull(dcAddressUpdate.Request);
         Assert.Equal("portal", dcAddressUpdate.Request.Constants!["source"]);
-        Assert.Equal("householdIdentifier", dcAddressUpdate.Request.Shared!["householdEmail"]);
+        Assert.Null(dcAddressUpdate.Request.Shared);
         Assert.Null(dcAddressUpdate.Request.Collect);
-        Assert.Equal("address.line1", dcAddressUpdate.Request.Map!["line1"]);
+        Assert.Equal("householdIdentifier", dcAddressUpdate.Request.Map!["householdIdentifier"]);
+        Assert.Equal("address.line1", dcAddressUpdate.Request.Map["line1"]);
         Assert.Equal("address.city", dcAddressUpdate.Request.Map["city"]);
         Assert.Equal("address.state", dcAddressUpdate.Request.Map["state"]);
         Assert.Equal("address.zip", dcAddressUpdate.Request.Map["zip"]);
+        Assert.NotNull(dcAddressUpdate.Request.MapOptional);
+        Assert.Equal("address.line2", dcAddressUpdate.Request.MapOptional["line2"]);
 
         ResultClassifier dcAddressClassifier = Assert.IsType<ResultClassifier>(dcAddressUpdate.Result);
         ResultCondition dcAddressSuccess = Assert.Single(dcAddressClassifier.Conditions);
@@ -220,6 +222,10 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("sebtAppSts", applicationStatus.From);
         Assert.Equal("applicationStatus", applicationStatus.Enum);
 
+        FieldMapping expirationDate = householdLookup.Response.Fields["benefitExpirationDate"];
+        Assert.Equal("benExpDt", expirationDate.From);
+        Assert.Equal("yyyy-MM-dd", expirationDate.Format);
+
         Assert.NotNull(config.Enums);
         StateBackendEnumTable applicationStatusTable = config.Enums["applicationStatus"];
         Assert.Equal(new[] { "AP" }, applicationStatusTable.Map["Approved"]);
@@ -244,6 +250,14 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal("respCd", coAddressSuccess.Field);
         Assert.Equal(new[] { "200", "00" }, coAddressSuccess.ValueIn);
 
+        CardReplacementOperationConfig? coCardReplacement = config.Operations.CardReplacement;
+        Assert.NotNull(coCardReplacement);
+        Assert.Equal(StateBackendHttpMethod.Patch, coCardReplacement.Method);
+        Assert.Equal("/sebt/update-std-dtls", coCardReplacement.Path);
+        Assert.Equal(CardReplacementCallMode.Batch, coCardReplacement.CallMode);
+        Assert.Equal("cases", coCardReplacement.Request!.Collect!["writeId"]);
+        Assert.Equal("Y", coCardReplacement.Request.Constants!["reqNewCard"]);
+
         // CO enrollment uses batch + transposeMonthDay expansion + confidenceThreshold match.
         EnrollmentCheckOperationConfig? coEnrollment = config.Operations.EnrollmentCheck;
         Assert.NotNull(coEnrollment);
@@ -260,7 +274,7 @@ public class StateBackendConfigurationHydrationTests
 
         // schoolIdentifier is optional: the portal may not carry it, but CO's match reads it when sent.
         Assert.NotNull(coEnrollment.Request.MapOptional);
-        Assert.Equal("StdSchlCd", coEnrollment.Request.MapOptional["schoolIdentifier"]);
+        Assert.Equal("stdSchlCd", coEnrollment.Request.MapOptional["schoolIdentifier"]);
 
         Assert.NotNull(coEnrollment.Response);
         Assert.Equal("$.stdntDtls", coEnrollment.Response.Root);
@@ -279,6 +293,7 @@ public class StateBackendConfigurationHydrationTests
         Assert.Equal(new[] { "Y" }, coEnrollment.Response.Match.ValueIn);
 
         StateBackendCapabilities capabilities = config.Capabilities;
+        Assert.Equal(CardReplacementCapability.Batch, capabilities.CardReplacement);
         Assert.True(capabilities.AddressUpdate);
         Assert.True(capabilities.EnrollmentCheck);
     }
@@ -323,6 +338,25 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("ISSUED", ex.Message);
     }
 
+    [Fact]
+    public void Validate_FailsLoud_WhenTokenIsAmbiguous_IgnoringCase()
+    {
+        StateBackendConfiguration config = BuildEnumConfig(
+            new StateBackendEnumTable
+            {
+                Map = new Dictionary<string, List<string>>
+                {
+                    ["Active"] = new() { "ACTIVE" },
+                    ["Processed"] = new() { "Active" },
+                },
+                Default = "Unknown",
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("Active", ex.Message);
+    }
+
     // A keywordRules value that is NOT a real IssuanceType member must fail loud at load.
     [Fact]
     public void Validate_FailsLoud_WhenKeywordRuleValueIsNotARealIssuanceType()
@@ -360,51 +394,137 @@ public class StateBackendConfigurationHydrationTests
         Assert.Contains("exactly one", ex.Message);
     }
 
-    // The write-path body builders ignore mapOptional, so a config setting it — on EITHER write
-    // op — must fail at load rather than silently dropping the binding.
+    // mapOptional on a write is bind-if-present. Address line2 is optional, so setting it on
+    // either write op must load rather than fail.
     [Theory]
     [InlineData(true)] // card replacement
     [InlineData(false)] // address update
-    public void Validate_FailsLoud_WhenWriteRequestSetsMapOptional(bool onCardReplacement)
+    public void Validate_AllowsMapOptional_OnWriteOperations(bool onCardReplacement)
     {
         StateBackendConfiguration config = BuildWriteMapOptionalConfig(
             cardReplacementRequest: onCardReplacement ? MapOptionalRequestBinding() : null,
             addressUpdateRequest: onCardReplacement ? null : MapOptionalRequestBinding());
 
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("mapOptional", ex.Message);
+        StateBackendConfigurationValidator.Validate(config);
     }
 
-    // A fromContext entry referencing a context name outside the closed vocabulary fails at load —
-    // context names are resolved in fixed code, never expressions.
     [Fact]
-    public void Validate_FailsLoud_WhenCaseIdFromContextNameIsUnknown()
+    public void Load_FailsLoud_WhenCaseIdDeclaresFromContext()
     {
-        StateBackendConfiguration config = BuildCaseIdConfig(new CaseIdComposition
-        {
-            Fields = new Dictionary<string, string> { ["caseId"] = "SummerEBTCaseID" },
-            FromContext = new Dictionary<string, string> { ["householdEmail"] = "guardianEmail" },
-        });
+        const string yaml = """
+            baseUrl: http://backend.test
+            auth:
+              scheme: api_key
+              header: X-Api-Key
+              keyRef: test-api-key
+            operations:
+              householdLookup:
+                method: post
+                path: /lookup
+                request:
+                  map:
+                    email: guardianEmail
+                response:
+                  root: $.records
+                  fields:
+                    childFirstName:
+                      from: ChildFirstName
+                  caseId:
+                    fields:
+                      caseId: SummerEBTCaseID
+                    fromContext:
+                      householdEmail: householdIdentifier
+            """;
 
-        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
-            () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("guardianEmail", ex.Message);
+        Assert.ThrowsAny<Exception>(() => StateBackendConfigurationLoader.Load(yaml));
     }
 
-    // The same token field sourced from BOTH a response column and caller context is ambiguous.
+    // valueInSet without a list would silently treat every row as not application-based.
     [Fact]
-    public void Validate_FailsLoud_WhenCaseIdFieldIsInBothFieldsAndFromContext()
+    public void Validate_FailsLoud_WhenValueInSetHasNoApplicationValues()
     {
-        StateBackendConfiguration config = BuildCaseIdConfig(new CaseIdComposition
-        {
-            Fields = new Dictionary<string, string> { ["householdEmail"] = "GuardianEmail" },
-            FromContext = new Dictionary<string, string> { ["householdEmail"] = "householdIdentifier" },
-        });
+        StateBackendConfiguration config = StateBackendTestConfig.Base().WithLookup(
+            new HouseholdLookupOperationConfig
+            {
+                Method = StateBackendHttpMethod.Post,
+                Path = "/lookup",
+                Response = new StateBackendResponseMapping
+                {
+                    Root = "$.records",
+                    Fields = new Dictionary<string, FieldMapping>
+                    {
+                        ["childFirstName"] = new() { From = "ChildFirstName" },
+                    },
+                    Disaggregation = new StateBackendDisaggregation
+                    {
+                        Rule = DisaggregationRule.ValueInSet,
+                        DiscriminatorField = "eligSrc",
+                        CaseInclusion = CaseInclusionPredicate.All,
+                    },
+                },
+            });
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
-        Assert.Contains("householdEmail", ex.Message);
+        Assert.Contains("applicationValues", ex.Message);
+    }
+
+    // An empty keyword would match every haystack (Contains("")) — reject at load.
+    [Fact]
+    public void Validate_FailsLoud_WhenKeywordRulesMapContainsEmptyKeyword()
+    {
+        StateBackendConfiguration config = BuildIssuanceKeywordConfig(
+            new KeywordRules
+            {
+                Order = new List<string> { "SummerEbt" },
+                Map = new Dictionary<string, List<string>>
+                {
+                    ["SummerEbt"] = new() { "OSSE", "  " },
+                },
+                Default = "Unknown",
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("empty keyword", ex.Message);
+    }
+
+    // A path-only write op would advertise the feature and fail on the first real attempt.
+    [Fact]
+    public void Validate_FailsLoud_WhenWriteOperationIsIncomplete()
+    {
+        StateBackendConfiguration config = StateBackendTestConfig.Base() with
+        {
+            Operations = new StateBackendOperations
+            {
+                CardReplacement = new CardReplacementOperationConfig
+                {
+                    Method = StateBackendHttpMethod.Patch,
+                    Path = "/sebt/update-std-dtls",
+                },
+            },
+        };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("incomplete", ex.Message);
+        Assert.Contains("cardReplacement", ex.Message);
+    }
+
+    [Fact]
+    public void Load_FailsLoud_OnUnmatchedYamlProperty()
+    {
+        const string yaml = """
+            baseUrl: http://backend.test
+            auth:
+              scheme: api_key
+              header: X-Api-Key
+              keyRef: test-api-key
+            operations: {}
+            notARealProperty: true
+            """;
+
+        Assert.ThrowsAny<Exception>(() => StateBackendConfigurationLoader.Load(yaml));
     }
 
     // A date-typed target without an exact 'format' must fail at LOAD, not on the first mapped
@@ -438,6 +558,55 @@ public class StateBackendConfigurationHydrationTests
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
             () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("ebtCardIssueDte", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenFromSequenceHasNoKeywordRules()
+    {
+        StateBackendConfiguration config = BuildLookupFieldsConfig(
+            new Dictionary<string, FieldMapping>
+            {
+                ["childFirstName"] = new()
+                {
+                    From = new[] { "HouseholdType", "EligibilityType" },
+                },
+            });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("childFirstName", ex.Message);
+        Assert.Contains("keywordRules", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenResponseRootPathIsMalformed()
+    {
+        StateBackendConfiguration config = BuildLookupFieldsConfig(
+            new Dictionary<string, FieldMapping>
+            {
+                ["childFirstName"] = new() { From = "ChildFirstName" },
+            });
+        config = config.WithLookupResponse(
+            config.Operations.HouseholdLookup!.Response! with { Root = "$.resultSets[-1]" });
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("$.resultSets[-1]", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenRequestMapPathHasEmptySegment()
+    {
+        StateBackendConfiguration config = BuildWriteMapOptionalConfig(
+            cardReplacementRequest: new RequestBinding
+            {
+                Map = new Dictionary<string, string> { ["caseId"] = "summer..EbtCaseId" },
+            },
+            addressUpdateRequest: null);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("summer..EbtCaseId", ex.Message);
     }
 
     // A messageContains condition without a messageField has no body property to read.
@@ -517,24 +686,7 @@ public class StateBackendConfigurationHydrationTests
             },
         });
 
-    // Minimal config whose household lookup composes caseId tokens with the supplied composition.
-    private static StateBackendConfiguration BuildCaseIdConfig(CaseIdComposition caseId) =>
-        StateBackendTestConfig.Base().WithLookup(new HouseholdLookupOperationConfig
-        {
-            Method = StateBackendHttpMethod.Post,
-            Path = "/lookup",
-            Response = new StateBackendResponseMapping
-            {
-                Root = "$.records",
-                Fields = new Dictionary<string, FieldMapping>
-                {
-                    ["childFirstName"] = new() { From = "ChildFirstName" },
-                },
-                CaseId = caseId,
-            },
-        });
-
-    // A write-op request binding carrying a mapOptional entry — unsupported on the write path.
+    // A write-op request binding carrying a mapOptional entry.
     private static RequestBinding MapOptionalRequestBinding() =>
         new()
         {
@@ -542,8 +694,25 @@ public class StateBackendConfigurationHydrationTests
             MapOptional = new Dictionary<string, string> { ["reason"] = "reason" },
         };
 
+    private static ResultClassifier SuccessClassifier() =>
+        new()
+        {
+            Conditions = new List<ResultCondition>
+            {
+                new() { Outcome = WriteOutcome.Success, StatusIn = new List<int> { 200 } },
+            },
+            Default = WriteOutcome.BackendError,
+        };
+
+    private static RequestBinding MinimalWriteRequest() =>
+        new()
+        {
+            Map = new Dictionary<string, string> { ["caseId"] = "summerEbtCaseId" },
+        };
+
     // Minimal config carrying an optional card-replacement and/or address-update write op, each with
-    // the supplied request binding.
+    // the supplied request binding. A dummy result classifier is attached so incompleteness
+    // doesn't mask the mapOptional check.
     private static StateBackendConfiguration BuildWriteMapOptionalConfig(
         RequestBinding? cardReplacementRequest, RequestBinding? addressUpdateRequest) =>
         StateBackendTestConfig.Base() with
@@ -557,6 +726,7 @@ public class StateBackendConfigurationHydrationTests
                         Method = StateBackendHttpMethod.Post,
                         Path = "/cards/replace",
                         Request = cardReplacementRequest,
+                        Result = SuccessClassifier(),
                     },
                 AddressUpdate = addressUpdateRequest is null
                     ? null
@@ -565,6 +735,7 @@ public class StateBackendConfigurationHydrationTests
                         Method = StateBackendHttpMethod.Post,
                         Path = "/households/address",
                         Request = addressUpdateRequest,
+                        Result = SuccessClassifier(),
                     },
             },
         };
@@ -593,6 +764,7 @@ public class StateBackendConfigurationHydrationTests
                     {
                         Method = StateBackendHttpMethod.Post,
                         Path = "/cards/replace",
+                        Request = MinimalWriteRequest(),
                         Result = cardReplacementClassifier,
                     },
                 AddressUpdate = addressUpdateClassifier is null
@@ -601,6 +773,7 @@ public class StateBackendConfigurationHydrationTests
                     {
                         Method = StateBackendHttpMethod.Post,
                         Path = "/households/address",
+                        Request = MinimalWriteRequest(),
                         Result = addressUpdateClassifier,
                     },
             },

@@ -5,9 +5,7 @@ using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 namespace SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
 /// <summary>
-/// Builds an outgoing request body from a <see cref="RequestBinding"/>: a map input resolving to
-/// nothing fails loud, a mapOptional input is omitted. <c>isProofed</c> passes straight through —
-/// never an authorization decision here.
+/// Builds an outgoing request body from a <see cref="RequestBinding"/>.
 /// </summary>
 internal static class StateBackendRequestBinder
 {
@@ -47,8 +45,8 @@ internal static class StateBackendRequestBinder
     }
 
     /// <summary>
-    /// Write-path binding: constants plus the routing fields decoded from the opaque caseId; an
-    /// unmatched map input fails loud.
+    /// Write-path binding: constants plus the routing fields decoded from the opaque caseId. An
+    /// unmatched <c>map</c> input fails loud.
     /// </summary>
     public static JsonObject BuildBody(RequestBinding binding, IReadOnlyDictionary<string, string> inputs)
     {
@@ -79,15 +77,27 @@ internal static class StateBackendRequestBinder
             }
         }
 
+        if (binding.MapOptional is { } mapOptional)
+        {
+            foreach ((string inputName, string targetPath) in mapOptional)
+            {
+                if (inputs.TryGetValue(inputName, out string? value))
+                {
+                    JsonPathWriter.Write(body, targetPath, JsonValue.Create(value));
+                }
+            }
+        }
+
         return body;
     }
 
     /// <summary>
-    /// Batch write-path binding (address update): the scalar binding plus the <c>shared</c> and
-    /// <c>collect</c> shapes over the decoded caseIds. A <c>shared</c> field that disagrees across
-    /// cases, or a shared/collect field missing from any caseId, fails loud.
+    /// Batch write-path binding (address update and batch card replacement): the scalar binding
+    /// plus the <c>shared</c> and <c>collect</c> shapes over the decoded caseIds. A <c>shared</c>
+    /// field that disagrees across cases, or a shared/collect field missing from any caseId, fails
+    /// loud. Zero caseIds are allowed when the binding does not use shared/collect
     /// </summary>
-    public static JsonObject BuildAddressBody(
+    public static JsonObject BuildBatchWriteBody(
         RequestBinding binding,
         IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds,
         IReadOnlyDictionary<string, string> scalarInputs)
@@ -96,12 +106,16 @@ internal static class StateBackendRequestBinder
         ArgumentNullException.ThrowIfNull(decodedCaseIds);
         ArgumentNullException.ThrowIfNull(scalarInputs);
 
-        if (decodedCaseIds.Count == 0)
+        bool needsCaseTokens =
+            (binding.Shared is { Count: > 0 }) || (binding.Collect is { Count: > 0 });
+
+        if (needsCaseTokens && decodedCaseIds.Count == 0)
         {
-            throw new InvalidOperationException("Address update requires at least one caseId.");
+            throw new InvalidOperationException(
+                "This write requires at least one caseId because shared/collect binding is configured.");
         }
 
-        // Constants + scalar address fields reuse the existing scalar binding.
+        // Constants + scalar fields (address, householdIdentifier envelope) reuse the scalar binding.
         JsonObject body = BuildBody(binding, scalarInputs);
 
         if (binding.Shared is { } shared)
@@ -122,6 +136,13 @@ internal static class StateBackendRequestBinder
 
         return body;
     }
+
+    /// <summary>Address-update alias for <see cref="BuildBatchWriteBody"/>.</summary>
+    public static JsonObject BuildAddressBody(
+        RequestBinding binding,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds,
+        IReadOnlyDictionary<string, string> scalarInputs) =>
+        BuildBatchWriteBody(binding, decodedCaseIds, scalarInputs);
 
     // One household-level field across all decoded caseIds; fails loud on disagreement.
     private static string ResolveShared(

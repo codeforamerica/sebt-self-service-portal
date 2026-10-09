@@ -65,7 +65,7 @@ const EMAIL_RE =
 
 // Domains that appear in test fixtures, commit trailers, and example code
 const SAFE_EMAIL_RE =
-  /@(example\.(com|org|net)|test\.(com|org|net)|localhost|users\.noreply\.github\.com|anthropic\.com)$/i;
+  /@(example\.(com|org|net|test)|test\.(com|org|net)|localhost|users\.noreply\.github\.com|anthropic\.com)$/i;
 const NOREPLY_RE = /^noreply@/i;
 
 const emails = [...new Set((content.match(EMAIL_RE) || []))]

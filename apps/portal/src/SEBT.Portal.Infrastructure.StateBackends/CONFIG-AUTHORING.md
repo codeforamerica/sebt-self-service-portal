@@ -51,7 +51,6 @@ operations:
 
 ## Step 3: Map the response fields
 
-Under a read operation's `response:`, `root` is a path to the record (or array of records) inside the raw response — dotted property access and `[index]` element access only. For a household lookup, `root` must select an **array** of records; a selection that isn't an array maps zero cases, which the lookup reads as not-found. `fields` maps each of our canonical field names to how to pull it from that record.
 
 ```yaml
     response:
@@ -64,14 +63,17 @@ Under a read operation's `response:`, `root` is a path to the record (or array o
         ebtCardIssueDate:
           from: EbtCardIssueDate
           format: yyyy-MM-ddTHH:mm:ss
+        benefitExpirationDate:
+          from: BenefitExpirationDate
+          format: yyyy-MM-ddTHH:mm:ss
         ebtCardStatus:
           from: EbtCardStatus
           enum: cardStatus
 ```
 
-The mapping is **domain-centered**: the left-hand side is *our* canonical field name; the right-hand side (`from`) is the state's property name. A field mapping has three optional modifiers:
+The mapping is **domain-centered**: the left-hand side is *our* canonical field name; the right-hand side (`from`) is the state's property name. The `fields` left-hand keys are a closed set: `summerEBTCaseID` / `childFirstName` / `childLastName` / `applicationId` / `ebtCardIssueDate` / `benefitExpirationDate` / `ebtCardStatus` / `applicationStatus` / `issuanceType`. A field mapping has three optional modifiers:
 
-- `from` — the source property on the record. Required.
+- `from` — the source property on the record. Required. A scalar unless the field uses `keywordRules`, which may list several sources.
 - `format` — an exact date parse format (e.g. `MM/dd/yyyy`) for date-typed fields. Exact parse, no fallback.
 - `enum` — the name of an enum table (see Step 4) that translates the source token into a canonical value.
 
@@ -169,16 +171,11 @@ A write (card replacement, address update) has to route its call, but the portal
         fields:
           caseId: SummerEBTCaseID
           applicationId: ApplicationId
-        fromContext:
-          householdEmail: householdIdentifier
 ```
 
-On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8). The portal and UI treat the token as opaque throughout — a malformed token fails fast on decode.
+On a read, the mapper reads each named source field and packs it under its left-hand key into the token, which becomes the case's ID. On a later write, the driver decodes the token back into that same keyed field set and exposes those fields as inputs to the write's request binding (Step 8), **alongside** the write envelope's `householdIdentifier`. The portal and UI treat the token as opaque throughout — a malformed token fails fast on decode.
 
-- `fields` — token field → the response record property whose value it carries.
-- `fromContext` — token field → a **named caller-context value** from the lookup itself, for routing identifiers a write needs but the response never echoes (most lookups don't echo the identifier the portal searched with). Context names are a **closed vocabulary resolved in fixed code** — today only `householdIdentifier`, the identifier value the lookup searched by. No expressions, no fallbacks; a new context value means a new name in code.
-
-A token field may come from `fields` or `fromContext`, never both — the loader fails fast on a collision, and on an unknown context name. An unset context value packs as empty, exactly like an absent response column.
+Do **not** pack PII (email, phone, SSN) into the token. Writes bind `householdIdentifier` from the request envelope.
 
 ## Step 8: Writes — request binding and result classification
 
@@ -186,41 +183,27 @@ A write operation (`cardReplacement`, `addressUpdate`) has a `request:` binding 
 
 ### Request binding
 
-The binding vocabulary:
+- `constants` — For literals (bool, number, string etc.) that are not likely to change
+- `map` — Required fields for the request; the intention being that it will, at minimum, fail if not present.
+- `mapOptional` — Functionally the same as `map`, with the caveeat that unresolved input is dropped from the body without failing.
 
-- `constants` — dotted target path → fixed literal (bool, number, string). State scaffolding with no domain source.
-- `map` — our input name → dotted target path in the request body. Inputs are the decoded `caseId` routing fields plus caller context (e.g. the address scalars `line1`/`line2`/`city`/`state`/`zip`). Nesting is expressed by dotting the target path. The binder rejects an input that resolves to no value.
-- `mapOptional` — like `map`, but bind-if-present / omit-if-absent: an unresolved input is dropped from the body instead of failing fast. **Not allowed on write ops** (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so the validator rejects it at load rather than letting it be a silent no-op.
-
-The same vocabulary drives `householdLookup`'s `request:` binding. Its inputs are a closed set: the identity-signal types `email` / `phone` / `snapId` / `tanfId` / `ssn` / `ic` / `dob` / `socureUuid` (`ic` is a case identifier used by D.C.), plus the caller-context names `isProofed` (the caller's proofing status, passed straight through — never an authorization decision) and `portalUuid`. DC binds `socureUuid` via `mapOptional` because not every guardian has a Socure verification.
-
-DC card replacement — a scalar `map` whose left-hand names are the decoded `caseId` fields:
-
-```yaml
-    request:
-      map:
-        caseId: summerEbtCaseId
-        householdEmail: householdEmail
-```
-
-Address update spans every case a household owns, so it adds two **batch shapes**:
-
-- `shared` — a household-level routing field resolved **once** across every decoded `caseId`. Left-hand side is a decoded routing-field name; right-hand side is a target path. The binder **refuses the request if the decoded caseIds disagree** on the value. DC resolves one shared household identifier this way:
+An example of what this looks can be seen (as an `Update Address` example):
 
 ```yaml
     request:
       constants:
         source: portal
-      shared:
-        householdEmail: householdIdentifier
       map:
+        householdIdentifier: householdIdentifier
         line1: address.line1
         city: address.city
         state: address.state
         zip: address.zip
+      mapOptional:
+        line2: address.line2
 ```
 
-- `collect` — a per-case routing field gathered into an **array** at a target path, one element per decoded `caseId`. CO collects each case's per-case write-id into a PATCH array:
+- `collect` — a per-case routing field gathered into an **array** at a target path, one element per decoded `caseId`:
 
 ```yaml
     request:
@@ -231,9 +214,6 @@ Address update spans every case a household owns, so it adds two **batch shapes*
         zip: stdZip
 ```
 
-`shared` and `collect` are the only two batch shapes. There are no per-case conditionals, filters, or transforms.
-
-Note the read/write asymmetry: reads bind by walking the *response* shape (Step 3), while writes bind by building the *produced payload's* shape — the binding is keyed by the target path in the body you're constructing.
 
 ### Result classifier
 
@@ -330,7 +310,7 @@ CO — `batch`, correlated rows via `indexField`, DOB `expand`, eligibility-gate
         lastName: stdLastName
         dob: stdDob
       mapOptional:
-        schoolIdentifier: StdSchlCd
+        schoolIdentifier: stdSchlCd
     response:
       root: $.stdntDtls
       indexField: stdReqInd
@@ -358,12 +338,13 @@ The worked precedent is `confidenceThreshold`. CO needed a match that couldn't b
 
 Config validates at **load** via `StateBackendConfigurationValidator`, immediately after deserialization. Every check is a function of the config alone, so a bad config fails at **startup**, not on the first user request. What fails fast:
 
-- A response field mapping that targets an unknown canonical field, or a date-typed field without an exact `format`.
-- An enum table that doesn't exist, is referenced by a non-enum field, has a canonical key that isn't a real enum member, or lists an ambiguous state token under two canonical values.
-- A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, or that names a non-member (including its `default`).
+- A response field mapping that targets an unknown canonical field, a date-typed field without an exact `format`, or a sequence `from` without `keywordRules`.
+- A malformed JSON path
+- A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, that names a non-member (including its `default`), or that lists an empty keyword.
 - A result classifier condition that isn't exactly one of `statusIn` / `valueIn` / `messageContains`, or a `valueIn` without `field`, or a `messageContains` without `messageField`.
-- A `caseId` composition whose `fromContext` names an unknown context name, or that sources one token field from both `fields` and `fromContext`.
-- A `mapOptional` on a write op (`cardReplacement`, `addressUpdate`) — the write body builders don't read it, so it's rejected rather than silently ignored.
+- A `valueInSet` disaggregation missing a non-empty `applicationValues` list.
+- A declared write/enrollment/lookup operation missing its request and result/response mappings — listing the path is not enough to advertise the feature.
+- An unmatched YAML property (unknown keys fail at load, they are not ignored).
 - An incoherent enrollment op: `batch` missing an `indexField` on either side, `perChild` that sets one, `perChild` combined with `expand`, a match strategy missing its required params (`anyRowValueIn` without `field` + `valueIn`, `confidenceThreshold` without `scoreField` + `threshold`), or a `confidenceThreshold` eligibility check with `field` or `valueIn` alone — they come together or not at all.
 
 [^canonical]: The portal's own field and enum names, identical across every state — as opposed to each state's own names for the same things.

@@ -245,6 +245,102 @@ public class StateBackendOAuthClientCredentialsAuthHandlerTests
             () => client.GetAsync("http://backend.test/data"));
     }
 
+    [Fact]
+    public async Task TokenBodyMissingAccessToken_ThrowsInvalidOperation()
+    {
+        HttpClient client = BuildClientWithTokenBody("{\"token_type\":\"Bearer\",\"expires_in\":3600}");
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.GetAsync("http://backend.test/data"));
+        Assert.Contains("access_token", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("{\"access_token\":\"token-abc\",\"token_type\":\"Bearer\"}")]
+    [InlineData("{\"access_token\":\"token-abc\",\"token_type\":\"Bearer\",\"expires_in\":0}")]
+    public async Task TokenBodyMissingOrZeroExpiresIn_CachesUntilDefaultTtlMinusLeeway(string tokenBody)
+    {
+        var timeProvider = new FakeTimeProvider();
+        var mockHttp = new MockHttpMessageHandler();
+        int tokenFetches = 0;
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/oauth/token")
+            .Respond(() =>
+            {
+                Interlocked.Increment(ref tokenFetches);
+                var message = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(tokenBody),
+                };
+                message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                return Task.FromResult(message);
+            });
+        mockHttp
+            .When(HttpMethod.Get, "http://backend.test/data")
+            .Respond(HttpStatusCode.OK);
+
+        var handler = new StateBackendOAuthClientCredentialsAuthHandler(
+            BuildScheme(),
+            new StubSecretResolver("client-secret-value"),
+            mockHttp.ToHttpClient(),
+            timeProvider)
+        {
+            InnerHandler = mockHttp,
+        };
+        var client = new HttpClient(handler);
+
+        await client.GetAsync("http://backend.test/data");
+        timeProvider.Advance(TimeSpan.FromSeconds(3569));
+        await client.GetAsync("http://backend.test/data");
+
+        Assert.Equal(1, tokenFetches);
+    }
+
+    [Fact]
+    public async Task UpstreamUnauthorized_RefetchesToken_AndRetriesOnce()
+    {
+        var mockHttp = new MockHttpMessageHandler();
+        int tokenFetches = 0;
+        mockHttp
+            .When(HttpMethod.Post, "http://backend.test/oauth/token")
+            .Respond(() =>
+            {
+                int n = Interlocked.Increment(ref tokenFetches);
+                var message = new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(
+                        $"{{\"access_token\":\"token-{n}\",\"token_type\":\"Bearer\",\"expires_in\":3600}}"),
+                };
+                message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                return Task.FromResult(message);
+            });
+
+        int dataCalls = 0;
+        mockHttp
+            .When(HttpMethod.Get, "http://backend.test/data")
+            .Respond(() =>
+            {
+                int n = Interlocked.Increment(ref dataCalls);
+                HttpStatusCode status = n == 1 ? HttpStatusCode.Unauthorized : HttpStatusCode.OK;
+                return Task.FromResult(new HttpResponseMessage(status));
+            });
+
+        var handler = new StateBackendOAuthClientCredentialsAuthHandler(
+            BuildScheme(),
+            new StubSecretResolver("client-secret-value"),
+            mockHttp.ToHttpClient())
+        {
+            InnerHandler = mockHttp,
+        };
+        var client = new HttpClient(handler);
+
+        HttpResponseMessage response = await client.GetAsync("http://backend.test/data");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, tokenFetches);
+        Assert.Equal(2, dataCalls);
+    }
+
     private sealed class StubSecretResolver(string value) : IStateBackendSecretResolver
     {
         public string Resolve(string reference) => value;

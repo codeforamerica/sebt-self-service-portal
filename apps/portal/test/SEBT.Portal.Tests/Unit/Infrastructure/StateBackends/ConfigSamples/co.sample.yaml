@@ -21,6 +21,9 @@ operations:
         applicationStatus:
           from: sebtAppSts
           enum: applicationStatus
+        benefitExpirationDate:
+          from: benExpDt
+          format: yyyy-MM-dd
       disaggregation:
         rule: valueInSet
         discriminatorField: eligSrc
@@ -30,6 +33,19 @@ operations:
   cardReplacement:
     method: patch
     path: /sebt/update-std-dtls
+    # One PATCH carrying every decoded case — matches ColoradoCardReplacementService.
+    callMode: batch
+    request:
+      collect:
+        writeId: cases
+      constants:
+        reqNewCard: "Y"
+    result:
+      conditions:
+        - outcome: success
+          field: respCd
+          valueIn: ["200", "00"]
+      default: backendError
   addressUpdate:
     method: patch
     path: /sebt/update-std-dtls
@@ -62,8 +78,9 @@ operations:
         lastName: stdLastName
         dob: stdDob
       # CO's match also reads the school code; optional because the portal may not have it.
+      # JSON key is camelCase (stdSchlCd), matching stdFirstName / stdLastName / stdDob.
       mapOptional:
-        schoolIdentifier: StdSchlCd
+        schoolIdentifier: stdSchlCd
     response:
       root: $.stdntDtls
       indexField: stdReqInd
