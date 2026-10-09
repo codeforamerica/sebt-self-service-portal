@@ -20,6 +20,13 @@ public sealed class AddressValidationDataSettings : IHaveConfigSectionName
     public string[] BlockedAddresses { get; set; } = [];
 
     /// <summary>
+    /// File name of a blocked-address CSV embedded in the Infrastructure assembly from its
+    /// <c>BlockedAddresses</c> folder (e.g. <c>co-undeliverable-addresses.csv</c>). Leave unset
+    /// when the state has no such file. A name that matches no embedded file fails startup.
+    /// </summary>
+    public string? BlockedAddressFile { get; set; }
+
+    /// <summary>
     /// Maps long street names to abbreviated forms for addresses that exceed
     /// <see cref="MaxStreetAddressLength"/>. When a match is found and the abbreviated
     /// result fits within the limit, the service returns a suggestion instead of rejecting.
