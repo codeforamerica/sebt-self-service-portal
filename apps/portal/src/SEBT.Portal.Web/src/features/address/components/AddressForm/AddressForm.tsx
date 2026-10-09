@@ -188,7 +188,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
     if (!streetAddress1.trim()) {
       errors.streetAddress1 = required
     } else if (streetAddress1.trim().length > 30) {
-      // TODO: Backend does not yet enforce this limit — add [MaxLength(30)] when confirmed
+      // The backend enforces the per-state AddressValidationData:MaxStreetAddressLength limit too.
       // Both state sheets mark confirmInfo.helperStreetAddress !N/A!, so no
       // bundle carries it; the defaultValue keeps this error usable.
       errors.streetAddress1 = {
