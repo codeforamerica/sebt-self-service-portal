@@ -19,24 +19,33 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// </summary>
 public sealed class CsvBlockedAddressDataSource : IBlockedAddressDataSource
 {
+    private const string ResourcePrefix = "SEBT.Portal.Infrastructure.BlockedAddresses.";
+    private static readonly Assembly ResourceAssembly = typeof(CsvBlockedAddressDataSource).Assembly;
+
     private readonly IReadOnlyList<BlockedAddressEntry> _entries;
-
-    public CsvBlockedAddressDataSource(Assembly assembly, string resourceName)
-    {
-        using var stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null)
-        {
-            _entries = [];
-            return;
-        }
-
-        using var reader = new StreamReader(stream);
-        _entries = ParseEntries(reader).ToList();
-    }
 
     private CsvBlockedAddressDataSource(IReadOnlyList<BlockedAddressEntry> entries)
     {
         _entries = entries;
+    }
+
+    /// <summary>
+    /// Whether a CSV with this file name is embedded from the <c>BlockedAddresses</c> folder.
+    /// </summary>
+    public static bool EmbeddedFileExists(string fileName) =>
+        ResourceAssembly.GetManifestResourceInfo(ResourcePrefix + fileName) is not null;
+
+    /// <summary>
+    /// Loads a CSV embedded from the <c>BlockedAddresses</c> folder.
+    /// Throws when no such file is embedded, so a misconfigured name cannot silently disable blocking.
+    /// </summary>
+    public static CsvBlockedAddressDataSource FromEmbeddedFile(string fileName)
+    {
+        using var stream = ResourceAssembly.GetManifestResourceStream(ResourcePrefix + fileName)
+            ?? throw new InvalidOperationException(
+                $"Blocked-address file '{fileName}' is not embedded in {ResourceAssembly.GetName().Name}.");
+        using var reader = new StreamReader(stream);
+        return new CsvBlockedAddressDataSource(ParseEntries(reader).ToList());
     }
 
     /// <summary>

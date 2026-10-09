@@ -141,7 +141,8 @@ public class AddressValidationService : IAddressValidationService
             }
 
             return Task.FromResult(
-                AddressValidationResult.Invalid("Enter a street address shorter than 30 characters.", "too_long"));
+                AddressValidationResult.Invalid(
+                    $"Enter a street address shorter than {_maxStreetAddressLength} characters.", "too_long"));
         }
 
         return Task.FromResult(AddressValidationResult.Valid());

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Extensions;
@@ -270,5 +271,48 @@ public class DependenciesTests
         // Assert
         Assert.NotNull(client);
         Assert.Equal(new Uri("https://us-street.api.smarty.com/"), client.BaseAddress);
+    }
+
+    // ---------------------------------------------------------------------------
+    // IBlockedAddressDataSource — selected by AddressValidationData:BlockedAddressFile
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ResolveBlockedAddressDataSource_WhenBlockedAddressFileConfigured_LoadsEmbeddedCsv()
+    {
+        var provider = BuildProviderWithBlockedAddressFile("co-undeliverable-addresses.csv");
+
+        var source = provider.GetRequiredService<IBlockedAddressDataSource>();
+
+        Assert.IsType<CsvBlockedAddressDataSource>(source);
+        Assert.NotEmpty(source.GetEntries());
+    }
+
+    [Fact]
+    public void ResolveBlockedAddressDataSource_WhenBlockedAddressFileNotConfigured_UsesEmptySource()
+    {
+        var provider = BuildProviderWithBlockedAddressFile(null);
+
+        var source = provider.GetRequiredService<IBlockedAddressDataSource>();
+
+        Assert.IsType<EmptyBlockedAddressDataSource>(source);
+    }
+
+    private static ServiceProvider BuildProviderWithBlockedAddressFile(string? blockedAddressFile)
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{AddressValidationDataSettings.SectionName}:BlockedAddressFile"] = blockedAddressFile,
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(config);
+        services.AddLogging();
+        services.AddAppSettings(config);
+        services.AddServices(config);
+
+        return services.BuildServiceProvider();
     }
 }

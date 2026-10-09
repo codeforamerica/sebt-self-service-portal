@@ -327,6 +327,24 @@ public class AddressValidationServiceTests
         Assert.Null(result.SuggestedAddress);
     }
 
+    [Fact]
+    public async Task ValidateAsync_TooLongErrorMessage_StatesConfiguredMaxLength()
+    {
+        var service = CreateService(new AddressValidationDataSettings { MaxStreetAddressLength = 25 });
+        var address = new Address
+        {
+            StreetAddress1 = "12345 Some Very Long Unknown Street Name",
+            City = "Denver",
+            State = "Colorado",
+            PostalCode = "80205"
+        };
+
+        var result = await service.ValidateAsync(address);
+
+        Assert.Equal("too_long", result.Reason);
+        Assert.Equal("Enter a street address shorter than 25 characters.", result.ErrorMessage);
+    }
+
     // --- Empty settings (no blocked addresses, no abbreviations, no limit) ---
 
     [Fact]
