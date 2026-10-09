@@ -22,6 +22,12 @@ public static class FeatureFlags
     public const string DeferEbtCardDataLoading = "defer_ebt_card_data_loading";
 
     /// <summary>
+    /// When enabled, household data responses include hashed application and case identifiers
+    /// so analytics events can be joined to state data without exposing raw IDs. Defaults to false.
+    /// </summary>
+    public const string EnableHouseholdAnalyticsIdentifiers = "enable_household_analytics_identifiers";
+
+    /// <summary>
     /// When enabled, the diagnostic test-error endpoints under /api/test-error are active.
     /// Disabled by default; enable in Development or staging via appsettings.Development.json
     /// or AWS AppConfig. Never enable in production. Not included in the public feature-flag map.
