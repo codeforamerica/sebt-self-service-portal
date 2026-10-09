@@ -11,6 +11,7 @@ namespace SEBT.Portal.Infrastructure.StateBackends;
 
 public class ConfigurableStateBackend :
     IHouseholdLookupBackend,
+    ICardReplacementBackend,
     IStateBackendHealth
 {
     private readonly StateBackendConfiguration _configuration;
@@ -128,4 +129,122 @@ public class ConfigurableStateBackend :
 
         return new HouseholdLookupResult(HouseholdLookupStatus.Found, household);
     }
+
+    public async Task<WriteResult> RequestCardReplacementAsync(CardReplacementRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (Capabilities.CardReplacement == CardReplacementCapability.None)
+        {
+            throw new NotSupportedException("Card replacement is not supported by the state backend.");
+        }
+
+        CardReplacementOperationConfig operation = _configuration.Operations.CardReplacement
+            ?? throw new NotSupportedException("Card replacement is not configured for the state backend.");
+
+        ResultClassifier classifier = operation.Result
+            ?? throw new NotSupportedException("Card replacement has no result classifier configured.");
+
+        if (request.CaseIds.Count == 0)
+        {
+            throw new ArgumentException("CaseIds must contain at least one case token.", nameof(request));
+        }
+
+        // One call per decoded caseId, fail-fast on the first non-success — mirrors the DC
+        // connector's per-case dispatch loop.
+        foreach (string caseId in request.CaseIds)
+        {
+            // Decode the opaque caseId into its routing fields, exposed to the binding.
+            var inputs = new Dictionary<string, string>(OpaqueCaseId.Decode(caseId), StringComparer.Ordinal);
+
+            WriteResult result = await ExecuteWriteAsync(
+                operation,
+                operation.Request,
+                classifier,
+                binding => StateBackendRequestBinder.BuildBody(binding, inputs),
+                policyRejectionMessage: "The household is not eligible to request a replacement via the portal.",
+                cancellationToken).ConfigureAwait(false);
+
+            if (!result.IsSuccess)
+            {
+                return result;
+            }
+        }
+
+        return WriteResult.Success();
+    }
+
+    private static async Task<JsonElement?> TryParseBodyAsync(
+        HttpResponseMessage response, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using Stream stream = await response.Content
+                .ReadAsStreamAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (stream.CanSeek && stream.Length == 0)
+            {
+                return null;
+            }
+
+            using JsonDocument document = await JsonDocument
+                .ParseAsync(stream, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            // Clone so the element survives the JsonDocument being disposed.
+            return document.RootElement.Clone();
+        }
+        catch (JsonException)
+        {
+            // A non-JSON body still classifies on status-only conditions / the default.
+            return null;
+        }
+    }
+
+    // Shared write pipeline: build request + optional bound body, attach the Idempotency-Key
+    // (guards against a duplicate write on retry), send, classify the response into a WriteResult.
+    private async Task<WriteResult> ExecuteWriteAsync(
+        StateBackendOperationConfig operation,
+        RequestBinding? binding,
+        ResultClassifier classifier,
+        Func<RequestBinding, JsonObject> buildBody,
+        string policyRejectionMessage,
+        CancellationToken cancellationToken)
+    {
+        using HttpRequestMessage httpRequest = BuildRequest(operation);
+
+        if (binding is not null)
+        {
+            JsonObject body = buildBody(binding);
+            httpRequest.Content = new StringContent(
+                body.ToJsonString(), Encoding.UTF8, "application/json");
+        }
+
+        httpRequest.Headers.Add("Idempotency-Key", _idempotencyKeyFactory());
+
+        using HttpResponseMessage response = await _httpClient
+            .SendAsync(httpRequest, cancellationToken)
+            .ConfigureAwait(false);
+
+        JsonElement? responseBody = await TryParseBodyAsync(response, cancellationToken).ConfigureAwait(false);
+
+        WriteClassification classification = WriteResultClassifier.Classify(
+            classifier, (int)response.StatusCode, responseBody);
+
+        return ToWriteResult(classification, policyRejectionMessage);
+    }
+
+    // The backend's own message text wins; generic text applies only when the backend supplied none.
+    private static WriteResult ToWriteResult(WriteClassification classification, string policyRejectionMessage) =>
+        classification.Outcome switch
+        {
+            WriteOutcome.Success => WriteResult.Success(),
+            WriteOutcome.PolicyRejection => WriteResult.PolicyRejected(
+                "POLICY_REJECTION", classification.Message ?? policyRejectionMessage),
+            WriteOutcome.BackendError => WriteResult.BackendError(
+                "BACKEND_ERROR", classification.Message ?? "The state backend returned an error."),
+            _ => throw new NotSupportedException(
+                $"Write outcome '{classification.Outcome}' is not supported."),
+        };
 }
