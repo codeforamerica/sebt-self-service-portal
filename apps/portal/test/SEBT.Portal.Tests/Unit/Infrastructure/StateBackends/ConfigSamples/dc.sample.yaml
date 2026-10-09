@@ -1,0 +1,130 @@
+baseUrl: http://localhost:8085
+auth:
+  scheme: api_key
+  header: X-Api-Key
+  keyRef: dc-api-key
+operations:
+  householdLookup:
+    method: post
+    path: /households/lookup
+    request:
+      constants:
+        includePendingApplicantDetails: false
+      map:
+        email: guardianEmail
+        ic: guardianIdentifiers.IC
+        dob: guardianIdentifiers.DOB
+        portalUuid: guardianIdentifiers.PortalUUID
+        isProofed: isIdentityProofed
+      mapOptional:
+        socureUuid: guardianIdentifiers.SocureUUID
+    response:
+      root: $.resultSets[0]
+      fields:
+        summerEBTCaseID:
+          from: SummerEBTCaseID
+        childFirstName:
+          from: ChildFirstName
+        childLastName:
+          from: ChildLastName
+        ebtCardIssueDate:
+          from: EbtCardIssueDate
+          # The wrapper serializes DC's DATE column as ISO 8601 (System.Text.Json default).
+          format: yyyy-MM-ddTHH:mm:ss
+        benefitExpirationDate:
+          from: BenefitExpirationDate
+          format: yyyy-MM-ddTHH:mm:ss
+        ebtCardStatus:
+          from: EbtCardStatus
+          enum: cardStatus
+        # Issuance type is inferred from free-text fields via contains-match, first-match-wins.
+        # `from` lists one OR MORE source fields; a keyword found in ANY of them counts.
+        issuanceType:
+          from: [HouseholdType, EligibilityType]
+          keywordRules:
+            order: [SummerEbt, SnapEbtCard, TanfEbtCard]  # first-match-wins — order is load-bearing
+            map:
+              SummerEbt:   [OSSE, NSLP]                   # OUR value -> substrings that indicate it
+              SnapEbtCard: [FOOD, SNAP]
+              TanfEbtCard: [CASH, TANF]
+            default: Unknown
+      disaggregation:
+        rule: presence
+        discriminatorField: ApplicationId
+        groupApplicationsBy: ApplicationId
+        caseInclusion: all
+      caseId:
+        fields:
+          caseId: SummerEBTCaseID
+          applicationId: ApplicationId
+  cardReplacement:
+    method: post
+    path: /card-replacements
+    request:
+      # Map LHS are the decoded caseId routing fields; RHS are the wrapper's request keys
+      # (bound 1:1 to the sproc's @householdEmail / @summerEbtCaseId params). The canonical
+      # contract carries no replacement reason, so the wrapper's `reason` key is unbound (SQL NULL).
+      map:
+        caseId: summerEbtCaseId
+        householdIdentifier: householdEmail
+    result:
+      # Ordered, first-match-wins. Each condition is EXACTLY ONE of three closed kinds:
+      # statusIn / valueIn(field) / messageContains(messageField). NO combinators, NO nesting.
+      # The wrapper returns HTTP 200 with the sproc's raw OUTPUT params: numeric resultCode
+      # (0 = success) and resultMessage (policy rejections carry "policy" wording).
+      conditions:
+        # DC: a "policy" message is a policy rejection — evaluated BEFORE success (order matters).
+        - outcome: policyRejection
+          messageField: resultMessage
+          messageContains: [policy]
+        - outcome: success
+          field: resultCode
+          valueIn: ["0"]  # numeric 0 — JsonRead stringifies numbers
+      default: backendError
+  addressUpdate:
+    method: post
+    path: /households/address
+    request:
+      constants:
+        source: portal
+      map:
+        householdIdentifier: householdIdentifier
+        line1: address.line1
+        city: address.city
+        state: address.state
+        zip: address.zip
+      mapOptional:
+        line2: address.line2
+    result:
+      conditions:
+        - outcome: success
+          field: resultCode
+          valueIn: [OK]
+      default: backendError
+  enrollmentCheck:
+    method: post
+    path: /enrollment/check
+    callMode: perChild
+    request:
+      map:
+        firstName: firstName
+        lastName: lastName
+        dob: dateOfBirth
+      # DC's sproc match also reads the school name; optional because the portal may not have it.
+      mapOptional:
+        schoolIdentifier: schoolName
+    response:
+      root: $
+      match:
+        strategy: anyRowValueIn
+        field: isEligible
+        valueIn: ["true"]
+  health:
+    method: get
+    path: /health
+enums:
+  cardStatus:
+    map:
+      Active: [ACTIVE]
+      Lost: [LOST, "LOST, AUTO REISSUE"]
+    default: Unknown

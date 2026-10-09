@@ -1,0 +1,174 @@
+baseUrl: http://localhost:8086
+auth:
+  scheme: client_credentials
+  tokenUrl: http://localhost:8086/oauth/token
+  clientId: co-client
+  clientSecretRef: co-client-secret
+operations:
+  householdLookup:
+    method: post
+    path: /sebt/get-account-details
+    request:
+      map:
+        phone: phnNm
+    response:
+      root: $.stdntEnrollDtls
+      fields:
+        summerEBTCaseID:
+          from: sebtChldCwin
+        childFirstName:
+          from: stdFstNm
+        childLastName:
+          from: stdLstNm
+        childDateOfBirth:
+          from: stdDob
+          format: yyyy-MM-dd
+        # Colorado hardcodes these; they are not properties on the student row.
+        householdType:
+          value: SEBT
+        issuanceType:
+          value: SummerEbt
+        eligibilityType:
+          from: stdntEligSts
+        # Case status is stdntEligSts. sebtAppSts is the application processing status.
+        applicationStatus:
+          from: stdntEligSts
+          enum: applicationStatus
+        applicationStudentId:
+          from: sebtChldId
+        ebtCaseNumber:
+          from: cbmsCsId
+        caseDisplayNumber:
+          from: sebtAppId
+        ebtCardLastFour:
+          from: ebtCardLastFour
+        ebtCardStatus:
+          from: ebtCardSts
+          enum: cardStatus
+        ebtCardIssueDate:
+          from: cardIssDt
+          format: yyyy-MM-dd
+        ebtCardBalance:
+          from: cardBal
+        benefitAvailableDate:
+          from: benAvalDt
+          format: yyyy-MM-dd
+        benefitExpirationDate:
+          from: benExpDt
+          format: yyyy-MM-dd
+      mailingAddress:
+        line1: addrLn1
+        line2: addrLn2
+        city: cty
+        state: staCd
+        zip: zip
+        zip4: zip4
+      # Packed into the case id so address update can send sebtChldId and sebtAppId back.
+      caseId:
+        fields:
+          sebtChldId: sebtChldId
+          sebtAppId: sebtAppId
+      disaggregation:
+        rule: valueInSet
+        discriminatorField: eligSrc
+        applicationValues: [CBMS, PK]
+        groupApplicationsBy: sebtAppId
+        caseInclusion: whenApprovedOrNotApplicationBased
+  cardReplacement:
+    method: patch
+    path: /sebt/update-std-dtls
+    # One PATCH, one student object per case — matches ColoradoCardReplacementService.
+    callMode: batch
+    request:
+      eachCase: true
+      map:
+        sebtChldId: sebtChldId
+        sebtAppId: sebtAppId
+      constants:
+        reqNewCard: "Y"
+    result:
+      conditions:
+        - outcome: success
+          field: respCd
+          valueIn: ["200", "00"]
+      default: backendError
+  addressUpdate:
+    method: patch
+    path: /sebt/update-std-dtls
+    request:
+      # One JSON object per student, matching ColoradoAddressUpdateService's PATCH body.
+      eachCase: true
+      map:
+        sebtChldId: sebtChldId
+        sebtAppId: sebtAppId
+        line1: addr.addrLn1
+        city: addr.cty
+        state: addr.staCd
+        zip: addr.zip
+      mapOptional:
+        line2: addr.addrLn2
+        zip4: addr.zip4
+    result:
+      conditions:
+        - outcome: success
+          field: respCd
+          valueIn: ["200", "00"]
+      default: backendError
+  enrollmentCheck:
+    method: post
+    path: /sebt/check-enrollment
+    # Batch fan-out: ONE call carries every child as a correlated row.
+    callMode: batch
+    request:
+      # Closed candidate-expansion primitive: emit the entered DOB plus its month/day-swapped
+      # candidate (when valid AND different) under one shared correlation index.
+      expand: transposeMonthDay
+      indexField: stdReqInd
+      map:
+        firstName: stdFirstName
+        lastName: stdLastName
+        dob: stdDob
+      # CO's match also reads the school code; optional because the portal may not have it.
+      # JSON key is camelCase (stdSchlCd), matching stdFirstName / stdLastName / stdDob.
+      mapOptional:
+        schoolIdentifier: stdSchlCd
+    response:
+      root: $.stdntDtls
+      indexField: stdReqInd
+      # The winning (argmax) row's eligibility text rides along per child — even on a sub-threshold
+      # non-match — and CBMS's root-level respMsg is surfaced result-level.
+      statusMessageField: sebtEligSts
+      messageField: respMsg
+      # CO's match: pick the child's highest-confidence candidate row (argmax by mtchCnfd) and
+      # match iff that best is STRICTLY greater than the threshold AND that SAME row is SEBT-eligible.
+      # The argmax, `>`, and the AND are fixed code; config only names the strategy and its params.
+      match:
+        strategy: confidenceThreshold
+        scoreField: mtchCnfd
+        threshold: 90
+        field: sebtEligSts
+        valueIn: ["Y"]
+  health:
+    method: get
+    path: /ping
+enums:
+  # CBMS application processing status (sebtAppSts). Domain-centered: OUR value -> state token(s).
+  # 2-letter CBMS codes; unlisted tokens fall through to Unknown (not Approved -> excluded if app-based).
+  applicationStatus:
+    map:
+      Approved: [AP]
+      Denied: [DE, OT]
+      Pending: [AI, AM, PD, PE, PG, PS]
+    default: Unknown
+  # CBMS ebtCardSts full-word tokens. Same table the Colorado connector switches on.
+  cardStatus:
+    map:
+      Active: [ACTIVE]
+      Lost: [LOST, "LOST, AUTO REISSUE"]
+      Stolen: [STOLEN]
+      Damaged: [DAMAGED]
+      DeactivatedByState: ["STATUSED BY STATE, NO REISSUE", "DEACTIVATED BY STATE"]
+      NotActivated: ["NOT ACTIVATED"]
+      Frozen: [FROZEN]
+      Undeliverable: [UNDELIVERABLE]
+    default: Unknown
