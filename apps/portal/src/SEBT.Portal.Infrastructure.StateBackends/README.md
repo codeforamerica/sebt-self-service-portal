@@ -11,7 +11,7 @@ Every state backend speaks JSON over HTTP. Per-state variation — different end
 The Core ports are transport-free. Core has no HTTP or plugin-contract dependencies. They define the operations; the adapter decides how to serialize and transport them. One port per operation:
 
 - [`IHouseholdLookupBackend`](../SEBT.Portal.Core/StateBackends/IHouseholdLookupBackend.cs) — resolve a household from identity signals (email, phone, IC, DOB, …) plus caller context into canonical household data.
-- [`ICardReplacementBackend`](../SEBT.Portal.Core/StateBackends/ICardReplacementBackend.cs) — request replacement cards for opaque `caseId` tokens. `callMode: perCase` (default, DC) fans out one call per token; `callMode: batch` (CO) sends one call collecting every decoded case. The household identifier rides on the write envelope, not inside the tokens.
+- [`ICardReplacementBackend`](../SEBT.Portal.Core/StateBackends/ICardReplacementBackend.cs) — request replacement cards for opaque `caseId` tokens. `callMode: perCase`  fans out one call per token; `callMode: batch` sends one call whose body is one student object per decoded case.
 - [`IAddressUpdateBackend`](../SEBT.Portal.Core/StateBackends/IAddressUpdateBackend.cs) — household-routed mailing-address update: the envelope carries `householdIdentifier`. Case tokens may be empty when the binding does not need per-case fields (`collect` / token `shared` still require them).
 - [`IEnrollmentCheckBackend`](../SEBT.Portal.Core/StateBackends/IEnrollmentCheckBackend.cs) — check enrollment eligibility for a batch of children; one match verdict per child.
 - [`IStateBackendHealth`](../SEBT.Portal.Core/StateBackends/IStateBackendHealth.cs) — liveness probe; returns healthy/unhealthy, including when the socket times out. The shared handler chain applies the state's auth scheme to health calls too. DC's open `/health` ignores it, but a backend may require it.
@@ -54,9 +54,9 @@ When a real state needs something no primitive covers, stop and add a **new name
 
 ## Status
 
-Spike / prototype (DC-568). The adapter is not yet wired into the portal composition root.
+Spike / prototype (DC-568). MEF plugins remain the default live path. The adapter is wired behind a dark-launch flag.
 
-- **Not wired:** `FeatureManagement:use_configurable_state_backend` and `StateBackend:ConfigPath` are the intended integration seam — they do not exist in this stack yet. MEF plugins serve all traffic. Nothing dispatches through `ConfigurableStateBackend` until a later stack adds the flag, the YAML path, and the resolve-time flip.
+- **Dark launch:** `FeatureManagement:use_configurable_state_backend` (default `false`) plus `StateBackend:ConfigPath`. When the path is set, YAML loads and validates at startup. Traffic stays on MEF plugins until the flag is enabled (AppConfig can flip it without a restart). Enabling the flag with an empty path fails the request.
 - **Follow-up:** move `Core/StateBackends/Configuration/` into `Infrastructure.StateBackends` (ADR-0002: Core should not carry HTTP concepts). Deferred so this stack does not reshuffle types.
 - **Validation:** the DC wrapper surface is complete; CO UAT smoke testing is underway. Test green is still substantially mock-based (MockHttp + self-authored fixtures) — the adapter is unvalidated against production traffic.
 - **Config trust model:** the YAML defines egress targets and constants. It is deployment-owned config, sitting inside the same trust boundary as appsettings secrets. It is not user- or state-supplied input.

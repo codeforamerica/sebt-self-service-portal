@@ -9,6 +9,9 @@ public sealed record StateBackendResponseMapping
     /// <summary>Canonical field name → how to pull and coerce it from the record selected by <see cref="Root"/>.</summary>
     public required Dictionary<string, FieldMapping> Fields { get; init; }
 
+    /// <summary>Optional source properties for the case mailing address, also copied to the household when it has none yet.</summary>
+    public MailingAddressMapping? MailingAddress { get; init; }
+
     /// <summary>Optional strategy for grouping records into applications and deciding case inclusion.</summary>
     public StateBackendDisaggregation? Disaggregation { get; init; }
 

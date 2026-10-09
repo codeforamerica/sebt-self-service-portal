@@ -4,6 +4,8 @@ A state config bundle is a single YAML file. It tells the portal how to talk to 
 
 The two worked examples throughout are [`dc.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/dc.sample.yaml) (District of Columbia, API-key auth) and [`co.sample.yaml`](../../test/SEBT.Portal.Tests/Unit/Infrastructure/StateBackends/ConfigSamples/co.sample.yaml) (Colorado, OAuth client-credentials auth). Every YAML fragment below is copied from one of those files.
 
+To point the portal at a bundle, set `StateBackend:ConfigPath` (absolute, or relative to the API content root). YAML loads and validates at startup. Traffic stays on the MEF plugins until `FeatureManagement:use_configurable_state_backend` is `true`. Enabling the flag without a path fails the request.
+
 ## Step 1: Base URL and authentication
 
 Set `baseUrl` to the root of the state backend. Then declare an `auth` scheme. There are exactly two schemes.
@@ -71,13 +73,16 @@ operations:
           enum: cardStatus
 ```
 
-The mapping is **domain-centered**: the left-hand side is *our* canonical field name; the right-hand side (`from`) is the state's property name. The `fields` left-hand keys are a closed set: `summerEBTCaseID` / `childFirstName` / `childLastName` / `applicationId` / `ebtCardIssueDate` / `benefitExpirationDate` / `ebtCardStatus` / `applicationStatus` / `issuanceType`. A field mapping has three optional modifiers:
+The mapping is **domain-centered**: the left-hand side is *our* canonical field name; the right-hand side (`from`) is the state's property name. The `fields` left-hand keys are a closed set: `summerEBTCaseID` / `childFirstName` / `childLastName` / `childDateOfBirth` / `applicationId` / `applicationStudentId` / `householdType` / `eligibilityType` / `ebtCaseNumber` / `caseDisplayNumber` / `ebtCardLastFour` / `ebtCardIssueDate` / `ebtCardBalance` / `benefitAvailableDate` / `benefitExpirationDate` / `ebtCardStatus` / `applicationStatus` / `issuanceType`. A field mapping sets exactly one of `from` or `value`, plus optional modifiers:
 
-- `from` — the source property on the record. Required. A scalar unless the field uses `keywordRules`, which may list several sources.
+- `from` — the source property on the record. A scalar unless the field uses `keywordRules`, which may list several sources.
+- `value` — a constant canonical value, used when the state does not send the field (Colorado always sets household type `SEBT` and issuance type `SummerEbt`). Exclusive with `from` and with `enum`.
 - `format` — an exact date parse format (e.g. `MM/dd/yyyy`) for date-typed fields. Exact parse, no fallback.
 - `enum` — the name of an enum table (see Step 4) that translates the source token into a canonical value.
 
-Coercion is driven by the canonical field's known type — a string field copies, a date field parses with `format`, an enum field resolves through its `enum` table. You do not declare the type.
+Coercion is driven by the canonical field's known type — a string field copies, a date field parses with `format`, a decimal field parses an invariant number, an enum field resolves through its `enum` table. You do not declare the type.
+
+An optional `mailingAddress` block on the same response names the source properties for line 1, line 2, city, state, zip, and zip4. Zip and zip4 join as `zip-zip4` when both are present. The address is omitted when line 1 and city are both empty, and the first address found is also the household address on file.
 
 ## Step 4: Enum translation tables
 
@@ -214,6 +219,23 @@ An example of what this looks can be seen (as an `Update Address` example):
         zip: stdZip
 ```
 
+- `eachCase: true` — the body is a JSON array, one object per decoded case. Each object is built from `constants`, `map`, and `mapOptional`. Inputs are the write scalars plus that case's routing fields. Colorado address update and card replacement both use this for `update-std-dtls`; card replacement adds `reqNewCard: "Y"` as a constant on every object. It cannot be combined with `shared` or `collect`. A portal postal code `80203-1234` is exposed as `zip` `80203` and `zip4` `1234`.
+
+```yaml
+    request:
+      eachCase: true
+      map:
+        sebtChldId: sebtChldId
+        sebtAppId: sebtAppId
+        line1: addr.addrLn1
+        city: addr.cty
+        state: addr.staCd
+        zip: addr.zip
+      mapOptional:
+        line2: addr.addrLn2
+        zip4: addr.zip4
+```
+
 
 ### Result classifier
 
@@ -315,7 +337,7 @@ CO — `batch`, correlated rows via `indexField`, DOB `expand`, eligibility-gate
       root: $.stdntDtls
       indexField: stdReqInd
       statusMessageField: sebtEligSts
-      messageField: RespMsg
+      messageField: respMsg
       match:
         strategy: confidenceThreshold
         scoreField: mtchCnfd

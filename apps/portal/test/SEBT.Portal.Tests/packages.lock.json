@@ -1277,6 +1277,7 @@
           "SEBT.Portal.Core": "[1.0.0, )",
           "SEBT.Portal.Infrastructure": "[1.0.0, )",
           "SEBT.Portal.Infrastructure.Seeding": "[1.0.0, )",
+          "SEBT.Portal.Infrastructure.StateBackends": "[1.0.0, )",
           "SEBT.Portal.Kernel": "[1.0.0, )",
           "SEBT.Portal.Kernel.AspNetCore": "[1.0.0, )",
           "SEBT.Portal.StatesPlugins.Interfaces": "[0.0.4-dev, )",
@@ -1335,6 +1336,7 @@
       "sebt.portal.infrastructure.statebackends": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.Http": "[10.0.9, )",
           "SEBT.Portal.Core": "[1.0.0, )",
           "YamlDotNet": "[18.1.0, )"
         }

@@ -13,10 +13,9 @@ public class ConfigurableStateBackendRequestCardReplacementTests
 {
     private const string FixedIdempotencyKey = "11111111-1111-1111-1111-111111111111";
 
-    // Mirrors the DC REST wrapper's real contract: POST /card-replacements taking the sproc's
-    // inputs (householdEmail, summerEbtCaseId) and returning its raw OUTPUT params — numeric
-    // resultCode (0 = success) and resultMessage (policy rejections carry "policy" wording).
-    private static CardReplacementOperationConfig DcCardReplacement() =>
+    // One POST per case. The body maps caseId and householdIdentifier. Success is resultCode 0.
+    // A resultMessage containing "policy" is a policy rejection; anything else is a backend error.
+    private static CardReplacementOperationConfig ResultCodeCardReplacement() =>
         new()
         {
             Method = StateBackendHttpMethod.Post,
@@ -50,7 +49,8 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             },
         };
 
-    private static ResultClassifier CoResultClassifier() =>
+    // Success when respCd is 200 or 00. No messageField, so failures use the generic text.
+    private static ResultClassifier RespCdClassifier() =>
         new()
         {
             Conditions = new List<ResultCondition>
@@ -75,8 +75,8 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     private static CardReplacementRequest ReplacementFor(params string[] caseIds) =>
         new(caseIds) { HouseholdIdentifier = "family@example.test" };
 
-    // An opaque caseId carrying the DC routing fields most tests decode on write. The token also
-    // carries applicationId (composed on read for DC) even though card replacement doesn't bind it.
+    // Routing fields most tests decode on write. applicationId is composed into the token
+    // even though this card-replacement binding does not map it.
     private static string DefaultCaseId() =>
         OpaqueCaseId.Compose(new Dictionary<string, string>
         {
@@ -130,14 +130,14 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         Assert.Equal("APP-100", decoded["applicationId"]);
     }
 
-    // The DC write-path gap: DC's lookup response has NO household-email column, but the write
-    // binds householdIdentifier from the request envelope — not from a PII-bearing case token.
+    // Lookup does not return a household identifier. The write binds householdIdentifier
+    // from the request envelope, not from the case token.
     [Fact]
     public async Task RequestCardReplacementAsync_BindsHouseholdIdentifier_FromWriteEnvelope()
     {
-        // Arrange — one config carrying both operations, DC-shaped.
+        // Arrange — lookup composes the case token; card replacement uses the result-code binding.
         StateBackendConfiguration configuration =
-            LookupWithCaseIdComposition().WithCardReplacement(DcCardReplacement());
+            LookupWithCaseIdComposition().WithCardReplacement(ResultCodeCardReplacement());
 
         string? capturedBody = null;
         var mockHttp = new MockHttpMessageHandler();
@@ -220,7 +220,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             })
             .Respond("application/json", """{ "resultCode": 0, "resultMessage": null }""");
 
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
+        var backend = BuildBackend(mockHttp, ResultCodeCardReplacement());
         var request = ReplacementFor(caseId);
 
         // Act
@@ -258,7 +258,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             })
             .Respond("application/json", """{ "resultCode": 0, "resultMessage": null }""");
 
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
+        var backend = BuildBackend(mockHttp, ResultCodeCardReplacement());
 
         // Act
         await backend.RequestCardReplacementAsync(ReplacementFor(caseId));
@@ -298,7 +298,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             .When(HttpMethod.Post, "http://backend.test/card-replacements")
             .Respond(status, "application/json", responseJson);
 
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
+        var backend = BuildBackend(mockHttp, ResultCodeCardReplacement());
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
@@ -310,12 +310,12 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     }
 
     [Fact]
-    public async Task RequestCardReplacementAsync_ClassifiesSuccess_FromCoRespCd_StatusAndValueKinds()
+    public async Task RequestCardReplacementAsync_ClassifiesSuccess_WhenRespCdIsInValueIn()
     {
         // Arrange — the value-in-set kind: respCd in {200, 00}.
         string caseId = OpaqueCaseId.Compose(new Dictionary<string, string>
         {
-            ["caseId"] = "CO-001",
+            ["caseId"] = "CASE-001",
         });
 
         var cardReplacement = new CardReplacementOperationConfig
@@ -326,7 +326,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             {
                 Map = new Dictionary<string, string> { ["caseId"] = "sebtChldCwin" },
             },
-            Result = CoResultClassifier(),
+            Result = RespCdClassifier(),
         };
 
         var mockHttp = new MockHttpMessageHandler();
@@ -402,7 +402,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
                 "application/json",
                 $$"""{ "resultCode": 1, "resultMessage": "{{backendMessage}}" }""");
 
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
+        var backend = BuildBackend(mockHttp, ResultCodeCardReplacement());
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
@@ -418,8 +418,8 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     [Fact]
     public async Task RequestCardReplacementAsync_FallsBackToGenericMessage_WhenBackendSuppliesNone()
     {
-        // Arrange — CO's classifier declares no messageField, so there is no backend message to read.
-        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string> { ["caseId"] = "CO-001" });
+        // Arrange — this classifier declares no messageField, so there is no backend message to read.
+        string caseId = OpaqueCaseId.Compose(new Dictionary<string, string> { ["caseId"] = "CASE-001" });
 
         var cardReplacement = new CardReplacementOperationConfig
         {
@@ -429,7 +429,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             {
                 Map = new Dictionary<string, string> { ["caseId"] = "sebtChldCwin" },
             },
-            Result = CoResultClassifier(),
+            Result = RespCdClassifier(),
         };
 
         var mockHttp = new MockHttpMessageHandler();
@@ -516,7 +516,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             })
             .Respond("application/json", """{ "resultCode": 0, "resultMessage": null }""");
 
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
+        var backend = BuildBackend(mockHttp, ResultCodeCardReplacement());
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
@@ -554,7 +554,7 @@ public class ConfigurableStateBackendRequestCardReplacementTests
                 "application/json",
                 """{ "resultCode": 1, "resultMessage": "Backend Failure: the request could not be completed." }""");
 
-        var backend = BuildBackend(mockHttp, DcCardReplacement());
+        var backend = BuildBackend(mockHttp, ResultCodeCardReplacement());
 
         // Act
         WriteResult result = await backend.RequestCardReplacementAsync(
@@ -566,10 +566,18 @@ public class ConfigurableStateBackendRequestCardReplacementTests
     }
 
     [Fact]
-    public async Task RequestCardReplacementAsync_BatchCallMode_SendsOneCall_CollectingCaseIds()
+    public async Task RequestCardReplacementAsync_EachCase_SendsOneObjectPerCase()
     {
-        string caseId1 = OpaqueCaseId.Compose(new Dictionary<string, string> { ["writeId"] = "CWIN-1" });
-        string caseId2 = OpaqueCaseId.Compose(new Dictionary<string, string> { ["writeId"] = "CWIN-2" });
+        string caseId1 = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["sebtChldId"] = "1301305",
+            ["sebtAppId"] = "1299750",
+        });
+        string caseId2 = OpaqueCaseId.Compose(new Dictionary<string, string>
+        {
+            ["sebtChldId"] = "1301306",
+            ["sebtAppId"] = "1299751",
+        });
 
         string? capturedBody = null;
         var mockHttp = new MockHttpMessageHandler();
@@ -589,10 +597,15 @@ public class ConfigurableStateBackendRequestCardReplacementTests
             CallMode = CardReplacementCallMode.Batch,
             Request = new RequestBinding
             {
-                Collect = new Dictionary<string, string> { ["writeId"] = "cases" },
+                EachCase = true,
+                Map = new Dictionary<string, string>
+                {
+                    ["sebtChldId"] = "sebtChldId",
+                    ["sebtAppId"] = "sebtAppId",
+                },
                 Constants = new Dictionary<string, object> { ["reqNewCard"] = "Y" },
             },
-            Result = CoResultClassifier(),
+            Result = RespCdClassifier(),
         };
 
         var backend = BuildBackend(mockHttp, cardReplacement);
@@ -602,17 +615,20 @@ public class ConfigurableStateBackendRequestCardReplacementTests
         Assert.True(result.IsSuccess);
         Assert.NotNull(capturedBody);
         using JsonDocument document = JsonDocument.Parse(capturedBody);
-        JsonElement cases = document.RootElement.GetProperty("cases");
-        Assert.Equal(2, cases.GetArrayLength());
-        Assert.Equal("CWIN-1", cases[0].GetString());
-        Assert.Equal("CWIN-2", cases[1].GetString());
-        Assert.Equal("Y", document.RootElement.GetProperty("reqNewCard").GetString());
+        JsonElement root = document.RootElement;
+        Assert.Equal(JsonValueKind.Array, root.ValueKind);
+        Assert.Equal(2, root.GetArrayLength());
+        Assert.Equal("1301305", root[0].GetProperty("sebtChldId").GetString());
+        Assert.Equal("1299750", root[0].GetProperty("sebtAppId").GetString());
+        Assert.Equal("Y", root[0].GetProperty("reqNewCard").GetString());
+        Assert.Equal("1301306", root[1].GetProperty("sebtChldId").GetString());
+        Assert.Equal("Y", root[1].GetProperty("reqNewCard").GetString());
     }
 
     [Fact]
     public async Task RequestCardReplacementAsync_FailsLoud_OnEmptyCaseIds()
     {
-        var backend = BuildBackend(new MockHttpMessageHandler(), DcCardReplacement());
+        var backend = BuildBackend(new MockHttpMessageHandler(), ResultCodeCardReplacement());
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             backend.RequestCardReplacementAsync(new CardReplacementRequest(new List<string>())));

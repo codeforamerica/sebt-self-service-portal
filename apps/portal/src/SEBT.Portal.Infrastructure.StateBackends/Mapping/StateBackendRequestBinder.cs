@@ -137,6 +137,44 @@ internal static class StateBackendRequestBinder
         return body;
     }
 
+    /// <summary>
+    /// One JSON object per decoded caseId. Address scalars and that case's routing fields are the
+    /// inputs; an empty routing field is treated as absent.
+    /// </summary>
+    public static JsonArray BuildEachCaseBody(
+        RequestBinding binding,
+        IReadOnlyList<IReadOnlyDictionary<string, string>> decodedCaseIds,
+        IReadOnlyDictionary<string, string> scalarInputs)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        ArgumentNullException.ThrowIfNull(decodedCaseIds);
+        ArgumentNullException.ThrowIfNull(scalarInputs);
+
+        if (decodedCaseIds.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "This write requires at least one caseId because eachCase binding is configured.");
+        }
+
+        var body = new JsonArray();
+
+        foreach (IReadOnlyDictionary<string, string> caseFields in decodedCaseIds)
+        {
+            var inputs = new Dictionary<string, string>(scalarInputs, StringComparer.Ordinal);
+            foreach ((string key, string value) in caseFields)
+            {
+                if (!string.IsNullOrEmpty(value))
+                {
+                    inputs[key] = value;
+                }
+            }
+
+            body.Add(BuildBody(binding, inputs));
+        }
+
+        return body;
+    }
+
     /// <summary>Address-update alias for <see cref="BuildBatchWriteBody"/>.</summary>
     public static JsonObject BuildAddressBody(
         RequestBinding binding,
