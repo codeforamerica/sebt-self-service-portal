@@ -36,6 +36,8 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         "Oidc__ClientId",
         "Oidc__CallbackRedirectUri",
         "Oidc__CompleteLoginSigningKey",
+        "Oidc__VerificationClaims__LevelClaimName",
+        "Oidc__VerificationClaims__DateClaimName",
         "Redis__Host",
         "ConnectionStrings__Redis",
         "IdProofingRequirements__household+view__application",
@@ -61,6 +63,8 @@ public class PortalWebApplicationFactory : WebApplicationFactory<Program>
         Environment.SetEnvironmentVariable("Oidc__ClientId", "test-client");
         Environment.SetEnvironmentVariable("Oidc__CallbackRedirectUri", "http://localhost:3000/callback");
         Environment.SetEnvironmentVariable("Oidc__CompleteLoginSigningKey", JwtSecretKey);
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__LevelClaimName", "socureIdVerificationLevel");
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__DateClaimName", "socureIdVerificationDate");
 
         // IdProofingRequirements are configured via env vars for integration tests
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
