@@ -198,6 +198,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
+    # Repository secrets are absent on Dependabot and fork PRs; the connector
+    # steps below check this so those runs skip staging instead of failing.
+    env:
+      HAS_CONNECTOR_ACCESS: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID != '' }}
+
     services:
       mssql:
         image: mcr.microsoft.com/mssql/server:2022-CU16-ubuntu-22.04@sha256:45a1a9d13ca5574cf8e0fe4ae73ab77248b66d9c3132ac9658fb6c16dd72a8af
@@ -229,6 +234,104 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+
+      # Staging the real DC plugin is what makes this job exercise plugin loading.
+      # With plugins-dc/ empty the loader has nothing to bind, so a host/plugin
+      # assembly version conflict passes CI and only surfaces as a crash-looping
+      # ECS task that the deployment circuit breaker silently rolls back.
+      #
+      # Skipped when the connector token is unavailable — Dependabot and fork PRs
+      # don't receive repository secrets. Those runs keep the previous behaviour
+      # (empty plugins-dc) rather than failing on a secret they can never have.
+      - name: Get dc-connector access token
+        if: env.HAS_CONNECTOR_ACCESS == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: dc-connector-token
+        with:
+          app-id: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_ID }}
+          private-key: ${{ secrets.DC_CONNECTOR_CHECKOUT_APP_PRIVATE_KEY }}
+          owner: codeforamerica
+          repositories: sebt-self-service-portal-dc-connector
+
+      # Same branch-matching as deploy-ecr.yaml and release-iis-dc.yaml: paired
+      # contract changes need the dc-connector branch of the same name; everything
+      # else falls back to main. The matched branch resolves to a commit SHA so the
+      # checkout is pinned — no window for the branch to move between resolution
+      # and checkout.
+      - name: Determine dc-connector ref
+        if: env.HAS_CONNECTOR_ACCESS == 'true'
+        id: dc-connector-ref
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          CONNECTOR_TOKEN: ${{ steps.dc-connector-token.outputs.token }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            BRANCH="$HEAD_REF"
+          else
+            BRANCH="$REF_NAME"
+          fi
+          if [[ ! "$BRANCH" =~ ^[A-Za-z0-9._/-]+$ ]]; then
+            echo "::error::Invalid git ref: branch=$BRANCH"
+            exit 1
+          fi
+          if [ -z "$CONNECTOR_TOKEN" ]; then
+            echo "::error::dc-connector app token is empty — check the create-github-app-token step above"
+            exit 1
+          fi
+          # Authenticate exactly the way actions/checkout does (basic auth header) —
+          # URL-embedded credentials are rejected for this token and would also leak
+          # into error output.
+          AUTH_HEADER="AUTHORIZATION: basic $(printf '%s' "x-access-token:${CONNECTOR_TOKEN}" | base64 | tr -d '\n')"
+          REPO_URL="https://github.com/${REPO_OWNER}/sebt-self-service-portal-dc-connector.git"
+          # Run outside the portal checkout: its persisted GITHUB_TOKEN auth header
+          # would override ours and 404 on the private connector repo.
+          if ! LS_OUT=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/${BRANCH}" 2>&1); then
+            echo "::error::dc-connector ls-remote failed: ${LS_OUT}"
+            exit 1
+          fi
+          RESOLVED="$BRANCH"
+          SHA=$(printf '%s\n' "$LS_OUT" | cut -f1 | head -1)
+          if [ -z "$SHA" ]; then
+            RESOLVED="main"
+            SHA=$(cd "$RUNNER_TEMP" && git -c http.extraheader="$AUTH_HEADER" ls-remote "$REPO_URL" "refs/heads/main" | cut -f1 | head -1)
+          fi
+          if [[ ! "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve dc-connector ${RESOLVED} to a commit SHA"
+            exit 1
+          fi
+          echo "Resolved dc-connector ${RESOLVED} -> ${SHA}"
+          echo "ref=${SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout dc-connector
+        if: env.HAS_CONNECTOR_ACCESS == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: codeforamerica/sebt-self-service-portal-dc-connector
+          token: ${{ steps.dc-connector-token.outputs.token }}
+          ref: ${{ steps.dc-connector-ref.outputs.ref }}
+          path: dc-connector
+
+      # Must run before "Build backend": the API csproj folds plugins-dc/**/*.dll
+      # into its output, and the running API loads the plugin from there.
+      - name: Stage DC plugin into plugins-dc
+        if: env.HAS_CONNECTOR_ACCESS == 'true'
+        run: |
+          dotnet build apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj \
+            -c Release
+          # dc-connector has no committed lockfile (deliberate — see the locked-mode ADR);
+          # exempt this out-of-tree restore so CI locked mode doesn't fail it.
+          dotnet publish dc-connector/src/SEBT.Portal.StatePlugins.DC/SEBT.Portal.StatePlugins.DC.csproj \
+            -c Release \
+            -p:CopyPlugins=false \
+            -p:RestoreLockedMode=false \
+            -p:StateConnectorInterfacesProject="$GITHUB_WORKSPACE/apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/SEBT.Portal.StatesPlugins.Interfaces.csproj"
+          mkdir -p apps/portal/src/SEBT.Portal.Api/plugins-dc
+          cp dc-connector/src/SEBT.Portal.StatePlugins.DC/bin/Release/net10.0/publish/*.dll \
+            apps/portal/src/SEBT.Portal.Api/plugins-dc/
+          echo "Staged $(ls apps/portal/src/SEBT.Portal.Api/plugins-dc/*.dll | wc -l) plugin DLLs"
 
       - name: Setup pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
