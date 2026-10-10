@@ -68,7 +68,12 @@ const SAFE_EMAIL_RE =
   /@(example\.(com|org|net|test)|test\.(com|org|net)|localhost|users\.noreply\.github\.com|anthropic\.com)$/i;
 const NOREPLY_RE = /^noreply@/i;
 
-const emails = [...new Set((content.match(EMAIL_RE) || []))]
+// git@host:org/repo.git is an SSH clone URL, not a mailbox.
+const GIT_SSH_URL_RE =
+  /git@([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?:/gi;
+const emailScan = content.replace(GIT_SSH_URL_RE, '');
+
+const emails = [...new Set((emailScan.match(EMAIL_RE) || []))]
   .filter((e) => !SAFE_EMAIL_RE.test(e) && !NOREPLY_RE.test(e));
 
 if (emails.length) {

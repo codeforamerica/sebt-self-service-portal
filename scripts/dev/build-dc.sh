@@ -20,19 +20,19 @@ CONFIGURATION="Debug"
 
 # Logging functions
 log_info() {
-  echo -e "${BLUE}ℹ️  $1${NC}"
+  printf '%b\n' "${BLUE}ℹ️  $1${NC}"
 }
 
 log_success() {
-  echo -e "${GREEN}✅ $1${NC}"
+  printf '%b\n' "${GREEN}✅ $1${NC}"
 }
 
 log_warning() {
-  echo -e "${YELLOW}⚠️  $1${NC}"
+  printf '%b\n' "${YELLOW}⚠️  $1${NC}"
 }
 
 log_error() {
-  echo -e "${RED}❌ $1${NC}"
+  printf '%b\n' "${RED}❌ $1${NC}" >&2
 }
 
 # Check prerequisites
