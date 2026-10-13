@@ -9,6 +9,9 @@
 /** Supported state codes — add new states here */
 export type StateCode = 'dc' | 'co'
 
+/** How a guardian signs in: email one-time code, or an OpenID Connect identity provider. */
+export type LoginMode = 'otp' | 'oidc'
+
 /**
  * Full set of language codes the design system knows how to render labels for.
  * The runtime list of languages offered to a user is per-state (see
@@ -54,6 +57,8 @@ export interface StateConfig {
   sealAlt: string
   /** Languages offered in this state's UI (drives the LanguageSelector and `?lang=` validation) */
   supportedLanguages: readonly SupportedLanguage[]
+  /** Sign-in mechanism; also selects the OIDC step-up gate and the OIDC loading interstitial */
+  loginMode: LoginMode
   cardIdentifier: CardIdentifier
   /** Benefits can load onto an existing SNAP/TANF card, which enables the co-loaded info screens */
   hasCoLoadedBenefits: boolean
@@ -83,6 +88,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
       'Manage your DC SUN Bucks (Summer EBT) benefits online. Check enrollment, benefit expiration, and EBT card status for your students.',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
     supportedLanguages: ['en', 'es', 'am'],
+    loginMode: 'otp',
     cardIdentifier: 'childName',
     hasCoLoadedBenefits: true,
     address: {
@@ -104,6 +110,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     portalMetadataDescription: 'Manage your CO Summer EBT benefits online.',
     sealAlt: 'Colorado Official State Web Portal',
     supportedLanguages: ['en', 'es'],
+    loginMode: 'oidc',
     cardIdentifier: 'cardLastFour',
     hasCoLoadedBenefits: false,
     address: {
