@@ -18,7 +18,7 @@ test.describe('Homepage', () => {
   test('should load and display the login entry', async ({ page }) => {
     await page.goto('/login')
 
-    expect(await page.title()).toContain(getSiteDisplayName(currentState))
+    await expect.poll(() => page.title()).toContain(getSiteDisplayName(currentState))
 
     // DC: submit shows "Continue"; CO: "Sign in with myColorado®"
     const primaryAction = page.getByRole('button', { name: /continue|log in|sign in/i }).first()
