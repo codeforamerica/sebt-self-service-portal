@@ -29,6 +29,10 @@ interface ActionButton {
   requiresApplications?: boolean
   /** When set, the CTA renders only for these states. Omitting it shows the CTA for every state. */
   states?: string[]
+  /** When true, the CTA is hidden unless at least one child's benefits are expiring or expired. */
+  requiresBenefitExpiration?: boolean
+  /** When true, the CTA is hidden in states whose content has no label for it. */
+  requiresLabel?: boolean
 }
 
 interface ActionButtonsProps {
@@ -38,6 +42,8 @@ interface ActionButtonsProps {
   hasCases?: boolean
   /** Whether the household has any applications (applications.length > 0). When false, CTAs that require applications are hidden. */
   hasApplications?: boolean
+  /** Whether any child's benefits are expiring or expired. CTAs that require it are hidden otherwise. */
+  hasBenefitExpiration?: boolean
 }
 
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
@@ -70,6 +76,13 @@ const ACTIONS: ActionButton[] = [
     requiresCases: true
   },
   {
+    labelKey: 'actionNavigationCheckBenefitExpiration',
+    href: '#enrolled-children-heading',
+    ctaId: 'check_benefit_expiration_cta',
+    requiresBenefitExpiration: true,
+    requiresLabel: true
+  },
+  {
     labelKey: 'actionNavigationCheckExistingApplications',
     href: '#applications-heading',
     ctaId: 'check_applications_cta',
@@ -86,7 +99,12 @@ const ACTIONS: ActionButton[] = [
   }
 ]
 
-export function ActionButtons({ allowedActions, hasCases, hasApplications }: ActionButtonsProps) {
+export function ActionButtons({
+  allowedActions,
+  hasCases,
+  hasApplications,
+  hasBenefitExpiration
+}: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
   const currentState = getState()
   const { actionButtonBg, actionButtonText } = getStateConfig(currentState)
@@ -97,6 +115,8 @@ export function ActionButtons({ allowedActions, hasCases, hasApplications }: Act
     if (action.isApplyAction && applyHref === null) return false
     if (action.requiresCases && hasCases === false) return false
     if (action.requiresApplications && hasApplications === false) return false
+    if (action.requiresBenefitExpiration && !hasBenefitExpiration) return false
+    if (action.requiresLabel && !t(action.labelKey, { defaultValue: '' })) return false
     if (!action.gatedBy) return true
     // When allowedActions is not provided, default to showing the CTA (backward-compatible).
     if (!allowedActions) return true

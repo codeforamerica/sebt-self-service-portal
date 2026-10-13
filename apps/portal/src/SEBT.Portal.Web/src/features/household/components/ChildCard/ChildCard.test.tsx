@@ -1,3 +1,4 @@
+import { i18n } from '@sebt/design-system/client'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
@@ -407,5 +408,38 @@ describe('ChildCard', () => {
       'data-analytics-cta',
       'replacement_card_cta'
     )
+  })
+
+  describe('benefit expiration', () => {
+    const expirationCopy = (key: string) =>
+      i18n.t(`dashboard:${key}`).replace('[MM/DD/YYYY]', '03/19/2026')
+    const headerIcon = () =>
+      screen.getByRole('button', { name: 'Sophia Martinez' }).querySelector('svg')
+
+    it.each([
+      ['Expiring', 'cardTableExpiring'],
+      ['Expired', 'cardTableExpired']
+    ] as const)(
+      'describes %s benefits with their date and flags the header',
+      (benefitExpirationStatus, copyKey) => {
+        renderWithFlags({ summerEbtCase: { ...mockCase, benefitExpirationStatus } })
+
+        expect(screen.getByText(expirationCopy(copyKey))).toBeInTheDocument()
+        expect(headerIcon()).toHaveAttribute('aria-hidden', 'true')
+        expect(screen.getByRole('button', { name: 'Sophia Martinez' })).toHaveClass(
+          'usa-accordion__button--warning'
+        )
+      }
+    )
+
+    it('shows the bare expiration date and no warning before the warning window', () => {
+      renderWithFlags({ summerEbtCase: { ...mockCase, benefitExpirationStatus: null } })
+
+      expect(screen.getByText('03/19/2026')).toBeInTheDocument()
+      expect(headerIcon()).toBeNull()
+      expect(screen.getByRole('button', { name: 'Sophia Martinez' })).not.toHaveClass(
+        'usa-accordion__button--warning'
+      )
+    })
   })
 })
