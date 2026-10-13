@@ -1,12 +1,12 @@
 'use client'
 
 import { ApiError } from '@/api'
-import { CoLoadingScreen } from '@/components/CoLoadingScreen'
+import { OidcLoadingScreen } from '@/components/OidcLoadingScreen'
 import { SignOutLink, useAuth } from '@/features/auth'
 import { useFeatureFlag } from '@/features/feature-flags'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, getState } from '@sebt/design-system'
+import { Alert, getState, getStateConfig } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -51,7 +51,10 @@ export function DashboardContent() {
   const { t: tProcessing } = useTranslation('step-upProcessing')
 
   const deferEbtCardLoading = useFeatureFlag('defer_ebt_card_data_loading')
-  const isCO = getState() === 'co'
+  const state = getState()
+  const { loginMode } = getStateConfig(state)
+  // Card deferral stays state-gated until its feature flag moves behind a per-state setting.
+  const isCO = state === 'co'
   const { data, isLoading, isError, error, requiresProofing, isLoadingCardDetails } =
     useHouseholdData({
       deferCardDetailsOnLoad: isCO && deferEbtCardLoading
@@ -114,11 +117,11 @@ export function DashboardContent() {
   const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
 
   if (isLoading || requiresProofing) {
-    if (isCO) {
-      // CoLoadingScreen renders its own h1 ("Please wait..."), so omit pageHeading
+    if (loginMode === 'oidc') {
+      // OidcLoadingScreen renders its own h1 ("Please wait..."), so omit pageHeading
       // here to avoid two h1 elements on the same view.
       return (
-        <CoLoadingScreen
+        <OidcLoadingScreen
           title={tProcessing('title')}
           message={tProcessing('body')}
         />

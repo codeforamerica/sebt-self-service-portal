@@ -14,16 +14,16 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   }
 })
 
-import { CoLoadingScreen } from './CoLoadingScreen'
+import { OidcLoadingScreen } from './OidcLoadingScreen'
 
-describe('CoLoadingScreen', () => {
+describe('OidcLoadingScreen', () => {
   beforeEach(() => {
     mockLoginMode = 'oidc'
   })
 
   it('renders the loading interstitial when the login mode is OIDC', () => {
     render(
-      <CoLoadingScreen
+      <OidcLoadingScreen
         title="Please wait..."
         message="Do not exit the page."
       />
@@ -36,7 +36,7 @@ describe('CoLoadingScreen', () => {
   it('renders nothing when the login mode is OTP', () => {
     mockLoginMode = 'otp'
     const { container } = render(
-      <CoLoadingScreen
+      <OidcLoadingScreen
         title="Please wait..."
         message="Do not exit the page."
       />

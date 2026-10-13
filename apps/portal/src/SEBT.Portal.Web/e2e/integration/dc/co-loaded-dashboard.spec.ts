@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
 
 import { isFullStackE2E, skipUnlessFullStack } from '../../fixtures/full-stack'
-import { loginWithEmailOtpExpecting } from '../../fixtures/login-dc'
+import { loginWithEmailOtpExpecting } from '../../fixtures/login-otp'
 import {
   DC_CO_LOADED_NO_APPLICATION_EMAIL,
   DC_CO_LOADED_NO_CHILDREN_EMAIL,
