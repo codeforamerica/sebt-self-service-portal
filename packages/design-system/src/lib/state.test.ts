@@ -113,8 +113,15 @@ describe('getStateConfig loginMode', () => {
   it('uses OIDC login for CO', () => {
     expect(getStateConfig('co').loginMode).toBe('oidc')
   })
+})
 
-  it('falls back to the default config, and so to otp, for an unknown state code', () => {
-    expect(getStateConfig('xx' as StateCode).loginMode).toBe('otp')
+describe('getStateConfig unknown codes', () => {
+  it('throws for a code that is not in the registry', () => {
+    expect(() => getStateConfig('xx' as StateCode)).toThrow('Unknown state code: xx')
+  })
+
+  it('throws for inherited object keys instead of returning a prototype member', () => {
+    expect(() => getStateConfig('constructor' as StateCode)).toThrow('Unknown state code: constructor')
+    expect(() => getStateConfig('__proto__' as StateCode)).toThrow('Unknown state code: __proto__')
   })
 })

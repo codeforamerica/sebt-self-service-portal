@@ -48,7 +48,7 @@ export interface StateLinks {
 /**
  * State-specific link configurations
  */
-const stateLinks: Record<string, StateLinks> = {
+const stateLinks: Record<StateCode, StateLinks> = {
   dc: {
     footer: {
       publicNotifications: 'https://sunbucks.dc.gov/page/public-notifications',
@@ -92,18 +92,13 @@ const stateLinks: Record<string, StateLinks> = {
 }
 
 /**
- * Default links used when a state-specific configuration is not available
- */
-const defaultLinks: StateLinks = stateLinks.dc as StateLinks
-
-/**
  * Get links configuration for a specific state
  * @param state - Two-letter state code (e.g., 'dc', 'co')
- * @returns State-specific links or default links if state not configured
+ * @returns State-specific links
  */
 export function getStateLinks(state: StateCode): StateLinks {
-  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  return stateLinks[state] ?? defaultLinks
+  // eslint-disable-next-line security/detect-object-injection -- key is the StateCode union
+  return stateLinks[state]
 }
 
 /**
