@@ -4,7 +4,6 @@ import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
 import { RichText, TextLink, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
-import { MyColoradoLogo } from './MyColoradoLogo'
 
 function splitParagraphs(text: string): string[] {
   return text
@@ -20,7 +19,7 @@ function splitListItems(text: string): string[] {
     .filter(Boolean)
 }
 
-export function COLoginPage({ state }: { state: StateCode }) {
+export function OidcLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)
   const { t, i18n } = useTranslation('login')
   const { t: tCommon } = useTranslation('common')
@@ -39,9 +38,8 @@ export function COLoginPage({ state }: { state: StateCode }) {
     trackEvent(AnalyticsEvents.OIDC_START)
     // Persist the user's language choice so the UI matches after the redirect.
     localStorage.setItem('i18nextLng', language)
-    // Navigate to the server-side authorize endpoint, which builds the full
-    // authorization URL and returns a 302 redirect to PingOne. The browser
-    // never sees the authorization endpoint URL (V04 fix).
+    // Navigate to the server-side authorize endpoint, which redirects to the identity provider;
+    // the browser never sees the authorization URL.
     window.location.href = `/api/auth/oidc/${state}/authorize?language=${encodeURIComponent(language)}`
   }
 
@@ -64,11 +62,14 @@ export function COLoginPage({ state }: { state: StateCode }) {
             <button
               type="button"
               onClick={() => startOidcLogin(currentLang)}
-              className="usa-button usa-button--mycolorado display-flex flex-align-center"
+              className="usa-button usa-button--idp display-flex flex-align-center"
               lang={currentLang}
               data-analytics-cta="login_cta"
             >
-              <MyColoradoLogo className="margin-right-1" />
+              <span
+                className="usa-button__idp-logo margin-right-1"
+                aria-hidden="true"
+              />
               {tCommon('logIn')}
             </button>
           </div>
@@ -77,11 +78,14 @@ export function COLoginPage({ state }: { state: StateCode }) {
             <button
               type="button"
               onClick={() => startOidcLogin(otherLang)}
-              className="usa-button usa-button--outline usa-button--mycolorado display-flex flex-align-center"
+              className="usa-button usa-button--outline usa-button--idp display-flex flex-align-center"
               lang={otherLang}
               data-analytics-cta="login_cta_alt_lang"
             >
-              <MyColoradoLogo className="margin-right-1" />
+              <span
+                className="usa-button__idp-logo margin-right-1"
+                aria-hidden="true"
+              />
               {tCommon('logInEsp')}
             </button>
           </div>

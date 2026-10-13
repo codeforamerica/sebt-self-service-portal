@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { CoLoadingScreen } from '@/components/CoLoadingScreen'
+import { OidcLoadingScreen } from '@/components/OidcLoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
@@ -133,7 +133,7 @@ export default function CallbackPage() {
 
   if (showLoadingInterstitial) {
     return (
-      <CoLoadingScreen
+      <OidcLoadingScreen
         title={tProcessing('title', 'Please wait...')}
         message={tProcessing(
           'body',

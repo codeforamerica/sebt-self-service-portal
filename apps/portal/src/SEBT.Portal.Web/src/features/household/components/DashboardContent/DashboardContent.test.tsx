@@ -1,3 +1,4 @@
+import type { LoginMode, StateCode } from '@sebt/design-system'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -67,6 +68,19 @@ vi.mock('@/features/feature-flags', () => ({
   }
 }))
 
+// The dashboard chooses its loading UI by login mode; the state code is irrelevant.
+let mockLoginMode: LoginMode = 'otp'
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      loginMode: mockLoginMode
+    })
+  }
+})
+
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
@@ -89,14 +103,25 @@ describe('DashboardContent', () => {
     mockSetUserData.mockClear()
     mockTrackEvent.mockClear()
     mockAuthSession.isCoLoaded = false
+    mockLoginMode = 'otp'
   })
 
-  it('shows loading skeleton initially', () => {
+  it('shows the loading skeleton initially when the login mode is OTP', () => {
     renderWithProviders(<DashboardContent />)
 
     const loadingStatus = screen.getByRole('status')
-    expect(loadingStatus).toBeInTheDocument()
     expect(loadingStatus).toHaveAttribute('aria-label', 'Loading dashboard')
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  })
+
+  it('shows the OIDC loading interstitial initially when the login mode is OIDC', () => {
+    mockLoginMode = 'oidc'
+    renderWithProviders(<DashboardContent />)
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveAttribute('aria-busy', 'true')
+    expect(status).not.toHaveAttribute('aria-label', 'Loading dashboard')
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
   })
 
   it('renders household data on success', async () => {

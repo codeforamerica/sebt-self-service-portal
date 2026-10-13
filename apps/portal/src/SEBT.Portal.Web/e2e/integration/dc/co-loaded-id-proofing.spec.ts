@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 import { isFullStackE2E, skipUnlessFullStack } from '../../fixtures/full-stack'
 import { submitIdProofingForm } from '../../fixtures/id-proofing-dc'
-import { loginWithEmailOtpExpecting } from '../../fixtures/login-dc'
+import { loginWithEmailOtpExpecting } from '../../fixtures/login-otp'
 import { reseedUserScenario } from '../../fixtures/reseed'
 import {
   DC_CO_LOADED_PENDING_ID_PROOFING_EMAIL,
