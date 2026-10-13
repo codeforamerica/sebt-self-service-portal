@@ -1,4 +1,5 @@
 import { test } from '@playwright/test'
+// Playwright runs outside Next's module aliases; the package exports map allows ./src/*.
 import { getStateConfig, type LoginMode, type StateCode } from '@sebt/design-system/src/lib/state'
 
 export type { StateCode }

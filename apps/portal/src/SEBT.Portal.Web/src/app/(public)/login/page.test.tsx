@@ -121,6 +121,7 @@ describe('LoginPage', () => {
     mockTrackEvent.mockClear()
     mockLanguage = 'en'
     mockState = 'co'
+    mockLoginMode = 'oidc'
   })
 
   describe('OIDC login mode (CO)', () => {

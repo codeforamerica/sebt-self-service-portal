@@ -158,6 +158,7 @@ describe('IalGuard', () => {
     })
     expect(screen.queryByText(/Please wait/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Verify' })).not.toBeInTheDocument()
+    expect(window.location.href).not.toContain('/api/auth/oidc/')
   })
 
   it('shows checking then challenge; Verify starts step-up redirect', async () => {
