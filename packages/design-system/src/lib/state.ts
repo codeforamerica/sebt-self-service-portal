@@ -9,6 +9,9 @@
 /** Supported state codes — add new states here */
 export type StateCode = 'dc' | 'co'
 
+/** How a guardian signs in: email one-time code, or an OpenID Connect identity provider. */
+export type LoginMode = 'otp' | 'oidc'
+
 /**
  * Full set of language codes the design system knows how to render labels for.
  * The runtime list of languages offered to a user is per-state (see
@@ -31,6 +34,8 @@ export interface StateConfig {
   sealAlt: string
   /** Languages offered in this state's UI (drives the LanguageSelector and `?lang=` validation) */
   supportedLanguages: readonly SupportedLanguage[]
+  /** Sign-in mechanism; also selects the OIDC step-up gate and the OIDC loading interstitial */
+  loginMode: LoginMode
   /** Extra CSS classes appended to the mobile language selector button */
   languageSelectorClass?: string
   /** Extra CSS classes appended to the mobile language submenu */
@@ -56,6 +61,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
       'Manage your DC SUN Bucks (Summer EBT) benefits online. Check enrollment, benefit expiration, and EBT card status for your students.',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
     supportedLanguages: ['en', 'es', 'am'],
+    loginMode: 'otp',
     actionButtonBg: 'bg-secondary',
     actionButtonText: 'text-ink',
     pageTitleText: 'text-ink'
@@ -67,6 +73,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     portalMetadataDescription: 'Manage your CO Summer EBT benefits online.',
     sealAlt: 'Colorado Official State Web Portal',
     supportedLanguages: ['en', 'es'],
+    loginMode: 'oidc',
     languageSelectorClass: 'border-primary radius-md text-primary',
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',
