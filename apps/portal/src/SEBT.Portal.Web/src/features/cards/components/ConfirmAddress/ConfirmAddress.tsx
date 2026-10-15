@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
-import { Button, getState } from '@sebt/design-system'
+import { Button, getState, getStateConfig } from '@sebt/design-system'
 
 interface ConfirmAddressProps {
   summerEbtCase: SummerEbtCase
@@ -39,13 +39,13 @@ export function ConfirmAddress({
     }
   }, [errorKey])
 
-  const currentState = getState()
+  const identifiesCardByLastFour = getStateConfig(getState()).cardIdentifier === 'cardLastFour'
   const childName =
     summerEbtCase.childFirstName && summerEbtCase.childLastName
       ? `${summerEbtCase.childFirstName} ${summerEbtCase.childLastName}`
       : ''
   const subtitle =
-    currentState === 'co' && summerEbtCase.ebtCardLastFour
+    identifiesCardByLastFour && summerEbtCase.ebtCardLastFour
       ? `Replace card ending in ${summerEbtCase.ebtCardLastFour}`
       : childName
         ? `Replace ${childName}'s card`

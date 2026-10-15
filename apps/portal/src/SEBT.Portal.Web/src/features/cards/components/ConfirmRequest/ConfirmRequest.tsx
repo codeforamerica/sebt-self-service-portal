@@ -12,6 +12,7 @@ import {
   Alert,
   Button,
   getState,
+  getStateConfig,
   ProcessingIndicator,
   RichText,
   SummaryBox
@@ -48,7 +49,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   const { t: tDashboard } = useTranslation('dashboard')
 
   const router = useRouter()
-  const currentState = getState()
+  const identifiesCardByLastFour = getStateConfig(getState()).cardIdentifier === 'cardLastFour'
   const mutation = useRequestCardReplacement()
   const { setPageData, trackEvent } = useDataLayer()
   // Store the i18n key (not the resolved string) so the banner re-translates at render
@@ -126,7 +127,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           {cases.map((c) => (
             <li key={c.summerEBTCaseID}>
               {fillCardPlaceholders(tOptional("who'sCard"), c)}
-              {currentState === 'co' && c.ebtCardLastFour && (
+              {identifiesCardByLastFour && c.ebtCardLastFour && (
                 <span className="display-block">
                   {fillCardPlaceholders(tOptional('cardNumber'), c)}
                 </span>

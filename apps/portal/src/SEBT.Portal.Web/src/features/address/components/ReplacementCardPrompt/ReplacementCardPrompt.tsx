@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
 
 import type { UpdateAddressRequest } from '../../api/schema'
 
@@ -18,7 +18,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
   const { t: tValidation } = useTranslation('validation')
 
   const router = useRouter()
-  const currentState = getState()
+  const { hasCoLoadedBenefits } = getStateConfig(getState())
 
   const [selection, setSelection] = useState<'yes' | 'no' | null>(null)
   // Store the i18n key (not the resolved string) so the error re-translates at render
@@ -68,7 +68,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         <li>{t('replacementCardsBody2')}</li>
       </ul>
 
-      {currentState === 'dc' && (
+      {hasCoLoadedBenefits && (
         <Alert
           variant="info"
           slim
