@@ -142,6 +142,13 @@ public class SummerEbtCase
     public DateTime? BenefitExpirationDate { get; set; }
 
     /// <summary>
+    /// Whether this case's benefits are about to expire or already have.
+    /// Populated by <see cref="Services.ISelfServiceEvaluator"/> at the query handler layer;
+    /// null when neither applies or there is no expiration date.
+    /// </summary>
+    public BenefitExpirationStatus? BenefitExpirationStatus { get; set; }
+
+    /// <summary>
     /// Self-service action permissions evaluated for this specific case.
     /// Populated by <see cref="Services.ISelfServiceEvaluator"/> at the query handler layer;
     /// null indicates the handler did not run and the client should treat actions as denied.

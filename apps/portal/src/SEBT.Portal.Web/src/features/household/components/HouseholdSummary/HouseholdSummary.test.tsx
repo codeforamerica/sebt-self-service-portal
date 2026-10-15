@@ -81,6 +81,29 @@ describe('HouseholdSummary', () => {
     ).toBeInTheDocument()
   })
 
+  it('says benefits have expired when any child is expired', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [mockCase, { ...mockCase, benefitExpirationStatus: 'Expired' }]
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByText(/The benefits may have expired for some students/)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/Your students are enrolled because we have enough information/)
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the enrolled description while benefits are only expiring', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [{ ...mockCase, benefitExpirationStatus: 'Expiring' }]
+    }
+    render(<HouseholdSummary />)
+    expect(
+      screen.getByText(/Your students are enrolled because we have enough information/)
+    ).toBeInTheDocument()
+  })
+
   it('renders combined status when cases exist with pending application', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, applications: [pendingApp] }

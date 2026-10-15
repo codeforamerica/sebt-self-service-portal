@@ -8,7 +8,7 @@ import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useFeatureFlag } from '@/features/feature-flags'
 
 import type { IssuanceType, SummerEbtCase } from '../../api'
-import { formatDate } from '../../api'
+import { formatDate, interpolateDate } from '../../api'
 import { CardStatusDisplay } from '../CardStatusDisplay'
 import { CardStatusTimeline } from '../CardStatusTimeline'
 
@@ -73,6 +73,7 @@ export function ChildCard({
     caseDisplayNumber,
     benefitAvailableDate,
     benefitExpirationDate,
+    benefitExpirationStatus,
     ebtCardLastFour,
     ebtCardStatus,
     ebtCardIssueDate,
@@ -85,18 +86,43 @@ export function ChildCard({
       : ebtCaseNumber
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
   const replacementLink = getReplacementLink(summerEbtCase, canRequestReplacementCard)
+  const expirationCopy = benefitExpirationStatus
+    ? t(benefitExpirationStatus === 'Expired' ? 'cardTableExpired' : 'cardTableExpiring', {
+        defaultValue: ''
+      })
+    : ''
+  const expirationMessage =
+    expirationCopy && benefitExpirationDate
+      ? interpolateDate(expirationCopy, benefitExpirationDate, i18n.language)
+      : ''
 
   return (
     <div className="usa-accordion__item">
       <h3 className="usa-accordion__heading">
         <button
           type="button"
-          className="usa-accordion__button"
+          className={`usa-accordion__button${benefitExpirationStatus ? ' usa-accordion__button--warning' : ''}`}
           aria-expanded={isExpanded}
           aria-controls={`child-${id}`}
           onClick={() => setIsExpanded((prev) => !prev)}
         >
+          {benefitExpirationStatus && (
+            <svg
+              className="usa-icon margin-right-1 text-middle"
+              aria-hidden="true"
+              focusable="false"
+              role="img"
+            >
+              <use xlinkHref="/img/sprite.svg#warning" />
+            </svg>
+          )}
           {childName}
+          {expirationMessage && (
+            <>
+              {' '}
+              <span className="usa-sr-only">{expirationMessage}</span>
+            </>
+          )}
         </button>
       </h3>
       <div
@@ -123,7 +149,9 @@ export function ChildCard({
           {benefitExpirationDate && (
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingExpDate')}</dt>
-              <dd className="margin-left-0">{formatDate(benefitExpirationDate, i18n.language)}</dd>
+              <dd className="margin-left-0">
+                {expirationMessage || formatDate(benefitExpirationDate, i18n.language)}
+              </dd>
             </>
           )}
           {cardTypeKey && (
