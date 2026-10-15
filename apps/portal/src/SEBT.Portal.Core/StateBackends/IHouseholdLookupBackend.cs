@@ -22,8 +22,8 @@ public sealed record HouseholdLookupRequest(IReadOnlyList<IdentitySignal> Signal
     public string? PortalUuid { get; init; }
 
     /// <summary>
-    /// The identifier this lookup searched by; <c>fromContext</c> caseId compositions pack it when a
-    /// write routes by a value the lookup response never echoes. Null when the caller has none.
+    /// The identifier this lookup searched by. Writes bind it from the request envelope as
+    /// <c>householdIdentifier</c>; it is not packed into opaque caseId tokens. Null when the caller has none.
     /// </summary>
     public string? HouseholdIdentifier { get; init; }
 }

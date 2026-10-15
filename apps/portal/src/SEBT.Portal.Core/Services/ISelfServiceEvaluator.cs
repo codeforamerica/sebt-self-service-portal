@@ -23,4 +23,12 @@ public interface ISelfServiceEvaluator
     /// address rather than a specific case.
     /// </summary>
     AllowedActions EvaluateHousehold(IReadOnlyList<SummerEbtCase> summerEbtCases);
+
+    /// <summary>
+    /// Classifies a case's benefits as expiring or expired using the state-local date.
+    /// Expiring uses the card-replacement days-before-expiration window, so it covers the
+    /// same days that window hides replacement; expired applies whether or not it is set.
+    /// </summary>
+    /// <returns>The status, or null when neither applies or the case has no expiration date.</returns>
+    BenefitExpirationStatus? GetBenefitExpirationStatus(SummerEbtCase summerEbtCase);
 }

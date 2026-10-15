@@ -1,3 +1,4 @@
+using System.Text.Json;
 using SEBT.Portal.Api.Models.Household;
 using SEBT.Portal.Core.Models.Household;
 
@@ -240,6 +241,26 @@ public class HouseholdDataResponseMapperTests
         Assert.Equal(120.50m, sec.EbtCardBalance);
         Assert.Equal("CBMS-REF", sec.EbtCaseNumber);
         Assert.Equal("APP-DISPLAY", sec.CaseDisplayNumber);
+    }
+
+    [Fact]
+    public void ToResponse_MapsBenefitExpirationStatus_SerializedByName()
+    {
+        var domain = new HouseholdData
+        {
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new SummerEbtCase { BenefitExpirationStatus = BenefitExpirationStatus.Expiring },
+                new SummerEbtCase()
+            }
+        };
+
+        var json = JsonSerializer.Serialize(
+            domain.ToResponse().SummerEbtCases,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        Assert.Contains("\"benefitExpirationStatus\":\"Expiring\"", json);
+        Assert.Contains("\"benefitExpirationStatus\":null", json);
     }
 
     [Fact]

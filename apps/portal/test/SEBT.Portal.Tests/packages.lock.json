@@ -219,6 +219,12 @@
           "xunit.extensibility.execution": "2.4.0"
         }
       },
+      "YamlDotNet": {
+        "type": "Direct",
+        "requested": "[18.1.0, )",
+        "resolved": "18.1.0",
+        "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
+      },
       "Azure.Core": {
         "type": "Transitive",
         "resolved": "1.50.0",
@@ -1186,8 +1192,8 @@
       },
       "System.Security.Cryptography.Pkcs": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "UPWqLSygJlFerRi9XNIuM0a1VC8gHUIufyP24xQ0sc+XimqUAEcjpOz9DhKpyDjH+5B/wO3RpC0KpkEeDj/ddg=="
+        "resolved": "10.0.13",
+        "contentHash": "a+EovgC1fBnwdlQ6cn3j4JFBfKqiFaFvoAhjisOoSvazLAcIznaBzPQP0oYnvccmeXfqUH1KebVZOxSeH6rMaw=="
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Transitive",
@@ -1251,11 +1257,6 @@
           "xunit.extensibility.core": "[2.9.3]"
         }
       },
-      "YamlDotNet": {
-        "type": "Transitive",
-        "resolved": "18.1.0",
-        "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
-      },
       "sebt.portal.api": {
         "type": "Project",
         "dependencies": {
@@ -1276,6 +1277,7 @@
           "SEBT.Portal.Core": "[1.0.0, )",
           "SEBT.Portal.Infrastructure": "[1.0.0, )",
           "SEBT.Portal.Infrastructure.Seeding": "[1.0.0, )",
+          "SEBT.Portal.Infrastructure.StateBackends": "[1.0.0, )",
           "SEBT.Portal.Kernel": "[1.0.0, )",
           "SEBT.Portal.Kernel.AspNetCore": "[1.0.0, )",
           "SEBT.Portal.StatesPlugins.Interfaces": "[0.0.4-dev, )",
@@ -1319,6 +1321,7 @@
           "SEBT.Portal.Kernel": "[1.0.0, )",
           "SEBT.Portal.TestUtilities": "[1.0.0, )",
           "System.IdentityModel.Tokens.Jwt": "[8.22.0, )",
+          "System.Security.Cryptography.Pkcs": "[10.0.13, )",
           "libphonenumber-csharp": "[9.0.39, )"
         }
       },
@@ -1334,6 +1337,7 @@
       "sebt.portal.infrastructure.statebackends": {
         "type": "Project",
         "dependencies": {
+          "Microsoft.Extensions.Http": "[10.0.9, )",
           "SEBT.Portal.Core": "[1.0.0, )",
           "YamlDotNet": "[18.1.0, )"
         }
@@ -1418,8 +1422,8 @@
       },
       "System.Security.Cryptography.Pkcs": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "UPWqLSygJlFerRi9XNIuM0a1VC8gHUIufyP24xQ0sc+XimqUAEcjpOz9DhKpyDjH+5B/wO3RpC0KpkEeDj/ddg=="
+        "resolved": "10.0.13",
+        "contentHash": "a+EovgC1fBnwdlQ6cn3j4JFBfKqiFaFvoAhjisOoSvazLAcIznaBzPQP0oYnvccmeXfqUH1KebVZOxSeH6rMaw=="
       }
     }
   }

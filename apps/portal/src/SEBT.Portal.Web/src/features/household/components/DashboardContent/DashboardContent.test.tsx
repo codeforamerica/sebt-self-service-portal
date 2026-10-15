@@ -200,6 +200,41 @@ describe('DashboardContent', () => {
     expect(screen.queryByText(/Summer 2026 DC SUN Bucks were issued/)).toBeNull()
   })
 
+  it("shows each child's expiring or expired benefits from the household response", async () => {
+    const [firstCase, secondCase] = TEST_HOUSEHOLD_DATA.summerEbtCases
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          ...TEST_HOUSEHOLD_DATA,
+          summerEbtCases: [
+            {
+              ...firstCase,
+              benefitExpirationDate: '2026-10-15T00:00:00Z',
+              benefitExpirationStatus: 'Expiring'
+            },
+            {
+              ...secondCase,
+              benefitExpirationDate: '2026-09-03T00:00:00Z',
+              benefitExpirationStatus: 'Expired'
+            }
+          ]
+        })
+      })
+    )
+
+    renderWithProviders(<DashboardContent />)
+
+    expect(
+      await screen.findByRole('button', { name: /Use your DC SUN Bucks by 10\/15\/2026\./ })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /DC SUN Bucks expired on 09\/03\/2026\. You can't use them now\./
+      })
+    ).toBeInTheDocument()
+    expect(screen.getByText(/The benefits may have expired for some students/)).toBeInTheDocument()
+  })
+
   it('renders UserProfileCard in empty state when userProfile available', async () => {
     server.use(
       http.get('/api/household/data', () => {

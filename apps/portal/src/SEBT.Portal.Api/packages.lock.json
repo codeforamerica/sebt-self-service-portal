@@ -708,13 +708,18 @@
       },
       "System.Security.Cryptography.Pkcs": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "UPWqLSygJlFerRi9XNIuM0a1VC8gHUIufyP24xQ0sc+XimqUAEcjpOz9DhKpyDjH+5B/wO3RpC0KpkEeDj/ddg=="
+        "resolved": "10.0.13",
+        "contentHash": "a+EovgC1fBnwdlQ6cn3j4JFBfKqiFaFvoAhjisOoSvazLAcIznaBzPQP0oYnvccmeXfqUH1KebVZOxSeH6rMaw=="
       },
       "System.Security.Cryptography.ProtectedData": {
         "type": "Transitive",
         "resolved": "9.0.11",
         "contentHash": "s8yUYuYYu+PAwvBdhLG1KyrGrk9gkYeuPxfAsXsTqqWyepwSyEw8hAaflW4nO98NG52YpYI1am2+9o+79h2RtQ=="
+      },
+      "YamlDotNet": {
+        "type": "Transitive",
+        "resolved": "18.1.0",
+        "contentHash": "5K+9KFg2TdTl7VXv88Qzi/0lqK6JFoNP3lRuImPYGRV7K/QYklDyTrj4+A+KAki1JsQi6qKY+hDyY7d6WRqjrw=="
       },
       "sebt.portal.core": {
         "type": "Project",
@@ -741,6 +746,7 @@
           "SEBT.Portal.Kernel": "[1.0.0, )",
           "SEBT.Portal.TestUtilities": "[1.0.0, )",
           "System.IdentityModel.Tokens.Jwt": "[8.22.0, )",
+          "System.Security.Cryptography.Pkcs": "[10.0.13, )",
           "libphonenumber-csharp": "[9.0.39, )"
         }
       },
@@ -750,6 +756,13 @@
           "Microsoft.EntityFrameworkCore": "[10.0.12, )",
           "SEBT.Portal.Core": "[1.0.0, )",
           "SEBT.Portal.TestUtilities": "[1.0.0, )"
+        }
+      },
+      "sebt.portal.infrastructure.statebackends": {
+        "type": "Project",
+        "dependencies": {
+          "SEBT.Portal.Core": "[1.0.0, )",
+          "YamlDotNet": "[18.1.0, )"
         }
       },
       "sebt.portal.kernel": {
@@ -817,8 +830,8 @@
       },
       "System.Security.Cryptography.Pkcs": {
         "type": "Transitive",
-        "resolved": "10.0.0",
-        "contentHash": "UPWqLSygJlFerRi9XNIuM0a1VC8gHUIufyP24xQ0sc+XimqUAEcjpOz9DhKpyDjH+5B/wO3RpC0KpkEeDj/ddg=="
+        "resolved": "10.0.13",
+        "contentHash": "a+EovgC1fBnwdlQ6cn3j4JFBfKqiFaFvoAhjisOoSvazLAcIznaBzPQP0oYnvccmeXfqUH1KebVZOxSeH6rMaw=="
       }
     }
   }

@@ -17,4 +17,11 @@ public sealed record RequestBinding
 
     /// <summary>Batch shape: a per-case routing field gathered into an array, one element per decoded caseId.</summary>
     public Dictionary<string, string>? Collect { get; init; }
+
+    /// <summary>
+    /// Body is a JSON array with one object per decoded caseId. Each object is built from
+    /// <see cref="Constants"/>, <see cref="Map"/>, and <see cref="MapOptional"/>, using the address
+    /// scalars plus that case's routing fields. Cannot be combined with <see cref="Shared"/> or <see cref="Collect"/>.
+    /// </summary>
+    public bool EachCase { get; init; }
 }

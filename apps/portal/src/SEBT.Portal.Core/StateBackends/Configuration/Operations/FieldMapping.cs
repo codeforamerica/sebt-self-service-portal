@@ -3,8 +3,13 @@ namespace SEBT.Portal.Core.StateBackends.Configuration.Operations;
 /// <summary>Maps one canonical domain field to source propert(ies); coercion is driven by the canonical field's C# type, not an explicit kind here.</summary>
 public sealed record FieldMapping
 {
-    /// <summary>Source property name(s) on the selected record.</summary>
-    public required FieldSources From { get; init; }
+    /// <summary>Source property name(s) on the selected record. Exclusive with <see cref="Value"/>.</summary>
+    public FieldSources? From { get; init; }
+
+    /// <summary>
+    /// Canonical value written as-is, with no source property.
+    /// </summary>
+    public string? Value { get; init; }
 
     /// <summary>Exact date/time parse format for date-typed fields; no fallback.</summary>
     public string? Format { get; init; }
