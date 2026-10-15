@@ -240,6 +240,20 @@ cp appsettings.dc.example.json appsettings.dc.json   # for DC local development
 
 For more details about how appsettings work, see [state-specific configuration](#state-specific-configuration) below.
 
+If you have access to this project's secrets in [Doppler](https://docs.doppler.com/docs/install-cli), you can use it instead of copying secrets into these files.
+
+Doppler needs a one-time setup. Run these commands from the repo root:
+
+```bash
+brew install dopplerhq/cli/doppler
+doppler login
+doppler setup --no-interactive
+```
+
+`doppler setup` connects the repo to your personal Doppler config, `local_personal`. It inherits the values from the shared `local` config, and any value you change there applies only to you.
+
+Doppler values (your personal ones first, then the shared ones) override matching keys in your local `.env` and appsettings files. Anything Doppler doesn't set still comes from the files.
+
 ### 4. Install dependencies
 
 #### Frontend
@@ -276,13 +290,19 @@ To start the Mailpit Docker container, run `docker compose up -d mailpit`. Once 
 Once all dependencies are installed and running, you can use these start commands:
 
 ```bash
-`pnpm dev:dc` # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
-`pnpm dev:dc-enroll` # to start the DC Enrollment Checker (using the external `dc-connector` repo alongside this repo)
-`pnpm dev:co`  #  to start the CO Portal
-`pnpm dev:co-enroll` # to start the CO Enrollment Checker
+pnpm dev:dc         # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
+pnpm dev:dc-enroll  # to start the DC Enrollment Checker (using the external `dc-connector` repo alongside this repo)
+pnpm dev:co         # to start the CO Portal
+pnpm dev:co-enroll  # to start the CO Enrollment Checker
 ```
 
-To view the running app, go to <https://localhost:3000> in your browser.
+To view the running app, go to <http://localhost:3000> in your browser.
+
+If Doppler is set up for this repo, the commands above load secrets from Doppler automatically. If Doppler isn't installed, or you haven't run `doppler setup` in this repo, they use only your local config files. Right after pnpm echoes the command, the output tells you which one it's using: `Using Doppler` or `using local config files`.
+
+If Doppler is set up but can't load secrets (for example, if you're logged out or offline), the command stops with Doppler's error instead of starting the app. To skip Doppler, prefix the command with `USE_DOPPLER=false` (for example, `USE_DOPPLER=false pnpm dev:co`). To make the command fail when Doppler isn't set up, use `USE_DOPPLER=true`.
+
+Only one state can run at a time. You can run that state's portal and enrollment checker together by starting each command in its own terminal. Start the portal first; the enrollment checker then starts on <http://localhost:3001>.
 
 ## Development
 
