@@ -1,0 +1,18 @@
+/*
+----------------------------------------
+Accordion
+----------------------------------------
+Warning variant for an item that needs attention, e.g. expiring benefits.
+Loads after the USWDS bundle, so equal specificity resolves here.
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+.usa-accordion__button--warning {
+  background-color: color('warning-lighter');
+
+  &:hover {
+    background-color: color('warning-light');
+  }
+}
