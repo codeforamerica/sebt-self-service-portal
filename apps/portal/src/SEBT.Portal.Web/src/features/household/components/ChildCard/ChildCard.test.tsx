@@ -1,5 +1,5 @@
 import { i18n } from '@sebt/design-system/client'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 
@@ -420,15 +420,18 @@ describe('ChildCard', () => {
       ['Expiring', 'cardTableExpiring'],
       ['Expired', 'cardTableExpired']
     ] as const)(
-      'describes %s benefits with their date and flags the header',
+      'describes %s benefits with their date and flags the header for sighted and screen-reader users',
       (benefitExpirationStatus, copyKey) => {
         renderWithFlags({ summerEbtCase: { ...mockCase, benefitExpirationStatus } })
 
-        expect(screen.getByText(expirationCopy(copyKey))).toBeInTheDocument()
-        expect(headerIcon()).toHaveAttribute('aria-hidden', 'true')
-        expect(screen.getByRole('button', { name: 'Sophia Martinez' })).toHaveClass(
-          'usa-accordion__button--warning'
-        )
+        const header = screen.getByRole('button', {
+          name: `Sophia Martinez ${expirationCopy(copyKey)}`
+        })
+        expect(header).toHaveClass('usa-accordion__button--warning')
+        expect(header.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+        expect(
+          within(screen.getByTestId('accordion-content')).getByText(expirationCopy(copyKey))
+        ).toBeInTheDocument()
       }
     )
 

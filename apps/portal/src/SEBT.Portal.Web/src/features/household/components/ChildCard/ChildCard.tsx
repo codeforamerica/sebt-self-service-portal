@@ -91,6 +91,10 @@ export function ChildCard({
         defaultValue: ''
       })
     : ''
+  const expirationMessage =
+    expirationCopy && benefitExpirationDate
+      ? interpolateDate(expirationCopy, benefitExpirationDate, i18n.language)
+      : ''
 
   return (
     <div className="usa-accordion__item">
@@ -113,6 +117,12 @@ export function ChildCard({
             </svg>
           )}
           {childName}
+          {expirationMessage && (
+            <>
+              {' '}
+              <span className="usa-sr-only">{expirationMessage}</span>
+            </>
+          )}
         </button>
       </h3>
       <div
@@ -140,9 +150,7 @@ export function ChildCard({
             <>
               <dt className="text-bold margin-top-2">{t('cardTableHeadingExpDate')}</dt>
               <dd className="margin-left-0">
-                {expirationCopy
-                  ? interpolateDate(expirationCopy, benefitExpirationDate, i18n.language)
-                  : formatDate(benefitExpirationDate, i18n.language)}
+                {expirationMessage || formatDate(benefitExpirationDate, i18n.language)}
               </dd>
             </>
           )}

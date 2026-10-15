@@ -224,9 +224,13 @@ describe('DashboardContent', () => {
 
     renderWithProviders(<DashboardContent />)
 
-    expect(await screen.findByText('Use your DC SUN Bucks by 10/15/2026.')).toBeInTheDocument()
     expect(
-      screen.getByText(/DC SUN Bucks expired on 09\/03\/2026\. You can't use them now\./)
+      await screen.findByRole('button', { name: /Use your DC SUN Bucks by 10\/15\/2026\./ })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', {
+        name: /DC SUN Bucks expired on 09\/03\/2026\. You can't use them now\./
+      })
     ).toBeInTheDocument()
     expect(screen.getByText(/The benefits may have expired for some students/)).toBeInTheDocument()
   })
