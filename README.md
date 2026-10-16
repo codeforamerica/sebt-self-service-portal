@@ -190,13 +190,12 @@ You may need to run these steps if you cannot run the setup script / Aspire, or 
 - [Git](https://git-scm.com/install/)
 - [.NET 10 SDK](https://dotnet.microsoft.com/en-us/download) for the backend, see `global.json` for the version
   - To install it with Homebrew, run `brew install dotnet`
-- [nvm](https://github.com/nvm-sh/nvm) for nodeJS version management
-  - `brew install nvm`
-- [nodeJS](https://nodejs.org/en), see `.nvmrc` for the version
-  - `brew install node`
-- [pnpm](https://pnpm.io/installation/) 10 or later for frontend package management and
-  development scripts. `engines.pnpm` in `package.json` contains the minimum version.
-  - `brew install pnpm`, or `npm install -g pnpm@10`
+- [nodeJS](https://nodejs.org/en), the major version in `.nvmrc`. `pnpm install` fails on a different major version.
+  - Use any version manager that reads `.nvmrc`, for example [nvm](https://github.com/nvm-sh/nvm) (`nvm install`), or `brew install node@24`
+  - Do not use `brew install node`, because it installs the newest major version
+- [pnpm](https://pnpm.io/installation/) 10 for frontend package management and development
+  scripts. `engines.pnpm` in `package.json` contains the permitted range.
+  - `npm install -g pnpm@10`
 - A container runtime for local development: either [Podman](https://podman.io/docs/installation) or [Docker Desktop](https://www.docker.com/)
 
 ### 2. Clone the repository
