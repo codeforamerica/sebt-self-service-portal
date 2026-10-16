@@ -20,7 +20,7 @@ const seedScripts = "scripts/sql";
 
 // The 4 procedures that the DC connector calls. It has no default for a name, because
 // the schema differs for each environment. These are the names that scripts/sql 102 to
-// 105 make. Read docs/adr/0022-aspire-local-dev-orchestrator.md.
+// 105 make. Read docs/adr/0035-aspire-local-dev-orchestrator.md.
 const householdLookupProcedure = "[sebt_app_test].[GetHouseholdByGuardian]";
 const addressUpdateProcedure = "[dbo].[UpdateMailingAddress]";
 const cardReplacementProcedure = "[sebt_app_test].[RequestNewCard]";
@@ -38,7 +38,8 @@ async function provision({
   // boundary.
   const dcSourceSql = await builder
     .addSqlServer("dc-source", { password: saPassword })
-    .withDataVolume({ name: "sebt-dc-source-mssql-data" })
+    // No volume name, for the same reason as the portal database in shared/database.mts.
+    .withDataVolume()
     .withPersistentLifetime();
 
   // 000_CreateDatabase.sql has an IF NOT EXISTS guard, so making it here is safe.

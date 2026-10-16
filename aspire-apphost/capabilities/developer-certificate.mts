@@ -1,6 +1,6 @@
 // A check of the trusted developer certificate.
 //
-// This is silent failure 2 in docs/adr/0022-aspire-local-dev-orchestrator.md. Aspire
+// This is silent failure 2 in docs/adr/0035-aspire-local-dev-orchestrator.md. Aspire
 // gives a container a developer certificate and then serves it with TLS. Without a
 // trusted certificate, Aspire serves the plain endpoint and it shows no message. Redis
 // then answers on a port that the API does not use, and Keycloak answers nothing at the

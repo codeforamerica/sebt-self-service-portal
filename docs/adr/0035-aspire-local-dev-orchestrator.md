@@ -1,4 +1,4 @@
-# 22. Adopt Aspire as the orchestrator for local development, with conditions
+# 35. Adopt Aspire as the orchestrator for local development, with conditions
 
 Date: 2026-09-02
 

@@ -38,7 +38,9 @@ export async function addPortalDatabase(
   // dashboard shows the port for a database tool.
   const sql = await builder
     .addSqlServer("mssql", { password: saPassword })
-    .withDataVolume({ name: "sebt-portal-mssql-data" })
+    // No volume name, so Aspire's generated name includes a hash of the AppHost path and
+    // a second checkout (a worktree, for example) gets its own volume.
+    .withDataVolume()
     // This agrees with `docker compose up -d`. The container continues after the AppHost
     // stops, so the local data stays. SQL Server sets the SA password one time, when it
     // makes the container. Thus a new value of MSSQL_SA_PASSWORD needs a new container.
