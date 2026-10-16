@@ -47,6 +47,26 @@ public class SelfServiceEvaluator(
         return BuildResult(settings, canUpdateAddress, canReplace);
     }
 
+    public BenefitExpirationStatus? GetBenefitExpirationStatus(SummerEbtCase summerEbtCase)
+    {
+        if (summerEbtCase.BenefitExpirationDate is not { } expirationDateTime)
+        {
+            return null;
+        }
+
+        var today = TodayInStateTimeZone();
+        var expiration = DateOnly.FromDateTime(expirationDateTime);
+        if (today >= expiration)
+        {
+            return BenefitExpirationStatus.Expired;
+        }
+
+        var warningDays = optionsMonitor.CurrentValue.CardReplacement.DisableDaysBeforeExpiration;
+        return warningDays is int days && today >= expiration.AddDays(-days)
+            ? BenefitExpirationStatus.Expiring
+            : null;
+    }
+
     private bool IsCardReplacementAllowed(ActionRuleSettings rule, SummerEbtCase summerEbtCase)
     {
         if (!IsActionAllowedForCase(rule, summerEbtCase))
@@ -67,7 +87,7 @@ public class SelfServiceEvaluator(
 
     /// <summary>
     /// Calendar date in the state's <see cref="OutageScheduleSettings.TimeZoneId"/>.
-    /// Card-replacement cutoff is a calendar-day rule, same zone as outage windows.
+    /// Expiration rules are calendar-day rules, in the same zone as outage windows.
     /// </summary>
     private DateOnly TodayInStateTimeZone()
     {
@@ -82,7 +102,7 @@ public class SelfServiceEvaluator(
         {
             logger.LogError(
                 ex,
-                "Invalid OutageSchedule TimeZoneId '{TimeZoneId}'; using UTC date for card-replacement cutoff",
+                "Invalid OutageSchedule TimeZoneId '{TimeZoneId}'; using UTC date for benefit-expiration rules",
                 timeZoneId);
             return DateOnly.FromDateTime(utcNow);
         }
