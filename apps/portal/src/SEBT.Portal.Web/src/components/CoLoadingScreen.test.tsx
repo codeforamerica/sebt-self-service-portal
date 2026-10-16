@@ -1,12 +1,16 @@
+import type { LoginMode, StateCode } from '@sebt/design-system'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-let mockState = 'co'
+let mockLoginMode: LoginMode = 'oidc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      loginMode: mockLoginMode
+    })
   }
 })
 
@@ -14,10 +18,10 @@ import { CoLoadingScreen } from './CoLoadingScreen'
 
 describe('CoLoadingScreen', () => {
   beforeEach(() => {
-    mockState = 'co'
+    mockLoginMode = 'oidc'
   })
 
-  it('renders the loading interstitial when state is CO', () => {
+  it('renders the loading interstitial when the login mode is OIDC', () => {
     render(
       <CoLoadingScreen
         title="Please wait..."
@@ -29,8 +33,8 @@ describe('CoLoadingScreen', () => {
     expect(screen.getByText('Do not exit the page.')).toBeInTheDocument()
   })
 
-  it('renders nothing when state is not CO', () => {
-    mockState = 'dc'
+  it('renders nothing when the login mode is OTP', () => {
+    mockLoginMode = 'otp'
     const { container } = render(
       <CoLoadingScreen
         title="Please wait..."

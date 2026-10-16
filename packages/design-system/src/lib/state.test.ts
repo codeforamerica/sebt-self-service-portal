@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { getPortalMetadataDescription, getSiteDisplayName, getStateConfig } from './state'
+import {
+  getPortalMetadataDescription,
+  getSiteDisplayName,
+  getStateConfig,
+  type StateCode
+} from './state'
 
 describe('getStateConfig — supportedLanguages', () => {
   it('omits Amharic from the CO config', () => {
@@ -43,5 +48,19 @@ describe('getPortalMetadataDescription', () => {
 
   it.each(['dc', 'co'] as const)('keeps SEO copy free of application references for %s', (state) => {
     expect(getPortalMetadataDescription(state).toLowerCase()).not.toMatch(/apply|application/)
+  })
+})
+
+describe('getStateConfig loginMode', () => {
+  it('uses email one-time-code login for DC', () => {
+    expect(getStateConfig('dc').loginMode).toBe('otp')
+  })
+
+  it('uses OIDC login for CO', () => {
+    expect(getStateConfig('co').loginMode).toBe('oidc')
+  })
+
+  it('falls back to the default config, and so to otp, for an unknown state code', () => {
+    expect(getStateConfig('xx' as StateCode).loginMode).toBe('otp')
   })
 })
