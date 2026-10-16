@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HouseholdData } from '@/features/household'
 import { createMockApplication } from '@/features/household/testing'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import CoLoadedAddressInfoPage from './page'
 
@@ -16,12 +17,17 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -72,6 +78,7 @@ describe('CoLoadedAddressInfoPage', () => {
     mockReplace.mockClear()
     mockBack.mockClear()
     mockState = 'dc'
+    stateConfigOverride = {}
     mockHouseholdData = null
     mockIsLoading = false
     mockIsError = false
@@ -138,6 +145,32 @@ describe('CoLoadedAddressInfoPage', () => {
     render(<CoLoadedAddressInfoPage />)
 
     expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+  })
+
+  describe('hasCoLoadedBenefits setting', () => {
+    it('redirects to /dashboard when hasCoLoadedBenefits is false, regardless of state', () => {
+      mockState = 'dc'
+      stateConfigOverride = { hasCoLoadedBenefits: false }
+      mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SnapEbtCard' })
+      render(<CoLoadedAddressInfoPage />)
+
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+      expect(
+        screen.queryByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
+      ).not.toBeInTheDocument()
+    })
+
+    it('renders the explainer for a co-loaded household when hasCoLoadedBenefits is true, regardless of state', () => {
+      mockState = 'co'
+      stateConfigOverride = { hasCoLoadedBenefits: true }
+      mockHouseholdData = makeHousehold({ benefitIssuanceType: 'SnapEbtCard' })
+      render(<CoLoadedAddressInfoPage />)
+
+      expect(mockReplace).not.toHaveBeenCalled()
+      expect(
+        screen.getByRole('heading', { name: /mailing address for snap or tanf ebt card/i })
+      ).toBeInTheDocument()
+    })
   })
 
   it('shows loading state while household data is fetching', () => {

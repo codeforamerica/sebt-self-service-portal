@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { HouseholdData } from '@/features/household'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import AddressFormPage from './page'
 
@@ -13,12 +14,17 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -68,6 +74,7 @@ describe('AddressFormPage', () => {
   beforeEach(() => {
     mockReplace.mockClear()
     mockState = 'dc'
+    stateConfigOverride = {}
     mockHouseholdData = null
     mockIsLoading = false
   })
@@ -115,6 +122,33 @@ describe('AddressFormPage', () => {
     render(<AddressFormPage />)
 
     expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+  })
+
+  describe('hasCoLoadedBenefits setting', () => {
+    const NOT_ALLOWED_TO_UPDATE = {
+      canUpdateAddress: false,
+      canRequestReplacementCard: false,
+      addressUpdateDeniedMessageKey: 'actionNavigationSelfServiceUnavailable',
+      cardReplacementDeniedMessageKey: null
+    }
+
+    it('redirects to the co-loaded info page when hasCoLoadedBenefits is true, regardless of state', () => {
+      mockState = 'co'
+      stateConfigOverride = { hasCoLoadedBenefits: true }
+      mockHouseholdData = makeHousehold({ allowedActions: NOT_ALLOWED_TO_UPDATE })
+      render(<AddressFormPage />)
+
+      expect(mockReplace).toHaveBeenCalledWith('/profile/address/info')
+    })
+
+    it('redirects to the dashboard when hasCoLoadedBenefits is false, regardless of state', () => {
+      mockState = 'dc'
+      stateConfigOverride = { hasCoLoadedBenefits: false }
+      mockHouseholdData = makeHousehold({ allowedActions: NOT_ALLOWED_TO_UPDATE })
+      render(<AddressFormPage />)
+
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+    })
   })
 
   it('skips replacement-card prompt when canRequestReplacementCard is false', () => {

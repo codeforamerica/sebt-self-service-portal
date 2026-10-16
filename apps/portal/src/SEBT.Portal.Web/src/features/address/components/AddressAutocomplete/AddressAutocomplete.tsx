@@ -13,7 +13,7 @@ import {
 
 import { useTranslation } from 'react-i18next'
 
-import { InputField, getState } from '@sebt/design-system'
+import { InputField, getState, getStateConfig } from '@sebt/design-system'
 
 import type { SelectedAddress } from './types'
 import { useAddressAutocomplete } from './useAddressAutocomplete'
@@ -63,7 +63,7 @@ export function AddressAutocomplete({
 
   const autocomplete = useAddressAutocomplete({
     search: hasUserTyped ? value : '',
-    stateCode: getState(),
+    preferStates: getStateConfig(getState()).address.autocompletePreferStates,
     onSelect: (address) => {
       onSuggestionSelected(address)
       setActiveIndex(-1)

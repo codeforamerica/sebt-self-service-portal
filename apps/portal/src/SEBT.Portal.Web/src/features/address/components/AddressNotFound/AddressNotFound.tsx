@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, getState, getStateLinks } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig, getStateLinks } from '@sebt/design-system'
 
 import { useAddressFlow } from '../../context'
 
@@ -12,6 +12,7 @@ export function AddressNotFound() {
   const { t } = useTranslation('confirmInfo')
   const router = useRouter()
   const currentState = getState()
+  const { notFoundAction } = getStateConfig(currentState).address
   const {
     enteredAddress,
     validationResult,
@@ -45,7 +46,7 @@ export function AddressNotFound() {
         {isBlocked
           ? t(
               'blockedBody',
-              `This address is not available for ${currentState === 'dc' ? 'DC' : 'CO'} SUN Bucks card delivery. Please enter a different mailing address.`
+              `This address is not available for ${currentState.toUpperCase()} SUN Bucks card delivery. Please enter a different mailing address.`
             ) // TODO REMOVE FALLBACK
           : t('notFoundBody')}
       </p>
@@ -77,7 +78,7 @@ export function AddressNotFound() {
         </Button>
       </div>
 
-      {currentState === 'co' && !isBlocked && (
+      {notFoundAction === 'useEnteredAddress' && !isBlocked && (
         <div className="margin-top-2">
           <button
             type="button"
@@ -89,7 +90,7 @@ export function AddressNotFound() {
         </div>
       )}
 
-      {currentState === 'dc' && (
+      {notFoundAction === 'contactUs' && (
         <div className="margin-top-2">
           <a
             href={getStateLinks(currentState).help.contactUs}
