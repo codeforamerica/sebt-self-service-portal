@@ -70,7 +70,7 @@ describe('AuthGuard', () => {
     expect(mockReplace).toHaveBeenCalledWith('/login')
   })
 
-  it('renders nothing while loading in non-CO states', () => {
+  it('renders nothing while loading when the login mode is OTP', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: false,
       isLoading: true
@@ -86,7 +86,7 @@ describe('AuthGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('renders the loading interstitial while loading in CO', () => {
+  it('renders the loading interstitial while loading when the login mode is OIDC', () => {
     mockState = 'co'
     mockUseAuth.mockReturnValue({
       isAuthenticated: false,
