@@ -12,6 +12,7 @@ import type { RuntimeConfig } from '@/lib/runtime-config'
 import { server } from '@/mocks/server'
 import { RuntimeConfigProvider } from '@/providers'
 import { AnalyticsEvents } from '@sebt/analytics'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 import { i18n } from '@sebt/design-system/client'
 
 import { AddressFlowProvider } from '../../context'
@@ -46,12 +47,18 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams()
 }))
 
+type AddressSettings = StateConfig['address']
+let addressOverride: Partial<AddressSettings> = {}
 let mockState = 'dc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getState: () => mockState,
+    getStateConfig: (state: StateCode) => {
+      const config = actual.getStateConfig(state)
+      return { ...config, address: { ...config.address, ...addressOverride } }
+    },
     getStateLinks: () => ({
       help: { faqs: '#', contactUs: 'https://test.example/contact' },
       footer: {
@@ -121,6 +128,7 @@ describe('AddressForm', () => {
     mockSetPageData.mockClear()
     mockTrackEvent.mockClear()
     mockState = 'dc'
+    addressOverride = {}
 
     // Portal target for site-level alerts
     let siteAlerts = document.getElementById('site-alerts')
@@ -232,6 +240,64 @@ describe('AddressForm', () => {
     renderForm()
 
     expect(getStateSelect()).toHaveValue('CO')
+  })
+
+  describe('defaultCity and defaultState settings', () => {
+    it('pre-fills the city from defaultCity', () => {
+      mockState = 'co'
+      addressOverride = { defaultCity: 'Springfield' }
+      renderForm()
+
+      expect(getCityInput()).toHaveValue('Springfield')
+    })
+
+    it('leaves the city empty when defaultCity is empty', () => {
+      mockState = 'dc'
+      addressOverride = { defaultCity: '' }
+      renderForm()
+
+      expect(getCityInput()).toHaveValue('')
+    })
+
+    it('pre-selects the state from defaultState', () => {
+      mockState = 'dc'
+      addressOverride = { defaultState: 'IL' }
+      renderForm()
+
+      expect(getStateSelect()).toHaveValue('IL')
+    })
+
+    it('prefers initialAddress over the configured defaults', () => {
+      mockState = 'dc'
+      addressOverride = { defaultCity: 'Springfield', defaultState: 'IL' }
+      renderForm({
+        streetAddress1: '456 K St NW',
+        city: 'Arlington',
+        state: 'Virginia',
+        postalCode: '22201'
+      })
+
+      expect(getCityInput()).toHaveValue('Arlington')
+      expect(getStateSelect()).toHaveValue('VA')
+    })
+  })
+
+  describe('showStreetAddressHint setting', () => {
+    it('renders the street address hint when enabled', () => {
+      mockState = 'co'
+      addressOverride = { showStreetAddressHint: true }
+      renderForm()
+
+      expect(screen.getByText(/include direction/i)).toBeInTheDocument()
+    })
+
+    it('omits the street address hint when disabled', () => {
+      mockState = 'dc'
+      addressOverride = { showStreetAddressHint: false }
+      renderForm()
+
+      expect(screen.queryByText(/include direction/i)).not.toBeInTheDocument()
+    })
   })
 
   // --- Pre-population from addressOnFile ---

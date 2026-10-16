@@ -8,16 +8,22 @@ import {
   getReplacementFlash,
   setReplacementFlash
 } from '@/features/cards/utils/replacementFlash'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 import { i18n } from '@sebt/design-system/client'
 
 import { DashboardAlerts } from './DashboardAlerts'
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -68,6 +74,7 @@ describe('DashboardAlerts', () => {
     mockSearchParams = new URLSearchParams()
     mockHouseholdData = { data: null, isLoading: false, isError: false }
     mockState = 'dc'
+    stateConfigOverride = {}
     clearReplacementFlash()
   })
 
@@ -196,6 +203,39 @@ describe('DashboardAlerts', () => {
     expect(container.querySelector('.usa-alert__heading')).toHaveTextContent(
       'A replacement for the cards ending in 1234 and 5678 will be sent to the following address'
     )
+  })
+
+  describe('cardIdentifier setting', () => {
+    const REPLACED_CARDS = [
+      { childFirstName: 'Jane', childLastName: 'Doe', ebtCardLastFour: '1234' },
+      { childFirstName: 'John', childLastName: 'Doe', ebtCardLastFour: '5678' }
+    ]
+
+    it("headlines with card digits when cardIdentifier is 'cardLastFour', regardless of state", () => {
+      mockState = 'dc'
+      stateConfigOverride = { cardIdentifier: 'cardLastFour' }
+      loadDashboardBundle('co')
+      setReplacementFlash(REPLACED_CARDS)
+      mockSearchParams = new URLSearchParams('flash=card_replaced')
+      const { container } = render(<DashboardAlerts />)
+
+      expect(container.querySelector('.usa-alert__heading')).toHaveTextContent(
+        'A replacement for the cards ending in 1234 and 5678 will be sent to the following address'
+      )
+    })
+
+    it("headlines with child names when cardIdentifier is 'childName', regardless of state", () => {
+      mockState = 'co'
+      stateConfigOverride = { cardIdentifier: 'childName' }
+      loadDashboardBundle('dc')
+      setReplacementFlash(REPLACED_CARDS)
+      mockSearchParams = new URLSearchParams('flash=card_replaced')
+      const { container } = render(<DashboardAlerts />)
+
+      expect(container.querySelector('.usa-alert__heading')).toHaveTextContent(
+        'A replacement for Jane Doe and John Doe cards will be sent to the following address'
+      )
+    })
   })
 
   it('omits the heading when no replaced-card details were handed off', () => {

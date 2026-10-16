@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert, Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -86,11 +86,11 @@ export function DashboardAlerts() {
     return null
   }
 
-  // CO identifies cards by their last four digits, DC by the child's name; the
-  // per-state alertAddressTitle template expects the matching list. Resolved in
-  // the render path so the heading follows a language switch.
+  // The per-state alertAddressTitle template expects the list that matches the
+  // state's cardIdentifier. Resolved in the render path so the heading follows a
+  // language switch.
   const replacedItems =
-    getState() === 'co'
+    getStateConfig(getState()).cardIdentifier === 'cardLastFour'
       ? replacedCards.map((c) => c.ebtCardLastFour).filter((d): d is string => Boolean(d))
       : replacedCards.map((c) => `${c.childFirstName} ${c.childLastName}`)
   const cardReplacedHeading = alerts.cardReplaced

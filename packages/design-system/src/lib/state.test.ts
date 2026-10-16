@@ -45,3 +45,47 @@ describe('getPortalMetadataDescription', () => {
     expect(getPortalMetadataDescription(state).toLowerCase()).not.toMatch(/apply|application/)
   })
 })
+
+describe('getStateConfig — card identification', () => {
+  it('identifies DC cards by child name', () => {
+    expect(getStateConfig('dc').cardIdentifier).toBe('childName')
+  })
+
+  it('identifies CO cards by the last four card digits', () => {
+    expect(getStateConfig('co').cardIdentifier).toBe('cardLastFour')
+  })
+})
+
+describe('getStateConfig — co-loaded benefits', () => {
+  it('enables co-loaded benefit screens for DC', () => {
+    expect(getStateConfig('dc').hasCoLoadedBenefits).toBe(true)
+  })
+
+  it('disables co-loaded benefit screens for CO', () => {
+    expect(getStateConfig('co').hasCoLoadedBenefits).toBe(false)
+  })
+})
+
+describe('getStateConfig — address', () => {
+  it('configures DC address behavior', () => {
+    expect(getStateConfig('dc').address).toEqual({
+      defaultCity: 'Washington',
+      defaultState: 'DC',
+      showStreetAddressHint: true,
+      notFoundAction: 'contactUs',
+      showAbbreviatedNotice: true,
+      autocompletePreferStates: 'DC;VA;MD'
+    })
+  })
+
+  it('configures CO address behavior', () => {
+    expect(getStateConfig('co').address).toEqual({
+      defaultCity: '',
+      defaultState: 'CO',
+      showStreetAddressHint: false,
+      notFoundAction: 'useEnteredAddress',
+      showAbbreviatedNotice: false,
+      autocompletePreferStates: 'CO'
+    })
+  })
+})

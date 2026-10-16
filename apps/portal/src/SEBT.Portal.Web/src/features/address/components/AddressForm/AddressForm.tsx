@@ -12,6 +12,7 @@ import {
   ProcessingFieldset,
   ProcessingIndicator,
   getState,
+  getStateConfig,
   getStateLinks
 } from '@sebt/design-system'
 
@@ -53,11 +54,6 @@ interface FieldErrors {
   city?: FieldErrorDescriptor
   state?: FieldErrorDescriptor
   postalCode?: FieldErrorDescriptor
-}
-
-const STATE_DEFAULTS: Record<string, { city: string; state: string }> = {
-  dc: { city: 'Washington', state: 'DC' },
-  co: { city: '', state: 'CO' }
 }
 
 /** Resolves backend/form state to the USPS code used as the select value (labels stay full names). */
@@ -139,15 +135,14 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
   const errorSummaryRef = useRef<HTMLDivElement>(null)
 
   const currentState = getState()
-  // eslint-disable-next-line security/detect-object-injection -- currentState is typed StateCode
-  const defaults = STATE_DEFAULTS[currentState] ?? { city: '', state: '' }
+  const addressSettings = getStateConfig(currentState).address
   const seedAddress = resolveFormSeedAddress(enteredAddress, initialAddress)
 
   const [streetAddress1, setStreetAddress1] = useState(seedAddress?.streetAddress1 ?? '')
   const [streetAddress2, setStreetAddress2] = useState(seedAddress?.streetAddress2 ?? '')
-  const [city, setCity] = useState(seedAddress?.city ?? defaults.city)
+  const [city, setCity] = useState(seedAddress?.city ?? addressSettings.defaultCity)
   const [stateValue, setStateValue] = useState(
-    resolveStateValue(seedAddress?.state, defaults.state)
+    resolveStateValue(seedAddress?.state, addressSettings.defaultState)
   )
   const [postalCode, setPostalCode] = useState(seedAddress?.postalCode ?? '')
 
@@ -342,7 +337,9 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
         >
           <AddressAutocomplete
             label={tCommon('streetAddress')}
-            {...(currentState === 'dc' ? { hint: tCommon('helperStreetAddress') } : {})}
+            {...(addressSettings.showStreetAddressHint
+              ? { hint: tCommon('helperStreetAddress') }
+              : {})}
             name="streetAddress1"
             value={streetAddress1}
             onChange={(e) => setStreetAddress1(e.target.value)}
