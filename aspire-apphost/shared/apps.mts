@@ -70,6 +70,13 @@ export async function addWebApps(
 ): Promise<WebApps> {
   const apiEndpoint = await api.getEndpoint("http");
 
+  // Both apps are members of one pnpm workspace, so one install at the root serves both.
+  // An install for each app would run two installs into one node_modules at the same time.
+  const workspaceInstall = await builder
+    .addExecutable("workspace-install", "pnpm", repoRoot, ["install"])
+    // A finished one-shot job otherwise stays in the dashboard and looks like a fault.
+    .withHiddenOnCompletion();
+
   // `withPnpm` runs `pnpm dev`. Thus the `predev` hook of the package continues to make
   // the design tokens and the locale files. This is the same loop as `pnpm web:dev`.
   //
@@ -82,9 +89,10 @@ export async function addWebApps(
   // ../capabilities/telemetry/contract.mts.
   const web = await builder
     .addNextJsApp("web", resolve(repoRoot, "apps/portal/src/SEBT.Portal.Web"))
-    .withPnpm()
+    .withPnpm({ install: false })
     .withEnvironment("STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
+    .waitForCompletion(workspaceInstall)
     .waitFor(api);
 
   // deploy-enrollment-checker.yaml builds and sends a static export for DC and for CO.
@@ -114,10 +122,11 @@ export async function addWebApps(
       "enrollment-checker",
       resolve(repoRoot, "apps/portal/src/SEBT.EnrollmentChecker.Web"),
     )
-    .withPnpm()
+    .withPnpm({ install: false })
     .withEnvironment("STATE", config.state)
     .withEnvironment("NEXT_PUBLIC_STATE", config.state)
     .withEnvironment("BACKEND_URL", apiEndpoint)
+    .waitForCompletion(workspaceInstall)
     .waitFor(api);
 
   // The portal returns CORS headers for the origin of the checker, and the checker has a
