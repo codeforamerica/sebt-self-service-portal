@@ -111,6 +111,11 @@ public record SummerEbtCaseResponse
     public DateTime? CardRequestedAt { get; init; }
 
     /// <summary>
+    /// True while a replacement request for this case is inside the configured cooldown window.
+    /// </summary>
+    public bool InCardReplacementCooldown { get; init; }
+
+    /// <summary>
     /// The date benefits become available.
     /// </summary>
     public DateTime? BenefitAvailableDate { get; init; }

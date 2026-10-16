@@ -33,19 +33,22 @@ public class SelfServiceEvaluatorTests
         CardStatus cardStatus = CardStatus.Active,
         ApplicationStatus applicationStatus = ApplicationStatus.Approved,
         bool isCoLoaded = false,
-        DateTime? benefitExpirationDate = null)
+        DateTime? benefitExpirationDate = null,
+        DateTime? cardRequestedAt = null)
         => new()
         {
             IssuanceType = issuanceType,
             EbtCardStatus = cardStatus,
             ApplicationStatus = applicationStatus,
             IsCoLoaded = isCoLoaded,
-            BenefitExpirationDate = benefitExpirationDate
+            BenefitExpirationDate = benefitExpirationDate,
+            CardRequestedAt = cardRequestedAt
         };
 
     private static SelfServiceRulesSettings ReplacementAnyStatusSettings(
         int? disableDaysBeforeExpiration = null,
-        bool enabled = true)
+        bool enabled = true,
+        int? cooldownDays = null)
         => new()
         {
             AddressUpdate = new ActionRuleSettings
@@ -61,6 +64,7 @@ public class SelfServiceEvaluatorTests
                 Enabled = enabled,
                 DisabledMessageKey = "selfServiceUnavailable",
                 DisableDaysBeforeExpiration = disableDaysBeforeExpiration,
+                CooldownDays = cooldownDays,
                 ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
                 {
                     [IssuanceType.SummerEbt] = new() { Enabled = true, AllowedCardStatuses = [] }
@@ -691,5 +695,93 @@ public class SelfServiceEvaluatorTests
             benefitExpirationDate: new DateTime(2026, 8, 3));
 
         Assert.Null(evaluator.GetBenefitExpirationStatus(summerEbtCase));
+    }
+
+    // --- Card replacement cooldown (configured period, strict cutoff) ---
+
+    [Fact]
+    public void CooldownPeriod_ComesFromConfiguredDays()
+    {
+        var evaluator = CreateEvaluator(ReplacementAnyStatusSettings(cooldownDays: 21));
+
+        Assert.Equal(TimeSpan.FromDays(21), evaluator.CardReplacementCooldownPeriod);
+    }
+
+    [Fact]
+    public void CooldownPeriod_Throws_WhenNotConfigured()
+    {
+        var evaluator = CreateEvaluator(ReplacementAnyStatusSettings(cooldownDays: null));
+
+        var ex = Assert.Throws<InvalidOperationException>(() => evaluator.CardReplacementCooldownPeriod);
+        Assert.Contains("CooldownDays", ex.Message);
+    }
+
+    [Fact]
+    public void Cooldown_NoRequest_IsNotInCooldown()
+    {
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(cooldownDays: 14),
+            new FakeTimeProvider(AugustFirst));
+        var summerEbtCase = MakeCase(IssuanceType.SummerEbt, cardRequestedAt: null);
+
+        Assert.False(evaluator.IsInCardReplacementCooldown(summerEbtCase));
+    }
+
+    [Fact]
+    public void Cooldown_RequestInsideWindow_IsInCooldown()
+    {
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(cooldownDays: 14),
+            new FakeTimeProvider(AugustFirst));
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            cardRequestedAt: AugustFirst.UtcDateTime.AddDays(-1));
+
+        Assert.True(evaluator.IsInCardReplacementCooldown(summerEbtCase));
+    }
+
+    [Fact]
+    public void Cooldown_RequestExactlyAtCutoff_IsNotInCooldown()
+    {
+        // Strict comparison, matching the portal-DB predicate (RequestedAt > now - period).
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(cooldownDays: 14),
+            new FakeTimeProvider(AugustFirst));
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            cardRequestedAt: AugustFirst.UtcDateTime.AddDays(-14));
+
+        Assert.False(evaluator.IsInCardReplacementCooldown(summerEbtCase));
+    }
+
+    [Fact]
+    public void Cooldown_RequestJustInsideCutoff_IsInCooldown()
+    {
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(cooldownDays: 14),
+            new FakeTimeProvider(AugustFirst));
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            cardRequestedAt: AugustFirst.UtcDateTime.AddDays(-14).AddSeconds(1));
+
+        Assert.True(evaluator.IsInCardReplacementCooldown(summerEbtCase));
+    }
+
+    [Fact]
+    public void Cooldown_UsesConfiguredPeriod()
+    {
+        // Ten days ago is outside a 7-day window and inside a 14-day window.
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            cardRequestedAt: AugustFirst.UtcDateTime.AddDays(-10));
+        var sevenDay = CreateEvaluator(
+            ReplacementAnyStatusSettings(cooldownDays: 7),
+            new FakeTimeProvider(AugustFirst));
+        var fourteenDay = CreateEvaluator(
+            ReplacementAnyStatusSettings(cooldownDays: 14),
+            new FakeTimeProvider(AugustFirst));
+
+        Assert.False(sevenDay.IsInCardReplacementCooldown(summerEbtCase));
+        Assert.True(fourteenDay.IsInCardReplacementCooldown(summerEbtCase));
     }
 }

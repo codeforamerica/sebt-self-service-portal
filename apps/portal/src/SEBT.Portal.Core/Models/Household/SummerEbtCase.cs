@@ -132,6 +132,12 @@ public class SummerEbtCase
     public DateTime? CardRequestedAt { get; set; }
 
     /// <summary>
+    /// Whether the last replacement request for this case is still inside the configured
+    /// cooldown window. Evaluated server-side so the UI never recomputes the window.
+    /// </summary>
+    public bool InCardReplacementCooldown { get; set; }
+
+    /// <summary>
     /// The date benefits become available.
     /// </summary>
     public DateTime? BenefitAvailableDate { get; set; }

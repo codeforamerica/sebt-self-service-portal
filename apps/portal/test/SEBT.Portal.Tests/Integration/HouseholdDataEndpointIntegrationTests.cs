@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -110,6 +111,96 @@ public class HouseholdDataEndpointIntegrationTests : IClassFixture<PortalWebAppl
         Assert.Equal(
             "Insufficient identity assurance level",
             root.GetProperty("title").GetString());
+    }
+
+    [Theory]
+    [InlineData(-1, true)]
+    [InlineData(-15, false)]
+    public async Task GetHouseholdData_ReportsCardReplacementCooldown_FromPortalDbTimestamp(
+        int requestedDaysAgo,
+        bool expectedInCooldown)
+    {
+        var email = "household-cooldown-test@example.com";
+        var userId = Guid.NewGuid();
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases =
+            [
+                new SummerEbtCase
+                {
+                    ChildFirstName = "Test",
+                    ChildLastName = "Child",
+                    SummerEBTCaseID = "CASE-1",
+                    IsStreamlineCertified = false,
+                    IsCoLoaded = false
+                }
+            ]
+        };
+
+        var resolver = Substitute.For<IHouseholdIdentifierResolver>();
+        resolver
+            .ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>())
+            .Returns(identifier);
+
+        var repository = Substitute.For<IHouseholdRepository>();
+        repository
+            .GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(),
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns(householdData);
+
+        // The factory has no database. Stand in for the hasher and the portal-DB timestamp so
+        // the real evaluator decides the flag from the base appsettings.json cooldown. Analytics
+        // digests must look like real SHA-256 hex because the resolver slices 16-character prefixes.
+        var hasher = Substitute.For<IIdentifierHasher>();
+        hasher.Hash(Arg.Any<string?>()).Returns(callInfo =>
+            callInfo.Arg<string?>() is { } value ? $"HASH_{value}" : null);
+        hasher.HashForAnalytics(Arg.Any<string?>()).Returns(callInfo =>
+            callInfo.Arg<string?>() is { } value
+                ? Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(value)))
+                : null);
+        var cardReplacementRepo = Substitute.For<ICardReplacementRequestRepository>();
+        cardReplacementRepo
+            .GetMostRecentRequestDateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(DateTime.UtcNow.AddDays(requestedDaysAgo));
+
+        using var factory = _factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                ReplaceWithMock(services, resolver);
+                ReplaceWithMock(services, repository);
+                ReplaceWithMock(services, hasher);
+                ReplaceWithMock(services, cardReplacementRepo);
+            });
+        });
+
+        var client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/household/data");
+        request.Headers.Add(
+            "Cookie",
+            $"{AuthCookies.AuthCookieName}={CreateSessionJwt(email, userId, ial: "1plus")}");
+
+        using var response = await client.SendAsync(request);
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.True(response.StatusCode == HttpStatusCode.OK, $"Expected 200, got {(int)response.StatusCode}: {json}");
+
+        using var document = JsonDocument.Parse(json);
+        var summerEbtCase = document.RootElement.GetProperty("summerEbtCases")[0];
+
+        Assert.Equal(expectedInCooldown, summerEbtCase.GetProperty("inCardReplacementCooldown").GetBoolean());
+        Assert.NotEqual(JsonValueKind.Null, summerEbtCase.GetProperty("cardRequestedAt").ValueKind);
     }
 
     private static void ReplaceWithMock<TService>(IServiceCollection services, TService implementation)
