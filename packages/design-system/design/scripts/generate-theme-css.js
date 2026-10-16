@@ -13,13 +13,14 @@
  *   node ../../../../packages/design-system/design/scripts/generate-theme-css.js
  *
  * The per-state Sass partials this depends on are produced by
- * generate-sass-tokens.js, which writes whichever state STATE names. This script
- * drives that generator once per state, compiles, then restores the partials for
- * the state named by STATE so a subsequent app build is unaffected.
+ * generate-sass-tokens.js. This script compiles each state from a private copy of
+ * the Sass tree and never writes the shared partials, because the enrollment checker
+ * compiles from them while this runs.
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -44,12 +45,33 @@ function loadSass() {
   }
 }
 
-/** Regenerates the Sass partials for one state, in place. */
-function writePartialsFor(state) {
+/** Generates the Sass partials for one state into outputDir. */
+function writePartialsFor(state, outputDir) {
   execFileSync('node', [join(scriptDir, 'generate-sass-tokens.js')], {
-    env: { ...process.env, STATE: state },
+    env: { ...process.env, STATE: state, SASS_OUTPUT_DIR: outputDir },
     stdio: 'pipe'
   })
+}
+
+/**
+ * Compiles one state's USWDS stylesheet from a temporary copy of sassDir. A copy, not
+ * an extra load path, because Sass resolves `@use` relative to the importing file first.
+ */
+export function compileStateTheme(state, { sass, sassDir, loadPaths }) {
+  const workDir = mkdtempSync(join(tmpdir(), `sebt-theme-${state}-`))
+  try {
+    cpSync(sassDir, workDir, { recursive: true })
+    writePartialsFor(state, workDir)
+    const { css } = sass.compile(join(workDir, 'uswds-bundle.scss'), {
+      loadPaths: [workDir, ...loadPaths],
+      quietDeps: true,
+      style: 'compressed',
+      silenceDeprecations: ['import', 'global-builtin', 'color-functions']
+    })
+    return css
+  } finally {
+    rmSync(workDir, { recursive: true, force: true })
+  }
 }
 
 /**
@@ -111,7 +133,6 @@ export function fontCss(state, root = appRoot) {
 }
 
 function main() {
-  const activeState = (process.env.STATE || 'dc').toLowerCase()
   const sass = loadSass()
 
   const sassDir = join(designSystemRoot, 'design', 'sass')
@@ -125,7 +146,6 @@ function main() {
   mkdirSync(outDir, { recursive: true })
 
   const loadPaths = [
-    sassDir,
     join(appRoot, 'node_modules/@uswds/uswds/packages'),
     join(appRoot, 'node_modules')
   ]
@@ -138,13 +158,7 @@ function main() {
       continue
     }
 
-    writePartialsFor(state)
-    const { css } = sass.compile(bundle, {
-      loadPaths,
-      quietDeps: true,
-      style: 'compressed',
-      silenceDeprecations: ['import', 'global-builtin', 'color-functions']
-    })
+    const css = compileStateTheme(state, { sass, sassDir, loadPaths })
 
     const fonts = fontCss(state)
     const outFile = join(outDir, `theme-${state}.css`)
@@ -163,11 +177,7 @@ function main() {
     `${JSON.stringify(fontManifest, null, 2)}\n`,
     'utf8'
   )
-
-  // Leave the partials matching STATE so anything else reading them in this build
-  // (or a developer's next `pnpm dev`) sees the state they asked for.
-  writePartialsFor(activeState)
-  console.log(`✅ Theme stylesheets generated; Sass partials restored to ${activeState.toUpperCase()}.`)
+  console.log('✅ Theme stylesheets generated.')
 }
 
 // Only auto-run when invoked as a script, so tests can import fontCss.
