@@ -16,18 +16,6 @@ namespace SEBT.Portal.Infrastructure.Services;
 /// </summary>
 public class OidcVerificationClaimTranslator
 {
-    /// <summary>
-    /// Default secondary OIDC claim name for verification level when
-    /// <see cref="OidcVerificationClaimSettings.FallbackLevelClaimName"/> is unset (myColorado: <c>myCoIdVerificationLevel</c>).
-    /// </summary>
-    internal const string DefaultFallbackLevelClaimName = "myCoIdVerificationLevel";
-
-    /// <summary>
-    /// Default secondary OIDC claim name for verification date when
-    /// <see cref="OidcVerificationClaimSettings.FallbackDateClaimName"/> is unset.
-    /// </summary>
-    internal const string DefaultFallbackDateClaimName = "myCoIdVerificationDate";
-
     private readonly OidcVerificationClaimSettings _claimSettings;
     private readonly IdProofingValiditySettings _validitySettings;
     private readonly ILogger<OidcVerificationClaimTranslator> _logger;
@@ -91,25 +79,21 @@ public class OidcVerificationClaimTranslator
         return TranslateLevel(fallbackLevel);
     }
 
-    private string ResolvedFallbackLevelClaimName() =>
-        string.IsNullOrWhiteSpace(_claimSettings.FallbackLevelClaimName)
-            ? DefaultFallbackLevelClaimName
-            : _claimSettings.FallbackLevelClaimName.Trim();
+    private string? ResolvedFallbackLevelClaimName() => _claimSettings.FallbackLevelClaimName?.Trim();
 
-    private string ResolvedFallbackDateClaimName() =>
-        string.IsNullOrWhiteSpace(_claimSettings.FallbackDateClaimName)
-            ? DefaultFallbackDateClaimName
-            : _claimSettings.FallbackDateClaimName.Trim();
+    private string? ResolvedFallbackDateClaimName() => _claimSettings.FallbackDateClaimName?.Trim();
 
-    private static bool ClaimNamesAreEquivalent(string a, string b) =>
+    private static bool ClaimNamesAreEquivalent(string? a, string? b) =>
         string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     private static bool TryGetNonEmptyClaimValue(
         IReadOnlyDictionary<string, string> claims,
-        string claimName,
+        string? claimName,
         out string value)
     {
-        if (!claims.TryGetValue(claimName, out var raw) || raw is null || string.IsNullOrWhiteSpace(raw))
+        if (string.IsNullOrWhiteSpace(claimName)
+            || !claims.TryGetValue(claimName, out var raw)
+            || string.IsNullOrWhiteSpace(raw))
         {
             value = "";
             return false;
@@ -166,7 +150,7 @@ public class OidcVerificationClaimTranslator
     /// <returns><c>true</c> when the claim exists, is non-empty, and parses as a UTC-adjusted date/time.</returns>
     private bool TryParseVerificationDateFromClaim(
         IReadOnlyDictionary<string, string> claims,
-        string claimName,
+        string? claimName,
         out DateTime parsed)
     {
         parsed = default;

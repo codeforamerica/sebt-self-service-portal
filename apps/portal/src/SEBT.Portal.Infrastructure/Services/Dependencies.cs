@@ -86,20 +86,13 @@ internal static class Dependencies
         // Diagnostics-only: exercises the Smarty verification error paths with canned responses.
         services.AddScoped<IAddressVerificationDiagnostics, SmartyAddressVerificationDiagnostics>();
 
-        // Per-state blocked-address data file. CO ships a CSV
-        // (county/government office addresses) embedded in this assembly; other
-        // states fall back to the empty source and rely on the inline list in
-        // AddressValidationData:BlockedAddresses for any small hand-curated entries.
-        services.AddSingleton<IBlockedAddressDataSource>(_ =>
+        // States without a blocked-address CSV rely on the inline AddressValidationData:BlockedAddresses list.
+        services.AddSingleton<IBlockedAddressDataSource>(sp =>
         {
-            var state = Environment.GetEnvironmentVariable("STATE")?.ToLowerInvariant();
-            return state switch
-            {
-                "co" => new CsvBlockedAddressDataSource(
-                    typeof(CsvBlockedAddressDataSource).Assembly,
-                    "SEBT.Portal.Infrastructure.BlockedAddresses.co-undeliverable-addresses.csv"),
-                _ => new EmptyBlockedAddressDataSource()
-            };
+            var blockedAddressFile = sp.GetRequiredService<IOptions<AddressValidationDataSettings>>().Value.BlockedAddressFile;
+            return string.IsNullOrWhiteSpace(blockedAddressFile)
+                ? new EmptyBlockedAddressDataSource()
+                : CsvBlockedAddressDataSource.FromEmbeddedFile(blockedAddressFile);
         });
 
         // Address validation — checks blocked addresses and street abbreviations per state config
