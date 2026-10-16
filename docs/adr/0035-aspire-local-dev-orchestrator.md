@@ -269,7 +269,7 @@ For DC, the daily start changes from 3 commands in 2 directories to 1 command.
 - `aspire-apphost/capabilities/requirements.mts`, and `aspire-apphost/capabilities/{cache,connector-build,household-source,sign-in}/{contract,dc,co}.mts`
 - `aspire.config.json`, which holds the SDK version, the package versions, and the dashboard profile
 - The root `package.json` and `aspire-apphost/package.json`, which hold `aspire:dc`, `aspire:co`, `aspire:stop`, and `aspire:status`
-- [ADR-0007, the approach for the plugins of the states](./0007-multi-state-plugin-approach.md)
+- [ADR-0022, the approach for the plugins of the states](./0022-multi-state-plugin-approach.md)
 - [ADR-0017, the consolidation of the monorepo](./0017-monorepo-consolidation.md)
 - [ADR-0019, Keycloak as the local OIDC stand-in](./0019-keycloak-local-oidc-stand-in.md)
 - Aspire documentation: <https://aspire.dev/get-started/add-aspire-existing-app/>, <https://aspire.dev/app-host/hot-reload-and-watch/>, <https://aspire.dev/app-host/typescript-apphost/>
