@@ -194,6 +194,8 @@ export const SummerEbtCaseSchema = z.object({
   ebtCardBalance: z.number().nullable().optional(),
   benefitAvailableDate: z.string().nullable().optional(),
   benefitExpirationDate: z.string().nullable().optional(),
+  // Set by the API from the state-local date; an unrecognized value shouldn't break the dashboard.
+  benefitExpirationStatus: z.enum(['Expiring', 'Expired']).nullable().optional().catch(null),
   eligibilitySource: z.string().nullable().optional(),
   issuanceType: IssuanceTypeSchema.nullable().optional(),
   // Cooldown timestamp persisted by the portal: when set, indicates a recent
@@ -287,8 +289,9 @@ export function formatDate(isoDate: string, locale: string): string {
   }).format(new Date(isoDate))
 }
 
-// Matches date placeholders in locale strings: [MM/DD/YYYY] (English) or [DD/MM/YYYY] (Spanish)
-const DATE_PLACEHOLDER = /\[(?:MM\/DD\/YYYY|DD\/MM\/YYYY)\]/
+// Matches date placeholders in locale strings: [MM/DD/YYYY] (English) or [DD/MM/YYYY] (Spanish),
+// with Spanish copy sometimes writing the year as AAAA (año)
+const DATE_PLACEHOLDER = /\[(?:MM\/DD|DD\/MM)\/(?:YYYY|AAAA)\]/
 
 // "Requested on [MM/DD/YYYY]" → "Requested on 01/15/2026" or "Requested"
 // "Solicitada el [DD/MM/YYYY]" → "Solicitada el 15/01/2026" or "Solicitada"

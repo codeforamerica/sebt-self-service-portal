@@ -66,6 +66,7 @@ public static class HouseholdDataResponseMapper
             CardRequestedAt = domain.CardRequestedAt,
             BenefitAvailableDate = domain.BenefitAvailableDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
+            BenefitExpirationStatus = domain.BenefitExpirationStatus,
             // Per-case gating is driven by the per-case evaluator result; co-loaded
             // cases are always denied regardless of rules config (handled elsewhere).
             AllowAddressChange = (domain.AllowedActions?.CanUpdateAddress ?? false) && !domain.IsCoLoaded,

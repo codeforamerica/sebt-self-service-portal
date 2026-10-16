@@ -178,6 +178,7 @@ export function DashboardContent() {
         allowedActions={data.allowedActions}
         hasCases={data.summerEbtCases.length > 0}
         hasApplications={data.applications.length > 0}
+        hasBenefitExpiration={data.summerEbtCases.some((c) => c.benefitExpirationStatus)}
       />
       {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
       <HouseholdSummary />

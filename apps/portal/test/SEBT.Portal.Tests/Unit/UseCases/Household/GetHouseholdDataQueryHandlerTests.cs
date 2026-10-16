@@ -668,6 +668,45 @@ public class GetHouseholdDataQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_AttachesPerCaseBenefitExpirationStatus_FromEvaluator()
+    {
+        var email = "user@example.com";
+        var user = CreateUser(email, UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email(EmailNormalizer.Normalize(email));
+        var householdData = new HouseholdData
+        {
+            Email = email,
+            SummerEbtCases = new List<SummerEbtCase>
+            {
+                new() { SummerEBTCaseID = "SEBT-001", ChildFirstName = "A", ChildLastName = "B" },
+                new() { SummerEBTCaseID = "SEBT-002", ChildFirstName = "C", ChildLastName = "D" },
+                new() { SummerEBTCaseID = "SEBT-003", ChildFirstName = "E", ChildLastName = "F" }
+            }
+        };
+
+        _resolver.ResolveAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<CancellationToken>()).Returns(identifier);
+        _piiVisibilityService.GetVisibility(UserIalLevel.IAL1plus)
+            .Returns(new PiiVisibility(IncludeAddress: true, IncludeEmail: true, IncludePhone: true));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(householdData);
+        _selfServiceEvaluator.GetBenefitExpirationStatus(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-001"))
+            .Returns(BenefitExpirationStatus.Expiring);
+        _selfServiceEvaluator.GetBenefitExpirationStatus(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-002"))
+            .Returns(BenefitExpirationStatus.Expired);
+        _selfServiceEvaluator.GetBenefitExpirationStatus(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-003"))
+            .Returns((BenefitExpirationStatus?)null);
+
+        var result = await CreateHandler().Handle(new GetHouseholdDataQuery { User = user }, CancellationToken.None);
+
+        var success = Assert.IsType<SuccessResult<HouseholdData>>(result);
+        Assert.Equal(
+            [BenefitExpirationStatus.Expiring, BenefitExpirationStatus.Expired, null],
+            success.Value.SummerEbtCases.Select(c => c.BenefitExpirationStatus));
+    }
+
+    [Fact]
     public async Task Handle_ComputesHouseholdRollup_FromNonCoLoadedSubset()
     {
         var email = "user@example.com";
