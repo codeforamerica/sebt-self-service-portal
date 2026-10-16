@@ -1,9 +1,11 @@
-import { readFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 
-import { fontCss } from './generate-theme-css.js'
+import { compileStateTheme, fontCss } from './generate-theme-css.js'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const designSystemRoot = resolve(scriptDir, '../..')
@@ -51,4 +53,59 @@ describe('theme font contract', () => {
       }
     })
   }
+})
+
+/**
+ * The enrollment checker compiles from the shared generated partials while the
+ * portal runs this script, so compiling a state must never rewrite them.
+ */
+describe('compileStateTheme', () => {
+  const generatedPartials = [
+    '_uswds-settings.scss',
+    '_uswds-theme-semantic.scss',
+    '_uswds-theme-dc.scss'
+  ]
+  const readPartials = (dir) =>
+    generatedPartials.map((name) => readFileSync(join(dir, name), 'utf8'))
+  let sharedSassDir
+
+  afterEach(() => rmSync(sharedSassDir, { recursive: true, force: true }))
+
+  it('compiles the requested state without touching the shared partials', () => {
+    sharedSassDir = mkdtempSync(join(tmpdir(), 'theme-css-test-'))
+    cpSync(resolve(designSystemRoot, 'design/sass'), sharedSassDir, {
+      recursive: true
+    })
+    execFileSync('node', [join(scriptDir, 'generate-sass-tokens.js')], {
+      env: { ...process.env, STATE: 'dc', SASS_OUTPUT_DIR: sharedSassDir },
+      stdio: 'pipe'
+    })
+    const before = readPartials(sharedSassDir)
+
+    let compiled
+    const sass = {
+      compile(bundlePath, options) {
+        const workDir = dirname(bundlePath)
+        compiled = {
+          workDir,
+          loadPaths: options.loadPaths,
+          semantic: readFileSync(join(workDir, '_uswds-theme-semantic.scss'), 'utf8')
+        }
+        return { css: '.compiled{}' }
+      }
+    }
+
+    const css = compileStateTheme('co', {
+      sass,
+      sassDir: sharedSassDir,
+      loadPaths: ['/deps']
+    })
+
+    expect(css).toBe('.compiled{}')
+    expect(compiled.semantic).toContain('Source: design/states/co.json')
+    expect(compiled.workDir.startsWith(sharedSassDir)).toBe(false)
+    expect(compiled.loadPaths).toEqual([compiled.workDir, '/deps'])
+    expect(existsSync(compiled.workDir)).toBe(false)
+    expect(readPartials(sharedSassDir)).toEqual(before)
+  })
 })
