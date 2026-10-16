@@ -1,6 +1,9 @@
-# ADR 0006: Internationalization (i18n) Implementation
+# 6. Internationalization (i18n) Implementation
+
+Date: 2025-12-23
 
 ## Status
+
 Accepted
 
 ## Context

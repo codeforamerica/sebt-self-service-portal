@@ -10,6 +10,7 @@ import {
   Alert,
   Button,
   getState,
+  getStateConfig,
   ProcessingFieldset,
   ProcessingIndicator
 } from '@sebt/design-system'
@@ -53,7 +54,9 @@ export function SuggestedAddress() {
   } = useAddressFlow()
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const isAbbreviated = validationResult?.reason === 'abbreviated' && currentState === 'dc'
+  const isAbbreviated =
+    validationResult?.reason === 'abbreviated' &&
+    getStateConfig(currentState).address.showAbbreviatedNotice
 
   // Build the suggested address as UpdateAddressRequest shape
   const suggestedAddr: UpdateAddressRequest | null = validationResult?.suggestedAddress

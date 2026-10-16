@@ -1,10 +1,10 @@
 'use client'
 
-import { Button, RichText } from '@sebt/design-system'
+import { Button, Details, RichText } from '@sebt/design-system'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
@@ -17,7 +17,6 @@ export function LandingPage() {
   const { adentifiPixelLanding } = getClientConfig()
   const router = useRouter()
   const { clearState } = useEnrollment()
-  const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
 
   // The landing page is a fresh-start screen — clicking the logo from any
   // deep page lands here, and the cached children should not persist.
@@ -104,38 +103,23 @@ export function LandingPage() {
           <AdentifiPixels pixelId={adentifiPixelLanding} />
         )}
 
-        {/* FAQ Accordion — follows USWDS accordion pattern */}
         {useAccordion ? (
-          <div className="usa-accordion margin-top-3">
-            <h2 className="usa-accordion__heading">
-              <button
-                type="button"
-                className="usa-accordion__button bg-transparent border-0"
-                aria-expanded={isAccordionExpanded}
-                aria-controls="faq-content"
-                onClick={() => setIsAccordionExpanded((prev) => !prev)}
+          <Details
+            className="margin-top-3"
+            summary={t('accordionTitle')}
+            icon={
+              <svg
+                className="usa-icon margin-right-1"
+                aria-hidden="true"
+                focusable="false"
+                role="img"
               >
-                <span className="display-flex flex-align-center text-primary">
-                  <svg
-                    className="usa-icon margin-right-1"
-                    aria-hidden="true"
-                    focusable="false"
-                    role="img"
-                  >
-                    <use xlinkHref="/img/sprite.svg#info" />
-                  </svg>
-                  {t('accordionTitle')}
-                </span>
-              </button>
-            </h2>
-            <div
-              id="faq-content"
-              className="usa-accordion__content usa-prose"
-              hidden={!isAccordionExpanded}
-            >
-              {eligibilityExplanation}
-            </div>
-          </div>
+                <use xlinkHref="/img/sprite.svg#info" />
+              </svg>
+            }
+          >
+            {eligibilityExplanation}
+          </Details>
         ) : (
           <div className="usa-prose margin-top-3">{eligibilityExplanation}</div>
         )}

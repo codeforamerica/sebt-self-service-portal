@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HouseholdData } from '@/features/household'
 import type { SummerEbtCase } from '@/features/household/api'
 import { createMockSummerEbtCase } from '@/features/household/testing'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import CardInfoPage from './page'
 
@@ -17,12 +18,17 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -77,6 +83,7 @@ describe('CardInfoPage', () => {
     mockReplace.mockClear()
     mockBack.mockClear()
     mockState = 'dc'
+    stateConfigOverride = {}
     mockHouseholdData = makeHousehold([])
     mockIsLoading = false
     mockIsError = false
@@ -122,6 +129,30 @@ describe('CardInfoPage', () => {
     render(<CardInfoPage />)
 
     expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+  })
+
+  describe('hasCoLoadedBenefits setting', () => {
+    it('redirects to /dashboard when hasCoLoadedBenefits is false, regardless of state', () => {
+      mockState = 'dc'
+      stateConfigOverride = { hasCoLoadedBenefits: false }
+      render(<CardInfoPage />)
+
+      expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+      expect(
+        screen.queryByRole('heading', { name: /getting a replacement snap or tanf ebt card/i })
+      ).not.toBeInTheDocument()
+    })
+
+    it('renders the explainer when hasCoLoadedBenefits is true, regardless of state', () => {
+      mockState = 'co'
+      stateConfigOverride = { hasCoLoadedBenefits: true }
+      render(<CardInfoPage />)
+
+      expect(mockReplace).not.toHaveBeenCalled()
+      expect(
+        screen.getByRole('heading', { name: /getting a replacement snap or tanf ebt card/i })
+      ).toBeInTheDocument()
+    })
   })
 
   it('shows loading state while household data is fetching', () => {

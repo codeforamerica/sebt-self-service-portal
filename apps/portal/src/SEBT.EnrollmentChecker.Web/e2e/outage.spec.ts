@@ -28,7 +28,7 @@ test.describe('Outage page', () => {
     await mockFeatures(page, { outage: false })
 
     await page.goto('/')
-    await expect(page.getByRole('button', { name: /check enrollment/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: /apply now/i })).toBeVisible()
 
     await page.goto('/outage')
     await page.waitForURL(/\/$/)

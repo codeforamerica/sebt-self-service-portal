@@ -16,6 +16,7 @@ import { clearReplacementFlash, getReplacementFlash } from '@/features/cards/uti
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
 import { server } from '@/mocks/server'
 import { AnalyticsEvents } from '@sebt/analytics'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import { ConfirmRequest } from './ConfirmRequest'
 
@@ -48,12 +49,17 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -147,6 +153,7 @@ describe('ConfirmRequest', () => {
     mockSetPageData.mockClear()
     mockTrackEvent.mockClear()
     mockState = 'dc'
+    stateConfigOverride = {}
     clearReplacementFlash()
     // Restore pristine DC bundles in case a prior test swapped to CO or overrode keys.
     loadStateBundles('dc')
@@ -206,6 +213,22 @@ describe('ConfirmRequest', () => {
     mockState = 'dc'
     renderConfirmRequest()
     expect(screen.queryByText(/last 4 digits/i)).not.toBeInTheDocument()
+  })
+
+  describe('cardIdentifier setting', () => {
+    it("shows the card number in the summary when cardIdentifier is 'cardLastFour', regardless of state", () => {
+      mockState = 'dc'
+      stateConfigOverride = { cardIdentifier: 'cardLastFour' }
+      renderConfirmRequest()
+      expect(screen.getAllByText(/1234 \(last 4 digits\)/)).toHaveLength(2)
+    })
+
+    it("hides the card number in the summary when cardIdentifier is 'childName', regardless of state", () => {
+      mockState = 'co'
+      stateConfigOverride = { cardIdentifier: 'childName' }
+      renderConfirmRequest()
+      expect(screen.queryByText(/last 4 digits/i)).not.toBeInTheDocument()
+    })
   })
 
   it('renders the child card lines from the optionalId who-is-card key', () => {
@@ -457,7 +480,7 @@ describe('ConfirmRequest', () => {
     // The label stays "Order card"; no dev-namespace "Loading..." swap
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /back/i })).toBeDisabled()
-    expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+    expect(screen.getByText('Please wait')).toHaveClass('usa-sr-only')
 
     resolveRequest!()
     await waitFor(() => {

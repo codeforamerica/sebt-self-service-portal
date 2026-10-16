@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 import { AnalyticsEvents } from '@sebt/analytics'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import type { AddressUpdateResponse, UpdateAddressRequest } from '../../api/schema'
 import { AddressFlowProvider, useAddressFlow } from '../../context'
@@ -42,12 +43,18 @@ vi.mock('@sebt/analytics', async (importOriginal) => {
   }
 })
 
+type AddressSettings = StateConfig['address']
+let addressOverride: Partial<AddressSettings> = {}
 let mockState = 'dc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => {
+      const config = actual.getStateConfig(state)
+      return { ...config, address: { ...config.address, ...addressOverride } }
+    }
   }
 })
 
@@ -167,6 +174,7 @@ describe('SuggestedAddress', () => {
     mockSetPageData.mockClear()
     mockTrackEvent.mockClear()
     mockState = 'dc'
+    addressOverride = {}
   })
 
   // --- Rendering (suggested variant) ---
@@ -466,6 +474,35 @@ describe('SuggestedAddress', () => {
     ).not.toBeInTheDocument()
   })
 
+  describe('showAbbreviatedNotice setting', () => {
+    const abbreviatedCopy = /we updated the street address to a format we can accept/i
+
+    it('shows the abbreviated notice when enabled', () => {
+      mockState = 'co'
+      addressOverride = { showAbbreviatedNotice: true }
+      renderSuggestedAddress(mockValidationResult, mockEntered)
+
+      expect(screen.getByText(abbreviatedCopy)).toBeInTheDocument()
+    })
+
+    it('hides the abbreviated notice when disabled', () => {
+      mockState = 'dc'
+      addressOverride = { showAbbreviatedNotice: false }
+      renderSuggestedAddress(mockValidationResult, mockEntered)
+
+      expect(screen.getByText(/we updated the address you entered/i)).toBeInTheDocument()
+      expect(screen.queryByText(abbreviatedCopy)).not.toBeInTheDocument()
+    })
+
+    it('does not show the abbreviated notice for other reasons even when enabled', () => {
+      mockState = 'dc'
+      addressOverride = { showAbbreviatedNotice: true }
+      renderSuggestedAddress(mockSuggestionResult, mockEntered)
+
+      expect(screen.queryByText(abbreviatedCopy)).not.toBeInTheDocument()
+    })
+  })
+
   it('renders the radio group legend with required indicator', () => {
     renderSuggestedAddress()
 
@@ -510,7 +547,7 @@ describe('SuggestedAddress', () => {
       expect(radio).toBeDisabled()
     }
     expect(container.querySelector('fieldset.usa-fieldset')).toHaveClass('opacity-50')
-    expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+    expect(screen.getByText('Please wait')).toHaveClass('usa-sr-only')
 
     release()
     await waitFor(() => expect(mockPush).toHaveBeenCalled())

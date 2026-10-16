@@ -83,6 +83,12 @@ describe('EnrolledChildren', () => {
     expect(accordion).toBeInTheDocument()
   })
 
+  it('places the accordion expand/collapse icon at the end of each heading', () => {
+    const { container } = render(<EnrolledChildren />)
+    const accordion = container.querySelector('.usa-accordion--icon-end')
+    expect(accordion).toBeInTheDocument()
+  })
+
   it('renders children from multiple cases', () => {
     const case3: SummerEbtCase = {
       ...mockCase1,

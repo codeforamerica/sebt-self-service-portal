@@ -17,7 +17,8 @@ public class PiiEncryptionSettings : IHaveConfigSectionName
     public bool EncryptAtRest { get; set; } = false;
 
     /// <summary>
-    /// When true, <see cref="Infrastructure.Services.PiiPlaintextEncryptionBackfill"/> runs after EF migrations on startup.
+    /// When true, <c>SEBT.Portal.Infrastructure.Services.PiiPlaintextEncryptionBackfill</c> runs after EF migrations on
+    /// startup. Named rather than cref'd: Core does not reference Infrastructure, so the type is not resolvable here.
     /// </summary>
     public bool RunStartupBackfill { get; set; } = false;
 

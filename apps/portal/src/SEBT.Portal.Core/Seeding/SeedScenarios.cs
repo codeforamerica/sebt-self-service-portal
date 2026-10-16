@@ -27,6 +27,8 @@ public static class SeedScenarios
     public static readonly SeedScenario CoNotActivated = new("co-notactivated", UserIalLevel.IAL1plus);
     public static readonly SeedScenario CoDeactivatedByState = new("co-deactivatedbystate", UserIalLevel.IAL1plus);
     public static readonly SeedScenario CoActive = new("co-active", UserIalLevel.IAL1plus);
+    /// <summary>Uniformly-cased names (e.g. "DELLA") beside a mixed-case one ("MacDonald"), to check frontend display casing both ways. Seeded for every state.</summary>
+    public static readonly SeedScenario NameCasing = new("name-casing", UserIalLevel.IAL1plus);
 
     // IAL1 scenarios
     public static readonly SeedScenario SingleChild = new("singlechild", UserIalLevel.IAL1);
@@ -68,6 +70,7 @@ public static class SeedScenarios
         NonCoLoaded, IdProofInProgress, NotStarted, Pending, Minimal, Denied,
         Review, Cancelled, Unknown, SummerActive, SummerLost,
         DcMixed, CoUndeliverable, CoFrozen, CoNotActivated, CoDeactivatedByState, CoActive,
+        NameCasing,
         Simple1, Simple2, Simple3, Simple4, Simple5, Simple6, Simple7
     ];
 

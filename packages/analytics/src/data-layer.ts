@@ -230,11 +230,13 @@ export class DataLayer {
   // Collect analytics-scoped scalar fields off a top-level root (e.g. `page`,
   // `user`). Nested objects and functions are skipped so consumers get a flat
   // bag of scalars; downstream bridges and dashboards key on those names.
+  // Undefined marks a cleared field, so it is left out rather than sent empty.
   private _collectAnalyticsScope(rootKey: 'page' | 'user'): Record<string, unknown> {
     const root = this._data[rootKey] as Record<string, unknown>
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(root)) {
       const value = root[key]
+      if (value === undefined) continue
       if (typeof value === 'function' || (typeof value === 'object' && value !== null)) continue
       if (!this._hasAccess(`${rootKey}.${key}`, 'analytics')) continue
       out[key] = value

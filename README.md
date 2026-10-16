@@ -69,7 +69,7 @@ Other configuration files live in the repository root: `pnpm-workspace.yaml`, `p
 - Infrastructure as code with [OpenTofu](https://opentofu.org/) (Terraform). See [tofu](./tofu/)
 - Containers for local development: Docker with [docker-compose](https://docs.docker.com/compose/) or [Podman](https://podman.io/docs/installation)
 
-------
+---
 
 ## Local dev set up option 1: ⚡️ Quickstart (recommended)
 
@@ -127,19 +127,19 @@ Once Aspire is running, go to the dashboard in your browser at <https://localhos
 
 You're set up!
 
-------
+---
 
 ### About the set up script
 
 The script will prompt you to install each of these in your home directory:
 
-| Tool | Version from | Installed to |
-| ---- | ------------ | ------------ |
-| Node | `.nvmrc` | `~/.local/share/sebt/node` |
-| pnpm | `engines.pnpm` in `package.json` | `~/.local/share/sebt` |
-| .NET SDK | `global.json` | `~/.dotnet` |
-| Aspire CLI | `sdk.version` in `aspire.config.json` | the pnpm global directory |
-| Podman | not pinned, so the platform package manager picks | wherever that puts it |
+| Tool       | Version from                                      | Installed to               |
+| ---------- | ------------------------------------------------- | -------------------------- |
+| Node       | `.nvmrc`                                          | `~/.local/share/sebt/node` |
+| pnpm       | `engines.pnpm` in `package.json`                  | `~/.local/share/sebt`      |
+| .NET SDK   | `global.json`                                     | `~/.dotnet`                |
+| Aspire CLI | `sdk.version` in `aspire.config.json`             | the pnpm global directory  |
+| Podman     | not pinned, so the platform package manager picks | wherever that puts it      |
 
 Those directories are not on the PATH of a new terminal, so the script offers to add them
 to your shell profile at the end. If you decline, the script still works.
@@ -172,7 +172,7 @@ Some other helpful CLI commands:
 - `pnpm aspire:status` to show the graph and address of each resource
 - `pnpm aspire:stop` to stop all running resources
 
-------
+---
 
 ## Local dev set up option 2: manual install / legacy process
 
@@ -285,6 +285,66 @@ Once all dependencies are installed and running, you can use these start command
 
 To view the running app, go to <https://localhost:3000> in your browser.
 
+## Development
+
+### Useful commands
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+
+# Stop and remove volumes (clears database - do this only if you're OK with dropping your seeded data)
+docker compose down -v
+```
+
+```bash
+pnpm docs:build     # generate everything and render to docs/docfx/_site
+pnpm docs:serve     # render and serve at http://localhost:8080
+```
+
+See [docs/docfx/README.md](./docs/docfx/README.md) for how each section is wired and how to add more.
+
+### Testing
+
+#### Run backend tests
+
+```bash
+# from repo root
+pnpm api:test         # Run all backend tests
+pnpm api:test:unit    # Run backend unit tests only
+```
+
+#### Run frontend tests: portal
+
+```bash
+# from within SEBT.Portal.Web:
+pnpm test            # Run frontend tests (vitest)
+pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
+pnpm test:a11y       # Run accessibility (pa11y) tests
+```
+
+#### Run frontend tests: enrollment checker
+
+```bash
+# from within SEBT.EnrollmentChecker.Web:
+pnpm test            # Run frontend tests (vitest)
+pnpm test:e2e        # Run frontend end-to-end (Playwright) tests
+pnpm test:a11y       # Run accessibility (pa11y) tests
+
+```
+
+#### Run tests locally as CI runs them (Release mode)
+
+```bash
+# from repo root
+pnpm ci:test          # Test frontend + backend
+pnpm ci:test:frontend    # Test frontend only
+pnpm ci:test:backend     # Test backend only
+```
+
 ### Local Redis (distributed cache)
 
 [Redis](https://redis.io/) is an optional distributed cache for `HybridCache`, included in Docker Compose. It is set to run with TLS enabled, to mirror AWS Elasticache in-transit encryption.
@@ -301,10 +361,10 @@ Then run `docker compose up -d redis`.
 
 #### Ports
 
-| Port | Protocol | Used by |
-|------|----------|---------|
+| Port | Protocol | Used by                               |
+| ---- | -------- | ------------------------------------- |
 | 6379 | plain    | `redis-commander`, direct `redis-cli` |
-| 6380 | TLS      | portal API |
+| 6380 | TLS      | portal API                            |
 
 #### Configuration
 
@@ -408,7 +468,7 @@ To enable DAST (Dynamic Application Security Testing), the scanner must use the 
 
 ### ID proofing requirements
 
-The `IdProofingRequirements` configuration section sets the IAL (Identity Assurance Level) that a user needs to view or modify each type of PII within the portal. The keys use a `resource+action` format, for example `address+view` and `card+write`.  Values can be one level for all cases, for example `"IAL1plus"`, or a per-case-type object for granular control. Non-configured keys default to `IAL1plus`, which is the fail-safe value. A user below the `view` threshold sees masked PII data (e.g. `****` for street addresses). A user below the `write` threshold cannot make updates to their address or request a card.
+The `IdProofingRequirements` configuration section sets the IAL (Identity Assurance Level) that a user needs to view or modify each type of PII within the portal. The keys use a `resource+action` format, for example `address+view` and `card+write`. Values can be one level for all cases, for example `"IAL1plus"`, or a per-case-type object for granular control. Non-configured keys default to `IAL1plus`, which is the fail-safe value. A user below the `view` threshold sees masked PII data (e.g. `****` for street addresses). A user below the `write` threshold cannot make updates to their address or request a card.
 
 For all available keys, the syntax for each case type, coherence validation rules, and state-specific examples, see the [full configuration guide](docs/config/ial/README.md). For working state configurations, see [`appsettings.dc.example.json`](apps/portal/src/SEBT.Portal.Api/appsettings.dc.example.json) and [`appsettings.co.example.json`](apps/portal/src/SEBT.Portal.Api/appsettings.co.example.json).
 
@@ -426,11 +486,11 @@ Environment variables are available in the `.env` file at the root of the reposi
 
 **Database (for Docker Compose):**
 
-- `MSSQL_SA_PASSWORD` -  SQL Server System Administrator password
-- `MSSQL_DATABASE` -  database name
-- `MSSQL_USER` -  database user
-- `MSSQL_SERVER` -  server hostname for local use
-- `MSSQL_PORT` -  server port
+- `MSSQL_SA_PASSWORD` - SQL Server System Administrator password
+- `MSSQL_DATABASE` - database name
+- `MSSQL_USER` - database user
+- `MSSQL_SERVER` - server hostname for local use
+- `MSSQL_PORT` - server port
 
 **API**
 
@@ -499,7 +559,7 @@ In the **Development** environment, the application seeds test users in the data
 - Starting application, when the migrations are applied
 - `DbContext.EnsureCreated()` calls
 
-The automatic seeding uses EF Core's  `UseSeeding` mechanism. See <https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding>.
+The automatic seeding uses EF Core's `UseSeeding` mechanism. See <https://learn.microsoft.com/en-us/ef/core/modeling/data-seeding>.
 
 To help test different workflows and users in different states, the seeder creates these users by default:
 
@@ -533,7 +593,7 @@ docker exec -it sebt_mssql /opt/mssql-tools18/bin/sqlcmd \
 
 A tool such as [LINQPad](https://www.linqpad.net/) is helpful with database tasks.
 
------
+---
 
 ## Development
 
@@ -609,7 +669,7 @@ pnpm ci:validate      # Validate workflows (dry-run)
 
 ### Warnings as errors
 
-The .NET solution is configured with `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` in `Directory.Build.props`.  Any compiler warning makes the build fail.
+The .NET solution is configured with `<TreatWarningsAsErrors>true</TreatWarningsAsErrors>` in `Directory.Build.props`. Any compiler warning makes the build fail.
 
 To let a specific warning code through, change it back to a warning in the applicable `.csproj` file:
 
@@ -627,7 +687,7 @@ Use this property, and not `<NoWarn>`, which silences the warning entirely.
 feature/*      # new product feature or enhancement
 chore/*        # maintenance tasks that aren't user-facing - e.g., package or security updates, refactors
 fix/*          # bug fixes
-main           # production code 
+main           # production code
 ```
 
 See [labeler.yml](.github/labeler.yml) for a complete list of possible branch prefixes.

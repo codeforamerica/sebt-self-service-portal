@@ -224,7 +224,7 @@ public class ColoradoAddressUpdateService : ColoradoCbmsServiceBase, IAddressUpd
     /// <summary>
     /// Overrides the base <see cref="ColoradoCbmsServiceBase.GetOrCreateClient"/> when a test HTTP handler
     /// has been injected via the internal constructor. This preserves the test seam for the PATCH path
-    /// while the read path is served by the <see cref="PluginCache"/> substitute.
+    /// while the read path is served by the <see cref="Cbms.Cache.PluginCache"/> substitute.
     /// In production (where <see cref="_testHttpMessageHandler"/> is null) the base implementation is used.
     /// </summary>
     protected new CbmsSebtApiClient GetOrCreateClient(CbmsConnectionOptions options)

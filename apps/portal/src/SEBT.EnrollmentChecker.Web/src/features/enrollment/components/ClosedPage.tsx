@@ -1,8 +1,8 @@
 'use client'
 
-import { Button, RichText } from '@sebt/design-system'
+import { Button, Details, RichText } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getLandingActions, getLandingConfig } from '@/lib/landingConfig'
@@ -25,7 +25,6 @@ export function ClosedPage() {
   const { pageTitleText } = getStateConfig(getState())
   const router = useRouter()
   const { clearState } = useEnrollment()
-  const [isAccordionExpanded, setIsAccordionExpanded] = useState(false)
 
   // Arriving here from a deep link should not resume a half-finished check.
   useEffect(() => {
@@ -72,45 +71,31 @@ export function ClosedPage() {
         ))}
 
         {useAccordion ? (
-          <div className="usa-accordion margin-top-4">
-            <h2 className="usa-accordion__heading">
-              <button
-                type="button"
-                className="usa-accordion__button bg-transparent border-0"
-                aria-expanded={isAccordionExpanded}
-                aria-controls="closed-faq-content"
-                onClick={() => setIsAccordionExpanded((prev) => !prev)}
+          <Details
+            className="margin-top-4"
+            summary={t('closedAccordionTitle')}
+            icon={
+              <svg
+                className="usa-icon margin-right-1"
+                aria-hidden="true"
+                focusable="false"
+                role="img"
               >
-                <span className="display-flex flex-align-center text-primary">
-                  <svg
-                    className="usa-icon margin-right-1"
-                    aria-hidden="true"
-                    focusable="false"
-                    role="img"
-                  >
-                    <use xlinkHref="/img/sprite.svg#info" />
-                  </svg>
-                  {t('closedAccordionTitle')}
-                </span>
-              </button>
-            </h2>
-            <div
-              id="closed-faq-content"
-              className="usa-accordion__content usa-prose"
-              hidden={!isAccordionExpanded}
-            >
-              <RichText>{t('closedBody2')}</RichText>
-              {enrollmentReasons.length > 0 && (
-                <ul className="usa-list margin-top-2">
-                  {enrollmentReasons.map((item, index) => (
-                    <li key={index}><RichText>{item}</RichText></li>
-                  ))}
-                </ul>
-              )}
-              <RichText>{t('closedBody4')}</RichText>
-              <p className="margin-top-2">{t('closedBody6')}</p>
-            </div>
-          </div>
+                <use xlinkHref="/img/sprite.svg#info" />
+              </svg>
+            }
+          >
+            <RichText>{t('closedBody2')}</RichText>
+            {enrollmentReasons.length > 0 && (
+              <ul className="usa-list margin-top-2">
+                {enrollmentReasons.map((item, index) => (
+                  <li key={index}><RichText>{item}</RichText></li>
+                ))}
+              </ul>
+            )}
+            <RichText>{t('closedBody4')}</RichText>
+            <p className="margin-top-2">{t('closedBody6')}</p>
+          </Details>
         ) : (
           <div className="usa-prose margin-top-3">
             {/* Two standalone notes. Each is one sentence, which RichText renders

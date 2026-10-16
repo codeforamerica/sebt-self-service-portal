@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { i18n } from '@sebt/design-system/client'
 
 import { FeatureFlagsContext } from '@/features/feature-flags'
 
@@ -277,6 +279,70 @@ describe('ActionButtons', () => {
         />
       )
       expect(activateLink(container)).toBeNull()
+    })
+  })
+
+  // CO authors this label and DC's sheet row is !N/A!, so the CTA follows the copy rather than a
+  // state list. The unit-test bundle is DC, so the CO label is added for the tests that need it.
+  describe('See when benefits expire CTA', () => {
+    const expirationLink = (container: HTMLElement) =>
+      container.querySelector('a[data-analytics-cta="check_benefit_expiration_cta"]')
+    let dashboardBundle: Record<string, unknown>
+
+    beforeEach(() => {
+      dashboardBundle = structuredClone(i18n.getResourceBundle('en', 'dashboard'))
+    })
+
+    afterEach(() => {
+      i18n.removeResourceBundle('en', 'dashboard')
+      i18n.addResourceBundle('en', 'dashboard', dashboardBundle)
+    })
+
+    const addCoLabel = () =>
+      i18n.addResourceBundle(
+        'en',
+        'dashboard',
+        { actionNavigationCheckBenefitExpiration: 'See when benefits expire' },
+        true,
+        true
+      )
+
+    it('links to the enrolled children when any benefits are expiring or expired', () => {
+      addCoLabel()
+      render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+          hasBenefitExpiration={true}
+        />
+      )
+      expect(screen.getByRole('link', { name: 'See when benefits expire' })).toHaveAttribute(
+        'href',
+        '#enrolled-children-heading'
+      )
+    })
+
+    it('stays hidden while no benefits are expiring or expired', () => {
+      addCoLabel()
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+          hasBenefitExpiration={false}
+        />
+      )
+      expect(expirationLink(container)).toBeNull()
+    })
+
+    it('stays hidden in a state whose content has no label for it', () => {
+      const { container } = render(
+        <ActionButtons
+          allowedActions={allowAll}
+          hasCases={true}
+          hasBenefitExpiration={true}
+        />
+      )
+      expect(expirationLink(container)).toBeNull()
     })
   })
 
