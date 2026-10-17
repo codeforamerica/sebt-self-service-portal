@@ -46,4 +46,15 @@ describe('mergeHouseholdCardDetails', () => {
     expect(mergedCase!.ebtCardStatus).toBe('Active')
     expect(mergedCase!.cardRequestedAt).toBe('2026-01-01T00:00:00Z')
   })
+
+  it('keeps the shell case cooldown flag; the full response only contributes card fields', () => {
+    const shellInCooldown: HouseholdData = {
+      ...shell,
+      summerEbtCases: [createMockSummerEbtCase({ ...shellCase, inCardReplacementCooldown: true })]
+    }
+
+    const merged = mergeHouseholdCardDetails(shellInCooldown, full)
+
+    expect(merged.summerEbtCases[0]!.inCardReplacementCooldown).toBe(true)
+  })
 })

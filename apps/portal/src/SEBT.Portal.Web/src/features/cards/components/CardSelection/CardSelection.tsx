@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useHouseholdData } from '@/features/household'
 import type { SummerEbtCase } from '@/features/household/api/schema'
 import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
@@ -22,7 +21,7 @@ function buildCaseGroups(cases: SummerEbtCase[]): CaseGroup[] {
       (c): c is SummerEbtCase & { summerEBTCaseID: string } =>
         c.summerEBTCaseID != null &&
         c.allowCardReplacement &&
-        !isWithinCooldownPeriod(c.cardRequestedAt) &&
+        !c.inCardReplacementCooldown &&
         c.issuanceType !== 'TanfEbtCard' &&
         c.issuanceType !== 'SnapEbtCard'
     )

@@ -280,6 +280,26 @@ describe('SummerEbtCaseSchema benefitExpirationStatus', () => {
   })
 })
 
+describe('SummerEbtCaseSchema inCardReplacementCooldown', () => {
+  const baseCase = {
+    childFirstName: 'Maria',
+    childLastName: 'Garcia',
+    householdType: 'SEBT',
+    eligibilityType: 'AP'
+  }
+
+  it('defaults to false when the API omits it', () => {
+    expect(SummerEbtCaseSchema.parse(baseCase).inCardReplacementCooldown).toBe(false)
+  })
+
+  it('passes true through', () => {
+    expect(
+      SummerEbtCaseSchema.parse({ ...baseCase, inCardReplacementCooldown: true })
+        .inCardReplacementCooldown
+    ).toBe(true)
+  })
+})
+
 describe('HouseholdDataSchema person-name casing', () => {
   const householdWith = ({
     userProfile,
