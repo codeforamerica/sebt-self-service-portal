@@ -25,12 +25,10 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { LOCAL_FONTS_MAP, assertLocalFontFilesExist, extractFonts } from './generate-fonts.js'
+import { STATE_CODES } from '../../src/lib/state.ts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const designSystemRoot = resolve(scriptDir, '../..')
-
-// Keep in step with generate-all-tokens.js.
-const STATES = ['dc', 'co']
 
 const appRoot = process.cwd()
 const require = createRequire(join(appRoot, '/'))
@@ -152,7 +150,7 @@ function main() {
 
   const fontManifest = {}
   console.log('🎨 Compiling a USWDS stylesheet per state...')
-  for (const state of STATES) {
+  for (const state of STATE_CODES) {
     if (!existsSync(join(designSystemRoot, 'design', 'states', `${state}.json`))) {
       console.log(`   ${state}: no token file, skipping`)
       continue

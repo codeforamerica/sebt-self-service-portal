@@ -33,7 +33,7 @@ export interface UseHouseholdDataOptions {
   /** Whether to auto-redirect on 403 with requiredIal. Defaults to true. */
   redirectOnInsufficientIal?: boolean
   /**
-   * When true (CO dashboard with defer_ebt_card_data_loading), loads household
+   * When true (dashboard with defer_ebt_card_data_loading on), loads household
    * without card details first, then fetches card fields for enrolled children.
    */
   deferCardDetailsOnLoad?: boolean

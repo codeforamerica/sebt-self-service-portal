@@ -81,6 +81,8 @@ jobs:
           SHOW_SCHOOL_FIELD: ${{ vars.ENROLLMENT_CHECKER_SHOW_SCHOOL_FIELD }}
           CHECKER_ENABLED: ${{ vars.ENROLLMENT_CHECKER_ENABLED }}
           BOT_PROTECTION_ENABLED: ${{ vars.ENROLLMENT_CHECKER_BOT_PROTECTION_ENABLED }}
+          # A fact about this state's apply destination, not a per-environment setting.
+          APPLICATION_URL_PEAK_PARAMS: "true"
         run: bash scripts/ci/write-checker-config.sh apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js
 
       - name: Upload static site artifact
@@ -192,6 +194,8 @@ jobs:
           SHOW_SCHOOL_FIELD: ${{ vars.ENROLLMENT_CHECKER_SHOW_SCHOOL_FIELD }}
           CHECKER_ENABLED: ${{ vars.ENROLLMENT_CHECKER_ENABLED }}
           BOT_PROTECTION_ENABLED: ${{ vars.ENROLLMENT_CHECKER_BOT_PROTECTION_ENABLED }}
+          # A fact about this state's apply destination, not a per-environment setting.
+          APPLICATION_URL_PEAK_PARAMS: "false"
         run: bash scripts/ci/write-checker-config.sh apps/portal/src/SEBT.EnrollmentChecker.Web/out/config.js
 
       - name: Upload static site artifact

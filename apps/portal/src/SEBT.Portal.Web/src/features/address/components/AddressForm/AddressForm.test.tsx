@@ -11,6 +11,7 @@ import type { Address } from '@/features/household/api'
 import type { RuntimeConfig } from '@/lib/runtime-config'
 import { server } from '@/mocks/server'
 import { RuntimeConfigProvider } from '@/providers'
+import { makeRuntimeConfig } from '@/test-utils/runtime-config'
 import { AnalyticsEvents } from '@sebt/analytics'
 import type { StateCode, StateConfig } from '@sebt/design-system'
 import { i18n } from '@sebt/design-system/client'
@@ -91,7 +92,7 @@ function renderForm(initialAddress: Address | null = null, config: Partial<Runti
   return {
     user,
     ...render(
-      <RuntimeConfigProvider config={{ debugRepeatOidcStepUp: false, ...config }}>
+      <RuntimeConfigProvider config={makeRuntimeConfig(config)}>
         <QueryClientProvider client={queryClient}>
           <AddressFlowProvider>
             <AddressForm initialAddress={initialAddress} />
@@ -721,10 +722,7 @@ describe('AddressForm', () => {
       const queryClient = createTestQueryClient()
       render(
         <RuntimeConfigProvider
-          config={{
-            smartyEmbeddedKey: 'test-embedded-key',
-            debugRepeatOidcStepUp: false
-          }}
+          config={makeRuntimeConfig({ smartyEmbeddedKey: 'test-embedded-key' })}
         >
           <QueryClientProvider client={queryClient}>
             <AddressFlowProvider>

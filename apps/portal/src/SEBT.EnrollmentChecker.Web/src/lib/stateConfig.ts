@@ -1,8 +1,10 @@
+import type { StateCode } from '@sebt/design-system/src/lib/state'
+
 import { getClientConfig } from './client-config'
 import { env } from './env'
 
 export interface EnrollmentStateConfig {
-  state: 'dc' | 'co'
+  state: StateCode
   showSchoolField: boolean
   checkerEnabled: boolean
   botProtectionEnabled: boolean

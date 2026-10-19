@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { getPortalMetadataDescription, getSiteDisplayName, getStateConfig } from './state'
+import {
+  getPortalMetadataDescription,
+  getSiteDisplayName,
+  getStateConfig,
+  STATE_CODES
+} from './state'
 
 describe('getStateConfig — supportedLanguages', () => {
   it('omits Amharic from the CO config', () => {
@@ -87,5 +92,14 @@ describe('getStateConfig — address', () => {
       showAbbreviatedNotice: false,
       autocompletePreferStates: 'CO'
     })
+  })
+})
+
+describe('STATE_CODES', () => {
+  it('lists every state with a registry entry', () => {
+    expect(STATE_CODES).toEqual(['dc', 'co'])
+    for (const state of STATE_CODES) {
+      expect(getStateConfig(state).name).toBeTruthy()
+    }
   })
 })
