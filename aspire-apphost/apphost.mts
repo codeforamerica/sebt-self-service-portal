@@ -40,7 +40,17 @@ import {
   composeGraph,
   runCapabilityPreflight,
 } from "./compose.mjs";
-import { loadConfig } from "./config.mjs";
+import {
+  describeDeveloperSecrets,
+  loadDeveloperSecrets,
+  runDopplerCli,
+} from "./capabilities/developer-secrets/doppler.mjs";
+import {
+  dopplerEnvironment,
+  dopplerProject,
+  loadConfig,
+  repoRoot,
+} from "./config.mjs";
 
 const config = loadConfig();
 console.log(`[apphost] composing resource graph for STATE=${config.state}`);
@@ -48,6 +58,15 @@ console.log(`[apphost] composing resource graph for STATE=${config.state}`);
 announceCapabilities(config);
 await runCapabilityPreflight(config);
 
+// Loaded before the builder exists, so a Doppler failure stops the start in a second.
+const developerSecrets = loadDeveloperSecrets({
+  useDoppler: config.useDoppler,
+  expectedProject: dopplerProject,
+  expectedEnvironment: dopplerEnvironment,
+  run: runDopplerCli(repoRoot),
+});
+console.log(`[secrets] ${describeDeveloperSecrets(developerSecrets)}`);
+
 const builder = await createBuilder();
-await composeGraph(builder, config);
+await composeGraph(builder, config, developerSecrets);
 await builder.build().run();
