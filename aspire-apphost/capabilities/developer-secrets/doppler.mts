@@ -1,8 +1,5 @@
-// Loads local development secrets from Doppler when this repo is set up for it.
-//
-// This module calls the Doppler CLI directly, with no shell, so it behaves the same on
-// macOS, Linux, and Windows. It does not import the generated Aspire SDK, so its tests run
-// on a machine without Aspire.
+// Loads local development secrets from Doppler. It calls the CLI with no shell, so it
+// behaves the same on Windows, and avoids the generated SDK so its tests run without Aspire.
 
 import { spawnSync } from "node:child_process";
 

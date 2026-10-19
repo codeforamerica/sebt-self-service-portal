@@ -1,7 +1,4 @@
-// Turns routed Doppler secrets into settings that hold Aspire secret parameters.
-//
-// A secret parameter keeps the value out of the dashboard and the startup log. The log
-// prints the keys only.
+// Turns routed Doppler secrets into Aspire secret parameters, so the dashboard masks the values.
 
 import type { DistributedApplicationBuilder } from "../../.aspire/modules/aspire.mjs";
 import type { ConfigSetting } from "../requirements.mjs";
