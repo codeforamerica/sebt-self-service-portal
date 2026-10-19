@@ -46,7 +46,8 @@ Notes:
   Preview stacks use the shared Keycloak IdP for OIDC. After Route53 is created,
   deploy registers the pr-N host as a Valid Redirect URI on the Keycloak clients
   using the sebt-preview-deploy service account (hostname wildcards are not
-  supported on Keycloak 26).
+  supported on Keycloak 26). If that client is missing on the live realm,
+  deploy seeds it via the bootstrap admin before registering redirects.
 EOF
 }
 

@@ -14,8 +14,9 @@
 #   - Shared preview Keycloak at https://auth.{DOMAIN} (tofu module preview_keycloak); build/push
 #     image via ./scripts/preview/build-keycloak.sh before first apply. Deploy registers each
 #     pr-N host on the Keycloak clients via sebt-preview-deploy (client_credentials).
-#     For an existing live realm, run ./scripts/preview/bootstrap-keycloak-deploy-client.sh
-#     once (or create sebt-preview-deploy manually; see docs/development/keycloak-preview.md).
+#     If that client is missing on the live realm, deploy/destroy seed it via the
+#     bootstrap admin (same as ./scripts/preview/bootstrap-keycloak-deploy-client.sh).
+#     See docs/development/keycloak-preview.md.
 #   - Optional vars: PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID / PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET
 #     or PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID (Secrets Manager JSON)
 #   - Optional: PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID (defaults to
