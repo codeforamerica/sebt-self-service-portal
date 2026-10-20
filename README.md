@@ -172,6 +172,32 @@ Some other helpful CLI commands:
 - `pnpm aspire:status` to show the graph and address of each resource
 - `pnpm aspire:stop` to stop all running resources
 
+### Using Doppler with Aspire
+
+If you have access to this project's secrets in [Doppler](https://docs.doppler.com/docs/install-cli), you can use it with Aspire to load the shared local secrets, such as the Smarty and Socure sandbox keys.
+
+Doppler needs a one-time setup. Run these commands from the repo root:
+
+```bash
+brew install dopplerhq/cli/doppler
+doppler login
+doppler setup --no-interactive
+```
+
+On Windows, follow [Doppler's install guide](https://docs.doppler.com/docs/install-cli) instead of `brew install`.
+
+`doppler setup` connects the repo to your personal Doppler config, `local_personal`. It inherits the values from the shared `local` config, and any value you change there applies only to you.
+
+Only configs in the `local` Doppler environment will load. Any other config (for example `dev`) stops the AppHost from starting, to protect dev credentials. If that happens, run `doppler setup` and pick your `local_personal` config.
+
+The AppHost forwards only the keys listed in `aspire-apphost/capabilities/developer-secrets/routing.mts`, so Doppler can't override what Aspire sets on purpose, like the mocks and Keycloak. If you add a key to Doppler without adding it to `routing.mts`, the Aspire log file (whose path `aspire run` prints next to `Logs:`) will note which keys were not forwarded.
+
+If Doppler is installed and configured correctly, it will be detected automatically and used when you run `pnpm aspire:co` or `pnpm aspire:dc`. The Aspire dashboard shows a Secrets notification at the top with either `Using Doppler: <project> / <config>`, `Doppler isn't set up for this repo` if it isn't installed or configured, or `USE_DOPPLER=false` if explicitly disabled.
+
+If Doppler is set up but can't load secrets (for example, if you're logged out), the command stops with Doppler's error instead of starting the app. To skip Doppler, prefix the command with `USE_DOPPLER=false` (for example, `USE_DOPPLER=false pnpm aspire:co`).
+
+Note that switching between Doppler and no Doppler changes the identifier hasher key, so hashed rows saved in your local database before the switch won't match lookups after it.
+
 ---
 
 ## Local dev set up option 2: manual install / legacy process
@@ -276,13 +302,13 @@ To start the Mailpit Docker container, run `docker compose up -d mailpit`. Once 
 Once all dependencies are installed and running, you can use these start commands:
 
 ```bash
-`pnpm dev:dc` # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
-`pnpm dev:dc-enroll` # to start the DC Enrollment Checker (using the external `dc-connector` repo alongside this repo)
-`pnpm dev:co`  #  to start the CO Portal
-`pnpm dev:co-enroll` # to start the CO Enrollment Checker
+pnpm dev:dc         # to start the DC Portal (using the external `dc-connector` repo alongside this repo)
+pnpm dev:dc-enroll  # to start the DC Enrollment Checker (using the external `dc-connector` repo alongside this repo)
+pnpm dev:co         # to start the CO Portal
+pnpm dev:co-enroll  # to start the CO Enrollment Checker
 ```
 
-To view the running app, go to <https://localhost:3000> in your browser.
+To view the running app, go to <http://localhost:3000> in your browser.
 
 ## Development
 
