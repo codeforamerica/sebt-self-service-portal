@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useHouseholdData } from '@/features/household'
 import type { SummerEbtCase } from '@/features/household/api/schema'
-import { Alert, Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
 
 interface CaseGroup {
   caseId: string
@@ -51,7 +51,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
   const { t: tValidation } = useTranslation('validation')
 
   const router = useRouter()
-  const currentState = getState()
+  const identifiesCardByLastFour = getStateConfig(getState()).cardIdentifier === 'cardLastFour'
   const { data, isLoading, isError } = useHouseholdData()
 
   const [selectedCases, setSelectedCases] = useState<Set<string>>(new Set())
@@ -179,7 +179,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
                 htmlFor={`card-${group.caseId}`}
               >
                 {group.childFirstName} {group.childLastName}&apos;s card
-                {currentState === 'co' && group.ebtCardLastFour && (
+                {identifiesCardByLastFour && group.ebtCardLastFour && (
                   <span className="usa-checkbox__label-description">
                     {/* The DC sheet marks optionalId.cardNumber !N/A!; the defaultValue
                         covers bundles without it. */}
