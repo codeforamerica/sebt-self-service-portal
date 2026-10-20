@@ -45,6 +45,7 @@ import {
   loadDeveloperSecrets,
   runDopplerCli,
 } from "./capabilities/developer-secrets/doppler.mjs";
+import { notifyDeveloperSecrets } from "./capabilities/developer-secrets/notification.mjs";
 import {
   dopplerEnvironment,
   dopplerProject,
@@ -65,8 +66,10 @@ const developerSecrets = loadDeveloperSecrets({
   expectedEnvironment: dopplerEnvironment,
   run: runDopplerCli(repoRoot),
 });
-console.log(`[secrets] ${describeDeveloperSecrets(developerSecrets)}`);
+const secretsMessage = describeDeveloperSecrets(developerSecrets);
+console.log(`[secrets] ${secretsMessage}`);
 
 const builder = await createBuilder();
 await composeGraph(builder, config, developerSecrets);
+await notifyDeveloperSecrets(builder, secretsMessage);
 await builder.build().run();
