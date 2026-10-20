@@ -2,6 +2,9 @@ packages:
   - apps/portal/src/SEBT.Portal.Web
   - apps/portal/src/SEBT.EnrollmentChecker.Web
   - packages/*
+  # The Aspire AppHost. A workspace member so the root lockfile is the only one, and so
+  # the overrides and the release cooldown below cover its dependencies too.
+  - aspire-apphost
 
 # [SECURITY] Force-upgrade vulnerable transitive dependencies. Lives here (not in
 # package.json's `pnpm.overrides`) because pnpm 11 no longer honors that location.
