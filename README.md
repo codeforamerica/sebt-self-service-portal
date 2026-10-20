@@ -172,6 +172,32 @@ Some other helpful CLI commands:
 - `pnpm aspire:status` to show the graph and address of each resource
 - `pnpm aspire:stop` to stop all running resources
 
+### Using Doppler with Aspire
+
+If you have access to this project's secrets in [Doppler](https://docs.doppler.com/docs/install-cli), you can use it with Aspire to load the shared local secrets, such as the Smarty and Socure sandbox keys.
+
+Doppler needs a one-time setup. Run these commands from the repo root:
+
+```bash
+brew install dopplerhq/cli/doppler
+doppler login
+doppler setup --no-interactive
+```
+
+On Windows, follow [Doppler's install guide](https://docs.doppler.com/docs/install-cli) instead of `brew install`.
+
+`doppler setup` connects the repo to your personal Doppler config, `local_personal`. It inherits the values from the shared `local` config, and any value you change there applies only to you.
+
+Only configs in the `local` Doppler environment will load. Any other config (for example `dev`) stops the AppHost from starting, to protect dev credentials. If that happens, run `doppler setup` and pick your `local_personal` config.
+
+The AppHost forwards only the keys listed in `aspire-apphost/capabilities/developer-secrets/routing.mts`, so Doppler can't override what Aspire sets on purpose, like the mocks and Keycloak. If you add a key to Doppler without adding it to `routing.mts`, the Aspire log file (whose path `aspire run` prints next to `Logs:`) will note which keys were not forwarded.
+
+If Doppler is installed and configured correctly, it will be detected automatically and used when you run `pnpm aspire:co` or `pnpm aspire:dc`. The Aspire dashboard shows a Secrets notification at the top with either `Using Doppler: <project> / <config>`, `Doppler isn't set up for this repo` if it isn't installed or configured, or `USE_DOPPLER=false` if explicitly disabled.
+
+If Doppler is set up but can't load secrets (for example, if you're logged out), the command stops with Doppler's error instead of starting the app. To skip Doppler, prefix the command with `USE_DOPPLER=false` (for example, `USE_DOPPLER=false pnpm aspire:co`).
+
+Note that switching between Doppler and no Doppler changes the identifier hasher key, so hashed rows saved in your local database before the switch won't match lookups after it.
+
 ---
 
 ## Local dev set up option 2: manual install / legacy process
@@ -240,20 +266,6 @@ cp appsettings.dc.example.json appsettings.dc.json   # for DC local development
 
 For more details about how appsettings work, see [state-specific configuration](#state-specific-configuration) below.
 
-If you have access to this project's secrets in [Doppler](https://docs.doppler.com/docs/install-cli), you can use it instead of copying secrets into these files.
-
-Doppler needs a one-time setup. Run these commands from the repo root:
-
-```bash
-brew install dopplerhq/cli/doppler
-doppler login
-doppler setup --no-interactive
-```
-
-`doppler setup` connects the repo to your personal Doppler config, `local_personal`. It inherits the values from the shared `local` config, and any value you change there applies only to you.
-
-Doppler values (your personal ones first, then the shared ones) override matching keys in your local `.env` and appsettings files. Anything Doppler doesn't set still comes from the files.
-
 ### 4. Install dependencies
 
 #### Frontend
@@ -297,12 +309,6 @@ pnpm dev:co-enroll  # to start the CO Enrollment Checker
 ```
 
 To view the running app, go to <http://localhost:3000> in your browser.
-
-If Doppler is set up for this repo, the commands above load secrets from Doppler automatically. If Doppler isn't installed, or you haven't run `doppler setup` in this repo, they use only your local config files. Right after pnpm echoes the command, the output tells you which one it's using: `Using Doppler` or `using local config files`.
-
-If Doppler is set up but can't load secrets (for example, if you're logged out or offline), the command stops with Doppler's error instead of starting the app. To skip Doppler, prefix the command with `USE_DOPPLER=false` (for example, `USE_DOPPLER=false pnpm dev:co`). To make the command fail when Doppler isn't set up, use `USE_DOPPLER=true`.
-
-Only one state can run at a time. You can run that state's portal and enrollment checker together by starting each command in its own terminal. Start the portal first; the enrollment checker then starts on <http://localhost:3001>.
 
 ## Development
 
