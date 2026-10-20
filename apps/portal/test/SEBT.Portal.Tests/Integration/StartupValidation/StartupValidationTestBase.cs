@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration.Json;
 using Microsoft.Extensions.Hosting;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Services;
@@ -60,12 +62,48 @@ public abstract class StartupValidationTestBase : IDisposable
                 builder.UseEnvironment(_environmentName);
             }
 
+            builder.UseContentRoot(IsolatedContentRoot.Value);
+            builder.ConfigureAppConfiguration((_, configuration) => RemoveLocalJsonSources(configuration));
+
             builder.ConfigureServices(services =>
             {
                 services.ReplaceWithMock<IDatabaseMigrator>();
                 services.ReplaceWithMock<IDatabaseSeeder>();
             });
         });
+
+    /// <summary>
+    /// A content root holding only the tracked appsettings.json. The API project folder and the test
+    /// output both also hold developer-local overlays, and some settings are read while services are
+    /// still registering, before <see cref="RemoveLocalJsonSources"/> runs.
+    /// </summary>
+    private static readonly Lazy<string> IsolatedContentRoot = new(() =>
+    {
+        var directory = Directory.CreateDirectory(
+            Path.Combine(AppContext.BaseDirectory, "isolated-content-root")).FullName;
+        File.Copy(
+            Path.Combine(AppContext.BaseDirectory, "appsettings.json"),
+            Path.Combine(directory, "appsettings.json"),
+            overwrite: true);
+        return directory;
+    });
+
+    /// <summary>
+    /// Drops every JSON source except the tracked appsettings.json. Environment and state overlays,
+    /// user secrets, and factory settings files exist only on developer machines, never in CI.
+    /// </summary>
+    private static void RemoveLocalJsonSources(IConfigurationBuilder configuration)
+    {
+        var localSources = configuration.Sources
+            .OfType<JsonConfigurationSource>()
+            .Where(source => source.Path != "appsettings.json")
+            .ToList();
+
+        foreach (var source in localSources)
+        {
+            configuration.Sources.Remove(source);
+        }
+    }
 
     public void Dispose()
     {
