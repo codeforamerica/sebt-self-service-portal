@@ -60,9 +60,12 @@ vi.mock('@/features/auth', async (importOriginal) => {
   }
 })
 
+const mockFlags = vi.hoisted(() => ({ deferEbtCardDataLoading: false }))
+
 vi.mock('@/features/feature-flags', () => ({
   useFeatureFlag: (flag: string) => {
     if (flag === 'show_contact_preferences') return true
+    if (flag === 'defer_ebt_card_data_loading') return mockFlags.deferEbtCardDataLoading
     return false
   }
 }))
@@ -89,6 +92,7 @@ describe('DashboardContent', () => {
     mockSetUserData.mockClear()
     mockTrackEvent.mockClear()
     mockAuthSession.isCoLoaded = false
+    mockFlags.deferEbtCardDataLoading = false
   })
 
   it('shows loading skeleton initially', () => {
@@ -789,6 +793,37 @@ describe('DashboardContent', () => {
         'analytics'
       ])
       expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'co_loaded_only')
+    })
+  })
+
+  describe('defer_ebt_card_data_loading flag', () => {
+    function captureIncludeCardDetails(): (string | null)[] {
+      const values: (string | null)[] = []
+      server.use(
+        http.get('/api/household/data', ({ request }) => {
+          values.push(new URL(request.url).searchParams.get('includeCardDetails'))
+          return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+        })
+      )
+      return values
+    }
+
+    it('loads household data without card details first when the flag is on, in any state', async () => {
+      mockFlags.deferEbtCardDataLoading = true
+      const includeCardDetails = captureIncludeCardDetails()
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => expect(includeCardDetails[0]).toBe('false'))
+    })
+
+    it('loads household data with card details when the flag is off', async () => {
+      const includeCardDetails = captureIncludeCardDetails()
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => expect(includeCardDetails).toHaveLength(1))
+      expect(includeCardDetails[0]).toBeNull()
     })
   })
 })

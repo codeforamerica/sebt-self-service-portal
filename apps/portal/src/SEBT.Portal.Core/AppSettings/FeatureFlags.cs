@@ -16,8 +16,8 @@ public static class FeatureFlags
         "enrollment_check_requires_at_least_one_exact_matched_field";
 
     /// <summary>
-    /// When enabled (CO), the dashboard may request household data without CBMS FIS card
-    /// details first, then load card fields in a follow-up request. Defaults to false.
+    /// When enabled, the dashboard requests household data without card details (CO's come from
+    /// CBMS FIS) first, then loads them in a follow-up request. Defaults to false; CO turns it on.
     /// </summary>
     public const string DeferEbtCardDataLoading = "defer_ebt_card_data_loading";
 

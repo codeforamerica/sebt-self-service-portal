@@ -54,7 +54,7 @@ export function DashboardContent() {
   const isCO = getState() === 'co'
   const { data, isLoading, isError, error, requiresProofing, isLoadingCardDetails } =
     useHouseholdData({
-      deferCardDetailsOnLoad: isCO && deferEbtCardLoading
+      deferCardDetailsOnLoad: deferEbtCardLoading
     })
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()

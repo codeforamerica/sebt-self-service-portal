@@ -23,6 +23,8 @@ export interface CheckerClientConfig {
   /** Absent when neither config.js nor the build-time fallback supplies one. */
   portalUrl?: string | undefined
   applicationUrl?: string | undefined
+  /** When true, the apply URL is PEAK's and gets its language and referrer params. */
+  applicationUrlPeakParams: boolean
   showSchoolField: boolean
   checkerEnabled: boolean
   botProtectionEnabled: boolean
@@ -95,6 +97,10 @@ export function getClientConfig(): CheckerClientConfig {
     apiBaseUrl: url(o.apiBaseUrl, env.NEXT_PUBLIC_API_BASE_URL),
     portalUrl: url(o.portalUrl, env.NEXT_PUBLIC_PORTAL_URL),
     applicationUrl: url(o.applicationUrl, env.NEXT_PUBLIC_APPLICATION_URL),
+    applicationUrlPeakParams: bool(
+      o.applicationUrlPeakParams,
+      env.NEXT_PUBLIC_APPLICATION_URL_PEAK_PARAMS
+    ),
     showSchoolField: bool(o.showSchoolField, env.NEXT_PUBLIC_SHOW_SCHOOL_FIELD),
     checkerEnabled: bool(o.checkerEnabled, env.NEXT_PUBLIC_CHECKER_ENABLED),
     botProtectionEnabled: bool(o.botProtectionEnabled, env.NEXT_PUBLIC_BOT_PROTECTION_ENABLED),

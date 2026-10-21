@@ -48,6 +48,7 @@ test.describe('Colorado dashboard card statuses', () => {
   }) => {
     await injectAuth(page)
     await setupApiRoutes(page, {
+      featureFlags: { enable_activate_card: true },
       householdData: makeHouseholdData({
         summerEbtCases: [makeSummerEbtCase({ ebtCardStatus: 'NotActivated' })]
       })

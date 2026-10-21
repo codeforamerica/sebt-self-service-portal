@@ -5,18 +5,27 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { i18n } from '@sebt/design-system/client'
 
 import { FeatureFlagsContext } from '@/features/feature-flags'
+import type { RuntimeConfig } from '@/lib/runtime-config'
+import { RuntimeConfigProvider } from '@/providers'
+import { PEAK_APPLY_CONFIG, PEAK_APPLY_URL, makeRuntimeConfig } from '@/test-utils/runtime-config'
 
 import type { AllowedActions } from '../../api'
 
 import { ActionButtons } from './ActionButtons'
 
-function withApplyFlag(children: ReactNode, enableApply: boolean) {
+function withApplyFlag(
+  children: ReactNode,
+  enableApply: boolean,
+  config: RuntimeConfig = PEAK_APPLY_CONFIG
+) {
   return (
-    <FeatureFlagsContext.Provider
-      value={{ flags: { enable_apply: enableApply }, isLoading: false, isError: false }}
-    >
-      {children}
-    </FeatureFlagsContext.Provider>
+    <RuntimeConfigProvider config={config}>
+      <FeatureFlagsContext.Provider
+        value={{ flags: { enable_apply: enableApply }, isLoading: false, isError: false }}
+      >
+        {children}
+      </FeatureFlagsContext.Provider>
+    </RuntimeConfigProvider>
   )
 }
 
@@ -238,29 +247,43 @@ describe('ActionButtons', () => {
     })
   })
 
-  // The "Activate a card" CTA is state-gated: CO has the authored label, DC's is still
-  // !N/A! upstream, so the entry is gated to CO until DC content lands. Tests assert on
-  // href/data-analytics-cta rather than label text because the unit-test i18n bundle is
-  // always DC (NEXT_PUBLIC_STATE=dc), so the CO-only label key never resolves here.
-  describe('Activate a card CTA (DC-162)', () => {
+  // Tests assert on href/data-analytics-cta rather than label text because the unit-test i18n
+  // bundle is always DC, and only CO's sheet authors this label.
+  describe('Activate a card CTA', () => {
     const activateLink = (container: HTMLElement) =>
       container.querySelector('a[href="/cards/activate"]')
-
-    it('renders the activate-card CTA for CO when the household has cases', () => {
-      mockGetState.mockReturnValue('co')
-      const { container } = render(
-        <ActionButtons
-          allowedActions={allowAll}
-          hasCases={true}
-        />
+    const renderWithActivateFlag = (enabled: boolean, hasCases = true) =>
+      render(
+        <FeatureFlagsContext.Provider
+          value={{ flags: { enable_activate_card: enabled }, isLoading: false, isError: false }}
+        >
+          <ActionButtons
+            allowedActions={allowAll}
+            hasCases={hasCases}
+          />
+        </FeatureFlagsContext.Provider>
       )
-      const link = activateLink(container)
-      expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute('data-analytics-cta', 'activate_card_cta')
-    })
 
-    it('does not render the activate-card CTA for DC (label not yet published)', () => {
-      mockGetState.mockReturnValue('dc')
+    it.each(['dc', 'co'] as const)(
+      'renders the activate-card CTA in %s when enable_activate_card is on',
+      (state) => {
+        mockGetState.mockReturnValue(state)
+        const link = activateLink(renderWithActivateFlag(true).container)
+        expect(link).toBeInTheDocument()
+        expect(link).toHaveAttribute('data-analytics-cta', 'activate_card_cta')
+      }
+    )
+
+    it.each(['dc', 'co'] as const)(
+      'hides the activate-card CTA in %s when enable_activate_card is off',
+      (state) => {
+        mockGetState.mockReturnValue(state)
+        expect(activateLink(renderWithActivateFlag(false).container)).toBeNull()
+      }
+    )
+
+    it('hides the activate-card CTA without the flags provider (flag unset)', () => {
+      mockGetState.mockReturnValue('co')
       const { container } = render(
         <ActionButtons
           allowedActions={allowAll}
@@ -270,15 +293,8 @@ describe('ActionButtons', () => {
       expect(activateLink(container)).toBeNull()
     })
 
-    it('hides the activate-card CTA for CO when the household has no cases', () => {
-      mockGetState.mockReturnValue('co')
-      const { container } = render(
-        <ActionButtons
-          allowedActions={allowAll}
-          hasCases={false}
-        />
-      )
-      expect(activateLink(container)).toBeNull()
+    it('hides the activate-card CTA when the household has no cases', () => {
+      expect(activateLink(renderWithActivateFlag(true, false).container)).toBeNull()
     })
   })
 
@@ -347,47 +363,46 @@ describe('ActionButtons', () => {
   })
 
   // The apply CTA is an outbound link driven by useApplyHref: it renders only when the
-  // enable_apply flag is on AND the state has an apply destination (CO's PEAK form; DC
-  // has none since DC-701). The unit-test i18n bundle is always DC, so the CO cases
-  // assert on href/cta attributes rather than the label text.
+  // enable_apply flag is on AND runtime config supplies an apply URL.
   describe('Apply for benefits CTA', () => {
     const applyLink = (container: HTMLElement) =>
       container.querySelector('a[data-analytics-cta="apply_cta"]')
 
-    it('does not render the apply CTA for DC even when applications are open', () => {
-      mockGetState.mockReturnValue('dc')
-      const { container } = render(withApplyFlag(<ActionButtons allowedActions={allowAll} />, true))
+    it('does not render the apply CTA when applications are open but no apply URL is configured', () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const { container } = render(
+        withApplyFlag(<ActionButtons allowedActions={allowAll} />, true, makeRuntimeConfig())
+      )
       expect(applyLink(container)).toBeNull()
       expect(screen.queryByText('Apply for DC SUN Bucks')).toBeNull()
+      warn.mockRestore()
     })
 
-    it('renders the CO apply CTA linking to the PEAK apply form when applications are open', () => {
-      mockGetState.mockReturnValue('co')
+    it('renders the apply CTA linking to the configured apply form when applications are open', () => {
       const { container } = render(withApplyFlag(<ActionButtons allowedActions={allowAll} />, true))
       const link = applyLink(container)
       expect(link).toBeInTheDocument()
-      expect(link?.getAttribute('href')).toContain(
-        'peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
-      )
+      expect(link).toHaveAttribute('href', `${PEAK_APPLY_URL}?language=en_US`)
       expect(link).toHaveAttribute('data-analytics-cta-destination-type', 'external_only')
     })
 
-    it('does not render the CO apply CTA when the enable_apply flag is off', () => {
-      mockGetState.mockReturnValue('co')
+    it('does not render the apply CTA when the enable_apply flag is off', () => {
       const { container } = render(
         withApplyFlag(<ActionButtons allowedActions={allowAll} />, false)
       )
       expect(applyLink(container)).toBeNull()
     })
 
-    it('does not render the CO apply CTA outside the feature-flags provider (fail closed)', () => {
-      mockGetState.mockReturnValue('co')
-      const { container } = render(<ActionButtons allowedActions={allowAll} />)
+    it('does not render the apply CTA outside the feature-flags provider (fail closed)', () => {
+      const { container } = render(
+        <RuntimeConfigProvider config={PEAK_APPLY_CONFIG}>
+          <ActionButtons allowedActions={allowAll} />
+        </RuntimeConfigProvider>
+      )
       expect(applyLink(container)).toBeNull()
     })
 
-    it('shows the CO apply CTA even when actions are denied and there are no cases', () => {
-      mockGetState.mockReturnValue('co')
+    it('shows the apply CTA even when actions are denied and there are no cases', () => {
       const { container } = render(
         withApplyFlag(
           <ActionButtons
