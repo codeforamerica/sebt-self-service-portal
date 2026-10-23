@@ -18,6 +18,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 # Shared workspace packages the web app depends on (workspace:* + postinstall scripts)
 COPY packages/design-system/ ./packages/design-system/
 COPY packages/analytics/ ./packages/analytics/
+COPY packages/observability/ ./packages/observability/
 COPY apps/portal/src/SEBT.Portal.Web/package.json ./apps/portal/src/SEBT.Portal.Web/
 COPY apps/portal/src/SEBT.Portal.Web/design/scripts/ ./apps/portal/src/SEBT.Portal.Web/design/scripts/
 
