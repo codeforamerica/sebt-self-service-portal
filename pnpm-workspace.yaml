@@ -25,6 +25,7 @@ overrides:
   uuid: '>=11.1.1' # CVE — missing buffer bounds check
   ip-address: '>=10.3.1' # GHSA-mwp4-54f8-5fhr — Address4 reads a leading-zero octet as decimal while resolvers read it as octal, so an SSRF guard passes a host that resolves internally; floor also covers the CIDR-suffix and NAT64 misclassifications; Dependabot alerts #239 #240 #241
   shell-quote: '>=1.9.0' # GHSA-395f-4hp3-45gv O(n^2) concat-in-reduce in parse(); floor also covers the earlier quote() newline-escaping CVE-2026-9277; Dependabot alerts #150 #174
+  source-map-js: '>=1.2.2' # CVE-2026-93749 / GHSA-68fv-2mgg-jv7q — event-loop DoS through indexed source-map section offsets; Dependabot alert #272
   # GHSA-jmr9-qjv8-65gv: extract-zip has no fixed release and only Puppeteer 24 pulls it in. pa11y-ci 4.1.1 still
   # pins Puppeteer 24, so move it to pa11y 10 and Puppeteer 25, which dropped extract-zip; Dependabot alert #246
   'pa11y-ci>pa11y': '^10.0.0'
