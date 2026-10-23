@@ -9,7 +9,7 @@ import { useAuth } from '@/features/auth'
 import { useHouseholdData } from '@/features/household'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
 
 const FIS_PHONE_HREF = 'tel:+18883049167'
 
@@ -22,13 +22,13 @@ export default function CardInfoPage() {
   const { data, isLoading, isError } = useHouseholdData()
   const { session } = useAuth()
   const { setPageData } = useDataLayer()
-  const isDC = getState() === 'dc'
+  const { hasCoLoadedBenefits } = getStateConfig(getState())
 
   useEffect(() => {
-    if (!isDC) {
+    if (!hasCoLoadedBenefits) {
       router.replace('/dashboard')
     }
-  }, [isDC, router])
+  }, [hasCoLoadedBenefits, router])
 
   // DC-215: tag this info-screen view with the household bucket so analytics can
   // segment who actually lands here (co_loaded_only vs mixed_eligibility vs non).
@@ -42,7 +42,7 @@ export default function CardInfoPage() {
     setPageData('household_type', getColoadingStatus(session?.isCoLoaded, data))
   }, [data, isError, session?.isCoLoaded, setPageData])
 
-  if (!isDC || isLoading) {
+  if (!hasCoLoadedBenefits || isLoading) {
     return (
       <div
         aria-busy="true"
