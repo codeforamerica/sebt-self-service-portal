@@ -142,7 +142,7 @@ describe('LoginForm', () => {
       expect(submitButton).toHaveAttribute('aria-busy', 'true')
       expect(submitButton).toBeDisabled()
       expect(screen.queryByText('Continue...')).not.toBeInTheDocument()
-      expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+      expect(screen.getByText('Please wait')).toHaveClass('usa-sr-only')
       expect(container.querySelector('fieldset.usa-fieldset')).toHaveClass('opacity-50')
     })
 

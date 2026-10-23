@@ -68,4 +68,16 @@ public record HouseholdDataResponse
     /// household; null otherwise. See docs/analytics/hashed-sebt-app-id.md.
     /// </summary>
     public string? HashedAppId { get; init; }
+
+    /// <summary>
+    /// Sorted, comma-joined 16-character digest prefixes of every state application id in the
+    /// household, including directly certified children's. Gated like <see cref="HashedAppId"/>.
+    /// </summary>
+    public string? HashedAppIds { get; init; }
+
+    /// <summary>
+    /// Sorted, comma-joined 16-character digest prefixes of every child's state case id, including
+    /// children known only through a pending application. Gated like <see cref="HashedAppId"/>.
+    /// </summary>
+    public string? HashedCaseIds { get; init; }
 }

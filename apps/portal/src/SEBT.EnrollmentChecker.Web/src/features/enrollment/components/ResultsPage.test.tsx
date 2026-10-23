@@ -109,8 +109,10 @@ const errorResponse: ChildCheckApiResponse[] = [
   }
 ]
 
-// Copy anchors from the CO 2026-closed content (DC-701 designs).
-const enrolledBoxTitle = 'were enrolled in Summer EBT for 2026'
+// Copy anchors from the CO content. The summary boxes read the open-season
+// rows; the inline not-enrolled list and the 2027 step read the closed rows.
+const enrolledBoxTitle = 'are already enrolled in Summer EBT for 2026'
+const notEnrolledBoxTitle = 'are NOT enrolled'
 const notEnrolledTitle = 'were NOT enrolled'
 const closedLine = 'Enrollment in Summer EBT for 2026 is now closed.'
 const apply2027LinkText = /considered for benefits for summer 2027/
@@ -156,9 +158,9 @@ describe('ResultsPage', () => {
       expect(steps[1]).toHaveAttribute('data-testid', 'next-step-apply-2027')
     })
 
-    it('shows the portal step with the expiration-aware heading and portal link', () => {
+    it('shows the portal step with the heading and portal link', () => {
       const portalStep = screen.getByTestId('next-step-portal')
-      expect(portalStep).toHaveTextContent('received their benefits and when they expire')
+      expect(portalStep).toHaveTextContent('will receive their benefits')
       const portalLink = screen.getByTestId('portal-link')
       expect(portalLink).toHaveAttribute('href', portalUrl)
     })
@@ -167,12 +169,12 @@ describe('ResultsPage', () => {
       const applyStep = screen.getByTestId('next-step-apply-2027')
       expect(applyStep).toHaveTextContent('Submit a 2027 Summer EBT application')
       expect(applyStep).toHaveTextContent(
-        'didn’t have enough information to determine their eligibility'
+        "don't have enough information to determine their eligibility"
       )
       expect(applyStep).toHaveTextContent(closedLine)
       const applyLink = screen.getByTestId('apply-2027-link')
       expect(applyLink).toHaveAttribute('href', mockApplyHref)
-      expect(applyStep).toHaveTextContent('You will not hear back about your application')
+      expect(applyStep).toHaveTextContent('After you submit you will hear back about your application')
     })
 
     it('renders no eligibility accordion and no income calculator', () => {
@@ -228,7 +230,7 @@ describe('ResultsPage', () => {
 
     it('shows all children in the not-enrolled summary box', () => {
       const notEnrolledBox = screen.getByTestId('not-enrolled-summary-box')
-      expect(notEnrolledBox).toHaveTextContent(notEnrolledTitle)
+      expect(notEnrolledBox).toHaveTextContent(notEnrolledBoxTitle)
       expect(notEnrolledBox).toHaveTextContent('Jane Doe')
       expect(notEnrolledBox).toHaveTextContent('Sally Wetherbee')
     })
@@ -297,7 +299,7 @@ describe('ResultsPage', () => {
       // Not-enrolled children still get the explanation and the closure line,
       // placed after the portal step to keep the designed portal-first order.
       expect(
-        screen.getByText(/didn’t have enough information to determine their eligibility/)
+        screen.getByText(/don't have enough information to determine their eligibility/)
       ).toBeVisible()
       const closure = screen.getByText(closedLine)
       expect(closure).toBeVisible()
@@ -364,7 +366,7 @@ describe('ResultsPage', () => {
 
     it('explains the no-info outcome and offers the 2027 application link', () => {
       expect(
-        screen.getByText(/didn’t have enough information to determine their eligibility/)
+        screen.getByText(/don't have enough information to determine their eligibility/)
       ).toBeVisible()
       expect(screen.getByText(closedLine)).toBeVisible()
       expect(screen.getByTestId('apply-2027-link')).toHaveAttribute('href', mockApplyHref)

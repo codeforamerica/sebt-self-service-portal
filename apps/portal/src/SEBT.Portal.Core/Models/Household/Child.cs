@@ -19,4 +19,10 @@ public class Child
     /// The application status for this child.
     /// </summary>
     public ApplicationStatus Status { get; set; } = ApplicationStatus.Unknown;
+
+    /// <summary>
+    /// The state system's identifier for this child for the season, so a child known only
+    /// through a pending application can still be identified.
+    /// </summary>
+    public string? SourceChildId { get; set; }
 }

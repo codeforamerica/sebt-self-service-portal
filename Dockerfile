@@ -51,6 +51,7 @@ COPY apps/portal/src/SEBT.Portal.Api/SEBT.Portal.Api.csproj apps/portal/src/SEBT
 COPY apps/portal/src/SEBT.Portal.Core/SEBT.Portal.Core.csproj apps/portal/src/SEBT.Portal.Core/
 COPY apps/portal/src/SEBT.Portal.Infrastructure/SEBT.Portal.Infrastructure.csproj apps/portal/src/SEBT.Portal.Infrastructure/
 COPY apps/portal/src/SEBT.Portal.Infrastructure.Seeding/SEBT.Portal.Infrastructure.Seeding.csproj apps/portal/src/SEBT.Portal.Infrastructure.Seeding/
+COPY apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/SEBT.Portal.Infrastructure.StateBackends.csproj apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/
 COPY apps/portal/src/SEBT.Portal.Kernel/SEBT.Portal.Kernel.csproj apps/portal/src/SEBT.Portal.Kernel/
 COPY apps/portal/src/SEBT.Portal.Kernel.AspNetCore/SEBT.Portal.Kernel.AspNetCore.csproj apps/portal/src/SEBT.Portal.Kernel.AspNetCore/
 COPY apps/portal/src/SEBT.Portal.UseCases/SEBT.Portal.UseCases.csproj apps/portal/src/SEBT.Portal.UseCases/
@@ -67,6 +68,7 @@ COPY apps/portal/src/SEBT.Portal.Api/ apps/portal/src/SEBT.Portal.Api/
 COPY apps/portal/src/SEBT.Portal.Core/ apps/portal/src/SEBT.Portal.Core/
 COPY apps/portal/src/SEBT.Portal.Infrastructure/ apps/portal/src/SEBT.Portal.Infrastructure/
 COPY apps/portal/src/SEBT.Portal.Infrastructure.Seeding/ apps/portal/src/SEBT.Portal.Infrastructure.Seeding/
+COPY apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/
 COPY apps/portal/src/SEBT.Portal.Kernel/ apps/portal/src/SEBT.Portal.Kernel/
 COPY apps/portal/src/SEBT.Portal.Kernel.AspNetCore/ apps/portal/src/SEBT.Portal.Kernel.AspNetCore/
 COPY apps/portal/src/SEBT.Portal.UseCases/ apps/portal/src/SEBT.Portal.UseCases/

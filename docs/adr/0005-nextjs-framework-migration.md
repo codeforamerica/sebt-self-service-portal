@@ -89,7 +89,7 @@ Automatic optimization without manual memoization:
 - Build time increase: ~15-30% (acceptable for automatic optimization)
 
 ### Multi-State Build Support
-Seamless integration with ADR 0004 state-based CI:
+Seamless integration with ADR 0022 state-based CI:
 - `STATE=dc pnpm build` → DC-specific build with mint-cool-60v primary color
 - `STATE=co pnpm build` → CO-specific build with state tokens
 - Standalone output mode: Self-contained `.next/standalone/` directory
@@ -146,7 +146,7 @@ Seamless integration with ADR 0004 state-based CI:
 
 ## Related ADRs
 - **ADR 0003**: Design Token Management - USWDS SASS integration with Figma tokens
-- **ADR 0004**: State-based CI Architecture - Standalone builds for multi-state deployment
+- **ADR 0022**: State-based CI Architecture - Standalone builds for multi-state deployment
 
 ## Notes
 This ADR documents the production-ready web application foundation with DC as the reference implementation. All quality gates, testing infrastructure, and USWDS integration are operational. The foundation supports future features including authentication, server-side data fetching, API integration, and progressive enhancement for the multi-state portal system.

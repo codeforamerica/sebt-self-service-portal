@@ -13,6 +13,28 @@ describe('ChildResultCard', () => {
     expect(screen.getByText(/John Smith/i)).toBeInTheDocument()
   })
 
+  it('renders an all-caps name in sentence casing', () => {
+    render(
+      <ChildResultCard
+        firstName="JANE"
+        lastName="DOE"
+        displayStatus="enrolled"
+      />
+    )
+    expect(screen.getByText('Jane Doe')).toBeInTheDocument()
+  })
+
+  it('leaves a deliberately mixed-case name untouched', () => {
+    render(
+      <ChildResultCard
+        firstName="Jane"
+        lastName="MacDonald"
+        displayStatus="enrolled"
+      />
+    )
+    expect(screen.getByText('Jane MacDonald')).toBeInTheDocument()
+  })
+
   it('shows error status with message', () => {
     render(<ChildResultCard firstName="A" lastName="B" displayStatus="error" errorMessage="Service unavailable" />)
     expect(screen.getByText(/Service unavailable/i)).toBeInTheDocument()

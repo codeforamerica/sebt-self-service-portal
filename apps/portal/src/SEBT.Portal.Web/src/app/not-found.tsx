@@ -1,39 +1,40 @@
 'use client'
 
-import { Alert } from '@sebt/design-system'
+import { getState, getStateConfig, getStateLinks } from '@sebt/design-system'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 export default function NotFound() {
-  const { t } = useTranslation('common')
+  const { t } = useTranslation('404Portal')
+  const state = getState()
+  const { pageTitleText } = getStateConfig(state)
+  const links = getStateLinks(state)
 
   return (
-    <section
-      className="usa-section"
-      aria-labelledby="not-found-heading"
-    >
+    <div className="usa-section">
       <div className="grid-container">
-        <Alert
-          variant="error"
-          // TODO add string
-          heading={t('pageNotFound', 'Page not found')}
-        >
-          <p>
-            {/* TODO add string */}
-            {t(
-              'pageNotFoundBody',
-              'The page you are looking for does not exist or has been moved.'
-            )}
-          </p>
+        <h1 className={`font-sans-xl ${pageTitleText}`}>{t('title')}</h1>
+        <p>{t('body1')}</p>
+        <div className="display-flex flex-wrap flex-align-center margin-top-4">
           <Link
-            href="/"
-            className="usa-button margin-top-2"
+            href="/dashboard"
+            className="usa-button usa-button--outline margin-right-2"
+            data-analytics-cta="not_found_dashboard"
           >
-            {/* TODO add string */}
-            {t('returnToHome', 'Return to home')}
+            {t('action1')}
           </Link>
-        </Alert>
+          <Link
+            href={links.help.contactUs}
+            // margin-right-0 clears the usa-button default trailing margin, which
+            // otherwise pushes the row past a 375px viewport and wraps this button
+            className="usa-button margin-right-0"
+            data-analytics-cta="not_found_contact_us"
+            data-analytics-cta-destination-type="external_only"
+          >
+            {t('action2')}
+          </Link>
+        </div>
       </div>
-    </section>
+    </div>
   )
 }

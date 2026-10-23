@@ -443,7 +443,7 @@ describe('VerifyOtpForm', () => {
       // and the polite live region, not by mutating the accessible name
       expect(confirmButton).toHaveAttribute('aria-busy', 'true')
       expect(screen.queryByText(/confirm\.\.\./i)).not.toBeInTheDocument()
-      expect(screen.getByText('Processing')).toHaveClass('usa-sr-only')
+      expect(screen.getByText('Please wait')).toHaveClass('usa-sr-only')
     })
 
     it('should disable input during submission', async () => {
@@ -688,7 +688,7 @@ describe('VerifyOtpForm', () => {
     it('keeps the page processing state off while resend is in flight', async () => {
       // Resend's busy state is local to the Resend button (its own disabled +
       // countdown handling). The page-level treatment (fieldset fade, spinner,
-      // "Processing" announcement) belongs to the Verify submit only.
+      // "Please wait" announcement) belongs to the Verify submit only.
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const { container } = renderWithProviders(
         <VerifyOtpForm
@@ -707,7 +707,7 @@ describe('VerifyOtpForm', () => {
       expect(otpInput).not.toBeDisabled()
       expect(container.querySelector('fieldset.usa-fieldset')).not.toHaveClass('opacity-50')
       expect(container.querySelector('.usa-spinner')).toBeNull()
-      expect(screen.queryByText('Processing')).not.toBeInTheDocument()
+      expect(screen.queryByText('Please wait')).not.toBeInTheDocument()
 
       // Countdown behavior is unaffected
       await waitFor(() => {

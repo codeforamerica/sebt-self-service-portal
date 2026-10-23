@@ -22,6 +22,18 @@ public class SummerEbtCase
     public string? ApplicationStudentId { get; set; }
 
     /// <summary>
+    /// The state system's application identifier for this child, set whatever the eligibility source.
+    /// Unlike <see cref="ApplicationId"/>, it does not imply the child applied.
+    /// </summary>
+    public string? SourceApplicationId { get; set; }
+
+    /// <summary>
+    /// The state system's identifier for this child for the season, set whatever the eligibility source.
+    /// Unlike <see cref="ApplicationStudentId"/>, it does not imply the child applied.
+    /// </summary>
+    public string? SourceChildId { get; set; }
+
+    /// <summary>
     /// The child's first name.
     /// </summary>
     public string ChildFirstName { get; set; } = string.Empty;
@@ -128,6 +140,13 @@ public class SummerEbtCase
     /// The date benefits expire.
     /// </summary>
     public DateTime? BenefitExpirationDate { get; set; }
+
+    /// <summary>
+    /// Whether this case's benefits are about to expire or already have.
+    /// Populated by <see cref="Services.ISelfServiceEvaluator"/> at the query handler layer;
+    /// null when neither applies or there is no expiration date.
+    /// </summary>
+    public BenefitExpirationStatus? BenefitExpirationStatus { get; set; }
 
     /// <summary>
     /// Self-service action permissions evaluated for this specific case.

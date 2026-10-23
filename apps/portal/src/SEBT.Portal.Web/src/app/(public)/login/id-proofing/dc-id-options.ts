@@ -59,3 +59,18 @@ export const DC_ID_OPTIONS_CO_LOADED: IdOption[] = [
     dividerBefore: true
   }
 ]
+
+// With enable_socure_snap_tanf_question on, the form asks "Do you receive SNAP or TANF?" first.
+// "Yes" asks only for the case number below; "No" chooses from the remaining ID options.
+export const DC_SNAP_TANF_OPTION: IdOption = {
+  value: 'snapAccountId',
+  labelKey: 'optionAccountId',
+  inputLabelKey: 'labelAccountId',
+  inputHelperKey: 'helperAccountId',
+  // DC CSV: "typically 7 or 8 digits long".
+  validation: { digits: [7, 8] }
+}
+
+export const DC_ID_OPTIONS_AFTER_NO = DC_ID_OPTIONS.filter(
+  (option) => option.value !== 'snapAccountId'
+)

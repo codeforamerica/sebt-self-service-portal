@@ -15,11 +15,11 @@
     "@types/node": "^25.8.0",
     "@vitest/coverage-v8": "^4.1.11",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.3.0",
     "vitest": "^4.1.11"
   },
   "dependencies": {
-    "@grpc/grpc-js": "^1.14.4",
+    "@grpc/grpc-js": "^1.14.5",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/api-logs": "^0.222.0",
     "@opentelemetry/exporter-logs-otlp-grpc": "^0.222.0",

@@ -686,7 +686,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
 
         // Assert
         var users = await context.Users.ToListAsync();
-        Assert.Equal(19, users.Count);
+        Assert.Equal(20, users.Count);
 
         var emails = users.Select(u => TestPortalCryptography.StoredEmailPlaintext(u.Email!)).ToHashSet();
         Assert.Contains("sebt.co+co-loaded@codeforamerica.org", emails);
@@ -698,6 +698,7 @@ public class DatabaseSeederTests : IClassFixture<SqlServerTestFixture>
         Assert.Contains("sebt.co+co-notactivated@codeforamerica.org", emails);
         Assert.Contains("sebt.co+co-deactivatedbystate@codeforamerica.org", emails);
         Assert.Contains("sebt.co+co-active@codeforamerica.org", emails);
+        Assert.Contains("sebt.co+name-casing@codeforamerica.org", emails);
     }
 
     [Fact]

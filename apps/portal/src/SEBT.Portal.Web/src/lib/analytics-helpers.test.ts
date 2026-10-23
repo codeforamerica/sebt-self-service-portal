@@ -1,11 +1,13 @@
 import { ApiError } from '@/api/client'
 import type { AddressUpdateResponse } from '@/features/address/api/schema'
-import { AnalyticsEvents } from '@sebt/analytics'
+import { AnalyticsEvents, DataLayer } from '@sebt/analytics'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  ANALYTICS_SCOPE,
   apiErrorCodeFromUnknown,
   classifyAddressState,
+  syncHouseholdUserData,
   trackAddressUpdateSubmit,
   trackAddressUpdateValidationError,
   trackCardReplacementSubmit
@@ -177,5 +179,88 @@ describe('trackCardReplacementSubmit', () => {
     expect(setPageData).toHaveBeenCalledWith('error_code', 'INVALID_INPUT')
     expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_SUBMIT)
     expect(trackEvent).toHaveBeenCalledWith(AnalyticsEvents.CARD_REPLACEMENT_ERROR)
+  })
+})
+
+describe('syncHouseholdUserData', () => {
+  const setUserData = vi.fn()
+
+  const household = {
+    summerEbtCases: [{}, {}],
+    applications: [],
+    coLoadedCohort: 'Unknown',
+    hashedAppId: 'abc123',
+    hashedAppIds: 'aaa,bbb',
+    hashedCaseIds: 'ccc'
+  } as unknown as Parameters<typeof syncHouseholdUserData>[2]
+
+  beforeEach(() => {
+    setUserData.mockClear()
+  })
+
+  function valueFor(path: string) {
+    return setUserData.mock.calls.find(([p]) => p === path)?.[1]
+  }
+
+  // These live on user.* in an in-memory data layer that a full page load wipes,
+  // so every surface holding household data re-syncs them rather than trusting
+  // that the dashboard set them earlier in the session.
+  it('syncs every household-derived user value', () => {
+    syncHouseholdUserData(setUserData, true, household)
+
+    expect(valueFor('household_linked_children')).toBe(2)
+    expect(valueFor('hashed_app_id')).toBe('abc123')
+    expect(valueFor('hashed_app_ids')).toBe('aaa,bbb')
+    expect(valueFor('hashed_case_ids')).toBe('ccc')
+    expect(valueFor('coloading_status')).toBeDefined()
+    expect(valueFor('co_loaded_cohort')).toBeDefined()
+  })
+
+  it('scopes each value for analytics', () => {
+    syncHouseholdUserData(setUserData, true, household)
+
+    for (const [, , scope] of setUserData.mock.calls) {
+      expect(scope).toContain('analytics')
+    }
+  })
+
+  it('clears the hashed ids when the API did not supply them', () => {
+    // Clearing rather than skipping keeps a previous household's ids off this one's
+    // events; the data layer leaves undefined fields out of the payload.
+    syncHouseholdUserData(setUserData, true, {
+      ...household,
+      hashedAppId: null,
+      hashedAppIds: undefined,
+      hashedCaseIds: undefined
+    })
+
+    for (const path of ['hashed_app_id', 'hashed_app_ids', 'hashed_case_ids']) {
+      expect(setUserData).toHaveBeenCalledWith(path, undefined, ANALYTICS_SCOPE)
+    }
+    expect(valueFor('household_linked_children')).toBe(2)
+  })
+
+  it('puts the hashed ids on tracked events and drops them once a household has none', () => {
+    delete (window as unknown as Record<string, unknown>).digitalData
+    new DataLayer('digitalData')
+    const dataLayer = window.digitalData!
+
+    syncHouseholdUserData(dataLayer.user.set, true, household)
+    dataLayer.trackEvent('cta_click')
+    syncHouseholdUserData(dataLayer.user.set, true, {
+      ...household,
+      hashedAppId: null,
+      hashedAppIds: null,
+      hashedCaseIds: null
+    })
+    dataLayer.trackEvent('cta_click')
+
+    const [withIds, withoutIds] = dataLayer.event.map((e) => e.eventData)
+    expect(withIds).toMatchObject({
+      hashed_app_id: 'abc123',
+      hashed_app_ids: 'aaa,bbb',
+      hashed_case_ids: 'ccc'
+    })
+    expect(Object.keys(withoutIds ?? {}).filter((key) => key.startsWith('hashed_'))).toEqual([])
   })
 })

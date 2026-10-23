@@ -78,6 +78,8 @@ internal static class PluginHouseholdDataMapper
             SummerEBTCaseID = GetProp<string>(t, source, "SummerEBTCaseID"),
             ApplicationId = GetProp<string>(t, source, "ApplicationId"),
             ApplicationStudentId = GetProp<string>(t, source, "ApplicationStudentId"),
+            SourceApplicationId = GetProp<string>(t, source, nameof(SummerEbtCase.SourceApplicationId)),
+            SourceChildId = GetProp<string>(t, source, nameof(SummerEbtCase.SourceChildId)),
             ChildFirstName = GetProp<string>(t, source, "ChildFirstName") ?? string.Empty,
             ChildLastName = GetProp<string>(t, source, "ChildLastName") ?? string.Empty,
             ChildDateOfBirth = ToDateTimeOrNull(GetProp(t, source, "ChildDateOfBirth")),
@@ -160,7 +162,8 @@ internal static class PluginHouseholdDataMapper
         {
             FirstName = GetProp<string>(t, source, nameof(Child.FirstName)) ?? string.Empty,
             LastName = GetProp<string>(t, source, nameof(Child.LastName)) ?? string.Empty,
-            Status = GetProp<ApplicationStatus>(t, source, nameof(Child.Status))
+            Status = GetProp<ApplicationStatus>(t, source, nameof(Child.Status)),
+            SourceChildId = GetProp<string>(t, source, nameof(Child.SourceChildId))
         };
     }
 

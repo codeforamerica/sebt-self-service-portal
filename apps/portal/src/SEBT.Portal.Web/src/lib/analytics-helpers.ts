@@ -1,6 +1,7 @@
 import { ApiError } from '@/api/client'
 import type { AddressUpdateResponse } from '@/features/address/api/schema'
 import type { HouseholdData } from '@/features/household'
+import { toAnalyticsCohort } from '@/features/household/api/schema'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
@@ -20,7 +21,7 @@ interface DataLayerTrackFns {
   trackEvent: (name: string, data?: Record<string, unknown>) => void
 }
 
-/** Maps API failures to the shared analytics error_code taxonomy (see ADR 0015). */
+/** Maps API failures to the shared analytics error_code taxonomy (see ADR 0029). */
 export function apiErrorCodeFromUnknown(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.status === 401 || error.status === 403) return 'AUTH_FAILURE'
@@ -31,12 +32,37 @@ export function apiErrorCodeFromUnknown(error: unknown): string {
   return 'TECH_ERROR'
 }
 
-export function syncColoadingStatus(
+/**
+ * Writes the user-scope analytics values that are derived from household data.
+ *
+ * The data layer holding `user.*` is in-memory, so a full page load — a refresh,
+ * a bookmark, a link opened in a new tab — wipes it. Any surface that holds
+ * household data therefore re-syncs these itself rather than relying on the
+ * dashboard having set them earlier in the session; otherwise events fired later
+ * in a flow go out missing the household's identity.
+ */
+export function syncHouseholdUserData(
   setUserData: DataLayerTrackFns['setUserData'],
   isCoLoaded: boolean | null | undefined,
-  household: Pick<HouseholdData, 'summerEbtCases' | 'applications'>
+  household: Pick<
+    HouseholdData,
+    | 'summerEbtCases'
+    | 'applications'
+    | 'coLoadedCohort'
+    | 'hashedAppId'
+    | 'hashedAppIds'
+    | 'hashedCaseIds'
+  >
 ): void {
+  setUserData('household_linked_children', household.summerEbtCases.length, ANALYTICS_SCOPE)
+  setUserData('co_loaded_cohort', toAnalyticsCohort(household.coLoadedCohort), ANALYTICS_SCOPE)
   setUserData('coloading_status', getColoadingStatus(isCoLoaded, household), ANALYTICS_SCOPE)
+
+  // Null from the API means "do not emit". Clearing with undefined, rather than skipping,
+  // keeps a previous household's ids off this one's events.
+  setUserData('hashed_app_id', household.hashedAppId ?? undefined, ANALYTICS_SCOPE)
+  setUserData('hashed_app_ids', household.hashedAppIds ?? undefined, ANALYTICS_SCOPE)
+  setUserData('hashed_case_ids', household.hashedCaseIds ?? undefined, ANALYTICS_SCOPE)
 }
 
 function addressUpdateStatusFromResult(

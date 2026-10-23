@@ -13,8 +13,9 @@ namespace SEBT.Portal.UseCases.Household;
 
 /// <summary>
 /// Handles card replacement requests for an authenticated user's household.
-/// Validates input, resolves household identity, enforces minimum IAL, enforces
-/// per-case self-service rules, enforces 2-week cooldown via portal DB, and
+/// Validates input, resolves household identity, enforces minimum IAL, rejects case
+/// refs not on the household, enforces per-case self-service rules, enforces 2-week
+/// cooldown via portal DB, and
 /// dispatches to the state connector. Persists replacement-request records for
 /// future cooldown enforcement only when the connector reports success, so a
 /// failed dispatch does not burn the user's 14-day cooldown for an action that
@@ -85,10 +86,23 @@ public class RequestCardReplacementCommandHandler(
                 $"This household requires {decision.RequiredLevel}. Complete identity verification to request card replacements.");
         }
 
-        // Co-loaded cases are managed by caseworkers, not the portal.
         var requestedSummerEbtCaseIds = command.CaseRefs
             .Select(r => r.SummerEbtCaseId)
             .ToHashSet(StringComparer.Ordinal);
+
+        var householdSummerEbtCaseIds = household.SummerEbtCases
+            .Select(c => c.SummerEBTCaseID)
+            .OfType<string>()
+            .ToHashSet(StringComparer.Ordinal);
+        if (!requestedSummerEbtCaseIds.IsSubsetOf(householdSummerEbtCaseIds))
+        {
+            logger.LogWarning(
+                "Card replacement rejected: request includes case(s) not found on the household");
+            return Result.PreconditionFailed(
+                PreconditionFailedReason.Conflict,
+                "Some of the requested cases could not be found. Please refresh the page and try again.");
+        }
+
         var requestedCases = household.SummerEbtCases
             .Where(c => c.SummerEBTCaseID != null && requestedSummerEbtCaseIds.Contains(c.SummerEBTCaseID))
             .ToList();

@@ -6,15 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 import { RuntimeConfigProvider } from '@/providers'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import type { SelectedAddress, SmartySuggestion } from './types'
 
 const SMARTY_URL = 'https://us-autocomplete-pro.api.smarty.com/lookup'
 
+type AddressSettings = StateConfig['address']
+let addressOverride: Partial<AddressSettings> = {}
 let mockState = 'dc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
-  return { ...actual, getState: () => mockState }
+  return {
+    ...actual,
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => {
+      const config = actual.getStateConfig(state)
+      return { ...config, address: { ...config.address, ...addressOverride } }
+    }
+  }
 })
 
 function makeSuggestion(overrides: Partial<SmartySuggestion> = {}): SmartySuggestion {
@@ -32,6 +42,7 @@ function makeSuggestion(overrides: Partial<SmartySuggestion> = {}): SmartySugges
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   mockState = 'dc'
+  addressOverride = {}
 })
 
 afterEach(() => {
@@ -414,5 +425,41 @@ describe('AddressAutocomplete', () => {
     // and the listbox must remain closed.
     expect(fetchCount).toBe(1)
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  describe('autocompletePreferStates setting', () => {
+    async function typeAndCaptureUrl() {
+      let capturedUrl = ''
+      server.use(
+        http.get(SMARTY_URL, ({ request }) => {
+          capturedUrl = request.url
+          return HttpResponse.json({ suggestions: [] })
+        })
+      )
+
+      const { user } = await renderAutocomplete()
+      await user.type(screen.getByRole('combobox'), '123 Main')
+      await vi.advanceTimersByTimeAsync(300)
+      await waitFor(() => expect(capturedUrl).not.toBe(''))
+      return new URL(capturedUrl)
+    }
+
+    it('sends the configured value as prefer_states', async () => {
+      mockState = 'co'
+      addressOverride = { autocompletePreferStates: 'IL;WI' }
+
+      const url = await typeAndCaptureUrl()
+
+      expect(url.searchParams.get('prefer_states')).toBe('IL;WI')
+    })
+
+    it('omits prefer_states when the value is empty', async () => {
+      mockState = 'dc'
+      addressOverride = { autocompletePreferStates: '' }
+
+      const url = await typeAndCaptureUrl()
+
+      expect(url.searchParams.has('prefer_states')).toBe(false)
+    })
   })
 })

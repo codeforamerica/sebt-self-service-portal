@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useFeatureFlag } from '@/features/feature-flags'
 import { Alert } from '@sebt/design-system'
 
-// Keys map to CSV: "S2 - Portal Dashboard - Alert Benefit Expiration - {Key}"
+// Keys map to CSV: "S2 - Portal Dashboard - Alert {Title,Body} Expungement"
 /**
  * Persistent dashboard banner shown while applications are closed (DC-701):
  * benefits for the season were issued and expire 122 days after issuance.
@@ -23,11 +23,11 @@ export function BenefitExpirationBanner() {
   return (
     <Alert
       variant="warning"
-      heading={t('alertBenefitExpirationTitle')}
+      heading={t('alertTitleExpungement')}
       headingClassName="font-sans-md text-semibold line-height-sans-4"
       textClassName="font-sans-md line-height-sans-4"
     >
-      {t('alertBenefitExpirationBody')}
+      {t('alertBodyExpungement')}
     </Alert>
   )
 }

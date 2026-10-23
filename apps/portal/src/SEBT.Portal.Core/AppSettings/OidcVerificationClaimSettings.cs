@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace SEBT.Portal.Core.AppSettings;
 
 /// <summary>
@@ -15,6 +17,7 @@ public class OidcVerificationClaimSettings : IHaveConfigSectionName
     /// When this claim is absent, empty, or not a recognized level, the translator may fall back to
     /// <see cref="FallbackLevelClaimName"/>
     /// </summary>
+    [Required(ErrorMessage = "Oidc:VerificationClaims:LevelClaimName must not be blank; a blank name matches no claim.")]
     public string LevelClaimName { get; set; } = "socureIdVerificationLevel";
 
     /// <summary>
@@ -23,6 +26,7 @@ public class OidcVerificationClaimSettings : IHaveConfigSectionName
     /// When this claim is absent or not parseable as a date, the translator may fall back to
     /// <see cref="FallbackDateClaimName"/> 
     /// </summary>
+    [Required(ErrorMessage = "Oidc:VerificationClaims:DateClaimName must not be blank; a blank name matches no claim.")]
     public string DateClaimName { get; set; } = "socureIdVerificationDate";
 
     /// <summary>

@@ -4,6 +4,7 @@ using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.Infrastructure.Services;
 using ISummerEbtCaseService = SEBT.Portal.StatesPlugins.Interfaces.ISummerEbtCaseService;
 using PluginHouseholdIdentifierType = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.HouseholdIdentifierType;
 using PluginIdentityAssuranceLevel = SEBT.Portal.StatesPlugins.Interfaces.Models.IdentityAssuranceLevel;
@@ -69,9 +70,25 @@ public class HouseholdRepository : IHouseholdRepository
             return null;
         }
 
-        var normalizedValue = identifierType == PluginHouseholdIdentifierType.Email
-            ? EmailNormalizer.Normalize(identifierValue)
-            : identifierValue.Trim();
+        string normalizedValue;
+        if (identifierType == PluginHouseholdIdentifierType.Email)
+        {
+            normalizedValue = EmailNormalizer.Normalize(identifierValue);
+        }
+        else if (identifierType == PluginHouseholdIdentifierType.Phone)
+        {
+            var national = PhoneNormalizer.Normalize(identifierValue);
+            if (national is null)
+            {
+                return null;
+            }
+
+            normalizedValue = national;
+        }
+        else
+        {
+            normalizedValue = identifierValue.Trim();
+        }
 
         _logger.LogDebug(
             "Querying state plugin for household data by identifier type {Type}",

@@ -1,5 +1,6 @@
 'use client'
 
+import { formatPersonName } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 import type { DisplayStatus } from '../schemas/enrollmentSchema'
 
@@ -16,7 +17,7 @@ export function ChildResultCard({ firstName, lastName, displayStatus, errorMessa
   return (
     <section className="usa-summary-box__text" data-status={displayStatus}>
       <li>
-        <strong>{firstName} {lastName}</strong>
+        <strong>{formatPersonName(firstName)} {formatPersonName(lastName)}</strong>
         {/* Visually hidden status for screen readers */}
         <span className="usa-sr-only"> — {t(`status.${displayStatus}`)}</span>
       </li>
