@@ -19,7 +19,13 @@ test.describe('CardSelection empty state has a back button', () => {
   }) => {
     await setupApiRoutes(page, {
       householdData: makeHouseholdData({
-        summerEbtCases: [makeSummerEbtCase({ issuanceType: 1, cardRequestedAt: recentCardDate() })]
+        summerEbtCases: [
+          makeSummerEbtCase({
+            issuanceType: 1,
+            cardRequestedAt: recentCardDate(),
+            inCardReplacementCooldown: true
+          })
+        ]
       })
     })
 

@@ -64,6 +64,7 @@ public static class HouseholdDataResponseMapper
             EbtCardIssueDate = domain.EbtCardIssueDate,
             EbtCardBalance = domain.EbtCardBalance,
             CardRequestedAt = domain.CardRequestedAt,
+            InCardReplacementCooldown = domain.InCardReplacementCooldown,
             BenefitAvailableDate = domain.BenefitAvailableDate,
             BenefitExpirationDate = domain.BenefitExpirationDate,
             BenefitExpirationStatus = domain.BenefitExpirationStatus,

@@ -22,6 +22,7 @@ const mockCase1: SummerEbtCase = {
   ebtCardStatus: 'Active',
   benefitAvailableDate: '2026-06-01T00:00:00Z',
   benefitExpirationDate: '2026-08-31T00:00:00Z',
+  inCardReplacementCooldown: false,
   allowAddressChange: true,
   allowCardReplacement: true
 }
@@ -33,6 +34,7 @@ const mockCase2: SummerEbtCase = {
   householdType: 'OSSE',
   eligibilityType: 'NSLP',
   issuanceType: 'SummerEbt',
+  inCardReplacementCooldown: false,
   allowAddressChange: true,
   allowCardReplacement: true
 }

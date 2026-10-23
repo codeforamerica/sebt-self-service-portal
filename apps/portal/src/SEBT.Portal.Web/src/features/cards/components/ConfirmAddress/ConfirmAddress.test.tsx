@@ -54,6 +54,7 @@ const TEST_CASE: SummerEbtCase = {
   ebtCardLastFour: '1234',
   ebtCardStatus: 'Active',
   cardRequestedAt: null,
+  inCardReplacementCooldown: false,
   allowAddressChange: true,
   allowCardReplacement: true
 }
