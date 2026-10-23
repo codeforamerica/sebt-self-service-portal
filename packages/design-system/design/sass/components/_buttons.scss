@@ -30,6 +30,18 @@ a state to configure.
   padding: units(1.5) units(2.5);
   width: auto;
 
+  // USWDS hardcodes .usa-button:visited text to white (source:
+  // https://github.com/uswds/uswds/blob/ec801339fa287d26ef0e1b3a19291eeaa0b3b634/packages/usa-button/src/styles/_usa-button.scss#L32-L34).
+  // States whose buttons use a light background would then show white text
+  // on a light fill and fail WCAG contrast, so visited buttons keep the
+  // state's resting text color. Outline and unstyled buttons are left on the
+  // USWDS default because their visited state already meets contrast.
+  &:visited:where(
+      :not(:hover, :active, .usa-button--outline, .usa-button--unstyled)
+    ) {
+    color: color(semantic.$theme-button-text);
+  }
+
   &:hover {
     background-color: color(semantic.$theme-button-bg-hover);
     border-color: color(semantic.$theme-button-bg-hover);

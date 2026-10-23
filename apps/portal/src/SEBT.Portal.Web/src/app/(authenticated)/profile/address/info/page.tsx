@@ -9,7 +9,7 @@ import { useAuth } from '@/features/auth'
 import { useHouseholdData } from '@/features/household'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
 
 export default function CoLoadedAddressInfoPage() {
   const { t: tDashboard } = useTranslation('dashboard')
@@ -21,20 +21,20 @@ export default function CoLoadedAddressInfoPage() {
   const { data, isLoading, isError } = useHouseholdData()
   const { session } = useAuth()
   const { setPageData } = useDataLayer()
-  const isDC = getState() === 'dc'
+  const { hasCoLoadedBenefits } = getStateConfig(getState())
 
   const isCoLoaded =
     data?.benefitIssuanceType === 'SnapEbtCard' || data?.benefitIssuanceType === 'TanfEbtCard'
 
   useEffect(() => {
-    if (!isDC) {
+    if (!hasCoLoadedBenefits) {
       router.replace('/dashboard')
       return
     }
     if (data && !isCoLoaded) {
       router.replace('/profile')
     }
-  }, [isDC, data, isCoLoaded, router])
+  }, [hasCoLoadedBenefits, data, isCoLoaded, router])
 
   // DC-215: tag this info-screen view with the household bucket so analytics can
   // segment who actually lands here (co_loaded_only vs mixed_eligibility vs non).
@@ -56,7 +56,7 @@ export default function CoLoadedAddressInfoPage() {
     )
   }
 
-  if (!isDC || isLoading || !data || !isCoLoaded) {
+  if (!hasCoLoadedBenefits || isLoading || !data || !isCoLoaded) {
     return (
       <div
         aria-busy="true"

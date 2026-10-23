@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import enDcCommon from '@/content/locales/en/dc/common.json'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import { ReplacementCardPrompt } from './ReplacementCardPrompt'
 
@@ -14,12 +15,17 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -35,6 +41,7 @@ describe('ReplacementCardPrompt', () => {
   beforeEach(() => {
     mockPush.mockClear()
     mockState = 'dc'
+    stateConfigOverride = {}
   })
 
   // --- Address display ---
@@ -78,6 +85,24 @@ describe('ReplacementCardPrompt', () => {
     render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
 
     expect(screen.queryByText(/SNAP or TANF/i)).not.toBeInTheDocument()
+  })
+
+  describe('hasCoLoadedBenefits setting', () => {
+    it('shows the SNAP/TANF callout when hasCoLoadedBenefits is true, regardless of state', () => {
+      mockState = 'co'
+      stateConfigOverride = { hasCoLoadedBenefits: true }
+      render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
+
+      expect(screen.getByText(/SNAP or TANF/i)).toBeInTheDocument()
+    })
+
+    it('hides the SNAP/TANF callout when hasCoLoadedBenefits is false, regardless of state', () => {
+      mockState = 'dc'
+      stateConfigOverride = { hasCoLoadedBenefits: false }
+      render(<ReplacementCardPrompt address={TEST_ADDRESS} />)
+
+      expect(screen.queryByText(/SNAP or TANF/i)).not.toBeInTheDocument()
+    })
   })
 
   // --- Validation ---

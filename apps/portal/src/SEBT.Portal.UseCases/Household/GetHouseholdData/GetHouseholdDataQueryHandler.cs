@@ -177,6 +177,7 @@ public class GetHouseholdDataQueryHandler(
         foreach (var summerEbtCase in householdData.SummerEbtCases)
         {
             summerEbtCase.AllowedActions = selfServiceEvaluator.Evaluate(summerEbtCase);
+            summerEbtCase.BenefitExpirationStatus = selfServiceEvaluator.GetBenefitExpirationStatus(summerEbtCase);
         }
 
         // Household-level rollup for top-level CTAs evaluates only non-co-loaded cases:

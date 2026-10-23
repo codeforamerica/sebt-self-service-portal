@@ -615,4 +615,81 @@ public class SelfServiceEvaluatorTests
 
         Assert.False(result.CanRequestReplacementCard);
     }
+
+    // --- Benefit expiration status (shares the DisableDaysBeforeExpiration window) ---
+
+    [Theory]
+    [InlineData(8, 7, null)]
+    [InlineData(8, 6, null)]
+    [InlineData(8, 5, BenefitExpirationStatus.Expiring)]
+    [InlineData(8, 2, BenefitExpirationStatus.Expiring)]
+    [InlineData(8, 1, BenefitExpirationStatus.Expired)]
+    [InlineData(7, 20, BenefitExpirationStatus.Expired)]
+    public void ExpirationStatus_MatchesTheDaysReplacementIsCutOff(
+        int expirationMonth, int expirationDay, BenefitExpirationStatus? expected)
+    {
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(disableDaysBeforeExpiration: 4),
+            new FakeTimeProvider(AugustFirst));
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            benefitExpirationDate: new DateTime(2026, expirationMonth, expirationDay));
+
+        Assert.Equal(expected, evaluator.GetBenefitExpirationStatus(summerEbtCase));
+        Assert.Equal(expected is null, evaluator.Evaluate(summerEbtCase).CanRequestReplacementCard);
+    }
+
+    [Theory]
+    [InlineData(8, 5, null)]
+    [InlineData(7, 31, BenefitExpirationStatus.Expired)]
+    public void ExpirationStatus_WithoutCutoff_ReportsOnlyExpired(
+        int expirationMonth, int expirationDay, BenefitExpirationStatus? expected)
+    {
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(disableDaysBeforeExpiration: null),
+            new FakeTimeProvider(AugustFirst));
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            benefitExpirationDate: new DateTime(2026, expirationMonth, expirationDay));
+
+        Assert.Equal(expected, evaluator.GetBenefitExpirationStatus(summerEbtCase));
+    }
+
+    [Fact]
+    public void ExpirationStatus_WithoutExpirationDate_IsNull()
+    {
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(disableDaysBeforeExpiration: 4),
+            new FakeTimeProvider(AugustFirst));
+
+        Assert.Null(evaluator.GetBenefitExpirationStatus(MakeCase(IssuanceType.SummerEbt)));
+    }
+
+    [Fact]
+    public void ExpirationStatus_DoesNotDependOnReplacementBeingEnabled()
+    {
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(disableDaysBeforeExpiration: 4, enabled: false),
+            new FakeTimeProvider(AugustFirst));
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            benefitExpirationDate: new DateTime(2026, 8, 5));
+
+        Assert.Equal(BenefitExpirationStatus.Expiring, evaluator.GetBenefitExpirationStatus(summerEbtCase));
+    }
+
+    [Fact]
+    public void ExpirationStatus_UsesStateLocalDate_NotUtc()
+    {
+        // 2026-08-03 00:30 UTC is still 2026-08-02 in America/Denver, so an Aug 3 expiration hasn't passed.
+        var evaluator = CreateEvaluator(
+            ReplacementAnyStatusSettings(disableDaysBeforeExpiration: null),
+            new FakeTimeProvider(new DateTimeOffset(2026, 8, 3, 0, 30, 0, TimeSpan.Zero)),
+            timeZoneId: "America/Denver");
+        var summerEbtCase = MakeCase(
+            IssuanceType.SummerEbt,
+            benefitExpirationDate: new DateTime(2026, 8, 3));
+
+        Assert.Null(evaluator.GetBenefitExpirationStatus(summerEbtCase));
+    }
 }

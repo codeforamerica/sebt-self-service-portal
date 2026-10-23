@@ -114,6 +114,9 @@ export function HouseholdSummary() {
   const { primary, secondary } = getOverallStatus(data)
   const canUpdateAddress = data.allowedActions?.canUpdateAddress ?? true
   const showContactPreferences = useFeatureFlag('show_contact_preferences')
+  const anyBenefitsExpired = data.summerEbtCases.some(
+    (summerEbtCase) => summerEbtCase.benefitExpirationStatus === 'Expired'
+  )
 
   return (
     <div className="usa-card__container margin-bottom-4">
@@ -135,7 +138,11 @@ export function HouseholdSummary() {
             )}
             {primary.variant === 'success' && (
               <p className="margin-top-1 margin-bottom-0">
-                {t('profileTableStatusEnrolledDescription')}
+                {t(
+                  anyBenefitsExpired
+                    ? 'profileTableExpiredStatusEnrolledDescription'
+                    : 'profileTableStatusEnrolledDescription'
+                )}
               </p>
             )}
           </dd>

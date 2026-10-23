@@ -1,13 +1,16 @@
-import { readFileSync } from 'fs'
+import { execFileSync } from 'child_process'
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
+import { tmpdir } from 'os'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import {
   SEMANTIC_COMPONENT_TOKENS,
   extractSemanticTokens,
   generateSemanticContent,
   generateSettingsContent,
-  processThemeTokens
+  processThemeTokens,
+  writeFileAtomic
 } from './generate-sass-tokens.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -145,5 +148,46 @@ describe('real state token files', () => {
     expect(byName['$theme-button-bg']).toBe("'primary'")
     expect(byName['$theme-button-text']).toBe("'white'")
     expect(byName['$theme-button-outline-bg-hover']).toBe("'primary-lightest'")
+  })
+})
+
+describe('output', () => {
+  const tempDirs = []
+  const makeTempDir = () => {
+    const dir = mkdtempSync(join(tmpdir(), 'sass-tokens-test-'))
+    tempDirs.push(dir)
+    return dir
+  }
+  afterEach(() => {
+    for (const dir of tempDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
+
+  it('writeFileAtomic replaces the file and leaves no temp file behind', () => {
+    const dir = makeTempDir()
+    const target = join(dir, '_partial.scss')
+    writeFileSync(target, 'old', 'utf8')
+
+    writeFileAtomic(target, 'new')
+
+    expect(readFileSync(target, 'utf8')).toBe('new')
+    expect(readdirSync(dir)).toEqual(['_partial.scss'])
+  })
+
+  it('writes the partials to SASS_OUTPUT_DIR when it is set', () => {
+    const dir = makeTempDir()
+
+    execFileSync('node', [join(__dirname, 'generate-sass-tokens.js')], {
+      env: { ...process.env, STATE: 'co', SASS_OUTPUT_DIR: dir },
+      stdio: 'pipe'
+    })
+
+    expect(readdirSync(dir).sort()).toEqual([
+      '_uswds-settings.scss',
+      '_uswds-theme-co.scss',
+      '_uswds-theme-semantic.scss'
+    ])
+    expect(readFileSync(join(dir, '_uswds-theme-semantic.scss'), 'utf8')).toContain(
+      'Source: design/states/co.json'
+    )
   })
 })

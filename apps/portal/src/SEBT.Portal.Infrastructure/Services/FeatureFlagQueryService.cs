@@ -40,7 +40,7 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
     /// Flags are read from FeatureManager, which already has merged values from IConfiguration
     /// based on provider priority order configured at startup in Program.cs.
     /// Only flags that are explicitly configured (enabled or disabled) are returned.
-    /// Unknown flags and internal-only flags are not included in the response.
+    /// Unknown flags, internal-only flags, and backend-only flags are not included in the response.
     /// </summary>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>A dictionary of feature flag names to their enabled state.</returns>
@@ -58,9 +58,10 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
                     continue;
                 }
 
-                // OTP bypass and diagnostic endpoints stay gated server-side via IFeatureManager.
-                // Do not advertise their state on the anonymous features payload.
-                if (featureName is FeatureFlags.BypassOtp or FeatureFlags.TestErrorEndpointsEnabled)
+                // OTP bypass, diagnostic endpoints, and the configurable-backend switch stay
+                // gated server-side via IFeatureManager. Do not advertise their state on the
+                // anonymous features payload.
+                if (!IsClientExposedFeatureFlag(featureName))
                 {
                     continue;
                 }
@@ -135,5 +136,17 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         // Allow alphanumeric characters and underscores only to follow AppConfig FF format
         // See: https://docs.aws.amazon.com/appconfig/latest/userguide/appconfig-agent-how-to-use-local-development-samples.html
         return name.All(c => char.IsLetterOrDigit(c) || c == '_');
+    }
+
+    /// <summary>
+    /// Internal-only flags and backend dark-launch switches stay out of
+    /// <c>GET /api/features</c> so the anonymous payload does not advertise them.
+    /// </summary>
+    private static bool IsClientExposedFeatureFlag(string name)
+    {
+        return name is not (
+            FeatureFlags.UseConfigurableStateBackend
+            or FeatureFlags.BypassOtp
+            or FeatureFlags.TestErrorEndpointsEnabled);
     }
 }

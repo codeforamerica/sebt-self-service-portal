@@ -18,6 +18,29 @@ export type StateCode = 'dc' | 'co'
  */
 export type SupportedLanguage = 'en' | 'es' | 'am'
 
+/** How the portal names an EBT card to the guardian: by the child it belongs to, or by its last four digits. */
+type CardIdentifier = 'childName' | 'cardLastFour'
+
+/** What the address-not-found screen offers besides editing: keep the entered address, or contact the program. */
+type AddressNotFoundAction = 'useEnteredAddress' | 'contactUs'
+
+interface AddressSettings {
+  /** City pre-filled on an empty address form */
+  defaultCity: string
+  /** USPS state code pre-selected on an empty address form */
+  defaultState: string
+  /** Shows the street-address helper hint under the first street line */
+  showStreetAddressHint: boolean
+  notFoundAction: AddressNotFoundAction
+  /** Shows the notice explaining that the suggested address uses USPS abbreviations */
+  showAbbreviatedNotice: boolean
+  /**
+   * Smarty `prefer_states` value. Semicolon-delimited: the embedded key's dashboard config trips
+   * a validator on comma-delimited `*_states` input, and Smarty parses semicolons equivalently.
+   */
+  autocompletePreferStates: string
+}
+
 export interface StateConfig {
   /** Full display name (e.g., 'District of Columbia') */
   name: string
@@ -31,6 +54,10 @@ export interface StateConfig {
   sealAlt: string
   /** Languages offered in this state's UI (drives the LanguageSelector and `?lang=` validation) */
   supportedLanguages: readonly SupportedLanguage[]
+  cardIdentifier: CardIdentifier
+  /** Benefits can load onto an existing SNAP/TANF card, which enables the co-loaded info screens */
+  hasCoLoadedBenefits: boolean
+  address: AddressSettings
   /** Extra CSS classes appended to the mobile language selector button */
   languageSelectorClass?: string
   /** Extra CSS classes appended to the mobile language submenu */
@@ -56,6 +83,16 @@ const stateConfigs: Record<StateCode, StateConfig> = {
       'Manage your DC SUN Bucks (Summer EBT) benefits online. Check enrollment, benefit expiration, and EBT card status for your students.',
     sealAlt: 'Government of the District of Columbia - Muriel Bowser, Mayor',
     supportedLanguages: ['en', 'es', 'am'],
+    cardIdentifier: 'childName',
+    hasCoLoadedBenefits: true,
+    address: {
+      defaultCity: 'Washington',
+      defaultState: 'DC',
+      showStreetAddressHint: true,
+      notFoundAction: 'contactUs',
+      showAbbreviatedNotice: true,
+      autocompletePreferStates: 'DC;VA;MD'
+    },
     actionButtonBg: 'bg-secondary',
     actionButtonText: 'text-ink',
     pageTitleText: 'text-ink'
@@ -67,6 +104,16 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     portalMetadataDescription: 'Manage your CO Summer EBT benefits online.',
     sealAlt: 'Colorado Official State Web Portal',
     supportedLanguages: ['en', 'es'],
+    cardIdentifier: 'cardLastFour',
+    hasCoLoadedBenefits: false,
+    address: {
+      defaultCity: '',
+      defaultState: 'CO',
+      showStreetAddressHint: false,
+      notFoundAction: 'useEnteredAddress',
+      showAbbreviatedNotice: false,
+      autocompletePreferStates: 'CO'
+    },
     languageSelectorClass: 'border-primary radius-md text-primary',
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',

@@ -23,7 +23,7 @@
  */
 
 import './load-env.js'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -408,6 +408,16 @@ ${settingsLines.join('\n')}
 }
 
 /**
+ * Writes through a temp file and a rename, so a Sass compile that reads the file at the
+ * same time sees the old content or the new content, never a partial write.
+ */
+export function writeFileAtomic(path, content) {
+  const tempPath = `${path}.${process.pid}.tmp`
+  writeFileSync(tempPath, content, 'utf8')
+  renameSync(tempPath, path)
+}
+
+/**
  * Main entry point
  */
 function main() {
@@ -418,7 +428,8 @@ function main() {
 
   // Paths
   const inputPath = join(rootDir, 'design', 'states', `${state}.json`)
-  const outputDir = join(rootDir, 'design', 'sass')
+  // generate-theme-css.js points this at a private copy of the Sass tree.
+  const outputDir = process.env.SASS_OUTPUT_DIR || join(rootDir, 'design', 'sass')
   const themeOutputPath = join(outputDir, `_uswds-theme-${state}.scss`)
   const settingsOutputPath = join(outputDir, '_uswds-settings.scss')
   const semanticOutputPath = join(outputDir, '_uswds-theme-semantic.scss')
@@ -459,17 +470,17 @@ function main() {
 
   // Generate and write legacy SASS variables file (for backward compatibility)
   const sassContent = generateSassContent(state, variables)
-  writeFileSync(themeOutputPath, sassContent, 'utf8')
+  writeFileAtomic(themeOutputPath, sassContent)
   console.log(`✅ Generated: ${rel(themeOutputPath)}`)
 
   // Generate and write USWDS settings file (for SASS module system)
   const settingsContent = generateSettingsContent(state, variables, timestamp)
-  writeFileSync(settingsOutputPath, settingsContent, 'utf8')
+  writeFileAtomic(settingsOutputPath, settingsContent)
   console.log(`✅ Generated: ${rel(settingsOutputPath)}`)
 
   // Generate and write semantic component token partial
   const semanticContent = generateSemanticContent(state, semantic.variables, timestamp)
-  writeFileSync(semanticOutputPath, semanticContent, 'utf8')
+  writeFileAtomic(semanticOutputPath, semanticContent)
   console.log(`✅ Generated: ${rel(semanticOutputPath)} (${semantic.variables.length} semantic tokens)`)
 
   console.log(`✅ ${state.toUpperCase()} SASS theme files generated successfully!`)
