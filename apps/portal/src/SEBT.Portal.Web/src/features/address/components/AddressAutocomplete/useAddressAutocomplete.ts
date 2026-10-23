@@ -3,7 +3,6 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 
 import { fetchAutocompleteSuggestions, formatSelected } from './smartyAutocompleteClient'
 import type { SelectedAddress, SmartySuggestion } from './types'
-import { STATE_PREFER_STATES } from './types'
 
 /**
  * Returns true if two suggestion arrays have identical content.
@@ -38,8 +37,8 @@ const MIN_CHARS = 3
 interface UseAddressAutocompleteOptions {
   /** Current value of the street address input */
   search: string
-  /** Portal state code (e.g. 'dc', 'co') — determines prefer_states */
-  stateCode: string
+  /** Smarty prefer_states value; empty omits the parameter */
+  preferStates: string
   /** Called when the user selects a final address (single entry or unit) */
   onSelect: (address: SelectedAddress) => void
 }
@@ -57,7 +56,7 @@ interface UseAddressAutocompleteReturn {
 
 export function useAddressAutocomplete({
   search,
-  stateCode,
+  preferStates,
   onSelect
 }: UseAddressAutocompleteOptions): UseAddressAutocompleteReturn {
   const [suggestions, setSuggestions] = useState<SmartySuggestion[]>([])
@@ -89,8 +88,6 @@ export function useAddressAutocomplete({
 
   const key = useRuntimeConfig().smartyEmbeddedKey ?? ''
   const enabled = key.length > 0
-  // eslint-disable-next-line security/detect-object-injection -- stateCode values come from the portal config, not user input
-  const preferStates = STATE_PREFER_STATES[stateCode] ?? ''
 
   // Debounced primary search.
   // All state updates happen inside the setTimeout callback or its promise

@@ -7,6 +7,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import enCOConfirmInfo from '@/content/locales/en/co/confirmInfo.json'
 import { portalRoutes } from '@/lib/analytics-routes'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import type { AddressUpdateResponse, UpdateAddressRequest } from '../../api/schema'
 import { AddressFlowProvider, useAddressFlow } from '../../context'
@@ -31,12 +32,18 @@ vi.stubGlobal('cancelAnimationFrame', vi.fn())
 
 const addressNotFoundPageContext = portalRoutes['/profile/address/address-not-found']!
 
+type AddressSettings = StateConfig['address']
+let addressOverride: Partial<AddressSettings> = {}
 let mockState = 'dc'
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getState: () => mockState,
+    getStateConfig: (state: StateCode) => {
+      const config = actual.getStateConfig(state)
+      return { ...config, address: { ...config.address, ...addressOverride } }
+    },
     getStateLinks: (state: string) => ({
       ...actual.getStateLinks(state as 'dc' | 'co'),
       help: {
@@ -138,6 +145,7 @@ function renderComponent(
 describe('AddressNotFound', () => {
   beforeEach(() => {
     mockPush.mockClear()
+    addressOverride = {}
   })
 
   describe('Content rendering', () => {
@@ -303,6 +311,56 @@ describe('AddressNotFound', () => {
       // validationResult should still be present (not cleared before navigation)
       expect(screen.getByTestId('has-validation-result')).toHaveTextContent('yes')
       expect(screen.getByTestId('has-address')).toHaveTextContent('yes')
+    })
+  })
+
+  describe('notFoundAction setting', () => {
+    const blockedResult: AddressUpdateResponse = {
+      status: 'invalid',
+      reason: 'blocked',
+      message: 'This address cannot be used for mail delivery.'
+    }
+
+    describe('useEnteredAddress', () => {
+      beforeEach(() => {
+        mockState = 'dc'
+        addressOverride = { notFoundAction: 'useEnteredAddress' }
+      })
+
+      it('shows "Use this address" and no contact link when not blocked', () => {
+        renderComponent()
+
+        expect(screen.getByRole('button', { name: /use this address/i })).toBeInTheDocument()
+        expect(screen.queryByRole('link', { name: /contact us/i })).not.toBeInTheDocument()
+      })
+
+      it('hides "Use this address" and shows no contact link when blocked', () => {
+        renderComponent(TEST_ADDRESS, blockedResult)
+
+        expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+        expect(screen.queryByRole('link', { name: /contact us/i })).not.toBeInTheDocument()
+      })
+    })
+
+    describe('contactUs', () => {
+      beforeEach(() => {
+        mockState = 'co'
+        addressOverride = { notFoundAction: 'contactUs' }
+      })
+
+      it('shows the contact link and no "Use this address" when not blocked', () => {
+        renderComponent()
+
+        expect(screen.getByRole('link', { name: /contact us/i })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+      })
+
+      it('shows the contact link and no "Use this address" when blocked', () => {
+        renderComponent(TEST_ADDRESS, blockedResult)
+
+        expect(screen.getByRole('link', { name: /contact us/i })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /use this address/i })).not.toBeInTheDocument()
+      })
     })
   })
 

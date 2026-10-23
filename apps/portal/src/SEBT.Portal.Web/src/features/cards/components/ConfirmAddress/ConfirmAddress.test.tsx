@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { StateCode, StateConfig } from '@sebt/design-system'
 import { i18n } from '@sebt/design-system/client'
 
 import amDcValidation from '@/content/locales/am/dc/validation.json'
@@ -21,12 +22,17 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -52,13 +58,13 @@ const TEST_CASE: SummerEbtCase = {
   allowCardReplacement: true
 }
 
-function renderConfirmAddress() {
+function renderConfirmAddress(summerEbtCase: SummerEbtCase = TEST_CASE) {
   const user = userEvent.setup()
   return {
     user,
     ...render(
       <ConfirmAddress
-        summerEbtCase={TEST_CASE}
+        summerEbtCase={summerEbtCase}
         address={TEST_ADDRESS}
         confirmPath="/cards/replace/confirm?case=SEBT-001"
         changePath="/cards/replace/address?case=SEBT-001"
@@ -72,6 +78,7 @@ describe('ConfirmAddress', () => {
     mockPush.mockClear()
     mockBack.mockClear()
     mockState = 'dc'
+    stateConfigOverride = {}
   })
 
   // The i18n instance is a shared singleton; reset to English so sibling tests
@@ -91,6 +98,30 @@ describe('ConfirmAddress', () => {
     mockState = 'co'
     renderConfirmAddress()
     expect(screen.getByText(/Replace card ending in 1234/)).toBeInTheDocument()
+  })
+
+  describe('cardIdentifier setting', () => {
+    it("renders the card number subtitle when cardIdentifier is 'cardLastFour', regardless of state", () => {
+      mockState = 'dc'
+      stateConfigOverride = { cardIdentifier: 'cardLastFour' }
+      renderConfirmAddress()
+      expect(screen.getByText(/Replace card ending in 1234/)).toBeInTheDocument()
+    })
+
+    it("falls back to the child name subtitle when cardIdentifier is 'cardLastFour' but the last four is missing", () => {
+      mockState = 'dc'
+      stateConfigOverride = { cardIdentifier: 'cardLastFour' }
+      renderConfirmAddress({ ...TEST_CASE, ebtCardLastFour: null })
+      expect(screen.getByText("Replace Sophia Martinez's card")).toBeInTheDocument()
+    })
+
+    it("renders the child name subtitle when cardIdentifier is 'childName', regardless of state", () => {
+      mockState = 'co'
+      stateConfigOverride = { cardIdentifier: 'childName' }
+      renderConfirmAddress()
+      expect(screen.getByText("Replace Sophia Martinez's card")).toBeInTheDocument()
+      expect(screen.queryByText(/card ending in/)).not.toBeInTheDocument()
+    })
   })
 
   it('renders the address', () => {
