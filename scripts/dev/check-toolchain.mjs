@@ -1,11 +1,14 @@
 // Fails an install when Node or pnpm is the wrong major version.
 //
+// It is the preinstall of aspire-apphost (a dev-only workspace project), not of the root,
+// so the web Docker images, which never copy aspire-apphost, do not need this file.
+//
 // Why a preinstall script rather than `engines` + `engine-strict`:
 //
 //   - pnpm 12 ignores `engine-strict` from both .npmrc and pnpm-workspace.yaml,
 //     so it does not warn the one audience that needs warning. This script runs
-//     on every pnpm major, because pnpm always runs the root project's
-//     lifecycle scripts.
+//     on every pnpm major, because pnpm always runs a project's own lifecycle
+//     scripts.
 //   - `engine-strict` also enforces every *dependency's* engines range, so an
 //     unrelated upgrade can break installs. (That is how we learned jsdom@30
 //     excludes Node 25.) This checks only our own pins.
