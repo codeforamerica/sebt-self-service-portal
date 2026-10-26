@@ -140,6 +140,13 @@ function isKnownStateCode(value: string): value is StateCode {
   return Object.prototype.hasOwnProperty.call(stateConfigs, value)
 }
 
+/** Throws for a code that is not in the registry, so every per-state lookup fails the same way. */
+export function assertKnownStateCode(value: string): asserts value is StateCode {
+  if (!isKnownStateCode(value)) {
+    throw new Error(`Unknown state code: ${value}`)
+  }
+}
+
 function toStateCode(raw: string): StateCode {
   const code = raw.toLowerCase()
   if (!isKnownStateCode(code)) {
@@ -152,9 +159,7 @@ function toStateCode(raw: string): StateCode {
  * Get the full configuration for a state. Throws for a code that is not registered.
  */
 export function getStateConfig(state: StateCode): StateConfig {
-  if (!isKnownStateCode(state)) {
-    throw new Error(`Unknown state code: ${state}`)
-  }
+  assertKnownStateCode(state)
   // eslint-disable-next-line security/detect-object-injection -- validated as an own key above
   return stateConfigs[state]
 }

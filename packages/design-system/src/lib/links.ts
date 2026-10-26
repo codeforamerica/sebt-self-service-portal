@@ -5,7 +5,7 @@
  * Each state can have its own set of URLs for footer, help section, and other links.
  */
 
-import type { StateCode } from './state'
+import { assertKnownStateCode, type StateCode } from './state'
 
 export interface LinkItem {
   key: string
@@ -92,12 +92,13 @@ const stateLinks: Record<StateCode, StateLinks> = {
 }
 
 /**
- * Get links configuration for a specific state
+ * Get links configuration for a specific state. Throws for a code that is not registered.
  * @param state - Two-letter state code (e.g., 'dc', 'co')
  * @returns State-specific links
  */
 export function getStateLinks(state: StateCode): StateLinks {
-  // eslint-disable-next-line security/detect-object-injection -- key is the StateCode union
+  assertKnownStateCode(state)
+  // eslint-disable-next-line security/detect-object-injection -- validated as an own key above
   return stateLinks[state]
 }
 

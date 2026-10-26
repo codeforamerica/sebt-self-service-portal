@@ -68,7 +68,7 @@ export interface LandingAction {
 export function getLandingConfig(): LandingConfig {
   const state = getState()
   // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  return landingConfigs[state] ?? landingConfigs.dc
+  return landingConfigs[state]
 }
 
 /**
