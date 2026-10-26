@@ -9,10 +9,10 @@ import {
 
 /**
  * Loading interstitial for pages that would otherwise be blank while a request is in flight.
- * Renders only when the state's login mode is OIDC; other states keep the blank screen (DC-337 scope).
+ * Renders only for states that enable it; the rest keep the blank screen they shipped with.
  */
 export function CoLoadingScreen({ title, message }: LoadingInterstitialProps) {
-  if (getStateConfig(getState()).loginMode !== 'oidc') return null
+  if (!getStateConfig(getState()).showLoadingInterstitial) return null
   return (
     <div className="grid-container maxw-tablet">
       <LoadingInterstitial

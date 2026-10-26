@@ -11,7 +11,7 @@
  * (stateCode, isStepUp, returnUrl, state validation) is now handled server-side
  * via the pre-auth session (V04 fix).
  */
-import type { LoginMode, StateCode } from '@sebt/design-system'
+import type { StateCode } from '@sebt/design-system'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -73,15 +73,15 @@ vi.mock('react-i18next', () => ({
   })
 }))
 
-// Mock the login mode; the component must not care which state code produced it.
-let mockLoginMode: LoginMode = 'oidc'
+// Mock the per-state setting; the component must not care which state code produced it.
+let mockShowLoadingInterstitial = true
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getStateConfig: (state: StateCode) => ({
       ...actual.getStateConfig(state),
-      loginMode: mockLoginMode
+      showLoadingInterstitial: mockShowLoadingInterstitial
     })
   }
 })
@@ -90,7 +90,7 @@ import CallbackPage from './page'
 
 describe('CallbackPage', () => {
   beforeEach(() => {
-    mockLoginMode = 'oidc'
+    mockShowLoadingInterstitial = true
     vi.clearAllMocks()
     sessionState.current = null
     authLoading.current = false
@@ -147,7 +147,7 @@ describe('CallbackPage', () => {
       )
     })
 
-    it('shows the OIDC loading interstitial initially', () => {
+    it('shows the loading interstitial initially when the state enables it', () => {
       render(<CallbackPage />)
       const status = screen.getByRole('status')
       expect(status).toHaveAttribute('aria-busy', 'true')
@@ -180,9 +180,9 @@ describe('CallbackPage', () => {
       })
     })
 
-    describe('OTP login mode', () => {
+    describe('when the state keeps the blank loading screen', () => {
       beforeEach(() => {
-        mockLoginMode = 'otp'
+        mockShowLoadingInterstitial = false
       })
 
       it('shows the plain signing-in status instead of the interstitial', () => {

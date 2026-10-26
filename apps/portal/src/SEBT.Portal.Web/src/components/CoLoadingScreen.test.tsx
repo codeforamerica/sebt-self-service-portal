@@ -1,15 +1,15 @@
-import type { LoginMode, StateCode } from '@sebt/design-system'
+import type { StateCode } from '@sebt/design-system'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-let mockLoginMode: LoginMode = 'oidc'
+let mockShowLoadingInterstitial = true
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getStateConfig: (state: StateCode) => ({
       ...actual.getStateConfig(state),
-      loginMode: mockLoginMode
+      showLoadingInterstitial: mockShowLoadingInterstitial
     })
   }
 })
@@ -18,10 +18,10 @@ import { CoLoadingScreen } from './CoLoadingScreen'
 
 describe('CoLoadingScreen', () => {
   beforeEach(() => {
-    mockLoginMode = 'oidc'
+    mockShowLoadingInterstitial = true
   })
 
-  it('renders the loading interstitial when the login mode is OIDC', () => {
+  it('renders the loading interstitial when the state enables it', () => {
     render(
       <CoLoadingScreen
         title="Please wait..."
@@ -33,8 +33,8 @@ describe('CoLoadingScreen', () => {
     expect(screen.getByText('Do not exit the page.')).toBeInTheDocument()
   })
 
-  it('renders nothing when the login mode is OTP', () => {
-    mockLoginMode = 'otp'
+  it('renders nothing when the state keeps the blank loading screen', () => {
+    mockShowLoadingInterstitial = false
     const { container } = render(
       <CoLoadingScreen
         title="Please wait..."

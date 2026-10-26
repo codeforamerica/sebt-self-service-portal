@@ -57,12 +57,17 @@ export interface StateConfig {
   sealAlt: string
   /** Languages offered in this state's UI (drives the LanguageSelector and `?lang=` validation) */
   supportedLanguages: readonly SupportedLanguage[]
-  /** Sign-in mechanism; also selects the OIDC step-up gate and the OIDC loading interstitial */
+  /** Sign-in mechanism; also selects the OIDC step-up gate */
   loginMode: LoginMode
   cardIdentifier: CardIdentifier
   /** Benefits can load onto an existing SNAP/TANF card, which enables the co-loaded info screens */
   hasCoLoadedBenefits: boolean
   address: AddressSettings
+  /**
+   * Shows a "please wait" interstitial while auth status, the sign-in callback, or household
+   * data is in flight. States without it keep the blank screen those pages shipped with.
+   */
+  showLoadingInterstitial: boolean
   /** Extra CSS classes appended to the mobile language selector button */
   languageSelectorClass?: string
   /** Extra CSS classes appended to the mobile language submenu */
@@ -99,6 +104,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
       showAbbreviatedNotice: true,
       autocompletePreferStates: 'DC;VA;MD'
     },
+    showLoadingInterstitial: false,
     actionButtonBg: 'bg-secondary',
     actionButtonText: 'text-ink',
     pageTitleText: 'text-ink'
@@ -121,6 +127,7 @@ const stateConfigs: Record<StateCode, StateConfig> = {
       showAbbreviatedNotice: false,
       autocompletePreferStates: 'CO'
     },
+    showLoadingInterstitial: true,
     languageSelectorClass: 'border-primary radius-md text-primary',
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',

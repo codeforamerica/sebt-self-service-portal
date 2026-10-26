@@ -95,6 +95,16 @@ describe('getStateConfig — address', () => {
   })
 })
 
+describe('getStateConfig showLoadingInterstitial', () => {
+  it('keeps the blank loading screen for DC', () => {
+    expect(getStateConfig('dc').showLoadingInterstitial).toBe(false)
+  })
+
+  it('shows the loading interstitial for CO', () => {
+    expect(getStateConfig('co').showLoadingInterstitial).toBe(true)
+  })
+})
+
 describe('getStateConfig loginMode', () => {
   it('uses email one-time-code login for DC', () => {
     expect(getStateConfig('dc').loginMode).toBe('otp')

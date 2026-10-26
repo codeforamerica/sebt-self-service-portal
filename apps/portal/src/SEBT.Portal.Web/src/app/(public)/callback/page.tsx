@@ -40,7 +40,7 @@ export default function CallbackPage() {
   const { t } = useTranslation('login')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const exchangeStartedRef = useRef(false)
-  const { loginMode } = getStateConfig(getState())
+  const { showLoadingInterstitial } = getStateConfig(getState())
 
   const isProofedReEntry = useMemo(
     () => hasIal1Plus(session) && isIdProofingCompletionFresh(session),
@@ -131,7 +131,7 @@ export default function CallbackPage() {
     }
   }, [isAuthenticated, isLoading, isProofedReEntry, login, router])
 
-  if (loginMode === 'oidc') {
+  if (showLoadingInterstitial) {
     return (
       <CoLoadingScreen
         title={tProcessing('title', 'Please wait...')}
