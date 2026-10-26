@@ -14,13 +14,15 @@ import {
   DC_ID_PROOF_IN_PROGRESS_EMAIL,
   DC_VERIFIED_EMAIL
 } from '../../fixtures/seed-users'
-import { skipUnlessLoginMode } from '../../fixtures/state'
+import { skipUnlessLoginMode, skipUnlessState } from '../../fixtures/state'
 
 test.describe('DC auth routing (full stack)', () => {
   test.describe.configure({ mode: 'serial', timeout: 60_000 })
 
   test.beforeEach(() => {
     skipUnlessFullStack()
+    // The seeded personas and the Mailpit flow are DC's; the mode gate names the mechanism.
+    skipUnlessState('dc')
     skipUnlessLoginMode('otp')
   })
 
