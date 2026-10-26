@@ -8,6 +8,7 @@ import {
   HouseholdDataSchema,
   interpolateDate,
   IssuanceTypeSchema,
+  SummerEbtCaseSchema,
   toAnalyticsCohort,
   type Child,
   type UserProfile
@@ -240,6 +241,42 @@ describe('interpolateDate', () => {
 
   it('strips a placeholder at the start of a template', () => {
     expect(interpolateDate('[MM/DD/YYYY] requested', null, 'en')).toBe('requested')
+  })
+
+  it('replaces Spanish placeholders written with AAAA for the year', () => {
+    expect(interpolateDate('Vencieron el [MM/DD/AAAA].', '2026-09-03T00:00:00Z', 'es')).toBe(
+      'Vencieron el 03/09/2026.'
+    )
+    expect(interpolateDate('Vencen el [DD/MM/AAAA].', '2026-09-03T00:00:00Z', 'es')).toBe(
+      'Vencen el 03/09/2026.'
+    )
+  })
+})
+
+describe('SummerEbtCaseSchema benefitExpirationStatus', () => {
+  const baseCase = {
+    childFirstName: 'Maria',
+    childLastName: 'Garcia',
+    householdType: 'SEBT',
+    eligibilityType: 'AP'
+  }
+
+  it('accepts Expiring and Expired', () => {
+    expect(
+      SummerEbtCaseSchema.parse({ ...baseCase, benefitExpirationStatus: 'Expiring' })
+        .benefitExpirationStatus
+    ).toBe('Expiring')
+    expect(
+      SummerEbtCaseSchema.parse({ ...baseCase, benefitExpirationStatus: 'Expired' })
+        .benefitExpirationStatus
+    ).toBe('Expired')
+  })
+
+  it('treats an unknown status as no status rather than failing the household', () => {
+    expect(
+      SummerEbtCaseSchema.parse({ ...baseCase, benefitExpirationStatus: 'Lapsed' })
+        .benefitExpirationStatus
+    ).toBeNull()
   })
 })
 

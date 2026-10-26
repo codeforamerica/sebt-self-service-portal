@@ -3,6 +3,7 @@ extern alias Core;
 namespace SEBT.Portal.Api.Models.Household;
 
 using ApplicationStatus = Core::SEBT.Portal.Core.Models.Household.ApplicationStatus;
+using BenefitExpirationStatus = Core::SEBT.Portal.Core.Models.Household.BenefitExpirationStatus;
 
 /// <summary>
 /// API response model for a Summer EBT case (per-child).
@@ -118,6 +119,12 @@ public record SummerEbtCaseResponse
     /// The date benefits expire.
     /// </summary>
     public DateTime? BenefitExpirationDate { get; init; }
+
+    /// <summary>
+    /// Whether this case's benefits are about to expire or already have, by the state-local date.
+    /// Null when neither applies.
+    /// </summary>
+    public BenefitExpirationStatus? BenefitExpirationStatus { get; init; }
 
     /// <summary>
     /// Whether the portal user can change the mailing address for this case.

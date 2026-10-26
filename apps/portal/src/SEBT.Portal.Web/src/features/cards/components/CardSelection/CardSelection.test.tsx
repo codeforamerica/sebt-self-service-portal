@@ -5,6 +5,7 @@ import { delay, http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
+import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import { CardSelection } from './CardSelection'
 
@@ -18,12 +19,17 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-let mockState = 'dc'
+let mockState: StateCode = 'dc'
+let stateConfigOverride: Partial<StateConfig> = {}
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getState: () => mockState,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      ...stateConfigOverride
+    })
   }
 })
 
@@ -137,6 +143,7 @@ describe('CardSelection', () => {
     mockPush.mockClear()
     mockBack.mockClear()
     mockState = 'dc'
+    stateConfigOverride = {}
   })
 
   // --- Rendering children ---
@@ -196,6 +203,54 @@ describe('CardSelection', () => {
     })
 
     expect(screen.queryByText(/last 4 digits/)).not.toBeInTheDocument()
+  })
+
+  describe('cardIdentifier setting', () => {
+    it("shows the card number when cardIdentifier is 'cardLastFour', regardless of state", async () => {
+      mockState = 'dc'
+      stateConfigOverride = { cardIdentifier: 'cardLastFour' }
+      server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
+      renderCardSelection()
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/1234 \(last 4 digits\)/)).toHaveLength(2)
+      })
+    })
+
+    it("hides the card number when cardIdentifier is 'childName', regardless of state", async () => {
+      mockState = 'co'
+      stateConfigOverride = { cardIdentifier: 'childName' }
+      server.use(http.get('/api/household/data', () => HttpResponse.json(TWO_CHILD_HOUSEHOLD)))
+
+      renderCardSelection()
+
+      await waitFor(() => {
+        expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
+      })
+
+      expect(screen.queryByText(/last 4 digits/)).not.toBeInTheDocument()
+    })
+
+    it("omits the card number line when cardIdentifier is 'cardLastFour' but the case has no last four", async () => {
+      stateConfigOverride = { cardIdentifier: 'cardLastFour' }
+      const withoutLastFour = {
+        ...TWO_CHILD_HOUSEHOLD,
+        summerEbtCases: TWO_CHILD_HOUSEHOLD.summerEbtCases.map((c) => ({
+          ...c,
+          ebtCardLastFour: null
+        }))
+      }
+      server.use(http.get('/api/household/data', () => HttpResponse.json(withoutLastFour)))
+
+      renderCardSelection()
+
+      await waitFor(() => {
+        expect(screen.getByText(/Sophia Martinez/)).toBeInTheDocument()
+      })
+
+      expect(screen.queryByText(/last 4 digits/)).not.toBeInTheDocument()
+    })
   })
 
   // --- Validation ---
