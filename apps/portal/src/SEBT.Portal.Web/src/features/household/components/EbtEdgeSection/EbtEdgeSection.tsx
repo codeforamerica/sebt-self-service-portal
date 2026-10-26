@@ -13,7 +13,7 @@ export function EbtEdgeSection() {
 
   return (
     <section
-      className="margin-top-4"
+      className="margin-top-1"
       aria-labelledby="help-section-heading"
     >
       {/* TODO: Add to CSV: "S2 - Portal Dashboard - Alert EBT Edge - Section Heading" */}
