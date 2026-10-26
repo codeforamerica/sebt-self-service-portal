@@ -26,6 +26,8 @@ public abstract class StartupValidationTestBase : IDisposable
         SetEnv("Oidc__ClientId", "test-client");
         SetEnv("Oidc__CallbackRedirectUri", "http://localhost:3000/callback");
         SetEnv("Oidc__CompleteLoginSigningKey", "integration-test-secret-key-at-least-32-chars!");
+        SetEnv("Oidc__VerificationClaims__LevelClaimName", "socureIdVerificationLevel");
+        SetEnv("Oidc__VerificationClaims__DateClaimName", "socureIdVerificationDate");
         SetEnv("MinimumIal__ApplicationCases", "IAL1");
         SetEnv("MinimumIal__CoLoadedStreamlineCases", "IAL1");
         SetEnv("MinimumIal__NonCoLoadedStreamlineCases", "IAL1plus");

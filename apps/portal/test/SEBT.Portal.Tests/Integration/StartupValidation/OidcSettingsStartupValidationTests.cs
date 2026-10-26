@@ -57,6 +57,18 @@ public class OidcSettingsStartupValidationTests : StartupValidationTestBase
     }
 
     [Fact]
+    public void Startup_WithOidcEnabledAndNoVerificationClaimNames_ThrowsOptionsValidationException()
+    {
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__LevelClaimName", "");
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__DateClaimName", "");
+        using var factory = CreateFactory();
+
+        var ex = Assert.Throws<OptionsValidationException>(factory.CreateClient);
+        Assert.Contains("Oidc:VerificationClaims:LevelClaimName", ex.Message);
+        Assert.Contains("Oidc:VerificationClaims:DateClaimName", ex.Message);
+    }
+
+    [Fact]
     public void Startup_WithoutOidc_AllowsAnEmptySection()
     {
         // A state that never uses OIDC leaves the whole client unset, including the signing
@@ -65,6 +77,8 @@ public class OidcSettingsStartupValidationTests : StartupValidationTestBase
         Environment.SetEnvironmentVariable("Oidc__ClientId", "");
         Environment.SetEnvironmentVariable("Oidc__CallbackRedirectUri", "");
         Environment.SetEnvironmentVariable("Oidc__CompleteLoginSigningKey", "");
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__LevelClaimName", "");
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__DateClaimName", "");
         using var factory = CreateFactory();
 
         factory.CreateClient();
