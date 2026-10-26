@@ -862,7 +862,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             IsFeatureFlag = false
         };
 
-        var configJson = """{"Cbms": {"UseMockResponses": true}}""";
+        var configJson = """{"FeatureManagement": {"use_mock_cbms_responses": true}}""";
         var handler = new FailThenSucceedHandler(
             failCount: 3,
             successResponse: new HttpResponseMessage(HttpStatusCode.OK)
@@ -877,7 +877,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         provider.Load();
 
         // Assert — config should be loaded after retries
-        Assert.True(provider.TryGet("Cbms:UseMockResponses", out var value));
+        Assert.True(provider.TryGet("FeatureManagement:use_mock_cbms_responses", out var value));
         Assert.Equal("true", value);
         Assert.Equal(4, handler.CallCount); // 3 failures + 1 success
 
