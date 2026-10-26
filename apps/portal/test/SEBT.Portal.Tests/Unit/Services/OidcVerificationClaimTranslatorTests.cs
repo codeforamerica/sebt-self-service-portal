@@ -7,7 +7,19 @@ namespace SEBT.Portal.Tests.Unit.Services;
 
 public class OidcVerificationClaimTranslatorTests
 {
-    private readonly OidcVerificationClaimSettings _claimSettings = new();
+    private readonly OidcVerificationClaimSettings _claimSettings = new()
+    {
+        LevelClaimName = "socureIdVerificationLevel",
+        DateClaimName = "socureIdVerificationDate",
+        FallbackLevelClaimName = "myCoIdVerificationLevel",
+        FallbackDateClaimName = "myCoIdVerificationDate"
+    };
+
+    private static readonly OidcVerificationClaimSettings SettingsWithoutFallbacks = new()
+    {
+        LevelClaimName = "socureIdVerificationLevel",
+        DateClaimName = "socureIdVerificationDate"
+    };
     private readonly IdProofingValiditySettings _validitySettings = new() { ValidityDays = 1826 };
 
     private OidcVerificationClaimTranslator CreateTranslator(
@@ -289,6 +301,45 @@ public class OidcVerificationClaimTranslatorTests
         Assert.NotNull(result);
         Assert.Equal(UserIalLevel.IAL1plus, result.IalLevel);
         Assert.Equal(expectedDate, result.VerifiedAt, TimeSpan.FromSeconds(1));
+    }
+
+    [Fact]
+    public void Translate_ignores_myCo_level_claim_when_no_fallback_configured()
+    {
+        var claims = new Dictionary<string, string>
+        {
+            ["myCoIdVerificationLevel"] = "1.5",
+            ["socureIdVerificationDate"] = DateTime.UtcNow.AddDays(-30).ToString("o")
+        };
+
+        var result = CreateTranslator(claimSettings: SettingsWithoutFallbacks).Translate(claims);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void Translate_ignores_myCo_date_claim_when_no_fallback_configured()
+    {
+        var claims = new Dictionary<string, string>
+        {
+            ["socureIdVerificationLevel"] = "1.5",
+            ["myCoIdVerificationDate"] = new DateTime(2025, 3, 1, 12, 0, 0, DateTimeKind.Utc).ToString("o")
+        };
+
+        var result = CreateTranslator(claimSettings: SettingsWithoutFallbacks).Translate(claims);
+
+        Assert.NotNull(result);
+        Assert.Equal(DateTime.UtcNow, result.VerifiedAt, TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public void Translate_returns_null_when_no_claim_names_configured()
+    {
+        var claims = new Dictionary<string, string> { ["socureIdVerificationLevel"] = "1.5" };
+
+        var result = CreateTranslator(claimSettings: new OidcVerificationClaimSettings()).Translate(claims);
+
+        Assert.Null(result);
     }
 
     [Fact]
