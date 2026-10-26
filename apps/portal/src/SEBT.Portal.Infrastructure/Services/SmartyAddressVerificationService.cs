@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -26,6 +27,28 @@ public sealed class SmartyAddressVerificationService(
     {
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
+
+    private const string LookupEventTemplate =
+        "Smarty US Street lookup {Outcome} "
+        + "(status {StatusCode}, candidates {CandidateCount}, DPV {DpvMatchCode}, record type {RecordType}, "
+        + "corrected {WasCorrected}, general delivery {IsGeneralDelivery}, "
+        + "exception {ExceptionType}, JSON path {JsonPath}, HTTP error {HttpRequestError}) in {DurationMs} ms";
+
+    private enum SmartyLookupOutcome
+    {
+        Verified,
+        GeneralDeliveryAccepted,
+        NoCandidates,
+        NotDeliverable,
+        GeneralDeliveryRejected,
+        HttpError,
+        EmptyBody,
+        ParseError,
+        Timeout,
+        TransportFailure,
+        Cancelled,
+        Faulted
+    }
 
     public async Task<Result<AddressUpdateSuccess>> ValidateAndNormalizeAsync(
         AddressUpdateOperationRequest request,
@@ -77,17 +100,28 @@ public sealed class SmartyAddressVerificationService(
         };
         httpRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
+        var outcome = SmartyLookupOutcome.Faulted;
+        int? statusCode = null;
+        int? candidateCount = null;
+        string? dpvMatchCode = null;
+        string? recordType = null;
+        bool? wasCorrected = null;
+        bool? isGeneralDelivery = null;
+        string? exceptionType = null;
+        string? jsonPath = null;
+        string? httpRequestError = null;
+        Exception? swallowed = null;
+        var stopwatch = Stopwatch.StartNew();
+
         try
         {
             var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
+            statusCode = (int)httpResponse.StatusCode;
             var body = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
 
             if (!httpResponse.IsSuccessStatusCode)
             {
-                logger.LogError(
-                    "Smarty US Street API returned {StatusCode} for correlation {CorrelationId}",
-                    (int)httpResponse.StatusCode,
-                    request.CorrelationId ?? "(none)");
+                outcome = SmartyLookupOutcome.HttpError;
                 return Result<AddressUpdateSuccess>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Address verification is temporarily unavailable. Please try again later.");
@@ -95,9 +129,7 @@ public sealed class SmartyAddressVerificationService(
 
             if (string.IsNullOrWhiteSpace(body))
             {
-                logger.LogError(
-                    "Smarty US Street API returned empty body for correlation {CorrelationId}",
-                    request.CorrelationId ?? "(none)");
+                outcome = SmartyLookupOutcome.EmptyBody;
                 return Result<AddressUpdateSuccess>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Address verification returned an unexpected response.");
@@ -110,63 +142,121 @@ public sealed class SmartyAddressVerificationService(
             }
             catch (JsonException ex)
             {
-                logger.LogError(ex, "Smarty response could not be parsed.");
+                outcome = SmartyLookupOutcome.ParseError;
+                exceptionType = ex.GetType().Name;
+                jsonPath = ex.Path;
                 return Result<AddressUpdateSuccess>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Address verification returned an unexpected response.");
             }
 
+            candidateCount = candidates?.Count ?? 0;
             var best = SelectBestCandidate(candidates);
             if (best == null)
             {
+                outcome = SmartyLookupOutcome.NoCandidates;
                 return Result<AddressUpdateSuccess>.ValidationFailed(
                     "address",
                     "This address could not be verified. Check the street, city, state, and ZIP code.");
             }
 
-            var isGeneralDelivery = GeneralDeliveryDetection.IsGeneralDeliveryRecordType(best.Metadata?.RecordType)
+            dpvMatchCode = best.Analysis?.DpvMatchCode;
+            recordType = best.Metadata?.RecordType;
+
+            var generalDelivery = GeneralDeliveryDetection.IsGeneralDeliveryRecordType(recordType)
                 || GeneralDeliveryDetection.TextIndicatesGeneralDelivery(
                     best.DeliveryLine1,
                     best.DeliveryLine2);
+            isGeneralDelivery = generalDelivery;
 
-            if (isGeneralDelivery && !policy.AllowGeneralDelivery)
+            if (generalDelivery && !policy.AllowGeneralDelivery)
             {
+                outcome = SmartyLookupOutcome.GeneralDeliveryRejected;
                 return Result<AddressUpdateSuccess>.ValidationFailed(
                     "streetAddress1",
                     "General Delivery addresses are not accepted for this state.");
             }
 
-            if (!isGeneralDelivery && !IsDeliverableByDpv(best.Analysis?.DpvMatchCode))
+            if (!generalDelivery && !IsDeliverableByDpv(dpvMatchCode))
             {
+                outcome = SmartyLookupOutcome.NotDeliverable;
                 return Result<AddressUpdateSuccess>.ValidationFailed(
                     "address",
                     "This address could not be verified as a deliverable USPS address.");
             }
 
             var normalized = MapToAddress(best);
-            var wasCorrected = !AddressNormalizationHelper.AddressesEqualLoose(inputAddress, normalized);
+            var corrected = !AddressNormalizationHelper.AddressesEqualLoose(inputAddress, normalized);
+            wasCorrected = corrected;
+            outcome = generalDelivery
+                ? SmartyLookupOutcome.GeneralDeliveryAccepted
+                : SmartyLookupOutcome.Verified;
 
             return Result<AddressUpdateSuccess>.Success(
                 new AddressUpdateSuccess
                 {
                     NormalizedAddress = normalized,
-                    IsGeneralDelivery = isGeneralDelivery,
-                    WasCorrected = wasCorrected
+                    IsGeneralDelivery = generalDelivery,
+                    WasCorrected = corrected
                 });
         }
         catch (TaskCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogError(ex, "Smarty request timed out.");
+            outcome = SmartyLookupOutcome.Timeout;
+            exceptionType = ex.GetType().Name;
+            swallowed = ex;
             return Result<AddressUpdateSuccess>.DependencyFailed(
                 DependencyFailedReason.Timeout,
                 "Address verification timed out. Please try again.");
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            outcome = SmartyLookupOutcome.Cancelled;
+            throw;
+        }
         catch (HttpRequestException ex)
         {
-            logger.LogError(ex, "Smarty HTTP request failed.");
+            outcome = SmartyLookupOutcome.TransportFailure;
+            exceptionType = ex.GetType().Name;
+            httpRequestError = ex.HttpRequestError.ToString();
+            swallowed = ex;
             return Result<AddressUpdateSuccess>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Address verification is temporarily unavailable. Please try again later.");
+        }
+        catch (Exception ex)
+        {
+            exceptionType = ex.GetType().Name;
+            throw;
+        }
+        finally
+        {
+            var level = outcome is SmartyLookupOutcome.HttpError
+                or SmartyLookupOutcome.EmptyBody
+                or SmartyLookupOutcome.ParseError
+                or SmartyLookupOutcome.Timeout
+                or SmartyLookupOutcome.TransportFailure
+                or SmartyLookupOutcome.Faulted
+                ? LogLevel.Error
+                : LogLevel.Information;
+
+            // Exception attached only for swallowed timeout and transport failures (framework text).
+            // Parse errors log JsonPath instead: an invalid-literal message echoes the raw body.
+            logger.Log(
+                level,
+                swallowed,
+                LookupEventTemplate,
+                outcome.ToString(),
+                statusCode,
+                candidateCount,
+                dpvMatchCode,
+                recordType,
+                wasCorrected,
+                isGeneralDelivery,
+                exceptionType,
+                jsonPath,
+                httpRequestError,
+                stopwatch.ElapsedMilliseconds);
         }
     }
 
