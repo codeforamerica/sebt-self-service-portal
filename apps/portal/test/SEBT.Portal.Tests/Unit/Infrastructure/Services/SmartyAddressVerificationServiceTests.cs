@@ -483,11 +483,20 @@ public class SmartyAddressVerificationServiceTests
         CapturingLogger<SmartyAddressVerificationService> logger,
         LogLevel expectedLevel,
         string expectedOutcome,
+        Type? swallowedExceptionType,
         params string[] expectedPropertyNames)
     {
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(expectedLevel, entry.Level);
-        Assert.Null(entry.Exception);
+        if (swallowedExceptionType is null)
+        {
+            Assert.Null(entry.Exception);
+        }
+        else
+        {
+            Assert.IsType(swallowedExceptionType, entry.Exception);
+            AssertNoSentinelInMessages(entry.Exception);
+        }
 
         Assert.True(entry.Properties.TryGetValue("Outcome", out var outcomeValue), "Outcome property missing");
         var outcome = Assert.IsType<string>(outcomeValue);
@@ -511,6 +520,10 @@ public class SmartyAddressVerificationServiceTests
             "ExceptionType",
             "JsonException", "TaskCanceledException", "HttpRequestException", "InvalidOperationException");
         AssertVocabulary(populated, "HttpRequestError", Enum.GetNames<HttpRequestError>());
+        if (populated.TryGetValue("JsonPath", out var jsonPath))
+        {
+            Assert.StartsWith("$", Assert.IsType<string>(jsonPath));
+        }
 
         foreach (var value in populated.Values.OfType<string>())
         {
@@ -534,6 +547,20 @@ public class SmartyAddressVerificationServiceTests
         }
     }
 
+    private static readonly string[] ExceptionSentinels =
+        new[] { "Main St", "Washington", "20001", "General Delivery", "test-auth-id", "test-token" };
+
+    private static void AssertNoSentinelInMessages(Exception? exception)
+    {
+        for (var current = exception; current is not null; current = current.InnerException)
+        {
+            foreach (var sentinel in ExceptionSentinels)
+            {
+                Assert.DoesNotContain(sentinel, current.Message, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
+
     [Fact]
     public async Task ValidateAndNormalizeAsync_LogsVerified_WhenCandidateIsDeliverable()
     {
@@ -546,6 +573,7 @@ public class SmartyAddressVerificationServiceTests
             logger,
             LogLevel.Information,
             "Verified",
+            null,
             "Outcome", "StatusCode", "CandidateCount", "DpvMatchCode", "RecordType",
             "WasCorrected", "IsGeneralDelivery", "DurationMs");
         Assert.Equal(200, Assert.IsType<int>(entry.Properties["StatusCode"]));
@@ -569,6 +597,7 @@ public class SmartyAddressVerificationServiceTests
             logger,
             LogLevel.Information,
             "GeneralDeliveryAccepted",
+            null,
             "Outcome", "StatusCode", "CandidateCount", "DpvMatchCode", "RecordType",
             "WasCorrected", "IsGeneralDelivery", "DurationMs");
         Assert.Equal("G", Assert.IsType<string>(entry.Properties["RecordType"]));
@@ -588,6 +617,7 @@ public class SmartyAddressVerificationServiceTests
             logger,
             LogLevel.Information,
             "NoCandidates",
+            null,
             "Outcome", "StatusCode", "CandidateCount", "DurationMs");
         Assert.Equal(0, Assert.IsType<int>(entry.Properties["CandidateCount"]));
     }
@@ -604,6 +634,7 @@ public class SmartyAddressVerificationServiceTests
             logger,
             LogLevel.Information,
             "NotDeliverable",
+            null,
             "Outcome", "StatusCode", "CandidateCount", "DpvMatchCode", "RecordType",
             "IsGeneralDelivery", "DurationMs");
         Assert.Equal("N", Assert.IsType<string>(entry.Properties["DpvMatchCode"]));
@@ -623,6 +654,7 @@ public class SmartyAddressVerificationServiceTests
             logger,
             LogLevel.Information,
             "GeneralDeliveryRejected",
+            null,
             "Outcome", "StatusCode", "CandidateCount", "DpvMatchCode", "RecordType",
             "IsGeneralDelivery", "DurationMs");
         Assert.True(Assert.IsType<bool>(entry.Properties["IsGeneralDelivery"]));
@@ -637,7 +669,7 @@ public class SmartyAddressVerificationServiceTests
         await service.ValidateAndNormalizeAsync(BaseRequest());
 
         var entry = AssertSingleLookupEvent(
-            logger, LogLevel.Error, "HttpError", "Outcome", "StatusCode", "DurationMs");
+            logger, LogLevel.Error, "HttpError", null, "Outcome", "StatusCode", "DurationMs");
         Assert.Equal(500, Assert.IsType<int>(entry.Properties["StatusCode"]));
     }
 
@@ -650,7 +682,7 @@ public class SmartyAddressVerificationServiceTests
         await service.ValidateAndNormalizeAsync(BaseRequest());
 
         var entry = AssertSingleLookupEvent(
-            logger, LogLevel.Error, "EmptyBody", "Outcome", "StatusCode", "DurationMs");
+            logger, LogLevel.Error, "EmptyBody", null, "Outcome", "StatusCode", "DurationMs");
         Assert.Equal(200, Assert.IsType<int>(entry.Properties["StatusCode"]));
     }
 
@@ -663,8 +695,25 @@ public class SmartyAddressVerificationServiceTests
         await service.ValidateAndNormalizeAsync(BaseRequest());
 
         var entry = AssertSingleLookupEvent(
-            logger, LogLevel.Error, "ParseError", "Outcome", "StatusCode", "ExceptionType", "DurationMs");
+            logger, LogLevel.Error, "ParseError", null,
+            "Outcome", "StatusCode", "ExceptionType", "JsonPath", "DurationMs");
         Assert.Equal("JsonException", Assert.IsType<string>(entry.Properties["ExceptionType"]));
+        Assert.Equal("$", Assert.IsType<string>(entry.Properties["JsonPath"]));
+    }
+
+    [Fact]
+    public async Task ValidateAndNormalizeAsync_LogsParseErrorWithoutBodyText_WhenInvalidLiteralEchoesTheBody()
+    {
+        var logger = NewLogger();
+        var service = CreateService(
+            new MockHttpHandler(HttpStatusCode.OK, "not json 123 Main St Washington DC 20001"), logger: logger);
+
+        await service.ValidateAndNormalizeAsync(BaseRequest());
+
+        var entry = AssertSingleLookupEvent(
+            logger, LogLevel.Error, "ParseError", null,
+            "Outcome", "StatusCode", "ExceptionType", "JsonPath", "DurationMs");
+        Assert.Equal("$", Assert.IsType<string>(entry.Properties["JsonPath"]));
     }
 
     [Fact]
@@ -676,7 +725,7 @@ public class SmartyAddressVerificationServiceTests
         await service.ValidateAndNormalizeAsync(BaseRequest());
 
         var entry = AssertSingleLookupEvent(
-            logger, LogLevel.Error, "Timeout", "Outcome", "ExceptionType", "DurationMs");
+            logger, LogLevel.Error, "Timeout", typeof(TaskCanceledException), "Outcome", "ExceptionType", "DurationMs");
         Assert.Equal("TaskCanceledException", Assert.IsType<string>(entry.Properties["ExceptionType"]));
     }
 
@@ -690,7 +739,9 @@ public class SmartyAddressVerificationServiceTests
         await service.ValidateAndNormalizeAsync(BaseRequest());
 
         var entry = AssertSingleLookupEvent(
-            logger, LogLevel.Error, "TransportFailure", "Outcome", "ExceptionType", "HttpRequestError", "DurationMs");
+            logger, LogLevel.Error, "TransportFailure", typeof(HttpRequestException),
+            "Outcome", "ExceptionType", "HttpRequestError", "DurationMs");
+        Assert.Same(transportFailure, entry.Exception);
         Assert.Equal("HttpRequestException", Assert.IsType<string>(entry.Properties["ExceptionType"]));
         Assert.Equal("ConnectionError", Assert.IsType<string>(entry.Properties["HttpRequestError"]));
     }
@@ -705,7 +756,7 @@ public class SmartyAddressVerificationServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => service.ValidateAndNormalizeAsync(BaseRequest(), cancellation.Token));
 
-        AssertSingleLookupEvent(logger, LogLevel.Information, "Cancelled", "Outcome", "DurationMs");
+        AssertSingleLookupEvent(logger, LogLevel.Information, "Cancelled", null, "Outcome", "DurationMs");
     }
 
     [Fact]
@@ -719,7 +770,7 @@ public class SmartyAddressVerificationServiceTests
             () => service.ValidateAndNormalizeAsync(BaseRequest()));
 
         var entry = AssertSingleLookupEvent(
-            logger, LogLevel.Error, "Faulted", "Outcome", "ExceptionType", "DurationMs");
+            logger, LogLevel.Error, "Faulted", null, "Outcome", "ExceptionType", "DurationMs");
         Assert.Equal("InvalidOperationException", Assert.IsType<string>(entry.Properties["ExceptionType"]));
     }
 

@@ -32,7 +32,7 @@ public sealed class SmartyAddressVerificationService(
         "Smarty US Street lookup {Outcome} "
         + "(status {StatusCode}, candidates {CandidateCount}, DPV {DpvMatchCode}, record type {RecordType}, "
         + "corrected {WasCorrected}, general delivery {IsGeneralDelivery}, "
-        + "exception {ExceptionType}, HTTP error {HttpRequestError}) in {DurationMs} ms";
+        + "exception {ExceptionType}, JSON path {JsonPath}, HTTP error {HttpRequestError}) in {DurationMs} ms";
 
     private enum SmartyLookupOutcome
     {
@@ -108,7 +108,9 @@ public sealed class SmartyAddressVerificationService(
         bool? wasCorrected = null;
         bool? isGeneralDelivery = null;
         string? exceptionType = null;
+        string? jsonPath = null;
         string? httpRequestError = null;
+        Exception? swallowed = null;
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -142,6 +144,7 @@ public sealed class SmartyAddressVerificationService(
             {
                 outcome = SmartyLookupOutcome.ParseError;
                 exceptionType = ex.GetType().Name;
+                jsonPath = ex.Path;
                 return Result<AddressUpdateSuccess>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Address verification returned an unexpected response.");
@@ -201,6 +204,7 @@ public sealed class SmartyAddressVerificationService(
         {
             outcome = SmartyLookupOutcome.Timeout;
             exceptionType = ex.GetType().Name;
+            swallowed = ex;
             return Result<AddressUpdateSuccess>.DependencyFailed(
                 DependencyFailedReason.Timeout,
                 "Address verification timed out. Please try again.");
@@ -215,6 +219,7 @@ public sealed class SmartyAddressVerificationService(
             outcome = SmartyLookupOutcome.TransportFailure;
             exceptionType = ex.GetType().Name;
             httpRequestError = ex.HttpRequestError.ToString();
+            swallowed = ex;
             return Result<AddressUpdateSuccess>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Address verification is temporarily unavailable. Please try again later.");
@@ -235,9 +240,11 @@ public sealed class SmartyAddressVerificationService(
                 ? LogLevel.Error
                 : LogLevel.Information;
 
-            // Scalars only: an exception object or DTO can carry address text into the log.
+            // Exception attached only for swallowed timeout and transport failures (framework text).
+            // Parse errors log JsonPath instead: an invalid-literal message echoes the raw body.
             logger.Log(
                 level,
+                swallowed,
                 LookupEventTemplate,
                 outcome.ToString(),
                 statusCode,
@@ -247,6 +254,7 @@ public sealed class SmartyAddressVerificationService(
                 wasCorrected,
                 isGeneralDelivery,
                 exceptionType,
+                jsonPath,
                 httpRequestError,
                 stopwatch.ElapsedMilliseconds);
         }
