@@ -1,4 +1,4 @@
-import type { LoginMode, StateCode } from '@sebt/design-system'
+import type { StateCode } from '@sebt/design-system'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -68,15 +68,15 @@ vi.mock('@/features/feature-flags', () => ({
   }
 }))
 
-// The dashboard chooses its loading UI by login mode; the state code is irrelevant.
-let mockLoginMode: LoginMode = 'otp'
+// The dashboard chooses its loading UI by the interstitial setting; the state code is irrelevant.
+let mockShowLoadingInterstitial = false
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getStateConfig: (state: StateCode) => ({
       ...actual.getStateConfig(state),
-      loginMode: mockLoginMode
+      showLoadingInterstitial: mockShowLoadingInterstitial
     })
   }
 })
@@ -103,10 +103,10 @@ describe('DashboardContent', () => {
     mockSetUserData.mockClear()
     mockTrackEvent.mockClear()
     mockAuthSession.isCoLoaded = false
-    mockLoginMode = 'otp'
+    mockShowLoadingInterstitial = false
   })
 
-  it('shows the loading skeleton initially when the login mode is OTP', () => {
+  it('shows the loading skeleton initially when the state keeps the skeleton', () => {
     renderWithProviders(<DashboardContent />)
 
     const loadingStatus = screen.getByRole('status')
@@ -114,8 +114,8 @@ describe('DashboardContent', () => {
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
   })
 
-  it('shows the OIDC loading interstitial initially when the login mode is OIDC', () => {
-    mockLoginMode = 'oidc'
+  it('shows the loading interstitial initially when the state enables it', () => {
+    mockShowLoadingInterstitial = true
     renderWithProviders(<DashboardContent />)
 
     const status = screen.getByRole('status')

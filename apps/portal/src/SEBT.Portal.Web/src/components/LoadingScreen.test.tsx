@@ -14,16 +14,16 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   }
 })
 
-import { OidcLoadingScreen } from './OidcLoadingScreen'
+import { LoadingScreen } from './LoadingScreen'
 
-describe('OidcLoadingScreen', () => {
+describe('LoadingScreen', () => {
   beforeEach(() => {
     mockShowLoadingInterstitial = true
   })
 
   it('renders the loading interstitial when the state enables it', () => {
     render(
-      <OidcLoadingScreen
+      <LoadingScreen
         title="Please wait..."
         message="Do not exit the page."
       />
@@ -36,7 +36,7 @@ describe('OidcLoadingScreen', () => {
   it('renders nothing when the state keeps the blank loading screen', () => {
     mockShowLoadingInterstitial = false
     const { container } = render(
-      <OidcLoadingScreen
+      <LoadingScreen
         title="Please wait..."
         message="Do not exit the page."
       />

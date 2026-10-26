@@ -101,6 +101,12 @@ $font-trebuchet: 'Trebuchet MS', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   mask-repeat: no-repeat;
   mask-position: center;
   mask-size: contain;
+
+  // Forced colors would repaint the masked background as the page background and hide the mark.
+  @media (forced-colors: active) {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
 }
 
 // myColorado brand for Colorado's provider buttons. Outside the USWDS palette, so a scoped

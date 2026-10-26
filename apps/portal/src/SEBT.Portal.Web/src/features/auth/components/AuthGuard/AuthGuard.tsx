@@ -1,6 +1,6 @@
 'use client'
 
-import { OidcLoadingScreen } from '@/components/OidcLoadingScreen'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import { useAuth } from '@/features/auth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -34,11 +34,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [isHydrated, isAuthenticated, isLoading, router])
 
-  // While the auth-status fetch is in flight, OIDC login mode shows an interstitial so the user
-  // knows the dashboard is still loading; other modes keep the blank screen.
+  // While the auth-status fetch is in flight, states that enable the interstitial show it so the
+  // user knows the dashboard is still loading; other states keep the blank screen.
   if (!isHydrated || isLoading) {
     return (
-      <OidcLoadingScreen
+      <LoadingScreen
         title={t('title')}
         message={t('body')}
       />

@@ -1,3 +1,4 @@
+import type { StateCode } from '@sebt/design-system'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -23,19 +24,22 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key })
 }))
 
-let mockState = 'dc'
+let mockShowLoadingInterstitial = false
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      showLoadingInterstitial: mockShowLoadingInterstitial
+    })
   }
 })
 
 describe('AuthGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockState = 'dc'
+    mockShowLoadingInterstitial = false
   })
 
   it('renders children when authenticated', () => {
@@ -70,7 +74,7 @@ describe('AuthGuard', () => {
     expect(mockReplace).toHaveBeenCalledWith('/login')
   })
 
-  it('renders nothing while loading when the login mode is OTP', () => {
+  it('renders nothing while loading when the state keeps the blank loading screen', () => {
     mockUseAuth.mockReturnValue({
       isAuthenticated: false,
       isLoading: true
@@ -86,8 +90,8 @@ describe('AuthGuard', () => {
     expect(mockReplace).not.toHaveBeenCalled()
   })
 
-  it('renders the loading interstitial while loading when the login mode is OIDC', () => {
-    mockState = 'co'
+  it('renders the loading interstitial while loading when the state enables it', () => {
+    mockShowLoadingInterstitial = true
     mockUseAuth.mockReturnValue({
       isAuthenticated: false,
       isLoading: true

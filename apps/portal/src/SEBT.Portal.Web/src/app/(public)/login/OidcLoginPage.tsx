@@ -28,9 +28,9 @@ export function OidcLoginPage({ state }: { state: StateCode }) {
   const aboutParagraphs = splitParagraphs(t('cardBody1'))
   const aboutListItems = splitListItems(t('cardBody2'))
 
-  // The `logIn` translation key resolves to the current UI language's label, and
-  // `logInEsp` resolves to the *other* language's label. Pair each button's link
-  // target with its label so the user lands in the language they chose.
+  // `logIn` labels the current UI language and `logInEsp` the other one; each button's link
+  // target matches its label so the user lands in the language they chose. This assumes exactly
+  // two supported languages; a third needs a label key per language.
   const currentLang = i18n.language.startsWith('es') ? 'es' : 'en'
   const otherLang = currentLang === 'es' ? 'en' : 'es'
 
