@@ -34,7 +34,9 @@ internal static class DatabaseStartup
             var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
             if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)
             {
-                var useMockHouseholdData = app.Configuration.GetValue<bool>("UseMockHouseholdData", false);
+                var useMockHouseholdData = app.Configuration.GetValue(
+                    $"FeatureManagement:{FeatureFlags.UseMockHouseholdData}",
+                    false);
                 var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
 
                 // In Development, clear stale seed data before re-seeding so that scenario

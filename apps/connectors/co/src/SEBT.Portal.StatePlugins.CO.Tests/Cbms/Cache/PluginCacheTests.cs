@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NSubstitute;
+using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.Cbms.Cache;
 using SEBT.Portal.StatesPlugins.Interfaces.Services;
 
@@ -30,7 +31,7 @@ public class PluginCacheTests : IDisposable
     private static IConfiguration BuildConfig() => new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string?>
         {
-            ["Cbms:UseMockResponses"] = "true",
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
             ["Cbms:Cache:SoftExpirationMinutes"] = "5",
             ["Cbms:Cache:HardExpirationMinutes"] = "60",
         })

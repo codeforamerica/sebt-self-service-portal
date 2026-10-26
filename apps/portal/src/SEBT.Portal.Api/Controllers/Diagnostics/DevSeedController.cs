@@ -36,7 +36,9 @@ public class DevSeedController(
             return NotFound();
         }
 
-        var useMockHouseholdData = configuration.GetValue("UseMockHouseholdData", false);
+        var useMockHouseholdData = configuration.GetValue(
+            $"FeatureManagement:{FeatureFlags.UseMockHouseholdData}",
+            false);
 
         try
         {

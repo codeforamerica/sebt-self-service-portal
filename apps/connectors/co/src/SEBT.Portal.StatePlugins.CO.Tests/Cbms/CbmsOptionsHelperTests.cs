@@ -13,7 +13,7 @@ public class CbmsOptionsHelperTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Cbms:UseMockResponses"] = "false",
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false",
                 ["Cbms:ClientId"] = "",
                 ["Cbms:ClientSecret"] = ""
             })
@@ -64,7 +64,7 @@ public class CbmsOptionsHelperTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Cbms:UseMockResponses"] = "true"
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true"
             })
             .Build();
         var options = CbmsOptionsHelper.GetCbmsOptions(config);

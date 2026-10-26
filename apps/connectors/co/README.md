@@ -35,17 +35,17 @@ responses:
 
 ```bash
 cd src/SEBT.Portal.StatePlugins.CO.Tests
-dotnet user-secrets set "Cbms:UseMockResponses" "true"
+dotnet user-secrets set "FeatureManagement:use_mock_cbms_responses" "true"
 ```
 
-Or use an environment variable: `Cbms__UseMockResponses=true`
+Or use an environment variable: `FeatureManagement__use_mock_cbms_responses=true`
 
 ### Local development with mock responses
 
-The same mock responses used in integration tests are available when running the portal. Set
-`Cbms:UseMockResponses=true` in the host configuration or `Cbms__UseMockResponses=true` as an
-environment variable. The Colorado plugin will use mock CBMS API responses (you don't need
-the client_id/secrets for this to work).
+The same mock responses used in integration tests are available when running the portal. Enable
+the `use_mock_cbms_responses` feature flag (`FeatureManagement` in host configuration, or
+`FeatureManagement__use_mock_cbms_responses=true`). The Colorado plugin will use mock CBMS API
+responses (you don't need the client_id/secrets for this to work).
 
 Mock response data lives in `src/SEBT.Portal.StatePlugins.CO.CbmsApi/TestData/CbmsMocks/` as
 JSON files. Edit those files to change mock scenarios without recompiling.

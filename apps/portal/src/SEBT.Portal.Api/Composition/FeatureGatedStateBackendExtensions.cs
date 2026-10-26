@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.FeatureManagement;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
@@ -38,7 +39,9 @@ internal static class FeatureGatedStateBackendExtensions
                 sp.GetRequiredKeyedService<IEnrollmentCheckService>(StatePluginKeys.Connector),
                 sp.GetService<IEnrollmentCheckBackend>()));
 
-        bool useMockHouseholdData = configuration.GetValue("UseMockHouseholdData", false);
+        bool useMockHouseholdData = configuration.GetValue(
+            $"FeatureManagement:{FeatureFlags.UseMockHouseholdData}",
+            false);
         if (!useMockHouseholdData)
         {
             services.AddSingleton<IAddressUpdateService>(sp =>

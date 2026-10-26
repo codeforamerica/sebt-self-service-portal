@@ -6,10 +6,17 @@ namespace SEBT.Portal.StatePlugins.CO.Cbms;
 /// <summary>
 /// Reads CBMS configuration. Uses Cbms:ClientId, Cbms:ClientSecret, Cbms:ApiBaseUrl,
 /// Cbms:TokenEndpointUrl (and Cbms__* env vars when configuration is null or keys are absent).
+/// Mock responses come from the <c>use_mock_cbms_responses</c> feature flag.
 /// Precedence: configuration source first, then environment variables. Uses <see cref="CbmsDefaults"/> when URLs are not set.
 /// </summary>
 internal static class CbmsOptionsHelper
 {
+    /// <summary>
+    /// Configuration key for <see cref="CbmsConnectionOptions.UseMockResponses"/>.
+    /// Matches <c>FeatureFlags.UseMockCbmsResponses</c> in the portal.
+    /// </summary>
+    internal const string UseMockResponsesConfigurationKey = "FeatureManagement:use_mock_cbms_responses";
+
     public static CbmsConnectionOptions GetCbmsOptions(IConfiguration? configuration)
     {
         var clientId = configuration?["Cbms:ClientId"]
@@ -25,8 +32,8 @@ internal static class CbmsOptionsHelper
             ?? Environment.GetEnvironmentVariable("Cbms__TokenEndpointUrl")
             ?? CbmsDefaults.SandboxTokenEndpointUrl;
 
-        var useMockResponsesRaw = configuration?["Cbms:UseMockResponses"]
-            ?? Environment.GetEnvironmentVariable("Cbms__UseMockResponses");
+        var useMockResponsesRaw = configuration?[UseMockResponsesConfigurationKey]
+            ?? Environment.GetEnvironmentVariable("FeatureManagement__use_mock_cbms_responses");
         var useMockResponses = useMockResponsesRaw?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
 
         return new CbmsConnectionOptions(clientId, clientSecret, apiBaseUrl, tokenEndpointUrl, useMockResponses);

@@ -159,8 +159,8 @@ API_ENV_OVERRIDES="$(jq -n \
   '{
     "ASPNETCORE_ENVIRONMENT": "Staging",
     "STATE": "co",
-    "UseMockHouseholdData": "true",
-    "Cbms__UseMockResponses": "true",
+    "FeatureManagement__use_mock_household_data": "true",
+    "FeatureManagement__use_mock_cbms_responses": "true",
     "Seeding__Enabled": "true",
     "Seeding__EmailPattern": "sebt.co+{0}@codeforamerica.org",
     "Seeding__State": "co",

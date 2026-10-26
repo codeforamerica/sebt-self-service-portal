@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SEBT.Portal.StatePlugins.CO;
+using SEBT.Portal.StatePlugins.CO.Cbms;
 
 namespace SEBT.Portal.StatePlugins.CO.Tests;
 
@@ -37,7 +38,7 @@ public class ColoradoHealthCheckServiceTests
             {
                 ["Cbms:ClientId"] = "",
                 ["Cbms:ClientSecret"] = "",
-                ["Cbms:UseMockResponses"] = "false"
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false"
             })
             .Build();
         var healthCheckService = new ColoradoHealthCheckService(config);
@@ -63,7 +64,7 @@ public class ColoradoHealthCheckServiceTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Cbms:UseMockResponses"] = "true"
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true"
             })
             .Build();
         var cacheProvider = services.BuildServiceProvider();

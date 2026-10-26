@@ -35,7 +35,7 @@ public class ColoradoHealthCheckService(
                 new AlwaysDegradedHealthCheck(
                     "CBMS credentials are not configured. " +
                     "Set Cbms:ClientId and Cbms:ClientSecret in appsettings or Cbms__ClientId and Cbms__ClientSecret environment variables. " +
-                    "Or set Cbms:UseMockResponses=true for local development with mock responses."),
+                    "Or enable the use_mock_cbms_responses feature flag for local development with mock responses."),
                 HealthStatus.Degraded,
                 ["external-api", "co"]);
             return;
@@ -50,7 +50,7 @@ public class ColoradoHealthCheckService(
             if (cache == null)
             {
                 throw new InvalidOperationException(
-                    "HybridCache must be registered in DI when Cbms:UseMockResponses is enabled. " +
+                    "HybridCache must be registered in DI when the use_mock_cbms_responses feature flag is enabled. " +
                     "Ensure services.AddHybridCache() is called during service registration.");
             }
 

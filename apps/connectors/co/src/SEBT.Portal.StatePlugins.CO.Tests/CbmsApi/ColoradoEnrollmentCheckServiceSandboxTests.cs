@@ -20,7 +20,7 @@ namespace SEBT.Portal.StatePlugins.CO.Tests.CbmsApi;
 /// Skips when no UAT credentials are configured (same as <see cref="CbmsSandboxFixture"/>) and
 /// when mock responses are enabled (the mock store returns static data, not real CBMS match logic).
 /// Run: <c>dotnet test --filter "FullyQualifiedName~ColoradoEnrollmentCheckServiceSandboxTests"</c>
-/// with real <c>Cbms:ClientId</c> / <c>Cbms:ClientSecret</c> and without <c>Cbms:UseMockResponses</c>.
+/// with real <c>Cbms:ClientId</c> / <c>Cbms:ClientSecret</c> and with <c>use_mock_cbms_responses</c> off.
 /// </summary>
 [Collection("CbmsSandbox")]
 public class ColoradoEnrollmentCheckServiceSandboxTests(CbmsSandboxFixture fixture)

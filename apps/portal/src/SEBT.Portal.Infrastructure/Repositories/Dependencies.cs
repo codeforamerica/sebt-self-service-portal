@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
@@ -20,7 +21,9 @@ internal static class Dependencies
         services.AddTransient<IHouseholdRepository>(sp =>
         {
             var config = sp.GetRequiredService<IConfiguration>();
-            var useMockHouseholdData = config.GetValue<bool>("UseMockHouseholdData", false);
+            var useMockHouseholdData = config.GetValue(
+                $"FeatureManagement:{FeatureFlags.UseMockHouseholdData}",
+                false);
 
             if (useMockHouseholdData)
             {
@@ -34,8 +37,8 @@ internal static class Dependencies
             }
 
             throw new InvalidOperationException(
-                "UseMockHouseholdData is false but no household plugin (ISummerEbtCaseService) is loaded. " +
-                "Either set UseMockHouseholdData to true in configuration or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
+                "The use_mock_household_data feature flag is off but no household plugin (ISummerEbtCaseService) is loaded. " +
+                "Either enable use_mock_household_data or ensure a state plugin is loaded (e.g. PluginAssemblyPaths and the plugin DLL).");
         });
         services.AddSingleton<MockHouseholdRepository>();
         services.AddTransient<HouseholdRepository>();

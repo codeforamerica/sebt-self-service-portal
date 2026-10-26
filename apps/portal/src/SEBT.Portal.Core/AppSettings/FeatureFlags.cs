@@ -100,4 +100,18 @@ public static class FeatureFlags
     /// screening against stale figures.
     /// </summary>
     public const string EnableCheckerIncomeEligibility = "enable_checker_income_eligibility";
+
+    /// <summary>
+    /// When enabled, household reads and writes use <c>MockHouseholdRepository</c>
+    /// instead of the state connector. Backend-only and omitted from the public
+    /// feature-flag map; address-update registration and startup seeding read it once.
+    /// </summary>
+    public const string UseMockHouseholdData = "use_mock_household_data";
+
+    /// <summary>
+    /// When enabled, the Colorado connector returns mock CBMS responses and does not
+    /// require CBMS credentials. The connector reads <c>FeatureManagement:use_mock_cbms_responses</c>,
+    /// and the flag is omitted from the public feature-flag map.
+    /// </summary>
+    public const string UseMockCbmsResponses = "use_mock_cbms_responses";
 }

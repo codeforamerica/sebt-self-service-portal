@@ -2,6 +2,7 @@
 // and because [Export]/[ExportMetadata] attributes remain on plugin classes (inert).
 using Serilog;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
@@ -147,7 +148,9 @@ internal static class ServiceCollectionPluginExtensions
         // be mocked — the real state backend is unavailable. Override any plugin-provided
         // IAddressUpdateService with an in-memory mock that updates the MockHouseholdRepository
         // so subsequent reads reflect the change.
-        var useMockHouseholdData = configuration.GetValue<bool>("UseMockHouseholdData", false);
+        var useMockHouseholdData = configuration.GetValue(
+            $"FeatureManagement:{FeatureFlags.UseMockHouseholdData}",
+            false);
         if (useMockHouseholdData)
         {
             services.AddSingleton<IAddressUpdateService>(sp =>

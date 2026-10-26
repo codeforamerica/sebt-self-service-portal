@@ -112,7 +112,7 @@ public abstract class ColoradoCbmsServiceBase
                 if (_cache == null)
                 {
                     throw new InvalidOperationException(
-                        "HybridCache must be registered in DI when Cbms:UseMockResponses is enabled. " +
+                        "HybridCache must be registered in DI when the use_mock_cbms_responses feature flag is enabled. " +
                         "Ensure services.AddHybridCache() is called during service registration.");
                 }
 

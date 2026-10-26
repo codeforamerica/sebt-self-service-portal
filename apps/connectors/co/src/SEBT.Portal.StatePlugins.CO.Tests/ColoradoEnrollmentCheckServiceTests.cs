@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.CbmsApi.Models;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
 
@@ -24,14 +25,14 @@ public class ColoradoEnrollmentCheckServiceTests
     [Fact]
     public async Task CheckEnrollmentAsync_WhenNoApiConfiguration_ThrowsInvalidOperationException()
     {
-        // Explicitly blank out all three CBMS keys so the helper does not fall through to
-        // CI env vars (Cbms__ClientId, Cbms__ClientSecret, Cbms__UseMockResponses) that
-        // would either supply real credentials or enable mock mode — both suppress the
-        // missing-credentials guard we're testing here.
+        // Explicitly blank out credentials and the mock flag so the helper does not fall
+        // through to CI env vars (Cbms__ClientId, Cbms__ClientSecret,
+        // FeatureManagement__use_mock_cbms_responses) that would either supply real
+        // credentials or enable mock mode — both suppress the missing-credentials guard.
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Cbms:UseMockResponses"] = "false",
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false",
                 ["Cbms:ClientId"] = "",
                 ["Cbms:ClientSecret"] = ""
             })

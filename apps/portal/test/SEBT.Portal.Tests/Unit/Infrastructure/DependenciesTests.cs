@@ -190,7 +190,7 @@ public class DependenciesTests
         var services = new ServiceCollection();
         var configData = new Dictionary<string, string?>
         {
-            ["UseMockHouseholdData"] = "false"
+            [$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = "false"
         };
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(configData)
@@ -202,7 +202,7 @@ public class DependenciesTests
         // Act & Assert
         var ex = Assert.Throws<InvalidOperationException>(() =>
             provider.GetRequiredService<IHouseholdRepository>());
-        Assert.Contains("UseMockHouseholdData is false", ex.Message);
+        Assert.Contains("use_mock_household_data", ex.Message);
         Assert.Contains("no household plugin", ex.Message);
     }
 
