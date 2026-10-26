@@ -15,19 +15,23 @@ public abstract class ColoradoCbmsServiceBase
     private readonly object _clientCacheLock = new();
     private readonly HybridCache? _cache;
     private readonly ILogger _logger;
+    private readonly IServiceProvider? _hostProvider;
+    private readonly IConfiguration? _configuration;
 
     private CbmsConnectionOptions? _cachedOptions;
     private CbmsSebtApiClient? _cachedClient;
 
     /// <summary>
-    /// Plugin-wide household-cache singleton. Read paths use this; write paths
-    /// also read from it before PATCHing, and (for address updates) write through.
+    /// Plugin-wide household-cache singleton. Re-resolves on each access so a live
+    /// <c>use_mock_cbms_responses</c> flip rebuilds the cache on the next request.
     /// </summary>
-    private protected ICbmsHouseholdCache? HouseholdCache { get; }
+    private protected ICbmsHouseholdCache? HouseholdCache =>
+        _hostProvider is null || _configuration is null
+            ? null
+            : PluginCache.GetOrBuild(_hostProvider, _configuration);
 
     /// <summary>
     /// Full constructor for services that use the household cache (e.g., read paths).
-    /// Wires up <see cref="HouseholdCache"/> via <see cref="PluginCache.GetOrBuild"/>.
     /// </summary>
     protected ColoradoCbmsServiceBase(
         IServiceProvider hostProvider,
@@ -35,9 +39,10 @@ public abstract class ColoradoCbmsServiceBase
         HybridCache? cache,
         ILogger logger)
     {
+        _hostProvider = hostProvider;
+        _configuration = configuration;
         _cache = cache;
         _logger = logger;
-        HouseholdCache = PluginCache.GetOrBuild(hostProvider, configuration);
     }
 
     /// <summary>

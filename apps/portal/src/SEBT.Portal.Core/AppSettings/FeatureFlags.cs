@@ -103,15 +103,17 @@ public static class FeatureFlags
 
     /// <summary>
     /// When enabled, household reads and writes use <c>MockHouseholdRepository</c>
-    /// instead of the state connector. Backend-only and omitted from the public
-    /// feature-flag map; address-update registration and startup seeding read it once.
+    /// instead of the state connector. Takes effect on the next request. Backend-only
+    /// and omitted from the public feature-flag map. Process-start seeding still
+    /// reads the value once.
     /// </summary>
     public const string UseMockHouseholdData = "use_mock_household_data";
 
     /// <summary>
     /// When enabled, the Colorado connector returns mock CBMS responses and does not
-    /// require CBMS credentials. The connector reads <c>FeatureManagement:use_mock_cbms_responses</c>,
-    /// and the flag is omitted from the public feature-flag map.
+    /// require CBMS credentials. Takes effect on the next request. The connector reads
+    /// <c>FeatureManagement:use_mock_cbms_responses</c>. Omitted from the public
+    /// feature-flag map.
     /// </summary>
     public const string UseMockCbmsResponses = "use_mock_cbms_responses";
 }

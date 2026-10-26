@@ -73,4 +73,45 @@ public class PluginCacheTests : IDisposable
 
         Assert.NotSame(a, b);
     }
+
+    [Fact]
+    public void GetOrBuild_rebuilds_when_UseMockResponses_changes()
+    {
+        var host = BuildHostProvider();
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
+            ["Cbms:Cache:SoftExpirationMinutes"] = "5",
+            ["Cbms:Cache:HardExpirationMinutes"] = "60",
+        });
+
+        var mock = PluginCache.GetOrBuild(host, config);
+        config[CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false";
+        config["Cbms:ClientId"] = "id";
+        config["Cbms:ClientSecret"] = "secret";
+        var live = PluginCache.GetOrBuild(host, config);
+
+        Assert.NotSame(mock, live);
+    }
+
+    [Fact]
+    public void OverrideForTesting_does_not_rebuild_when_UseMockResponses_changes()
+    {
+        var fake = Substitute.For<ICbmsHouseholdCache>();
+        PluginCache.OverrideForTesting(fake);
+
+        var host = BuildHostProvider();
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
+            ["Cbms:Cache:SoftExpirationMinutes"] = "5",
+            ["Cbms:Cache:HardExpirationMinutes"] = "60",
+        });
+
+        Assert.Same(fake, PluginCache.GetOrBuild(host, config));
+        config[CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false";
+        Assert.Same(fake, PluginCache.GetOrBuild(host, config));
+    }
 }

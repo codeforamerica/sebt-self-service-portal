@@ -3,9 +3,6 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using SEBT.Portal.StatePlugins.CO.Cbms;
-using SEBT.Portal.StatePlugins.CO.CbmsApi;
-using SEBT.Portal.StatePlugins.CO.CbmsApi.Mocks;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.StatePlugins.CO;
@@ -26,41 +23,9 @@ public class ColoradoHealthCheckService(
 
     public void ConfigureHealthChecks(IHealthChecksBuilder builder)
     {
-        var options = CbmsOptionsHelper.GetCbmsOptions(configuration);
-
-        if (!options.IsConfigured)
-        {
-            builder.AddCheck(
-                CheckName,
-                new AlwaysDegradedHealthCheck(
-                    "CBMS credentials are not configured. " +
-                    "Set Cbms:ClientId and Cbms:ClientSecret in appsettings or Cbms__ClientId and Cbms__ClientSecret environment variables. " +
-                    "Or enable the use_mock_cbms_responses feature flag for local development with mock responses."),
-                HealthStatus.Degraded,
-                ["external-api", "co"]);
-            return;
-        }
-
-        HttpMessageHandler? handler = null;
-        var effectiveClientId = options.UseMockResponses ? "mock-client-id" : options.ClientId;
-        var effectiveClientSecret = options.UseMockResponses ? "mock-client-secret" : options.ClientSecret;
-
-        if (options.UseMockResponses)
-        {
-            if (cache == null)
-            {
-                throw new InvalidOperationException(
-                    "HybridCache must be registered in DI when the use_mock_cbms_responses feature flag is enabled. " +
-                    "Ensure services.AddHybridCache() is called during service registration.");
-            }
-
-            var dataStore = new MockCbmsDataStore(cache);
-            handler = new MockCbmsHttpHandler(dataStore);
-        }
-
         builder.AddCheck(
             CheckName,
-            new CbmsApiHealthCheck(effectiveClientId, effectiveClientSecret, options.ApiBaseUrl, options.TokenEndpointUrl, handler),
+            new ColoradoCbmsHealthCheck(configuration, cache),
             HealthStatus.Unhealthy,
             ["external-api", "co"]);
     }

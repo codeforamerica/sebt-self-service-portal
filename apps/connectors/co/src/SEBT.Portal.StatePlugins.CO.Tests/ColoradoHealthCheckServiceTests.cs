@@ -79,4 +79,35 @@ public class ColoradoHealthCheckServiceTests
 
         Assert.Equal(HealthStatus.Healthy, result.Status);
     }
+
+    [Fact]
+    public async Task ConfigureHealthChecks_follows_UseMockResponses_on_each_check()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddHybridCache();
+        var builder = services.AddHealthChecks();
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Cbms:ClientId"] = "",
+            ["Cbms:ClientSecret"] = "",
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false"
+        });
+        var cache = services.BuildServiceProvider().GetRequiredService<HybridCache>();
+        var healthCheckService = new ColoradoHealthCheckService(config, cache);
+
+        healthCheckService.ConfigureHealthChecks(builder);
+
+        var provider = services.BuildServiceProvider();
+        var healthCheck = provider.GetRequiredService<HealthCheckService>();
+
+        var degraded = await healthCheck.CheckHealthAsync();
+        Assert.Equal(HealthStatus.Degraded, degraded.Status);
+        Assert.Contains("CBMS credentials are not configured", degraded.Entries[CbmsCheckName].Description);
+
+        config[CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true";
+        var healthy = await healthCheck.CheckHealthAsync();
+        Assert.Equal(HealthStatus.Healthy, healthy.Status);
+    }
 }
