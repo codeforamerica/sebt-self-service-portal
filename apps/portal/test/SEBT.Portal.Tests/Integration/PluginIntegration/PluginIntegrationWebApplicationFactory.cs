@@ -60,20 +60,6 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", "plugins-none");
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey",
             "integration-test-key-must-be-at-least-32-bytes-long");
-        // Claim names are required once DiscoveryEndpoint is set. Pin both so local
-        // user secrets cannot enable OIDC without the names.
-        Environment.SetEnvironmentVariable("Oidc__DiscoveryEndpoint",
-            "https://auth.example.com/.well-known/openid-configuration");
-        Environment.SetEnvironmentVariable("Oidc__ClientId", "test-client");
-        Environment.SetEnvironmentVariable("Oidc__CallbackRedirectUri", "http://localhost:3000/callback");
-        Environment.SetEnvironmentVariable("Oidc__CompleteLoginSigningKey",
-            "integration-test-key-must-be-at-least-32-bytes-long");
-        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__LevelClaimName", "socureIdVerificationLevel");
-        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__DateClaimName", "socureIdVerificationDate");
-        Environment.SetEnvironmentVariable("Oidc__StepUp__DiscoveryEndpoint", "");
-        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientId", "");
-        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientSecret", "");
-        Environment.SetEnvironmentVariable("Oidc__StepUp__RedirectUri", "");
         // Disable Redis so HybridCache uses in-memory only and distributed locking falls
         // back to SQL. Matches PortalWebApplicationFactory — prevents env-var leakage from
         // a preceding factory from leaving a non-empty Redis connection string in place.
@@ -134,16 +120,6 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__0", null);
         Environment.SetEnvironmentVariable("PluginAssemblyPaths__1", null);
         Environment.SetEnvironmentVariable("JwtSettings__SecretKey", null);
-        Environment.SetEnvironmentVariable("Oidc__DiscoveryEndpoint", null);
-        Environment.SetEnvironmentVariable("Oidc__ClientId", null);
-        Environment.SetEnvironmentVariable("Oidc__CallbackRedirectUri", null);
-        Environment.SetEnvironmentVariable("Oidc__CompleteLoginSigningKey", null);
-        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__LevelClaimName", null);
-        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__DateClaimName", null);
-        Environment.SetEnvironmentVariable("Oidc__StepUp__DiscoveryEndpoint", null);
-        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientId", null);
-        Environment.SetEnvironmentVariable("Oidc__StepUp__ClientSecret", null);
-        Environment.SetEnvironmentVariable("Oidc__StepUp__RedirectUri", null);
         Environment.SetEnvironmentVariable("ConnectionStrings__Redis", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", null);
