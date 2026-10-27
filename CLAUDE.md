@@ -51,8 +51,9 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 
 ### Assumptions registry
 - Before relying on how state backends, connectors, config, or deployment behave, consult [docs/assumptions.md](./docs/assumptions.md). Treat `confirmed` entries as facts; treat `proposed` and `disputed` ones as open questions.
-- **Exception to the prose rule:** the registry is structured records, not prose. Claude may add entries, always with status `proposed`, following the `capture-assumption` skill. Only a human may set `confirmed`, `disputed`, or `rejected`.
+- **Exception to the prose rule:** the registry is structured records, not prose. Claude may add entries, always with status `proposed`, following the `capture-assumption` skill. Only a human may decide `confirmed`, `disputed`, or `rejected`; Claude may record a decision a human states explicitly in the session.
 - When a broad assumption is stated, questioned, or contradicted (in a session or PR discussion), flag it and use the `capture-assumption` skill to propose an entry.
+- Before making a change that depends on a `proposed` or `disputed` entry, or a `confirmed` one past its **Revisit by** date, stop and ask the human to verify it. Record their answer in the entry.
 - If code under review contradicts a `confirmed` entry, call it out: either the code or the registry is wrong.
 
 ## Getting help

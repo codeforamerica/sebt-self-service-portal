@@ -2,6 +2,8 @@
 
 Facts about the world this code relies on that the code itself can't prove. Claude adds entries as `proposed`; a human sets `confirmed`, `disputed`, or `rejected`, or corrects the text. See `.claude/skills/capture-assumption/SKILL.md` for the format.
 
+A monthly workflow (`.github/workflows/assumptions-review.yaml`) opens an issue listing entries that are proposed, disputed, past their **Revisit by** date, or confirmed but not verified in 180 days.
+
 ## State backends and connectors
 
 - **Assumption:** State connectors are read-only except for mailing address updates, card replacement requests, and contact/communications preferences.
@@ -53,6 +55,7 @@ Facts about the world this code relies on that the code itself can't prove. Clau
   - **Source:** docs/tdd/minimum-ial-determination.md:31, 47 (TDD superseded, but its facts section is declared still valid); docs/tdd/self-service-rules.md:133
   - **Status:** proposed
   - **Last verified:** never
+  - **Revisit by:** 2027-01-01
 
 - **Assumption:** A successful CBMS update returns `respCd` `00`, not the `200` shown in the OpenAPI spec.
   - **Scope:** CO address update and card replacement

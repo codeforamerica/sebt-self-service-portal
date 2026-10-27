@@ -12,7 +12,8 @@ during coding sessions and reviews.
 
 **Claude proposes; humans decide.** Claude adds entries with status `proposed` only. A human
 reviews each one and sets `confirmed`, `disputed`, or `rejected`, or corrects the text.
-Never set or change those statuses yourself, and never edit an entry a human has reviewed.
+Never decide those statuses yourself. The only time you may change a reviewed entry is to
+record a decision a human states explicitly in the session (see step 5).
 
 ## 1. Gather candidates
 
@@ -65,12 +66,25 @@ Add each entry under the best-fitting `##` area heading (create one if none fits
   - **Source:** <file:line, PR #, or Jira ticket; people by role, never by name>
   - **Status:** proposed
   - **Last verified:** never
+  - **Revisit by:** <YYYY-MM-DD>   (optional)
 ```
 
 Rules:
 
 - **Source** must be traceable to something a reviewer can open. Never add an entry without one.
 - If the source itself hedges or calls the point an open question, say so in **Source** (e.g. "flagged as open question in …").
+- Add **Revisit by** only when the fact has a known expiry (a program year, a planned rollout, a dated commitment). Never guess a date.
+- Dates are always `YYYY-MM-DD`; `.github/workflows/scripts/assumptions-review.js` parses them.
 - No PII, secrets, or real household data in any field.
 
 End with a one-line summary in chat: N added, N duplicates skipped, N contradictions flagged, N routed elsewhere.
+
+## 5. Record a human's decision
+
+When a human explicitly confirms, disputes, rejects, or corrects an entry in the session:
+
+- Set **Status** to what they said, and **Last verified** to today.
+- Append to **Source** how it was verified, by role (e.g. "confirmed by CO product owner, 2026-10-27").
+- If they're unsure, leave the entry as-is and note who could answer.
+
+Never infer a decision from silence, approval of unrelated work, or a merged PR.
