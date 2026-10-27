@@ -1,17 +1,18 @@
 ---
 name: capture-assumption
-description: Propose entries for the project assumptions registry (docs/assumptions.md). Use when a broad assumption about state backends, connectors, config, deployment, or business rules is stated, questioned, or contradicted in a session or PR discussion — or to harvest assumptions from a PR's review threads.
-allowed-tools: Read, Grep, Bash(gh pr view:*), Bash(gh api:*), Bash(git log:*), Bash(git diff:*)
+description: Add proposed entries to the project assumptions registry (docs/assumptions.md). Use when a broad assumption about state backends, connectors, config, deployment, or business rules is stated, questioned, or contradicted in a session or PR discussion — or to harvest assumptions from a PR's review threads.
+allowed-tools: Read, Edit, Grep, Bash(gh pr view:*), Bash(gh api:*), Bash(git log:*), Bash(git diff:*)
 argument-hint: [PR number | free-text assumption] (default: current conversation)
 ---
 
 # Capture Assumption
 
-Turn tribal knowledge into entries for `docs/assumptions.md`, the registry Claude consults
+Turn tribal knowledge into entries in `docs/assumptions.md`, the registry Claude consults
 during coding sessions and reviews.
 
-**Claude proposes; a human writes.** Per CLAUDE.md's prose-documentation rule, never edit
-`docs/assumptions.md` directly. Output proposed entries in chat for a human to add.
+**Claude proposes; humans decide.** Claude adds entries with status `proposed` only. A human
+reviews each one and sets `confirmed`, `disputed`, or `rejected`, or corrects the text.
+Never set or change those statuses yourself, and never edit an entry a human has reviewed.
 
 ## 1. Gather candidates
 
@@ -32,6 +33,7 @@ Look for phrasing like "we assume", "I think DC always…", "is it safe to rely 
 
 Keep a candidate only if **all** apply:
 
+- It's a fact about the world the code relies on, not a decision (decisions go in ADRs).
 - It spans more than one file or feature.
 - It cannot be derived by reading the code.
 - A state-agency maintainer inheriting the code would be surprised or harmed by not knowing it.
@@ -46,28 +48,29 @@ Route everything else elsewhere and say so:
 
 ## 3. Check against the registry
 
-Read `docs/assumptions.md`. If it doesn't exist yet, say so and still output proposals.
+Read `docs/assumptions.md`.
 
-- **Duplicate** → don't re-propose; note the existing entry.
-- **Contradicts a confirmed entry** → flag prominently. Either the code or the registry is wrong; a human decides which.
-- **Refines an existing entry** → propose an edit to that entry rather than a new one.
+- **Duplicate** → skip it; note the existing entry.
+- **Previously `rejected`** → don't re-add. Mention it only if there's new evidence.
+- **Contradicts a `confirmed` entry** → don't edit the entry. Flag the contradiction in chat; a human decides whether the code or the registry is wrong.
+- **Refines an existing `proposed` entry** → edit that entry in place.
 
-## 4. Output proposals
+## 4. Write entries
 
-One block per assumption, using exactly these fields:
+Add each entry under the best-fitting `##` area heading (create one if none fits), using exactly:
 
 ```markdown
 - **Assumption:** <one sentence, stated as a testable fact>
   - **Scope:** <states / components affected>
-  - **Source:** <PR #, Jira ticket, or conversation; person by role, never by name>
-  - **Status:** confirmed | unverified | disputed
-  - **Last verified:** <YYYY-MM-DD, or "never">
+  - **Source:** <file:line, PR #, or Jira ticket; people by role, never by name>
+  - **Status:** proposed
+  - **Last verified:** never
 ```
 
 Rules:
 
-- Default **Status** to `unverified` unless a source with authority (state agency, connector code, ticket) confirms it.
-- **Source** must be traceable. "Everyone knows" is not a source — mark it `unverified` and say who could confirm it.
+- **Source** must be traceable to something a reviewer can open. Never add an entry without one.
+- If the source itself hedges or calls the point an open question, say so in **Source** (e.g. "flagged as open question in …").
 - No PII, secrets, or real household data in any field.
 
-End with a one-line summary: N proposed, N duplicates, N contradictions, N routed elsewhere.
+End with a one-line summary in chat: N added, N duplicates skipped, N contradictions flagged, N routed elsewhere.
