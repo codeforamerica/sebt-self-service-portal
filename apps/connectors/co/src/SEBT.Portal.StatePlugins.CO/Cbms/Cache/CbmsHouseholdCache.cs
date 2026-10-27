@@ -11,7 +11,6 @@ namespace SEBT.Portal.StatePlugins.CO.Cbms.Cache;
 
 internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
 {
-    private const string KeyPrefix = "co:cbms:";
 
     // Default System.Text.Json options. The Kiota-generated GetAccountDetailsResponse uses
     // PascalCase property names with no [JsonPropertyName] annotations, so default System.Text.Json
@@ -26,6 +25,7 @@ internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
     private readonly CbmsHouseholdCacheOptions _options;
     private readonly CbmsFetchAccountDetailsDelegate _fetchFromCbms;
     private readonly ConcurrentDictionary<string, Task> _inFlightRefreshes = new();
+    private readonly string _keyPrefix;
 
     public CbmsHouseholdCache(
         HybridCache hybridCache,
@@ -33,7 +33,8 @@ internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
         IHostApplicationLifetime lifetime,
         ILoggerFactory loggerFactory,
         IOptions<CbmsHouseholdCacheOptions> options,
-        CbmsFetchAccountDetailsDelegate fetchFromCbms)
+        CbmsFetchAccountDetailsDelegate fetchFromCbms,
+        bool useMockResponses = false)
     {
         _hybridCache = hybridCache;
         _hasher = hasher;
@@ -41,10 +42,11 @@ internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
         _logger = loggerFactory.CreateLogger<CbmsHouseholdCache>();
         _options = options.Value;
         _fetchFromCbms = fetchFromCbms;
+        _keyPrefix = "co:cbms:" + (useMockResponses ? "mock:" : "live:");
     }
 
     private string KeyFor(string normalizedPhone, bool includeCardService) =>
-        KeyPrefix + _hasher.Hash(normalizedPhone) + (includeCardService ? ":full" : ":shell");
+        _keyPrefix + _hasher.Hash(normalizedPhone) + (includeCardService ? ":full" : ":shell");
 
     public async Task<GetAccountDetailsResponse?> GetAsync(string normalizedPhone, bool includeCardService, CancellationToken cancellationToken)
     {
@@ -195,7 +197,7 @@ internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
         {
             _logger.LogError(ex,
                 "{Dependency} write-through failed for {Prefix}; invalidating to force re-fetch",
-                "HybridCache", KeyPrefix + "*");
+                "HybridCache", _keyPrefix + "*");
             try
             {
                 await InvalidateAsync(normalizedPhone, cancellationToken).ConfigureAwait(false);

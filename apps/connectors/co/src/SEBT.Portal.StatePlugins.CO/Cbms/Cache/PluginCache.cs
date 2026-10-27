@@ -69,7 +69,8 @@ internal static class PluginCache
             _instance = ActivatorUtilities.CreateInstance<CbmsHouseholdCache>(
                 hostProvider,
                 Options.Create(cacheOptions),
-                fetchFromCbms);
+                fetchFromCbms,
+                cbmsConnection.UseMockResponses);
             _builtUseMockResponses = cbmsConnection.UseMockResponses;
             _pinnedForTesting = false;
 
