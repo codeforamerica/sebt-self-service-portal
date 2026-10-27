@@ -1,9 +1,4 @@
-/**
- * MSW Server for Node.js (Testing Environment)
- *
- * Sets up the mock service worker for Node.js testing environment.
- * Used by Vitest and Playwright tests.
- */
+/** MSW server shared by the Vitest and Playwright suites. */
 import { setupServer } from 'msw/node'
 import { handlers } from './handlers'
 

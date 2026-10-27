@@ -4,5 +4,18 @@ exclude:
   # EF Core generates these; findings there aren't actionable.
   - apps/portal/src/SEBT.Portal.Infrastructure/Migrations
 
+overrides:
+  # Primary constructors take their DI dependencies as parameters.
+  - files: ["**/*CommandHandler.cs", "**/Controllers/**/*.cs"]
+    rules:
+      complexity/too-many-params: "off"
+  # The CSP must name each allowed external origin.
+  - files: ["apps/portal/src/SEBT.Portal.Web/src/proxy.ts"]
+    rules:
+      ai-slop/hardcoded-url: "off"
+
+ci:
+  baseline: .aislop/ci-baseline.json
+
 telemetry:
   enabled: false

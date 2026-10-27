@@ -21,6 +21,7 @@ export function AdentifiPixels({ pixelId }: AdentifiPixelsProps) {
   }, [pixelId])
 
   const url = encodeURIComponent(fullUrl)
+  // aislop-ignore-next-line ai-slop/hardcoded-url -- Adentifi's pixel endpoint, same in every environment
   const src = `https://px.adentifi.com/Pixels?a_id=${pixelId};p_url=${url};uq=${nonce}`
 
   // on initial load href may be blank

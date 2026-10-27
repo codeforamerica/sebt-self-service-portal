@@ -35,6 +35,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
+      # aislop checks Python with ruff; the baseline was recorded with this version.
+      - name: Install ruff
+        run: pipx install ruff==0.17.1
+
       # Scans the whole repo, not just changed files: code scanning compares a PR's
       # alerts against main's, and dismissals only stick to alerts that exist on main.
       - name: Run aislop

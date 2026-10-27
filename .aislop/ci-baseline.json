@@ -1,0 +1,3491 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "rule": "ai-slop/hidden-fallback",
+      "engine": "ai-slop",
+      "file": ".claude/hooks/check-pii.js",
+      "fingerprint": "635adb487c725ce8",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": ".claude/hooks/check-pii.js",
+      "fingerprint": "2ecce8dc589dca9e",
+      "count": 4
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": ".claude/hooks/check-pii.js",
+      "fingerprint": "7ab9eb2800700537",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": ".claude/hooks/check-pii.js",
+      "fingerprint": "9fc4626cae533814",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": ".claude/hooks/check-pii.js",
+      "fingerprint": "f2b8396326435c8d",
+      "count": 1
+    },
+    {
+      "rule": "knip/binaries",
+      "engine": "code-quality",
+      "file": ".husky/pre-commit",
+      "fingerprint": "message:339db90817d51942",
+      "count": 1
+    },
+    {
+      "rule": "knip/binaries",
+      "engine": "code-quality",
+      "file": ".husky/pre-commit",
+      "fingerprint": "message:e0bf2d70e83ca0ad",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/Mocks/MockCbmsDataStore.cs",
+      "fingerprint": "78774131cc14474d",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/Mocks/MockCbmsHttpHandler.cs",
+      "fingerprint": "313800892e514dbe",
+      "count": 2
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/Mocks/MockCbmsHttpHandler.cs",
+      "fingerprint": "5a83f2595bb88e54",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/openapi/transform_spec.py",
+      "fingerprint": "93ea2eb09a9ebd2d",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/openapi/transform_spec.py",
+      "fingerprint": "e0fa6812627eae36",
+      "count": 1
+    },
+    {
+      "rule": "python-formatting",
+      "engine": "format",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/openapi/transform_spec.py",
+      "fingerprint": "message:eb8329b770c7842a",
+      "count": 1
+    },
+    {
+      "rule": "ruff/F541",
+      "engine": "lint",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/openapi/transform_spec.py",
+      "fingerprint": "92cefeddff4f8ef3",
+      "count": 1
+    },
+    {
+      "rule": "ruff/F541",
+      "engine": "lint",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/openapi/transform_spec.py",
+      "fingerprint": "daa0b00a45807f31",
+      "count": 1
+    },
+    {
+      "rule": "ruff/I001",
+      "engine": "lint",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/openapi/transform_spec.py",
+      "fingerprint": "66ec018201fb03f1",
+      "count": 1
+    },
+    {
+      "rule": "ruff/PERF402",
+      "engine": "lint",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/openapi/transform_spec.py",
+      "fingerprint": "7d628ac5b6b2fe9c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/Cbms/CbmsResponseMapper.cs",
+      "fingerprint": "697803c922d1d9d9",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/Cbms/CbmsResponseMapper.cs",
+      "fingerprint": "e681034154d6b2be",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/Cbms/CbmsResponseMapper.cs",
+      "fingerprint": "a7619efc3bc2fe1b",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoAddressUpdateService.cs",
+      "fingerprint": "4bba2ae17372c4df",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoAddressUpdateService.cs",
+      "fingerprint": "f116cd34c1fa1f37",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoAddressUpdateService.cs",
+      "fingerprint": "d3dead2e457ee8e5",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoCardReplacementService.cs",
+      "fingerprint": "f116cd34c1fa1f37",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoCardReplacementService.cs",
+      "fingerprint": "9bea1c1271cf2ca2",
+      "count": 1
+    },
+    {
+      "rule": "security/hardcoded-secret",
+      "engine": "security",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoCbmsServiceBase.cs",
+      "fingerprint": "71b134a8746f4579",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoEnrollmentCheckService.cs",
+      "fingerprint": "49041ee071fcfe56",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoSummerEbtCaseService.cs",
+      "fingerprint": "6ff74711bd0769e6",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoSummerEbtCaseService.cs",
+      "fingerprint": "50bb8b7e380c5083",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoSummerEbtCaseService.cs",
+      "fingerprint": "695dba5dec491ff2",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/Models/Household/AddressUpdateRequest.cs",
+      "fingerprint": "4e6624e5f191d71c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/Models/Household/AddressUpdateResult.cs",
+      "fingerprint": "6bbcd0c3e846d5e5",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/Models/Household/AddressUpdateResult.cs",
+      "fingerprint": "c7b70e43da0761c4",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/Models/Household/AddressUpdateResult.cs",
+      "fingerprint": "e59e26dd2d258e01",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/Models/Household/CardReplacementResult.cs",
+      "fingerprint": "0470dde5b0d14ba5",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/Models/Household/CardReplacementResult.cs",
+      "fingerprint": "af8d04f9d036420f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/connectors/state/src/SEBT.Portal.StatesPlugins.Interfaces/Models/Household/CardReplacementResult.cs",
+      "fingerprint": "e59e26dd2d258e01",
+      "count": 1
+    },
+    {
+      "rule": "knip/dependencies",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/package.json",
+      "fingerprint": "57dd4711a633790b",
+      "count": 1
+    },
+    {
+      "rule": "knip/unresolved",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/app/layout.tsx",
+      "fingerprint": "0af6607a0c70b238",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/components/CheckAnotherChildCard.tsx",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/components/CheckAnotherChildCard.tsx",
+      "fingerprint": "0ea2102228b99aa5",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/components/ChildForm.tsx",
+      "fingerprint": "411fdb22d8d9298e",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/components/IncomeCalculator.tsx",
+      "fingerprint": "94ba3065c494b9cb",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/components/ResultsPage.tsx",
+      "fingerprint": "a85ab93ca297e18e",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/components/SubmissionGate.tsx",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/context/EnrollmentContext.tsx",
+      "fingerprint": "0ad2912ba9ca5c6e",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/hooks/useEnrollmentSubmit.ts",
+      "fingerprint": "1799847b08be7b3d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/lib/incomeThresholds.ts",
+      "fingerprint": "97ce797320a88f58",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/childSchema.ts",
+      "fingerprint": "2a7a240b1978d281",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/childSchema.ts",
+      "fingerprint": "328d81336e1debb1",
+      "count": 2
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/childSchema.ts",
+      "fingerprint": "3c58315bb8ba0d54",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/childSchema.ts",
+      "fingerprint": "bfd21e0f95ab3923",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/childSchema.ts",
+      "fingerprint": "e06b1400bb25d7e3",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/enrollmentSchema.ts",
+      "fingerprint": "631298d6e8151e9d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/enrollmentSchema.ts",
+      "fingerprint": "9024157f1c19aff3",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/enrollmentSchema.ts",
+      "fingerprint": "d00e930114da579f",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/enrollment/schemas/enrollmentSchema.ts",
+      "fingerprint": "e340adac2ff600cb",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/features/maintenance/api/fetchCheckerFeatures.ts",
+      "fingerprint": "fd46c2a12e50961d",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/lib/flowConfig.ts",
+      "fingerprint": "b0722f1196acf233",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/lib/incomeEligibility.ts",
+      "fingerprint": "4ffc3941947ea80d",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.EnrollmentChecker.Web/src/lib/useEnrollmentSeason.ts",
+      "fingerprint": "c70d9134caf4fd3d",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/Defaults/DefaultSummerEbtCaseService.cs",
+      "fingerprint": "25e49fd170db91fe",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/Defaults/DefaultSummerEbtCaseService.cs",
+      "fingerprint": "50bb8b7e380c5083",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedAddressUpdateService.cs",
+      "fingerprint": "91ffc932eaf44942",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedCardReplacementService.cs",
+      "fingerprint": "d53fedfd736c1a7a",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedEnrollmentCheckService.cs",
+      "fingerprint": "276bd313f97126ea",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedSummerEbtCaseService.cs",
+      "fingerprint": "b395580c29abb35c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedSummerEbtCaseService.cs",
+      "fingerprint": "f6e7bb6723c76c50",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedSummerEbtCaseService.cs",
+      "fingerprint": "c6260e004b7c1dcd",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedSummerEbtCaseService.cs",
+      "fingerprint": "cd6e1fa522ad672d",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/FeatureGatedSummerEbtCaseService.cs",
+      "fingerprint": "daa2c1b13ecb0565",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/PluginAssemblyLoader.cs",
+      "fingerprint": "e4a89b14205da8e7",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/ServiceCollectionPluginExtensions.cs",
+      "fingerprint": "a315b067f314f0c9",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Composition/ServiceCollectionPluginExtensions.cs",
+      "fingerprint": "1d566f45ab29f3fd",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/Auth/AuthController.cs",
+      "fingerprint": "c193de7cbc2622bc",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/Auth/OidcController.cs",
+      "fingerprint": "5170ee0f21719525",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/Auth/OidcController.cs",
+      "fingerprint": "5e7c949bd039e70f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/Auth/OtpController.cs",
+      "fingerprint": "f8347c93747c15f2",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-broad-catch",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/FeaturesController.cs",
+      "fingerprint": "9ac4bc3b4453cede",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/IdProofing/ChallengesController.cs",
+      "fingerprint": "205969dda5dc5b94",
+      "count": 2
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/IdProofing/IdProofingController.cs",
+      "fingerprint": "205969dda5dc5b94",
+      "count": 2
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Controllers/IdProofing/WebhookController.cs",
+      "fingerprint": "f52e067738fbbf55",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Filters/ResolveUserFilter.cs",
+      "fingerprint": "2064d18af0532977",
+      "count": 2
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Services/PreAuthSessionStore.cs",
+      "fingerprint": "d37547835f792891",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Startup/Setup/OidcSetup.cs",
+      "fingerprint": "526d5d0dedcaa1b1",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Startup/Setup/Options/PostConfigureJwtSettings.cs",
+      "fingerprint": "09ce093159c27bef",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Api/Startup/Setup/Options/PostConfigureJwtSettings.cs",
+      "fingerprint": "eb4736a085d96950",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Startup/Setup/RateLimitingSetup.cs",
+      "fingerprint": "4be12d8a779aecaf",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Startup/Setup/RequestPipelineSetup.cs",
+      "fingerprint": "25febf17d8d6785c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Telemetry/InstrumentationSource.cs",
+      "fingerprint": "cbdbe6ff6a27a4cf",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Api/Telemetry/OpenTelemetrySetup.cs",
+      "fingerprint": "766a16d236fe29f3",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/AppSettings/WebhookRateLimitSettings.cs",
+      "fingerprint": "a72ebff62eb64dfb",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/Repositories/IUserRepository.cs",
+      "fingerprint": "4e7542c46c2360ce",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/Services/IOidcExchangeService.cs",
+      "fingerprint": "70487f47bde86604",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/Services/IOidcExchangeService.cs",
+      "fingerprint": "bb8aa19ff1bc589c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/Services/Socure/SocureDocumentVerificationEnrichmentParser.cs",
+      "fingerprint": "7b7ea6b11a11f496",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateBackends/Configuration/Operations/ResultClassifier.cs",
+      "fingerprint": "36a18bc737348902",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateBackends/Configuration/Operations/ResultClassifier.cs",
+      "fingerprint": "e59e26dd2d258e01",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateBackends/WriteResult.cs",
+      "fingerprint": "b383798ec733e24f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateConnector/AddressUpdateRequest.cs",
+      "fingerprint": "4e6624e5f191d71c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateConnector/AddressUpdateResult.cs",
+      "fingerprint": "6bbcd0c3e846d5e5",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateConnector/AddressUpdateResult.cs",
+      "fingerprint": "c7b70e43da0761c4",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateConnector/AddressUpdateResult.cs",
+      "fingerprint": "e59e26dd2d258e01",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateConnector/CardReplacementResult.cs",
+      "fingerprint": "0470dde5b0d14ba5",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateConnector/CardReplacementResult.cs",
+      "fingerprint": "af8d04f9d036420f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-redundant-doc-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Core/StateConnector/CardReplacementResult.cs",
+      "fingerprint": "e59e26dd2d258e01",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-if-ladder",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.Seeding/Services/DatabaseSeeder.cs",
+      "fingerprint": "32c9c36164f85d33",
+      "count": 2
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.Seeding/Services/DatabaseSeeder.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.Seeding/Services/DatabaseSeeder.cs",
+      "fingerprint": "9bff61ebe11eee30",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.Seeding/Services/DatabaseSeeder.cs",
+      "fingerprint": "bcfc3e4a9b71e948",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs",
+      "fingerprint": "aad16d8537e7c20f",
+      "count": 2
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/ConfigurableStateBackend.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Configuration/StateBackendConfigurationValidator.cs",
+      "fingerprint": "1199c2246853f9d6",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Configuration/StateBackendConfigurationValidator.cs",
+      "fingerprint": "39c7dcf67f3caa40",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Configuration/StateBackendConfigurationValidator.cs",
+      "fingerprint": "872baacb3cf6b84e",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Configuration/StateBackendConfigurationValidator.cs",
+      "fingerprint": "d1fcb8eea3cb20c2",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/EnrollmentResponseCorrelator.cs",
+      "fingerprint": "7f01b55f1aaba3fc",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/EnrollmentResponseCorrelator.cs",
+      "fingerprint": "a6471f0d2977aead",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/EnrollmentResponseCorrelator.cs",
+      "fingerprint": "d467e766e2b1ebdc",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/EnrollmentResponseCorrelator.cs",
+      "fingerprint": "d6f203f48cc19bd7",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/EnrollmentResponseCorrelator.cs",
+      "fingerprint": "f71484f05cdf0da9",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-index-loop",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/JsonPathWriter.cs",
+      "fingerprint": "919e784e277408b1",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendRequestBinder.cs",
+      "fingerprint": "b7e5f8a419384c20",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendResponseMapper.cs",
+      "fingerprint": "1442d40e9bfef4ef",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendResponseMapper.cs",
+      "fingerprint": "18ff3f2b35a69bcc",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendResponseMapper.cs",
+      "fingerprint": "3b0ad6bb89cc4077",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendResponseMapper.cs",
+      "fingerprint": "4633e2f3643d9d62",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendResponseMapper.cs",
+      "fingerprint": "47b529f8a4349ada",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendResponseMapper.cs",
+      "fingerprint": "d6ddb784321fe700",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/StateBackendResponseMapper.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/WriteResultClassifier.cs",
+      "fingerprint": "9cc69ce3405ed540",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure.StateBackends/Mapping/WriteResultClassifier.cs",
+      "fingerprint": "d0fb32def5ecf115",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Configuration/AppConfigAgentConfigurationExtensions.cs",
+      "fingerprint": "dc7ca2ae0002dbdd",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Configuration/AppConfigAgentConfigurationProvider.cs",
+      "fingerprint": "4eb826f5e6764482",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Configuration/AppConfigAgentConfigurationProvider.cs",
+      "fingerprint": "4f68461d5a7e0389",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Configuration/AppConfigAgentConfigurationSource.cs",
+      "fingerprint": "dd917fce84e73e2d",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Configuration/Validators/IdProofingRequirementsCoherenceValidator.cs",
+      "fingerprint": "5b8195e9b363995a",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Configuration/Validators/IdProofingRequirementsCoherenceValidator.cs",
+      "fingerprint": "619af2e17a3e3305",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Configuration/Validators/OidcSettingsValidator.cs",
+      "fingerprint": "ee0ad2132397b81c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Data/Entities/DeidentifiedChildResultEntity.cs",
+      "fingerprint": "9315a5f1bd73fb05",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Data/PortalDbContext.cs",
+      "fingerprint": "9c7e1feefe06ee77",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Extensions/RedisConfigurationExtensions.cs",
+      "fingerprint": "ab75389eab3c04c8",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseDocVerificationChallengeRepository.cs",
+      "fingerprint": "6c77765bdfd28946",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseUserRepository.cs",
+      "fingerprint": "09fa203e1d5547d2",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseUserRepository.cs",
+      "fingerprint": "238c990f1d02ab68",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseUserRepository.cs",
+      "fingerprint": "59fb9fe695581302",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseUserRepository.cs",
+      "fingerprint": "a6b113f87c38a31e",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseUserRepository.cs",
+      "fingerprint": "fbf5fb34c36867c0",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseUserRepository.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/DatabaseUserRepository.cs",
+      "fingerprint": "bec1b4f6aa778fb0",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/HouseholdRepository.cs",
+      "fingerprint": "0f6fce3e74fe1ca1",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/HouseholdRepository.cs",
+      "fingerprint": "f760578c54a317c7",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/MockHouseholdRepository.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/MockHouseholdRepository.cs",
+      "fingerprint": "c96334eb164fbb91",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/MockHouseholdRepository.cs",
+      "fingerprint": "d1c0d0964088eba5",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Repositories/MockHouseholdRepository.cs",
+      "fingerprint": "16c8998c8c704e6f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-index-loop",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/AddressValidationService.cs",
+      "fingerprint": "491c7056e11ee9a0",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DataSeeder.cs",
+      "fingerprint": "268e20e65b469305",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DataSeeder.cs",
+      "fingerprint": "6ba94a1699dba5ef",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DataSeeder.cs",
+      "fingerprint": "74185aff283faf24",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DataSeeder.cs",
+      "fingerprint": "9f288f447a78079c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DataSeeder.cs",
+      "fingerprint": "a6b113f87c38a31e",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DataSeeder.cs",
+      "fingerprint": "dfb7be6875a95c1e",
+      "count": 2
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DataSeeder.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/Dependencies.cs",
+      "fingerprint": "6aa7940b4e45f91c",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/DisabledSocureClient.cs",
+      "fingerprint": "0652186bb83a9cb2",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/EmailOtpSenderService.cs",
+      "fingerprint": "4865401f13e105c3",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/HttpSocureClient.cs",
+      "fingerprint": "1cfd88fdb99b28d5",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/HttpSocureClient.cs",
+      "fingerprint": "a4b1c11e4a522b80",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-sync-over-async",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/JwtTokenService.cs",
+      "fingerprint": "02048fdcbc266dba",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/JwtTokenService.cs",
+      "fingerprint": "81545bed38c7ea82",
+      "count": 4
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "2d861b886f94a93d",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "5671017236d8e3b8",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "954cb61a9e81bdec",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "06d824312fddc472",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "07761cf4773609d8",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "0ed8145dbe56f356",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "18ff85d9721ebf14",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "227f45a853a274eb",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "3dc4de6e1b3aaaaf",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "593b923d1a0a3035",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "696df88863f17718",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "8295fc4e44ea78d2",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "9fdb254be0a40b32",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/OidcExchangeService.cs",
+      "fingerprint": "b2b28f00fbfc7f89",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-empty-catch-rethrow",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/PiiAesGcmSymmetricEncryption.cs",
+      "fingerprint": "53071b0de40a03d9",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/SelfServiceEvaluator.cs",
+      "fingerprint": "9e2b475a03d23b23",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/SmartyAddressVerificationService.cs",
+      "fingerprint": "7a956b5a7dfece52",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/SmartyAddressVerificationService.cs",
+      "fingerprint": "86ac9145fc7673cf",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/SmartyAddressVerificationService.cs",
+      "fingerprint": "a5962889e25351dd",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/SmartyAddressVerificationService.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/SmartyAddressVerificationService.cs",
+      "fingerprint": "6096dc1ef5c0ede1",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/SmartyAddressVerificationService.cs",
+      "fingerprint": "620f7919760a12c8",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/Socure/SocureApiModels.cs",
+      "fingerprint": "169c12b9a7ac6c0f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/Socure/SocureApiModels.cs",
+      "fingerprint": "447e5db386cf75d2",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/StubSocureClient.cs",
+      "fingerprint": "b456cb91a2a994da",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Infrastructure/Services/StubSocureClient.cs",
+      "fingerprint": "0652186bb83a9cb2",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "56f1fb20bc90389c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "338cb5da03d11386",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "7a6554b65693a793",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "d4d8b0fbbbb7947a",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "d9c794c917968719",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "85a6dbc74e8e1ee7",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "9b152bb456be023f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/CompleteOidcLogin/CompleteOidcLoginCommandHandler.cs",
+      "fingerprint": "eebe00ced7649b90",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "141f03985d103afd",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "a7471aca38766092",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "3778446fc4518e9a",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "41b2f859a24f6ce0",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "8b9ccdf5e985ebf5",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "d4d8b0fbbbb7947a",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "866198489cd48ae8",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/OidcCallback/OidcCallbackCommandHandler.cs",
+      "fingerprint": "bf71b050ecd12d44",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Auth/ValidateOtp/ValidateOtpCommandHandler.cs",
+      "fingerprint": "ddd0969ae8f75381",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/EnrollmentCheck/CheckEnrollmentCommandHandler.cs",
+      "fingerprint": "392b8caaa9824431",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/GetHouseholdData/GetHouseholdDataQueryHandler.cs",
+      "fingerprint": "aac90b7a39af7f5d",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/RequestCardReplacement/RequestCardReplacementCommandHandler.cs",
+      "fingerprint": "73a5088374fa6d85",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/RequestCardReplacement/RequestCardReplacementCommandHandler.cs",
+      "fingerprint": "b368e6c66142be76",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/RequestCardReplacement/RequestCardReplacementCommandHandler.cs",
+      "fingerprint": "fe66bccd69e5fb7c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/UpdateAddress/UpdateAddressCommandHandler.cs",
+      "fingerprint": "9b3ad4617c80e734",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/UpdateAddress/UpdateAddressCommandHandler.cs",
+      "fingerprint": "aa28ac5746624eb7",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/UpdateAddress/UpdateAddressCommandHandler.cs",
+      "fingerprint": "f35dd2d29fd59ffb",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/UpdateAddress/UpdateAddressCommandHandler.cs",
+      "fingerprint": "bab35b3d3d10631d",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/Household/UpdateAddress/UpdateAddressCommandHandler.cs",
+      "fingerprint": "d0c39a66f1be0cdd",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/IdProofingHouseholdLookup.cs",
+      "fingerprint": "1c608c9126734926",
+      "count": 1
+    },
+    {
+      "rule": "complexity/too-many-params",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/IdProofingHouseholdLookup.cs",
+      "fingerprint": "9e221f64924aad87",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/ProcessWebhook/ProcessWebhookCommandHandler.cs",
+      "fingerprint": "73a5088374fa6d85",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/ProcessWebhook/ProcessWebhookCommandHandler.cs",
+      "fingerprint": "bd64b37339660a1f",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/ResubmitChallenge/ResubmitChallengeCommandHandler.cs",
+      "fingerprint": "1c608c9126734926",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/ResubmitChallenge/ResubmitChallengeCommandHandler.cs",
+      "fingerprint": "2105eb20b32546ac",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/ResubmitChallenge/ResubmitChallengeCommandHandler.cs",
+      "fingerprint": "8f3a86a67e612df8",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/StartChallenge/StartChallengeCommandHandler.cs",
+      "fingerprint": "1c608c9126734926",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/csharp-null-forgiving",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/StartChallenge/StartChallengeCommandHandler.cs",
+      "fingerprint": "2dd2cdaa9fb35f4e",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/StartChallenge/StartChallengeCommandHandler.cs",
+      "fingerprint": "3227494149fa7a0f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/StartChallenge/StartChallengeCommandHandler.cs",
+      "fingerprint": "af1d0516f1d4e57f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/StartChallenge/StartChallengeCommandHandler.cs",
+      "fingerprint": "c84378994d03db5c",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/SubmitIdProofing/SubmitIdProofingCommandHandler.cs",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/SubmitIdProofing/SubmitIdProofingCommandHandler.cs",
+      "fingerprint": "5b35dff835830ac8",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.UseCases/IdProofing/SubmitIdProofing/SubmitIdProofingCommandHandler.cs",
+      "fingerprint": "7f59d56d5a7e7a26",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/household-data.ts",
+      "fingerprint": "1abe4904e3db35e6",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/household-data.ts",
+      "fingerprint": "006f7514d1f6a791",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/household-data.ts",
+      "fingerprint": "2e6d80d9250a9396",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/household-data.ts",
+      "fingerprint": "7bfeaf4ec6884ae1",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/login-dc.ts",
+      "fingerprint": "222e9465adbee2e9",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/seed-users.ts",
+      "fingerprint": "0e453c3309092c98",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/seed-users.ts",
+      "fingerprint": "ce20d0b51e69ce13",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/e2e/fixtures/seed-users.ts",
+      "fingerprint": "ebd981a2fe7c5bbb",
+      "count": 1
+    },
+    {
+      "rule": "knip/dependencies",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
+      "fingerprint": "57dd4711a633790b",
+      "count": 1
+    },
+    {
+      "rule": "knip/dependencies",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
+      "fingerprint": "7579fa04b45ad055",
+      "count": 1
+    },
+    {
+      "rule": "knip/devDependencies",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
+      "fingerprint": "0f927bb0555d0545",
+      "count": 1
+    },
+    {
+      "rule": "knip/devDependencies",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
+      "fingerprint": "8558488b941a40a0",
+      "count": 1
+    },
+    {
+      "rule": "knip/devDependencies",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
+      "fingerprint": "86cd57229e2423a1",
+      "count": 1
+    },
+    {
+      "rule": "knip/devDependencies",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
+      "fingerprint": "95662aeef8d66c90",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/double-type-assertion",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/api/client.ts",
+      "fingerprint": "9ade6b22c07b4561",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/api/index.ts",
+      "fingerprint": "818714663cb54da0",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/api/index.ts",
+      "fingerprint": "8caa2fec00fe1c4f",
+      "count": 2
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/api/index.ts",
+      "fingerprint": "818714663cb54da0",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/api/schemas.ts",
+      "fingerprint": "3d43429b1de4c7ca",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/app/(authenticated)/error.tsx",
+      "fingerprint": "0ce7807f13ae137e",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/app/(authenticated)/profile/address/(flow)/page.tsx",
+      "fingerprint": "7401b5f760031449",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/app/(authenticated)/profile/address/info/page.tsx",
+      "fingerprint": "9f127fb6fc8f6a4b",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/app/(public)/login/id-proofing/off-boarding/page.tsx",
+      "fingerprint": "e470bceca608f6f3",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/app/(public)/page.tsx",
+      "fingerprint": "9cfc5fa7f1754681",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/ts-directive",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/app/api/[[...path]]/route.ts",
+      "fingerprint": "7195c3b2caa72e26",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/app/error.tsx",
+      "fingerprint": "0ce7807f13ae137e",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/api/index.ts",
+      "fingerprint": "355e9c9cd1808709",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/api/index.ts",
+      "fingerprint": "616085cc8a042dea",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/api/index.ts",
+      "fingerprint": "b11d9d31cc89d7ef",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/api/index.ts",
+      "fingerprint": "be0cac220c4b9da9",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/api/schema.ts",
+      "fingerprint": "5d7fe49d8cf6fff7",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/api/schema.ts",
+      "fingerprint": "c8b20cb873c0f563",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/api/schema.ts",
+      "fingerprint": "61f5370ab97d09d8",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/components/AddressForm/AddressForm.tsx",
+      "fingerprint": "2bcc6c40f352f9bc",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/components/ReplacementCardPrompt/ReplacementCardPrompt.tsx",
+      "fingerprint": "1503bc6dc7502eb0",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/components/ReplacementCardPrompt/ReplacementCardPrompt.tsx",
+      "fingerprint": "451c86d185406cd6",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/components/SuggestedAddress/SuggestedAddress.tsx",
+      "fingerprint": "027021a59c6b3884",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/components/SuggestedAddress/SuggestedAddress.tsx",
+      "fingerprint": "70a6433bb20310c0",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/context/AddressFlowContext.tsx",
+      "fingerprint": "8b17975781d24d3e",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/index.ts",
+      "fingerprint": "09615a16fe0772b4",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/index.ts",
+      "fingerprint": "355e9c9cd1808709",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/index.ts",
+      "fingerprint": "616085cc8a042dea",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/address/index.ts",
+      "fingerprint": "b11d9d31cc89d7ef",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/auth-status/index.ts",
+      "fingerprint": "eaef3fd342952f3f",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/auth-status/schema.ts",
+      "fingerprint": "2065b4724d282c9d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/doc-verify/index.ts",
+      "fingerprint": "3d7d73f66425c6b5",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/doc-verify/index.ts",
+      "fingerprint": "4791b6ffe859a6bc",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/doc-verify/index.ts",
+      "fingerprint": "48fb006bc218059e",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/doc-verify/index.ts",
+      "fingerprint": "2fce853136345dcc",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/doc-verify/index.ts",
+      "fingerprint": "644b062f347dfcbd",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/doc-verify/index.ts",
+      "fingerprint": "8937fe0b892859e5",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "10a1deef390fd01d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "2471c2fc161215d2",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "258f53ce1d5b0742",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "3d7d73f66425c6b5",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "4791b6ffe859a6bc",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "48fb006bc218059e",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "71fcba4d92fd3656",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "91799721995d9e15",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "b952249674a38e93",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "1722a7c14ec84135",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "29fef8be72136843",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "2b84a55416f6248d",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "2fce853136345dcc",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "644b062f347dfcbd",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "71fcba4d92fd3656",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "7fb1e15c13c4a825",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "8937fe0b892859e5",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "91838b883b9bdd52",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "943794c9946dfd33",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/index.ts",
+      "fingerprint": "dc5a27d61097fefd",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/index.ts",
+      "fingerprint": "82d154fc6435144e",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/index.ts",
+      "fingerprint": "29fef8be72136843",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/index.ts",
+      "fingerprint": "82d154fc6435144e",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/index.ts",
+      "fingerprint": "91838b883b9bdd52",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/reportCallbackFailure.ts",
+      "fingerprint": "86ca1b52af50b8bf",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/reportCallbackFailure.ts",
+      "fingerprint": "e054b30b3c77cff1",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/schema.ts",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/schema.ts",
+      "fingerprint": "29d7fb056649ca74",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/oidc/schema.ts",
+      "fingerprint": "3de52de1a9784d60",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/request-otp/index.ts",
+      "fingerprint": "0b2c2e33869d6fda",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/index.ts",
+      "fingerprint": "10a1deef390fd01d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/index.ts",
+      "fingerprint": "258f53ce1d5b0742",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/index.ts",
+      "fingerprint": "91799721995d9e15",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/index.ts",
+      "fingerprint": "2b84a55416f6248d",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/index.ts",
+      "fingerprint": "943794c9946dfd33",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/index.ts",
+      "fingerprint": "dc5a27d61097fefd",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/schema.ts",
+      "fingerprint": "597699688d366541",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/schema.ts",
+      "fingerprint": "74f67a0af0d2e82b",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/schema.ts",
+      "fingerprint": "f5fb73ae2ec6edd3",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/submit-id-proofing/useSubmitIdProofing.ts",
+      "fingerprint": "bc144dd12c7ccc42",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/api/validate-otp/index.ts",
+      "fingerprint": "23554d2625a17007",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/device-intelligence/di-adapter.ts",
+      "fingerprint": "b29419c04effb7a8",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/device-intelligence/index.ts",
+      "fingerprint": "20d89c37080448f1",
+      "count": 3
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/doc-verify/DocVerifyPage.tsx",
+      "fingerprint": "bf9fe480035bfd76",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/doc-verify/DocVerifyResubmit.tsx",
+      "fingerprint": "b3415f42ae15f5f7",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/doc-verify/DocVerifyResubmit.tsx",
+      "fingerprint": "e25184155cf62e95",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/id-proofing/index.ts",
+      "fingerprint": "121966ae308daad0",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/id-proofing/OffBoardingContent.tsx",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/index.ts",
+      "fingerprint": "38dcd8e4a7f9b881",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/index.ts",
+      "fingerprint": "4510b4208e64de6b",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/index.ts",
+      "fingerprint": "a0966f170c05c89b",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/index.ts",
+      "fingerprint": "ef53a992bde8a014",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/off-boarding/index.ts",
+      "fingerprint": "745ae127c4f65f7a",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/off-boarding/OffBoardingPage.tsx",
+      "fingerprint": "601220a24e602821",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/off-boarding/OffBoardingPage.tsx",
+      "fingerprint": "92c58d8ebd476773",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/verify/index.ts",
+      "fingerprint": "f3f727236df166f5",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/components/verify/VerifyOtpForm.tsx",
+      "fingerprint": "223776edd86ce93d",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/swallowed-exception",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/context/AuthContext.tsx",
+      "fingerprint": "7a9b78c9d2116252",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/idle/index.ts",
+      "fingerprint": "35e7b94f3508cbc6",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/idle/index.ts",
+      "fingerprint": "ed466133f62e650d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "10a1deef390fd01d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "2471c2fc161215d2",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "258f53ce1d5b0742",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "26fcd8fd85d159a8",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "344aa28f7768a965",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "3d7d73f66425c6b5",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "42c825a7ef69bd38",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "450ff388562c08a0",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "48fb006bc218059e",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "553ce2ce806d6c3e",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "622e8ec4cf792ff4",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "66d7c97e086302c5",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "91799721995d9e15",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "a06dd3606a777fd1",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "b952249674a38e93",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "cd7429b191cc64ef",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "d0152c52d2bbae63",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "d01cbd90152e2177",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "d33b6f9981bebb67",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "d64a229a6f6082f5",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "d81ecaee582fc3f5",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "27e993d810e68339",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "29cf98fcf01e1526",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "29fef8be72136843",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "2b84a55416f6248d",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "2fce853136345dcc",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "38b3196bd993a561",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "644b062f347dfcbd",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "943794c9946dfd33",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "9fe6acfe55e4a5a4",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "a0af52511921a597",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "baf7507f744813e0",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/auth/index.ts",
+      "fingerprint": "debe9873b3e96d76",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/cards/api/schema.ts",
+      "fingerprint": "cd9da109e978dacf",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/cards/components/ConfirmAddress/ConfirmAddress.tsx",
+      "fingerprint": "1503bc6dc7502eb0",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/cards/components/ConfirmAddress/ConfirmAddress.tsx",
+      "fingerprint": "451c86d185406cd6",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/feature-flags/api/index.ts",
+      "fingerprint": "c0e6f1d637db4aec",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/feature-flags/index.ts",
+      "fingerprint": "39d2684f66bf76fb",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "0791f22d751c4162",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "07f30264b440b3dc",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "0b33267f6798e873",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "100b9ee5cf546829",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "3c7b8588d49cfaae",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "4961bb43b736ff04",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "4b136ca4aa439e15",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "62dea6a7b4e50107",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "7cb78b783a31313b",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "9bf025ca99759bc5",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "a6c0f998de7fc99d",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "b34574509593e71c",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "e7ff8281bb1cfec3",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/index.ts",
+      "fingerprint": "f8ee3b0ed88dc6e9",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/schema.ts",
+      "fingerprint": "1bb989ad8ed7f889",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/schema.ts",
+      "fingerprint": "3744ec5732ce4c5c",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/schema.ts",
+      "fingerprint": "385fe504a1dfcf45",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/schema.ts",
+      "fingerprint": "815ff22d2818a190",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/schema.ts",
+      "fingerprint": "af24aa4fbdfba8df",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/schema.ts",
+      "fingerprint": "b323a33c84a609a6",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/api/schema.ts",
+      "fingerprint": "ba6a1eee8617be34",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/DashboardContent/DashboardContent.tsx",
+      "fingerprint": "3937104dc1a3efdf",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/DashboardSkeleton/DashboardSkeleton.tsx",
+      "fingerprint": "d70b8e28e0ce8716",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/DashboardSkeleton/DashboardSkeleton.tsx",
+      "fingerprint": "f97336902b784863",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/DashboardSkeleton/DashboardSkeleton.tsx",
+      "fingerprint": "fc4c1868f34cfb51",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/index.ts",
+      "fingerprint": "150a120aeea61018",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/index.ts",
+      "fingerprint": "5ac523e6ee8aa5ab",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/index.ts",
+      "fingerprint": "f3efe22cf3ce95fa",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/components/index.ts",
+      "fingerprint": "f8dbc527540b3798",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "4961bb43b736ff04",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "5a5ae00b5dad4896",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "ab80dca386f02007",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "da5bc8a03b90b770",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "ee32b2d5a4c5d95f",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "a2331a645762f497",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "a3f19c885b0e7ccd",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/index.ts",
+      "fingerprint": "f776438fb9964c4c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/fixtures.ts",
+      "fingerprint": "a670b00c532f855a",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/fixtures.ts",
+      "fingerprint": "2bd6210fc0a8d0e9",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/fixtures.ts",
+      "fingerprint": "a5c7a803570f4e78",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/fixtures.ts",
+      "fingerprint": "c56f20a2cf52f011",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/index.ts",
+      "fingerprint": "5864a67590ca4cde",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/index.ts",
+      "fingerprint": "61ac68e72c6dc543",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/index.ts",
+      "fingerprint": "7a0530faa0d01af7",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/features/household/testing/index.ts",
+      "fingerprint": "dbfdcdc0a6c918de",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/hooks/useUserDataSync.ts",
+      "fingerprint": "2772accd287948a9",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/hooks/useUserDataSync.ts",
+      "fingerprint": "4a3be9c2778ba21c",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/hooks/useUserDataSync.ts",
+      "fingerprint": "e1478fe7138c2a07",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/hooks/useUserDataSync.ts",
+      "fingerprint": "e2d2379c20be70c3",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/meta-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/instrumentation.ts",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/meta-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/lib/applyHref.ts",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/trivial-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/lib/axe.ts",
+      "fingerprint": "84ead90072676fc0",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/lib/idProofingStatus.ts",
+      "fingerprint": "914406db5b52374e",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/meta-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/lib/provisionalContent.ts",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/mocks/handlers.ts",
+      "fingerprint": "bc50a5e811576127",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/mocks/handlers.ts",
+      "fingerprint": "d655f7b2fcabec1e",
+      "count": 2
+    },
+    {
+      "rule": "ai-slop/todo-stub",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/mocks/handlers.ts",
+      "fingerprint": "e9f9213712e29456",
+      "count": 1
+    },
+    {
+      "rule": "knip/types",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/providers/types.ts",
+      "fingerprint": "4c5aad863d54d580",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/proxy.ts",
+      "fingerprint": "78d975314269a833",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/redundant-type-coercion",
+      "engine": "ai-slop",
+      "file": "apps/portal/src/SEBT.Portal.Web/src/test-env-preload.ts",
+      "fingerprint": "11f2fedfb6faf31d",
+      "count": 1
+    },
+    {
+      "rule": "knip/binaries",
+      "engine": "code-quality",
+      "file": "aspire-apphost/package.json",
+      "fingerprint": "message:2d59dd0342138171",
+      "count": 1
+    },
+    {
+      "rule": "knip/dependencies",
+      "engine": "code-quality",
+      "file": "aspire-apphost/package.json",
+      "fingerprint": "e61f458bcaab91d4",
+      "count": 1
+    },
+    {
+      "rule": "knip/devDependencies",
+      "engine": "code-quality",
+      "file": "aspire-apphost/package.json",
+      "fingerprint": "35534c1bbc1c119b",
+      "count": 1
+    },
+    {
+      "rule": "knip/devDependencies",
+      "engine": "code-quality",
+      "file": "aspire-apphost/package.json",
+      "fingerprint": "4f2e787061f3e0d9",
+      "count": 1
+    },
+    {
+      "rule": "ruff/EXE001",
+      "engine": "lint",
+      "file": "docs/analytics/scripts/hash_sebt_app_id.py",
+      "fingerprint": "381f9bfc69d49d39",
+      "count": 1
+    },
+    {
+      "rule": "ruff/I001",
+      "engine": "lint",
+      "file": "docs/analytics/scripts/hash_sebt_app_id.py",
+      "fingerprint": "556a4446dc28fddf",
+      "count": 1
+    },
+    {
+      "rule": "knip/binaries",
+      "engine": "code-quality",
+      "file": "package.json",
+      "fingerprint": "message:a6ada805272ea30c",
+      "count": 1
+    },
+    {
+      "rule": "knip/devDependencies",
+      "engine": "code-quality",
+      "file": "package.json",
+      "fingerprint": "521ccf2bac6a9b97",
+      "count": 1
+    },
+    {
+      "rule": "security/vulnerable-dependency",
+      "engine": "security",
+      "file": "package.json",
+      "fingerprint": "message:444f8ff4bb05c1d9",
+      "count": 1
+    },
+    {
+      "rule": "security/vulnerable-dependency",
+      "engine": "security",
+      "file": "package.json",
+      "fingerprint": "message:98e60e395f226c8a",
+      "count": 1
+    },
+    {
+      "rule": "security/vulnerable-dependency",
+      "engine": "security",
+      "file": "package.json",
+      "fingerprint": "message:99f451d7899a4525",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/double-type-assertion",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/amplitude-bridge.ts",
+      "fingerprint": "55ae75030e24c038",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/empty-function",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/amplitude-bridge.ts",
+      "fingerprint": "b38cc98cae5643ef",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/amplitude-bridge.ts",
+      "fingerprint": "c06e56ef5bedbfa4",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/double-type-assertion",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/data-layer.ts",
+      "fingerprint": "67e5e5ef9c67076e",
+      "count": 1
+    },
+    {
+      "rule": "unicorn/no-useless-fallback-in-spread",
+      "engine": "lint",
+      "file": "packages/analytics/src/data-layer.ts",
+      "fingerprint": "be9eb12ff1def0c0",
+      "count": 1
+    },
+    {
+      "rule": "unicorn/no-useless-fallback-in-spread",
+      "engine": "lint",
+      "file": "packages/analytics/src/data-layer.ts",
+      "fingerprint": "d6666bd60cf6e288",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/double-type-assertion",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/mixpanel-bridge.ts",
+      "fingerprint": "55ae75030e24c038",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/empty-function",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/mixpanel-bridge.ts",
+      "fingerprint": "b38cc98cae5643ef",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/mixpanel-bridge.ts",
+      "fingerprint": "3e12d31bb6e82cf6",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/double-type-assertion",
+      "engine": "ai-slop",
+      "file": "packages/analytics/src/siteimprove-bridge.ts",
+      "fingerprint": "55ae75030e24c038",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "packages/design-system/content/scripts/generate-locales.js",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "packages/design-system/content/scripts/generate-locales.js",
+      "fingerprint": "265d41ded63e9d0c",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "packages/design-system/content/scripts/generate-locales.js",
+      "fingerprint": "5713857957424977",
+      "count": 1
+    },
+    {
+      "rule": "complexity/deep-nesting",
+      "engine": "code-quality",
+      "file": "packages/design-system/content/scripts/validate-content.js",
+      "fingerprint": "26e9ddcfe530c8bc",
+      "count": 1
+    },
+    {
+      "rule": "complexity/file-too-large",
+      "engine": "code-quality",
+      "file": "packages/design-system/design/scripts/generate-sass-tokens.js",
+      "fingerprint": "message:96b0128c3491727f",
+      "count": 1
+    },
+    {
+      "rule": "knip/unlisted",
+      "engine": "code-quality",
+      "file": "packages/design-system/design/scripts/generate-theme-css.js",
+      "fingerprint": "e685525411660b88",
+      "count": 1
+    },
+    {
+      "rule": "eslint/no-undef",
+      "engine": "lint",
+      "file": "packages/design-system/design/scripts/generate-tokens.js",
+      "fingerprint": "12834c1c41154b02",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "packages/design-system/src/client.ts",
+      "fingerprint": "e01ecdf293a25821",
+      "count": 1
+    },
+    {
+      "rule": "code-quality/duplicate-block",
+      "engine": "code-quality",
+      "file": "packages/design-system/src/components/layout/Footer.tsx",
+      "fingerprint": "87c75b525ec604fa",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/duplicate-type-declaration",
+      "engine": "ai-slop",
+      "file": "packages/design-system/src/providers/types.ts",
+      "fingerprint": "4c5aad863d54d580",
+      "count": 1
+    },
+    {
+      "rule": "knip/dependencies",
+      "engine": "code-quality",
+      "file": "packages/observability/package.json",
+      "fingerprint": "595c3759bf0baf15",
+      "count": 1
+    },
+    {
+      "rule": "knip/dependencies",
+      "engine": "code-quality",
+      "file": "packages/observability/package.json",
+      "fingerprint": "ca1b4dfc9e4d9715",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "packages/observability/src/config.ts",
+      "fingerprint": "8d64a30d9de151b6",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "scripts/docs/adr-index.ts",
+      "fingerprint": "061dccf775f45856",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "scripts/docs/adr-index.ts",
+      "fingerprint": "7346629c8b3bc36e",
+      "count": 1
+    },
+    {
+      "rule": "knip/exports",
+      "engine": "code-quality",
+      "file": "scripts/docs/adr-index.ts",
+      "fingerprint": "ee13cf98f8cd47b7",
+      "count": 1
+    },
+    {
+      "rule": "python-formatting",
+      "engine": "format",
+      "file": "scripts/preview/merge_task_definition.py",
+      "fingerprint": "message:eb8329b770c7842a",
+      "count": 1
+    },
+    {
+      "rule": "ruff/EXE001",
+      "engine": "lint",
+      "file": "scripts/preview/merge_task_definition.py",
+      "fingerprint": "381f9bfc69d49d39",
+      "count": 1
+    },
+    {
+      "rule": "complexity/function-too-long",
+      "engine": "code-quality",
+      "file": "scripts/release-notes/generate.ts",
+      "fingerprint": "5a1db74d0b54afff",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "fingerprint": "5c4688e3c1ee3aec",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/python-repetitive-dispatch",
+      "engine": "ai-slop",
+      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "fingerprint": "92f72dde3471d1cf",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/silent-recovery",
+      "engine": "ai-slop",
+      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "fingerprint": "85b4be696c5303bd",
+      "count": 1
+    },
+    {
+      "rule": "python-formatting",
+      "engine": "format",
+      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "fingerprint": "message:eb8329b770c7842a",
+      "count": 1
+    },
+    {
+      "rule": "eslint/no-unused-vars",
+      "engine": "lint",
+      "file": "tofu/modules/sebt_enrollment_checker/functions/rewrite-static-export-uri.js",
+      "fingerprint": "931ac32ad7319345",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/hallucinated-import",
+      "engine": "ai-slop",
+      "file": "tofu/modules/sebt_ses/lambda/rotate_smtp_credentials.py",
+      "fingerprint": "d507cdc00adb3e41",
+      "count": 1
+    },
+    {
+      "rule": "ai-slop/narrative-comment",
+      "engine": "ai-slop",
+      "file": "tofu/modules/sebt_ses/lambda/rotate_smtp_credentials.py",
+      "fingerprint": "5c4688e3c1ee3aec",
+      "count": 2
+    },
+    {
+      "rule": "ai-slop/python-repetitive-dispatch",
+      "engine": "ai-slop",
+      "file": "tofu/modules/sebt_ses/lambda/rotate_smtp_credentials.py",
+      "fingerprint": "92f72dde3471d1cf",
+      "count": 1
+    },
+    {
+      "rule": "python-formatting",
+      "engine": "format",
+      "file": "tofu/modules/sebt_ses/lambda/rotate_smtp_credentials.py",
+      "fingerprint": "message:eb8329b770c7842a",
+      "count": 1
+    }
+  ]
+}
