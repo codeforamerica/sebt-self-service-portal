@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SEBT.Portal.StatePlugins.CO.Cbms;
@@ -11,9 +10,7 @@ namespace SEBT.Portal.StatePlugins.CO;
 /// CBMS ping check that re-reads connection options on every run so
 /// <c>use_mock_cbms_responses</c> can flip without a restart.
 /// </summary>
-internal sealed class ColoradoCbmsHealthCheck(
-    IConfiguration? configuration,
-    HybridCache? cache) : IHealthCheck
+internal sealed class ColoradoCbmsHealthCheck(IConfiguration? configuration) : IHealthCheck
 {
     internal const string MissingCredentialsMessage =
         "CBMS credentials are not configured. " +
@@ -36,15 +33,7 @@ internal sealed class ColoradoCbmsHealthCheck(
 
         if (options.UseMockResponses)
         {
-            if (cache is null)
-            {
-                return HealthCheckResult.Unhealthy(
-                    "HybridCache must be registered in DI when the use_mock_cbms_responses feature flag is enabled. " +
-                    "Ensure services.AddHybridCache() is called during service registration.");
-            }
-
-            var dataStore = new MockCbmsDataStore(cache);
-            handler = new MockCbmsHttpHandler(dataStore);
+            handler = new MockCbmsHttpHandler();
         }
 
         var ping = new CbmsApiHealthCheck(

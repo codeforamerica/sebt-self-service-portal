@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -16,8 +15,6 @@ public class ColoradoHealthCheckServiceTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddHybridCache();
-        var builder = services.AddHealthChecks();
         var config = new ConfigurationManager();
         config.AddInMemoryCollection(new Dictionary<string, string?>
         {
@@ -25,8 +22,9 @@ public class ColoradoHealthCheckServiceTests
             ["Cbms:ClientSecret"] = "",
             [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false"
         });
-        var cache = services.BuildServiceProvider().GetRequiredService<HybridCache>();
-        var healthCheckService = new ColoradoHealthCheckService(config, cache);
+        services.AddSingleton<IConfiguration>(config);
+        var builder = services.AddHealthChecks();
+        var healthCheckService = new ColoradoHealthCheckService();
 
         healthCheckService.ConfigureHealthChecks(builder);
 
@@ -40,5 +38,29 @@ public class ColoradoHealthCheckServiceTests
         config[CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true";
         var healthy = await healthCheck.CheckHealthAsync();
         Assert.Equal(HealthStatus.Healthy, healthy.Status);
+    }
+
+    [Fact]
+    public async Task ConfigureHealthChecks_mock_ping_does_not_require_hybrid_cache()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true"
+        });
+        services.AddSingleton<IConfiguration>(config);
+        var builder = services.AddHealthChecks();
+
+        new ColoradoHealthCheckService().ConfigureHealthChecks(builder);
+
+        var provider = services.BuildServiceProvider();
+        var healthCheck = provider.GetRequiredService<HealthCheckService>();
+
+        var result = await healthCheck.CheckHealthAsync();
+
+        Assert.Equal(HealthStatus.Healthy, result.Status);
+        Assert.Equal(HealthStatus.Healthy, result.Entries[CbmsCheckName].Status);
     }
 }

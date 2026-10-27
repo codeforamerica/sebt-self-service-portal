@@ -1,5 +1,4 @@
 using System.Composition;
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -13,20 +12,18 @@ namespace SEBT.Portal.StatePlugins.CO;
 /// </summary>
 [Export(typeof(IStatePlugin))]
 [ExportMetadata("StateCode", "CO")]
-[method: ImportingConstructor]
-public class ColoradoHealthCheckService(
-    [Import(AllowDefault = true)] IConfiguration? configuration = null,
-    [Import(AllowDefault = true)] HybridCache? cache = null)
-    : IStateHealthCheckService
+public class ColoradoHealthCheckService : IStateHealthCheckService
 {
     private const string CheckName = "co-cbms-api-ping";
 
     public void ConfigureHealthChecks(IHealthChecksBuilder builder)
     {
-        builder.AddCheck(
+        // Resolve when the check runs. Startup calls this from a provider that
+        // is disposed as soon as registration returns.
+        builder.Add(new HealthCheckRegistration(
             CheckName,
-            new ColoradoCbmsHealthCheck(configuration, cache),
-            HealthStatus.Unhealthy,
-            ["external-api", "co"]);
+            sp => new ColoradoCbmsHealthCheck(sp.GetService<IConfiguration>()),
+            failureStatus: HealthStatus.Unhealthy,
+            tags: ["external-api", "co"]));
     }
 }
