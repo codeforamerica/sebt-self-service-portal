@@ -78,6 +78,10 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
         <EmbeddedResource Include="Unit/Infrastructure/StateBackends/ConfigSamples/*.yaml" />
+        <Content Include="../../src/SEBT.Portal.Api/state-backends/cbms.yml">
+            <Link>state-backends/cbms.yml</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
     <ItemGroup>
