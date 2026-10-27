@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Configuration;
 
 namespace SEBT.Portal.Api.Controllers.Diagnostics;
 
@@ -18,7 +19,9 @@ namespace SEBT.Portal.Api.Controllers.Diagnostics;
 public class DevSeedController(
     IDatabaseSeeder databaseSeeder,
     IOptionsSnapshot<SeedingSettings> seedingSettings,
-    IConfiguration configuration) : ControllerBase
+    IConfiguration configuration,
+    IHostEnvironment hostEnvironment,
+    ILogger<DevSeedController> logger) : ControllerBase
 {
     /// <summary>
     /// Deletes and recreates a single known seed scenario user.
@@ -36,9 +39,7 @@ public class DevSeedController(
             return NotFound();
         }
 
-        var useMockHouseholdData = configuration.GetValue(
-            $"FeatureManagement:{FeatureFlags.UseMockHouseholdData}",
-            false);
+        var useMockHouseholdData = HouseholdMockGate.IsEnabled(configuration, hostEnvironment, logger);
 
         try
         {

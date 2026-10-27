@@ -31,6 +31,7 @@ public class PluginCacheTests : IDisposable
     private static IConfiguration BuildConfig() => new ConfigurationBuilder()
         .AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
             [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
             ["Cbms:Cache:SoftExpirationMinutes"] = "5",
             ["Cbms:Cache:HardExpirationMinutes"] = "60",
@@ -81,6 +82,7 @@ public class PluginCacheTests : IDisposable
         var config = new ConfigurationManager();
         config.AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
             [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
             ["Cbms:Cache:SoftExpirationMinutes"] = "5",
             ["Cbms:Cache:HardExpirationMinutes"] = "60",
@@ -105,6 +107,7 @@ public class PluginCacheTests : IDisposable
         var config = new ConfigurationManager();
         config.AddInMemoryCollection(new Dictionary<string, string?>
         {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
             [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
             ["Cbms:Cache:SoftExpirationMinutes"] = "5",
             ["Cbms:Cache:HardExpirationMinutes"] = "60",

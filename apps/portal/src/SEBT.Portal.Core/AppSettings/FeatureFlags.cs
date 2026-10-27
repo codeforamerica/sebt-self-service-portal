@@ -102,18 +102,18 @@ public static class FeatureFlags
     public const string EnableCheckerIncomeEligibility = "enable_checker_income_eligibility";
 
     /// <summary>
-    /// When enabled, household reads and writes use <c>MockHouseholdRepository</c>
-    /// instead of the state connector. Takes effect on the next request. Backend-only
-    /// and omitted from the public feature-flag map. Process-start seeding still
-    /// reads the value once.
+    /// When enabled outside Production, household reads and writes use
+    /// <c>MockHouseholdRepository</c> instead of the state connector. Ignored when
+    /// the host is Production. Takes effect on the next request.
     /// </summary>
     public const string UseMockHouseholdData = "use_mock_household_data";
 
     /// <summary>
-    /// When enabled, the Colorado connector returns mock CBMS responses and does not
-    /// require CBMS credentials. Takes effect on the next request. The connector reads
-    /// <c>FeatureManagement:use_mock_cbms_responses</c>. Omitted from the public
-    /// feature-flag map.
+    /// When enabled outside Production, the Colorado connector returns mock CBMS
+    /// responses and does not require CBMS credentials. Ignored when
+    /// <c>ASPNETCORE_ENVIRONMENT</c> is Production, matching the host
+    /// default. Takes effect on the next request. The connector reads
+    /// <c>FeatureManagement:use_mock_cbms_responses</c>.
     /// </summary>
     public const string UseMockCbmsResponses = "use_mock_cbms_responses";
 }

@@ -49,6 +49,10 @@ public class CbmsSandboxFixture : IAsyncLifetime
     public Task InitializeAsync()
     {
         var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            })
             .AddUserSecrets<CbmsSandboxFixture>(optional: true)
             .AddEnvironmentVariables()
             .Build();

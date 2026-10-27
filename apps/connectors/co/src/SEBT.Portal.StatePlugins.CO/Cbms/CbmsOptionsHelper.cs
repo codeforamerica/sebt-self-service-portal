@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.StatePlugins.CO.CbmsApi;
 
 namespace SEBT.Portal.StatePlugins.CO.Cbms;
@@ -17,7 +18,7 @@ internal static class CbmsOptionsHelper
     /// </summary>
     internal const string UseMockResponsesConfigurationKey = "FeatureManagement:use_mock_cbms_responses";
 
-    public static CbmsConnectionOptions GetCbmsOptions(IConfiguration? configuration)
+    public static CbmsConnectionOptions GetCbmsOptions(IConfiguration? configuration, ILogger? logger = null)
     {
         var clientId = configuration?["Cbms:ClientId"]
             ?? Environment.GetEnvironmentVariable("Cbms__ClientId")
@@ -35,8 +36,28 @@ internal static class CbmsOptionsHelper
         var useMockResponsesRaw = configuration?[UseMockResponsesConfigurationKey]
             ?? Environment.GetEnvironmentVariable("FeatureManagement__use_mock_cbms_responses");
         var useMockResponses = useMockResponsesRaw?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+        if (useMockResponses && IsProduction(configuration))
+        {
+            logger?.LogWarning(
+                "Feature flag {FeatureFlag} is enabled in Production and will be ignored.",
+                "use_mock_cbms_responses");
+            useMockResponses = false;
+        }
 
         return new CbmsConnectionOptions(clientId, clientSecret, apiBaseUrl, tokenEndpointUrl, useMockResponses);
+    }
+
+    private static bool IsProduction(IConfiguration? configuration)
+    {
+        // A missing name is Production, matching IHostEnvironment. A provided
+        // configuration is not filled in from the process environment.
+        var environmentName = configuration is not null
+            ? configuration["environment"] ?? configuration["ASPNETCORE_ENVIRONMENT"]
+            : Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+
+        return string.IsNullOrEmpty(environmentName)
+            || string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
     }
 }
 

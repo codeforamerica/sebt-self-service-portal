@@ -44,9 +44,9 @@ internal static class PluginCache
                 throw new InvalidOperationException("Cbms:Cache configuration invalid: " + error);
             }
 
-            var cbmsConnection = CbmsOptionsHelper.GetCbmsOptions(configuration);
             var loggerFactory = hostProvider.GetRequiredService<ILoggerFactory>();
             var cbmsLogger = loggerFactory.CreateLogger("CbmsHouseholdCache.CbmsClient");
+            var cbmsConnection = CbmsOptionsHelper.GetCbmsOptions(configuration, cbmsLogger);
 
             HttpMessageHandler? handler = null;
             if (cbmsConnection.UseMockResponses)

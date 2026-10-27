@@ -1,5 +1,7 @@
-using Microsoft.FeatureManagement;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.AppSettings;
+using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.StatesPlugins.Interfaces;
 using PluginAddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
 using PluginAddressUpdateResult = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateResult;
@@ -8,20 +10,22 @@ namespace SEBT.Portal.Api.Composition;
 
 /// <summary>
 /// Sends address updates to the in-memory mock when <see cref="FeatureFlags.UseMockHouseholdData"/>
-/// is on, otherwise to the live plugin / configurable-backend path.
+/// is on outside Production, otherwise to the live plugin / configurable-backend path.
 /// </summary>
 internal sealed class FeatureGatedMockAddressUpdateService(
-    IFeatureManager featureManager,
+    IConfiguration configuration,
+    IHostEnvironment hostEnvironment,
+    ILogger logger,
     IAddressUpdateService mock,
     IAddressUpdateService live) : IAddressUpdateService
 {
-    public async Task<PluginAddressUpdateResult> UpdateAddressAsync(
+    public Task<PluginAddressUpdateResult> UpdateAddressAsync(
         PluginAddressUpdateRequest request,
         CancellationToken cancellationToken = default)
     {
-        var service = await featureManager.IsEnabledAsync(FeatureFlags.UseMockHouseholdData)
+        var service = HouseholdMockGate.IsEnabled(configuration, hostEnvironment, logger)
             ? mock
             : live;
-        return await service.UpdateAddressAsync(request, cancellationToken);
+        return service.UpdateAddressAsync(request, cancellationToken);
     }
 }

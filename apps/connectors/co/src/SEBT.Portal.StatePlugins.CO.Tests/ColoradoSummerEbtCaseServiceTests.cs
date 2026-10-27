@@ -76,6 +76,7 @@ public class ColoradoSummerEbtCaseServiceTests : IDisposable
         return new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["ASPNETCORE_ENVIRONMENT"] = "Development",
                 ["Cbms:ClientId"] = "test-id",
                 ["Cbms:ClientSecret"] = "test-secret",
                 [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",

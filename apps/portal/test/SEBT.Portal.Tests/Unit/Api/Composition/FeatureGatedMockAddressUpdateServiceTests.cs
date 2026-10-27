@@ -1,4 +1,6 @@
-using Microsoft.FeatureManagement;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using SEBT.Portal.Api.Composition;
 using SEBT.Portal.Core.AppSettings;
@@ -11,9 +13,15 @@ namespace SEBT.Portal.Tests.Unit.Api.Composition;
 
 public class FeatureGatedMockAddressUpdateServiceTests
 {
-    private readonly IFeatureManager _features = Substitute.For<IFeatureManager>();
+    private readonly IHostEnvironment _environment = Substitute.For<IHostEnvironment>();
+    private readonly ILogger _logger = Substitute.For<ILogger>();
     private readonly IAddressUpdateService _mock = Substitute.For<IAddressUpdateService>();
     private readonly IAddressUpdateService _live = Substitute.For<IAddressUpdateService>();
+
+    public FeatureGatedMockAddressUpdateServiceTests()
+    {
+        _environment.EnvironmentName.Returns(Environments.Development);
+    }
 
     private static PluginAddressUpdateRequest Request() =>
         new()
@@ -22,13 +30,25 @@ public class FeatureGatedMockAddressUpdateServiceTests
             Address = new PluginAddress { StreetAddress1 = "1 Main St", City = "Denver", State = "CO", PostalCode = "80202" },
         };
 
+    private FeatureGatedMockAddressUpdateService Create(bool flag) =>
+        new(
+            new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    [$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = flag ? "true" : "false",
+                })
+                .Build(),
+            _environment,
+            _logger,
+            _mock,
+            _live);
+
     [Fact]
     public async Task UpdateAddressAsync_WhenMockFlagOn_DelegatesToMock()
     {
-        _features.IsEnabledAsync(FeatureFlags.UseMockHouseholdData).Returns(true);
         _mock.UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(PluginAddressUpdateResult.Success());
-        var sut = new FeatureGatedMockAddressUpdateService(_features, _mock, _live);
+        var sut = Create(flag: true);
 
         var result = await sut.UpdateAddressAsync(Request());
 
@@ -38,12 +58,45 @@ public class FeatureGatedMockAddressUpdateServiceTests
     }
 
     [Fact]
-    public async Task UpdateAddressAsync_WhenMockFlagOff_DelegatesToLive()
+    public async Task UpdateAddressAsync_WhenStagingAndFlagOn_DelegatesToMock()
     {
-        _features.IsEnabledAsync(FeatureFlags.UseMockHouseholdData).Returns(false);
+        _environment.EnvironmentName.Returns(Environments.Staging);
+        _mock.UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(PluginAddressUpdateResult.Success());
+        var sut = Create(flag: true);
+
+        await sut.UpdateAddressAsync(Request());
+
+        await _mock.Received(1).UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+        await _live.DidNotReceive().UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateAddressAsync_WhenProductionAndFlagOn_DelegatesToLiveAndLogsWarning()
+    {
+        _environment.EnvironmentName.Returns(Environments.Production);
         _live.UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>())
             .Returns(PluginAddressUpdateResult.Success());
-        var sut = new FeatureGatedMockAddressUpdateService(_features, _mock, _live);
+        var sut = Create(flag: true);
+
+        await sut.UpdateAddressAsync(Request());
+
+        await _live.Received(1).UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+        await _mock.DidNotReceive().UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+        _logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains(FeatureFlags.UseMockHouseholdData)),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task UpdateAddressAsync_WhenMockFlagOff_DelegatesToLive()
+    {
+        _live.UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(PluginAddressUpdateResult.Success());
+        var sut = Create(flag: false);
 
         var result = await sut.UpdateAddressAsync(Request());
 

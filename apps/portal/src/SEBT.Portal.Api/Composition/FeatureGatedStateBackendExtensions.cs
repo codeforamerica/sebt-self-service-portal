@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.StatesPlugins.Interfaces;
@@ -38,7 +40,9 @@ internal static class FeatureGatedStateBackendExtensions
         services.AddSingleton<Defaults.MockStateAddressUpdateService>();
         services.AddSingleton<IAddressUpdateService>(sp =>
             new FeatureGatedMockAddressUpdateService(
-                sp.GetRequiredService<IFeatureManager>(),
+                sp.GetRequiredService<IConfiguration>(),
+                sp.GetRequiredService<IHostEnvironment>(),
+                sp.GetRequiredService<ILogger<FeatureGatedMockAddressUpdateService>>(),
                 sp.GetRequiredService<Defaults.MockStateAddressUpdateService>(),
                 new FeatureGatedAddressUpdateService(
                     sp.GetRequiredService<IFeatureManager>(),

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.CbmsApi;
 using SEBT.Portal.StatePlugins.CO.CbmsApi.Mocks;
@@ -10,7 +11,9 @@ namespace SEBT.Portal.StatePlugins.CO;
 /// CBMS ping check that re-reads connection options on every run so
 /// <c>use_mock_cbms_responses</c> can flip without a restart.
 /// </summary>
-internal sealed class ColoradoCbmsHealthCheck(IConfiguration? configuration) : IHealthCheck
+internal sealed class ColoradoCbmsHealthCheck(
+    IConfiguration? configuration,
+    ILogger? logger = null) : IHealthCheck
 {
     internal const string MissingCredentialsMessage =
         "CBMS credentials are not configured. " +
@@ -21,7 +24,7 @@ internal sealed class ColoradoCbmsHealthCheck(IConfiguration? configuration) : I
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        var options = CbmsOptionsHelper.GetCbmsOptions(configuration);
+        var options = CbmsOptionsHelper.GetCbmsOptions(configuration, logger);
         if (!options.IsConfigured)
         {
             return HealthCheckResult.Degraded(MissingCredentialsMessage);

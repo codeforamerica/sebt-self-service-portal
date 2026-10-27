@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using SEBT.Portal.Core.AppSettings;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Repositories;
+using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.Infrastructure.Repositories;
@@ -21,9 +23,9 @@ internal static class Dependencies
         services.AddTransient<IHouseholdRepository>(sp =>
         {
             var config = sp.GetRequiredService<IConfiguration>();
-            var useMockHouseholdData = config.GetValue(
-                $"FeatureManagement:{FeatureFlags.UseMockHouseholdData}",
-                false);
+            var environment = sp.GetRequiredService<IHostEnvironment>();
+            var logger = sp.GetService<ILoggerFactory>()?.CreateLogger(nameof(HouseholdMockGate));
+            var useMockHouseholdData = HouseholdMockGate.IsEnabled(config, environment, logger);
 
             if (useMockHouseholdData)
             {

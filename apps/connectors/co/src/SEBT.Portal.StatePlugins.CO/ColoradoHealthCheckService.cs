@@ -2,6 +2,7 @@ using System.Composition;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.StatesPlugins.Interfaces;
 
 namespace SEBT.Portal.StatePlugins.CO;
@@ -22,7 +23,9 @@ public class ColoradoHealthCheckService : IStateHealthCheckService
         // is disposed as soon as registration returns.
         builder.Add(new HealthCheckRegistration(
             CheckName,
-            sp => new ColoradoCbmsHealthCheck(sp.GetService<IConfiguration>()),
+            sp => new ColoradoCbmsHealthCheck(
+                sp.GetService<IConfiguration>(),
+                sp.GetService<ILogger<ColoradoCbmsHealthCheck>>()),
             failureStatus: HealthStatus.Unhealthy,
             tags: ["external-api", "co"]));
     }

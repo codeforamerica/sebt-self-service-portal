@@ -2,6 +2,7 @@ using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Core.AppSettings;
@@ -12,6 +13,7 @@ using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Extensions;
 using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.Infrastructure.Services;
+using SEBT.Portal.StatesPlugins.Interfaces;
 using SEBT.Portal.StatesPlugins.Interfaces.Services;
 
 namespace SEBT.Portal.Tests.Unit.Infrastructure;
@@ -196,6 +198,7 @@ public class DependenciesTests
             .AddInMemoryCollection(configData)
             .Build();
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(HostEnvironment(Environments.Development));
         services.AddRepositories();
         var provider = services.BuildServiceProvider();
 
@@ -204,6 +207,73 @@ public class DependenciesTests
             provider.GetRequiredService<IHouseholdRepository>());
         Assert.Contains("use_mock_household_data", ex.Message);
         Assert.Contains("no household plugin", ex.Message);
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Staging")]
+    public void ResolveIHouseholdRepository_WhenFlagOnOutsideProduction_UsesMock(string environmentName)
+    {
+        var repository = ResolveHouseholdRepository(environmentName, mockFlag: true);
+
+        Assert.IsType<MockHouseholdRepository>(repository);
+    }
+
+    [Fact]
+    public void ResolveIHouseholdRepository_WhenProductionAndFlagOn_UsesLive()
+    {
+        var repository = ResolveHouseholdRepository(Environments.Production, mockFlag: true);
+
+        Assert.IsType<HouseholdRepository>(repository);
+    }
+
+    [Fact]
+    public void HouseholdMockGate_WhenProductionAndFlagOn_LogsWarningAndReturnsFalse()
+    {
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = "true"
+            })
+            .Build();
+        var logger = Substitute.For<ILogger>();
+
+        var enabled = HouseholdMockGate.IsEnabled(
+            configuration,
+            HostEnvironment(Environments.Production),
+            logger);
+
+        Assert.False(enabled);
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains(FeatureFlags.UseMockHouseholdData)),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    private static IHouseholdRepository ResolveHouseholdRepository(string environmentName, bool mockFlag)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = mockFlag ? "true" : "false"
+            })
+            .Build());
+        services.AddSingleton(HostEnvironment(environmentName));
+        services.AddSingleton(Substitute.For<ISummerEbtCaseService>());
+        services.AddRepositories();
+
+        return services.BuildServiceProvider().GetRequiredService<IHouseholdRepository>();
+    }
+
+    private static IHostEnvironment HostEnvironment(string environmentName)
+    {
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(environmentName);
+        return environment;
     }
 
     [Fact]
