@@ -4,7 +4,7 @@
  * The login page is selected by the state's loginMode: oidc renders the identity-provider
  * entry page, otp renders the email one-time-code form. Covers both modes and the cross-wired cases.
  */
-import type { LoginMode, StateCode } from '@sebt/design-system'
+import type { LoginMode, StateCode, SupportedLanguage } from '@sebt/design-system'
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -20,6 +20,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 let mockLoginMode: LoginMode = 'oidc'
+let mockSupportedLanguages: readonly SupportedLanguage[] | undefined
 
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
@@ -28,7 +29,8 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
     getState: vi.fn(),
     getStateConfig: (state: StateCode) => ({
       ...actual.getStateConfig(state),
-      loginMode: mockLoginMode
+      loginMode: mockLoginMode,
+      ...(mockSupportedLanguages && { supportedLanguages: mockSupportedLanguages })
     }),
     getStateLinks: vi.fn().mockReturnValue({
       external: {
@@ -122,6 +124,7 @@ describe('LoginPage', () => {
     mockLanguage = 'en'
     mockState = 'co'
     mockLoginMode = 'oidc'
+    mockSupportedLanguages = undefined
   })
 
   describe('OIDC login mode (CO)', () => {
@@ -341,6 +344,31 @@ describe('LoginPage', () => {
 
         expect(assignedHref).toContain('language=en')
         expect(localStorage.getItem('i18nextLng')).toBe('en')
+      })
+
+      it("routes the secondary button to the state's other supported language", () => {
+        mockSupportedLanguages = ['en', 'am']
+        mockLanguage = 'en'
+        render(<LoginPage />)
+        const secondary = screen.getByRole('button', { name: /Iniciar con myColorado/i })
+
+        expect(secondary).toHaveAttribute('lang', 'am')
+
+        secondary.click()
+
+        expect(assignedHref).toContain('language=am')
+        expect(localStorage.getItem('i18nextLng')).toBe('am')
+      })
+
+      it('renders only the primary button when the state supports one language', () => {
+        mockSupportedLanguages = ['en']
+        render(<LoginPage />)
+
+        expect(screen.getByRole('button', { name: /Sign in with myColorado/i })).toHaveAttribute(
+          'lang',
+          'en'
+        )
+        expect(screen.queryByRole('button', { name: /Iniciar con myColorado/i })).toBeNull()
       })
     })
   })

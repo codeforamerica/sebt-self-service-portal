@@ -2,7 +2,7 @@
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
-import { RichText, TextLink, getStateLinks } from '@sebt/design-system'
+import { RichText, TextLink, getStateConfig, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
 function splitParagraphs(text: string): string[] {
@@ -28,11 +28,10 @@ export function OidcLoginPage({ state }: { state: StateCode }) {
   const aboutParagraphs = splitParagraphs(t('cardBody1'))
   const aboutListItems = splitListItems(t('cardBody2'))
 
-  // `logIn` labels the current UI language and `logInEsp` the other one; each button's link
-  // target matches its label so the user lands in the language they chose. This assumes exactly
-  // two supported languages; a third needs a label key per language.
-  const currentLang = i18n.language.startsWith('es') ? 'es' : 'en'
-  const otherLang = currentLang === 'es' ? 'en' : 'es'
+  // `logInEsp` resolves to the other language's label, not to Spanish.
+  const { supportedLanguages } = getStateConfig(state)
+  const currentLang = supportedLanguages.find((lang) => i18n.language.startsWith(lang)) ?? 'en'
+  const otherLang = supportedLanguages.find((lang) => lang !== currentLang)
 
   function startOidcLogin(language: string) {
     trackEvent(AnalyticsEvents.OIDC_START)
@@ -74,21 +73,23 @@ export function OidcLoginPage({ state }: { state: StateCode }) {
             </button>
           </div>
 
-          <div className="margin-top-2">
-            <button
-              type="button"
-              onClick={() => startOidcLogin(otherLang)}
-              className="usa-button usa-button--outline usa-button--idp display-flex flex-align-center"
-              lang={otherLang}
-              data-analytics-cta="login_cta_alt_lang"
-            >
-              <span
-                className="usa-button__idp-logo margin-right-1"
-                aria-hidden="true"
-              />
-              {tCommon('logInEsp')}
-            </button>
-          </div>
+          {otherLang && (
+            <div className="margin-top-2">
+              <button
+                type="button"
+                onClick={() => startOidcLogin(otherLang)}
+                className="usa-button usa-button--outline usa-button--idp display-flex flex-align-center"
+                lang={otherLang}
+                data-analytics-cta="login_cta_alt_lang"
+              >
+                <span
+                  className="usa-button__idp-logo margin-right-1"
+                  aria-hidden="true"
+                />
+                {tCommon('logInEsp')}
+              </button>
+            </div>
+          )}
 
           <p className="margin-top-4 font-sans-sm">
             <TextLink
