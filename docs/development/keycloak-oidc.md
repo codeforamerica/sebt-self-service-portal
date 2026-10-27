@@ -44,6 +44,8 @@ Alternatively, edit user emails in the Keycloak admin UI to match your existing 
 
 Password for all users: `password`
 
+Usernames match the seeded scenarios in `SeedScenarios.UserScenarios`. The email is `Seeding:EmailPattern` with that username, and the phone attribute is the mock household phone so lookup loads that persona.
+
 Login client (`sebt-portal`) emits `email`, `phone` / `phone_number`, and profile claims.  
 Step-up client (`sebt-portal-stepup`) also emits `socureIdVerificationLevel` / `socureIdVerificationDate` from user attributes when present.
 
@@ -52,7 +54,7 @@ Step-up client (`sebt-portal-stepup`) also emits `socureIdVerificationLevel` / `
 1. Discovery document loads and lists `authorization_endpoint`, `token_endpoint`, `end_session_endpoint`, JWKS.
 2. CO login redirects to Keycloak; after credentials, lands on `/callback` and establishes a portal session cookie.
 3. Logout hits Keycloak `end_session_endpoint` and clears the IdP SSO session (next login prompts again).
-4. Step-up path uses `sebt-portal-stepup` and raises IAL when verification claims are present (`ial1-only` can be used to exercise the challenge).
+4. Step-up path uses `sebt-portal-stepup` and raises IAL when verification claims are present (`non-co-loaded` is a reliable one to use for smoke-testing).
 
 ## Resetting the realm
 

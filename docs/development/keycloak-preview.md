@@ -73,13 +73,8 @@ Preview scripts authenticate with the dedicated `sebt-preview-deploy` client (`c
 
 ## Fixture users
 
-From `docker/keycloak/sebt-realm.preview.json` (password `password`):
 
-| Username | Notes |
-| --- | --- |
-| `verified` | Emits Socure + myColorado-shaped IAL claims (`1.5`) on login and step-up |
-| `co-loaded` | Co-loaded persona; same IAL `1.5` claims on login and step-up |
-| `ial1-only` | IAL1-only (no verification-level claims) |
+When logging in against Keycloak, there's a set of users that are matched against the database seeds for the OIDC auth path (which you should be able to view from `docker/keycloak/sebt-realm.preview.json` and `keycloak-oidc.md`). 
 
 ## Client credentials
 
