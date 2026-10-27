@@ -8,8 +8,9 @@ version: "1.0.0"  # State-specific version for tracking deployments
 
 # Infrastructure configuration
 infrastructure:
-  # Use Docker for builds (true) or native tools (false)
-  use_docker: true
+  # Run the build scripts in a stock container (true) or on the runner (false).
+  # Neither tests the Dockerfiles; the Container images job in state-ci.yaml does.
+  use_docker: false
 
   # Docker-specific settings (only used if use_docker: true)
   docker:

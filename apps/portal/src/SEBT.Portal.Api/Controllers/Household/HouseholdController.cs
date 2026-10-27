@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
+using Microsoft.FeatureManagement;
 using SEBT.Portal.Api.Models;
 using SEBT.Portal.Api.Models.Household;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Kernel;
 using SEBT.Portal.Kernel.AspNetCore;
@@ -26,7 +27,7 @@ public class HouseholdController : ControllerBase
     /// </summary>
     /// <param name="queryHandler">The use case handler for retrieving household data.</param>
     /// <param name="identifierHasher">Hashes household application and case IDs before returning them to the client.</param>
-    /// <param name="configuration">Application configuration, used to resolve the hashed app ID field name.</param>
+    /// <param name="featureManager">Decides whether the response carries hashed analytics identifiers.</param>
     /// <param name="includeCardDetails">When false, card-related fields are excluded from the response.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with household data if found, or an empty payload when no household exists; otherwise, Unauthorized or Forbidden.</returns>
@@ -41,7 +42,7 @@ public class HouseholdController : ControllerBase
     public async Task<IActionResult> GetHouseholdData(
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
         [FromServices] IIdentifierHasher identifierHasher,
-        [FromServices] IConfiguration configuration,
+        [FromServices] IFeatureManager featureManager,
         [FromQuery] bool includeCardDetails = true,
         CancellationToken cancellationToken = default)
     {
@@ -51,9 +52,11 @@ public class HouseholdController : ControllerBase
             IncludeCardDetails = includeCardDetails
         };
         var result = await queryHandler.Handle(query, cancellationToken);
+        var includeAnalyticsIdentifiers = await featureManager.IsEnabledAsync(FeatureFlags.EnableHouseholdAnalyticsIdentifiers);
 
         return result.ToActionResult(
-            successMap: data => Ok(data.ToResponse(ResolveAnalyticsIdentifiers(data, identifierHasher, configuration))),
+            successMap: data => Ok(data.ToResponse(
+                includeAnalyticsIdentifiers ? HouseholdAnalyticsIdentifiers.Resolve(data, identifierHasher) : null)),
             failureMap: r => r switch
             {
                 UnauthorizedResult<Core.Models.Household.HouseholdData> unauthorized => Unauthorized(new ErrorResponse(unauthorized.Message)),
@@ -69,28 +72,6 @@ public class HouseholdController : ControllerBase
                 PreconditionFailedResult<Core.Models.Household.HouseholdData> { Reason: PreconditionFailedReason.NotFound } => Ok(new HouseholdDataResponse()),
                 _ => StatusCode(StatusCodes.Status500InternalServerError, new ErrorResponse("An unexpected error occurred."))
             });
-    }
-
-    /// <summary>
-    /// Resolves the household's hashed analytics identifiers. CO-only
-    /// today (gated on the active state so DC payloads stay unchanged).
-    /// The frontend treats a null identifier as "do not emit".
-    /// State is read from IConfiguration["STATE"], which surfaces the STATE
-    /// env var via the default ASP.NET configuration providers and lets tests
-    /// inject an in-memory value without touching process state.
-    /// </summary>
-    private static HouseholdAnalyticsIdentifiers? ResolveAnalyticsIdentifiers(
-        Core.Models.Household.HouseholdData data,
-        IIdentifierHasher identifierHasher,
-        IConfiguration configuration)
-    {
-        var state = configuration["STATE"];
-        if (!string.Equals(state, "co", StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        return HouseholdAnalyticsIdentifiers.Resolve(data, identifierHasher);
     }
 
     /// <summary>

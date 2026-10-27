@@ -38,7 +38,13 @@ public abstract class JwtTokenServiceTestBase
         validityOptions.Value.Returns(new IdProofingValiditySettings { ValidityDays = TestValidityDays });
 
         var translator = new OidcVerificationClaimTranslator(
-            new OidcVerificationClaimSettings(),
+            new OidcVerificationClaimSettings
+            {
+                LevelClaimName = "socureIdVerificationLevel",
+                DateClaimName = "socureIdVerificationDate",
+                FallbackLevelClaimName = "myCoIdVerificationLevel",
+                FallbackDateClaimName = "myCoIdVerificationDate"
+            },
             new IdProofingValiditySettings { ValidityDays = TestValidityDays },
             NullLogger<OidcVerificationClaimTranslator>.Instance);
 
