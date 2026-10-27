@@ -16,7 +16,7 @@ internal sealed class FeatureGatedMockAddressUpdateService(
     IConfiguration configuration,
     IHostEnvironment hostEnvironment,
     ILogger logger,
-    IAddressUpdateService mock,
+    Lazy<IAddressUpdateService> mock,
     IAddressUpdateService live) : IAddressUpdateService
 {
     public Task<PluginAddressUpdateResult> UpdateAddressAsync(
@@ -24,7 +24,7 @@ internal sealed class FeatureGatedMockAddressUpdateService(
         CancellationToken cancellationToken = default)
     {
         var service = HouseholdMockGate.IsEnabled(configuration, hostEnvironment, logger)
-            ? mock
+            ? mock.Value
             : live;
         return service.UpdateAddressAsync(request, cancellationToken);
     }

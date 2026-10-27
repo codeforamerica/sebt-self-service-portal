@@ -43,7 +43,7 @@ internal static class FeatureGatedStateBackendExtensions
                 sp.GetRequiredService<IConfiguration>(),
                 sp.GetRequiredService<IHostEnvironment>(),
                 sp.GetRequiredService<ILogger<FeatureGatedMockAddressUpdateService>>(),
-                sp.GetRequiredService<Defaults.MockStateAddressUpdateService>(),
+                new Lazy<IAddressUpdateService>(() => sp.GetRequiredService<Defaults.MockStateAddressUpdateService>()),
                 new FeatureGatedAddressUpdateService(
                     sp.GetRequiredService<IFeatureManager>(),
                     sp.GetRequiredKeyedService<IAddressUpdateService>(StatePluginKeys.Connector),
