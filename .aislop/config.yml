@@ -1,0 +1,8 @@
+version: 1
+
+exclude:
+  # EF Core generates these; findings there aren't actionable.
+  - apps/portal/src/SEBT.Portal.Infrastructure/Migrations
+
+telemetry:
+  enabled: false
