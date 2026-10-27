@@ -134,7 +134,7 @@ public class CbmsOptionsHelperTests
         logger.Received().Log(
             LogLevel.Warning,
             Arg.Any<EventId>(),
-            Arg.Is<object>(state => state.ToString()!.Contains("use_mock_cbms_responses")),
+            Arg.Is<object>(state => state.ToString()!.Contains(CbmsOptionsHelper.UseMockResponsesFlagName)),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }

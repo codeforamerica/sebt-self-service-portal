@@ -13,10 +13,20 @@ namespace SEBT.Portal.StatePlugins.CO.Cbms;
 internal static class CbmsOptionsHelper
 {
     /// <summary>
-    /// Configuration key for <see cref="CbmsConnectionOptions.UseMockResponses"/>.
+    /// Flag name for <see cref="CbmsConnectionOptions.UseMockResponses"/>.
     /// Matches <c>FeatureFlags.UseMockCbmsResponses</c> in the portal.
     /// </summary>
-    internal const string UseMockResponsesConfigurationKey = "FeatureManagement:use_mock_cbms_responses";
+    internal const string UseMockResponsesFlagName = "use_mock_cbms_responses";
+
+    /// <summary>
+    /// Configuration key for <see cref="UseMockResponsesFlagName"/>.
+    /// </summary>
+    internal const string UseMockResponsesConfigurationKey = "FeatureManagement:" + UseMockResponsesFlagName;
+
+    /// <summary>
+    /// Environment variable for <see cref="UseMockResponsesFlagName"/>.
+    /// </summary>
+    internal const string UseMockResponsesEnvironmentVariable = "FeatureManagement__" + UseMockResponsesFlagName;
 
     public static CbmsConnectionOptions GetCbmsOptions(IConfiguration? configuration, ILogger? logger = null)
     {
@@ -34,13 +44,13 @@ internal static class CbmsOptionsHelper
             ?? CbmsDefaults.SandboxTokenEndpointUrl;
 
         var useMockResponsesRaw = configuration?[UseMockResponsesConfigurationKey]
-            ?? Environment.GetEnvironmentVariable("FeatureManagement__use_mock_cbms_responses");
+            ?? Environment.GetEnvironmentVariable(UseMockResponsesEnvironmentVariable);
         var useMockResponses = useMockResponsesRaw?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
         if (useMockResponses && IsProduction(configuration))
         {
             logger?.LogWarning(
                 "Feature flag {FeatureFlag} is enabled in Production and will be ignored.",
-                "use_mock_cbms_responses");
+                UseMockResponsesFlagName);
             useMockResponses = false;
         }
 
