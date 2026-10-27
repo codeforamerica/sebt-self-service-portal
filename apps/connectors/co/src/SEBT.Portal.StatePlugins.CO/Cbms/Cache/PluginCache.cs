@@ -23,18 +23,21 @@ internal static class PluginCache
 
     public static ICbmsHouseholdCache GetOrBuild(IServiceProvider hostProvider, IConfiguration configuration)
     {
-        var useMockResponses = CbmsOptionsHelper.GetCbmsOptions(configuration).UseMockResponses;
-        if (HasCurrentInstance(useMockResponses))
+        var current = CurrentInstance(CbmsOptionsHelper.GetCbmsOptions(configuration).UseMockResponses);
+        if (current is not null)
         {
-            return _instance!;
+            return current;
         }
 
         lock (_lock)
         {
-            useMockResponses = CbmsOptionsHelper.GetCbmsOptions(configuration).UseMockResponses;
-            if (HasCurrentInstance(useMockResponses))
+            var loggerFactory = hostProvider.GetRequiredService<ILoggerFactory>();
+            var cbmsLogger = loggerFactory.CreateLogger("CbmsHouseholdCache.CbmsClient");
+            var cbmsConnection = CbmsOptionsHelper.GetCbmsOptions(configuration, cbmsLogger);
+            current = CurrentInstance(cbmsConnection.UseMockResponses);
+            if (current is not null)
             {
-                return _instance!;
+                return current;
             }
 
             var cacheOptions = new CbmsHouseholdCacheOptions();
@@ -43,10 +46,6 @@ internal static class PluginCache
             {
                 throw new InvalidOperationException("Cbms:Cache configuration invalid: " + error);
             }
-
-            var loggerFactory = hostProvider.GetRequiredService<ILoggerFactory>();
-            var cbmsLogger = loggerFactory.CreateLogger("CbmsHouseholdCache.CbmsClient");
-            var cbmsConnection = CbmsOptionsHelper.GetCbmsOptions(configuration, cbmsLogger);
 
             HttpMessageHandler? handler = null;
             if (cbmsConnection.UseMockResponses)
@@ -66,20 +65,33 @@ internal static class PluginCache
 
             CbmsFetchAccountDetailsDelegate fetchFromCbms = BuildFetchDelegate(cbmsClient);
 
-            _instance = ActivatorUtilities.CreateInstance<CbmsHouseholdCache>(
+            var built = ActivatorUtilities.CreateInstance<CbmsHouseholdCache>(
                 hostProvider,
                 Options.Create(cacheOptions),
                 fetchFromCbms,
                 cbmsConnection.UseMockResponses);
+            _instance = built;
             _builtUseMockResponses = cbmsConnection.UseMockResponses;
             _pinnedForTesting = false;
 
-            return _instance;
+            return built;
         }
     }
 
-    private static bool HasCurrentInstance(bool useMockResponses) =>
-        _instance is not null && (_pinnedForTesting || _builtUseMockResponses == useMockResponses);
+    private static ICbmsHouseholdCache? CurrentInstance(bool useMockResponses)
+    {
+        if (_instance is null)
+        {
+            return null;
+        }
+
+        if (_pinnedForTesting || _builtUseMockResponses == useMockResponses)
+        {
+            return _instance;
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Builds the delegate used to fetch account details from CBMS.
