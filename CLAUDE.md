@@ -49,6 +49,11 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 - When you hit something that warrants a document, report the raw material as bullet points in chat — the decision, the constraints, the open questions — and let a human write it. Never draft the document text itself.
 - Out of scope: code comments, which are governed above.
 
+### Assumptions registry
+- Before relying on how state backends, connectors, config, or deployment behave, consult [docs/assumptions.md](./docs/assumptions.md). Treat `confirmed` entries as facts and `unverified` ones as open questions.
+- When a broad assumption is stated, questioned, or contradicted (in a session or PR discussion), flag it and use the `capture-assumption` skill to propose an entry. A human adds it to the registry.
+- If code under review contradicts a `confirmed` entry, call it out: either the code or the registry is wrong.
+
 ## Getting help
 - If you're confused or having trouble with something, you are strongly encouraged to stop and ask for help. Especially if it's something your human might be better at.
 
