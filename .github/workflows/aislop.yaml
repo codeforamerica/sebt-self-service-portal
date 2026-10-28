@@ -16,6 +16,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -45,8 +46,28 @@ jobs:
         continue-on-error: true
         run: pnpm dlx aislop@0.18.1 scan --sarif > aislop.sarif
 
+      # The JSON report marks which findings the baseline already covers.
+      - name: Run aislop (JSON report)
+        continue-on-error: true
+        run: pnpm dlx aislop@0.18.1 ci > aislop.json
+
       - name: Upload results to code scanning
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
         with:
           sarif_file: aislop.sarif
           category: aislop
+
+      - name: Summarize findings on the PR
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const postAislopComment = require('./.github/workflows/scripts/post-aislop-comment.js');
+            await postAislopComment({
+              github,
+              context,
+              core,
+              report: JSON.parse(fs.readFileSync('aislop.json', 'utf8')),
+              runUrl: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+              codeScanningUrl: '${{ github.server_url }}/${{ github.repository }}/security/code-scanning?query=tool%3Aaislop',
+            });

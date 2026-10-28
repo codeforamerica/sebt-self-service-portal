@@ -52,7 +52,7 @@
     "docs:manifest": "tsx scripts/docs/write-site-manifest.ts",
     "release-notes:generate": "tsx scripts/release-notes/generate.ts",
     "check:cooldown-exclusions": "tsx scripts/security/check-cooldown-exclusions.ts",
-    "test:scripts": "tsx --test \"scripts/**/*.test.ts\" \"aspire-apphost/*.test.mts\" \"aspire-apphost/capabilities/**/*.test.mts\"",
+    "test:scripts": "tsx --test \"scripts/**/*.test.ts\" \".github/workflows/scripts/*.test.js\"\"aspire-apphost/*.test.mts\" \"aspire-apphost/capabilities/**/*.test.mts\"",
     "prepare": "husky || true",
     "aspire:start": "pnpm --dir aspire-apphost run aspire:start",
     "aspire:dc": "pnpm --dir aspire-apphost run aspire:dc",
