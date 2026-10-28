@@ -47,4 +47,11 @@ export default defineConfig(
       ],
     },
   },
+  {
+    // node:test's describe() and it() return promises that the runner awaits itself.
+    files: ['**/*.test.mts'],
+    rules: {
+      '@typescript-eslint/no-floating-promises': 'off',
+    },
+  },
 );

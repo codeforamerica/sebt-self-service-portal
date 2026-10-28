@@ -1,0 +1,3 @@
+setup:
+  - project: safety-net-sebt-self-service-portal
+    config: local_personal

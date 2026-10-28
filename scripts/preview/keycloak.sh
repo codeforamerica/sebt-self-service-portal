@@ -70,7 +70,8 @@ keycloak_deploy_token() {
 
   body="$(mktemp)"
   form="$(mktemp)"
-  jq -nr \
+  # -j, not -r: a trailing newline would become part of the secret.
+  jq -nj \
     --arg client_id "${client_id}" \
     --arg client_secret "${client_secret}" \
     '"grant_type=client_credentials&client_id=\($client_id|@uri)&client_secret=\($client_secret|@uri)"' \
@@ -201,7 +202,8 @@ keycloak_admin_token() {
 
   body="$(mktemp)"
   form="$(mktemp)"
-  jq -nr \
+  # -j, not -r: a trailing newline would become part of the password.
+  jq -nj \
     --arg user "${username}" \
     --arg pass "${password}" \
     '"grant_type=password&client_id=admin-cli&username=\($user|@uri)&password=\($pass|@uri)"' \

@@ -28,6 +28,8 @@ jobs:
       backend: ${{ steps.decide.outputs.backend }}
       frontend: ${{ steps.decide.outputs.frontend }}
       enrollment: ${{ steps.decide.outputs.enrollment }}
+      local_root_image: ${{ steps.decide.outputs.local_root_image }}
+      keycloak_image: ${{ steps.decide.outputs.keycloak_image }}
     steps:
       - name: Filter changed paths (PRs only)
         id: filter
@@ -40,7 +42,8 @@ jobs:
               - '.github/**'
               - 'scripts/**'
               - '.husky/**'
-              - 'Dockerfile'
+              - '**/Dockerfile'
+              - '.dockerignore'
               - 'compose.yaml'
               - 'package.json'
             backend:
@@ -64,6 +67,20 @@ jobs:
               - 'packages/**'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
+            # The local-dev images build only when their own inputs change, not on
+            # every app change, so the slow combined image stays off most PRs.
+            local-root-image:
+              - 'Dockerfile'
+              - 'compose.yaml'
+              - '.dockerignore'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - 'pnpm-lock.yaml'
+              - 'scripts/**'
+              - '.github/workflows/state-ci.yaml'
+            keycloak-image:
+              - 'docker/keycloak/**'
+              - '.github/workflows/state-ci.yaml'
 
       - name: Decide which areas run
         id: decide
@@ -73,6 +90,8 @@ jobs:
           BACKEND: ${{ steps.filter.outputs.backend }}
           FRONTEND: ${{ steps.filter.outputs.frontend }}
           ENROLLMENT: ${{ steps.filter.outputs.enrollment }}
+          LOCAL_ROOT_IMAGE: ${{ steps.filter.outputs.local-root-image }}
+          KEYCLOAK_IMAGE: ${{ steps.filter.outputs.keycloak-image }}
         run: |
           if [ "$EVENT_NAME" != "pull_request" ] || [ "$INFRA" = "true" ]; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
@@ -82,6 +101,13 @@ jobs:
             echo "backend=${BACKEND:-false}" >> "$GITHUB_OUTPUT"
             echo "frontend=${FRONTEND:-false}" >> "$GITHUB_OUTPUT"
             echo "enrollment=${ENROLLMENT:-false}" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "local_root_image=true" >> "$GITHUB_OUTPUT"
+            echo "keycloak_image=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "local_root_image=${LOCAL_ROOT_IMAGE:-false}" >> "$GITHUB_OUTPUT"
+            echo "keycloak_image=${KEYCLOAK_IMAGE:-false}" >> "$GITHUB_OUTPUT"
           fi
 
   build-and-test:
@@ -135,8 +161,9 @@ jobs:
 
       # state connector (interfaces) is now in-repo at apps/connectors/state — no checkout needed.
 
-      # Docker Build Path
-      - name: Build Backend (Docker)
+      # Container Build Path (use_docker: true). Runs the build scripts inside a
+      # stock image with the repo mounted; it does not test any Dockerfile.
+      - name: Build Backend (container, not the Dockerfile)
         if: steps.config.outputs.use_docker == 'true' && needs.changes.outputs.backend == 'true'
         run: |
           docker run --rm \
@@ -145,7 +172,7 @@ jobs:
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
             bash -c "./.github/workflows/scripts/build-backend.sh --configuration ${{ steps.config.outputs.build_config }} ${{ steps.config.outputs.backend_flags }}"
 
-      - name: Test Backend (Docker)
+      - name: Test Backend (container, not the Dockerfile)
         if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.backend == 'true'
         # Covers the portal suite plus the in-repo connector suites (CO + interfaces).
         timeout-minutes: 10
@@ -157,7 +184,7 @@ jobs:
             mcr.microsoft.com/dotnet/sdk:${{ steps.config.outputs.dotnet_version }} \
             bash -c "./.github/workflows/scripts/test-backend.sh --skip-build --configuration ${{ steps.config.outputs.build_config }} ${{ github.event_name == 'pull_request' && '--coverage' || '' }}"
 
-      - name: Build Frontend (Docker)
+      - name: Build Frontend (container, not the Dockerfile)
         if: steps.config.outputs.use_docker == 'true' && needs.changes.outputs.frontend == 'true'
         run: |
           docker run --rm \
@@ -166,7 +193,7 @@ jobs:
             node:${{ steps.config.outputs.node_version }}-alpine \
             sh -c "corepack enable && corepack prepare pnpm@${{ steps.config.outputs.pnpm_version }} --activate && sh .github/workflows/scripts/build-frontend.sh --production ${{ steps.config.outputs.frontend_flags }}"
 
-      - name: Test Frontend (Docker)
+      - name: Test Frontend (container, not the Dockerfile)
         if: steps.config.outputs.use_docker == 'true' && steps.config.outputs.skip_tests != 'true' && needs.changes.outputs.frontend == 'true'
         run: |
           docker run --rm \
@@ -311,6 +338,114 @@ jobs:
               frontendDir: 'coverage-artifacts/frontend',
               runUrl: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
             });
+
+  # deploy-ecr.yaml builds the Web and API images only after merge, so a broken
+  # Dockerfile used to surface as a failed deploy to dev. This job builds both
+  # images the same way and runs each one, so the break fails the PR instead.
+  container-images:
+    name: Container images
+    # No job-level `if:`, for the same reason as Build & Test: this is meant to
+    # be a required check, and a skipped job never posts. Steps are gated instead.
+    needs: [changes]
+    runs-on: ubuntu-latest
+    env:
+      RUN_IMAGES: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
+
+    steps:
+      - name: Checkout code
+        if: env.RUN_IMAGES == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup .NET
+        if: env.RUN_IMAGES == 'true'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      # The API image bundles whatever plugins are staged under SEBT.Portal.Api/.
+      # Only the in-repo CO plugin is staged, so this job needs no DC connector token.
+      - name: Publish and stage CO plugin
+        if: env.RUN_IMAGES == 'true'
+        run: |
+          dotnet publish apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/SEBT.Portal.StatePlugins.CO.csproj \
+            -c Release \
+            -p:CopyPlugins=false
+          mkdir -p apps/portal/src/SEBT.Portal.Api/plugins-co
+          cp apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/bin/Release/net10.0/publish/*.dll \
+            apps/portal/src/SEBT.Portal.Api/plugins-co/
+
+      - name: Build API image
+        if: env.RUN_IMAGES == 'true'
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            --build-arg CI=true \
+            -f apps/portal/src/SEBT.Portal.Api/Dockerfile \
+            -t sebt-portal-api:ci \
+            .
+
+      # One build covers every state: STATE is read at runtime, not baked in.
+      - name: Build Web image
+        if: env.RUN_IMAGES == 'true'
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
+            --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
+            -t sebt-portal-web:ci \
+            .
+
+      # /health answers 200 (Degraded) without a database. The secrets are
+      # throwaway values that only satisfy startup validation.
+      - name: Smoke test API image
+        if: env.RUN_IMAGES == 'true'
+        run: |
+          ./scripts/ci/smoke-test-image.sh \
+            --image sebt-portal-api:ci \
+            --port 8080 \
+            --path /health \
+            --env STATE=co \
+            --env PluginAssemblyPaths__0=plugins-co \
+            --env "IdentifierHasher__SecretKey=$(openssl rand -base64 48)" \
+            --env "JwtSettings__SecretKey=$(openssl rand -base64 48)"
+
+      # /login renders without the API, unlike / which only redirects.
+      - name: Smoke test Web image
+        if: env.RUN_IMAGES == 'true'
+        run: |
+          ./scripts/ci/smoke-test-image.sh \
+            --image sebt-portal-web:ci \
+            --port 3000 \
+            --path /login \
+            --env STATE=co
+
+  # Builds the images used only for local development and the preview Keycloak.
+  # Deliberately not a required check: a failure here warns but never blocks a merge.
+  local-dev-images:
+    name: Local dev images
+    needs: [changes]
+    if: needs.changes.outputs.local_root_image == 'true' || needs.changes.outputs.keycloak_image == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build root image (compose.yaml)
+        if: needs.changes.outputs.local_root_image == 'true'
+        run: |
+          if ! docker build -f Dockerfile -t sebt-portal-local:ci .; then
+            echo "::warning title=Local dev image::The root Dockerfile used by compose.yaml failed to build."
+            exit 1
+          fi
+
+      - name: Build Keycloak image
+        if: ${{ !cancelled() && needs.changes.outputs.keycloak_image == 'true' }}
+        run: |
+          if ! docker build --platform linux/amd64 -f docker/keycloak/Dockerfile -t sebt-keycloak:ci docker/keycloak; then
+            echo "::warning title=Local dev image::docker/keycloak/Dockerfile failed to build."
+            exit 1
+          fi
 
   # The enrollment checker is built only by deploy-enrollment-checker.yaml, which
   # triggers on pushes to main. Without this job, pull requests never lint, build,
