@@ -42,8 +42,7 @@ RUN corepack enable \
   && corepack prepare pnpm@10 --activate \
   && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
   && pnpm install --frozen-lockfile \
-  && cd apps/portal/src/SEBT.Portal.Web \
-  && pnpm build
+  && pnpm --dir apps/portal/src/SEBT.Portal.Web build
 
 FROM node:24-alpine AS runtime
 
