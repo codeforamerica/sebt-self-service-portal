@@ -1,10 +1,10 @@
 /**
  * Login Page Unit Tests (Co-located)
  *
- * Tests the login page for both CO and DC states.
- * CO renders the external auth landing page (COLoginPage).
- * DC renders the OTP email form (LoginForm).
+ * The login page is selected by the state's loginMode: oidc renders the myColorado
+ * entry page, otp renders the email one-time-code form. Covers both modes and the cross-wired cases.
  */
+import type { LoginMode, StateCode } from '@sebt/design-system'
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -19,11 +19,17 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() })
 }))
 
+let mockLoginMode: LoginMode = 'oidc'
+
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getState: vi.fn(),
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      loginMode: mockLoginMode
+    }),
     getStateLinks: vi.fn().mockReturnValue({
       external: {
         contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
@@ -115,10 +121,12 @@ describe('LoginPage', () => {
     mockTrackEvent.mockClear()
     mockLanguage = 'en'
     mockState = 'co'
+    mockLoginMode = 'oidc'
   })
 
-  describe('CO state', () => {
+  describe('OIDC login mode (CO)', () => {
     beforeEach(() => {
+      mockLoginMode = 'oidc'
       mockGetState.mockReturnValue('co')
       mockState = 'co'
     })
@@ -331,8 +339,9 @@ describe('LoginPage', () => {
     })
   })
 
-  describe('DC state', () => {
+  describe('OTP login mode (DC)', () => {
     beforeEach(() => {
+      mockLoginMode = 'otp'
       mockGetState.mockReturnValue('dc')
       mockState = 'dc'
     })
@@ -353,6 +362,32 @@ describe('LoginPage', () => {
       render(<LoginPage />)
       const heading = screen.getByRole('heading', { level: 1 })
       expect(heading).not.toHaveClass('text-primary-dark')
+    })
+  })
+
+  describe('page selection', () => {
+    it('selects the OIDC page by login mode, not by state code', () => {
+      mockGetState.mockReturnValue('dc')
+      mockState = 'co' // CO translations so the myColorado label resolves
+      mockLoginMode = 'oidc'
+
+      render(<LoginPage />)
+
+      expect(screen.getByRole('button', { name: /Sign in with myColorado/i })).toBeInTheDocument()
+      expect(screen.queryByTestId('login-form')).not.toBeInTheDocument()
+    })
+
+    it('selects the OTP page by login mode, not by state code', () => {
+      mockGetState.mockReturnValue('co')
+      mockState = 'dc'
+      mockLoginMode = 'otp'
+
+      render(<LoginPage />)
+
+      expect(screen.getByTestId('login-form')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /Sign in with myColorado/i })
+      ).not.toBeInTheDocument()
     })
   })
 })

@@ -1,15 +1,18 @@
 'use client'
 
-import { getState, LoadingInterstitial, type LoadingInterstitialProps } from '@sebt/design-system'
+import {
+  getState,
+  getStateConfig,
+  LoadingInterstitial,
+  type LoadingInterstitialProps
+} from '@sebt/design-system'
 
 /**
- * CO-only loading screen for portal pages where the user would otherwise see
- * a blank screen while a request is in flight (auth status, household data,
- * sign-in callback). Renders nothing in non-CO states so existing behavior is
- * preserved per DC-337's CO-only scope.
+ * Loading interstitial for pages that would otherwise be blank while a request is in flight.
+ * Renders only for states that enable it; the rest keep the blank screen they shipped with.
  */
 export function CoLoadingScreen({ title, message }: LoadingInterstitialProps) {
-  if (getState() !== 'co') return null
+  if (!getStateConfig(getState()).showLoadingInterstitial) return null
   return (
     <div className="grid-container maxw-tablet">
       <LoadingInterstitial
