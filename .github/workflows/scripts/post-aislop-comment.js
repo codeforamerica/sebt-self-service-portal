@@ -9,7 +9,7 @@ const MAX_ROWS = 50;
 const SEVERITIES = ['error', 'warning', 'info'];
 
 function escapeCell(text) {
-  return String(text).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  return String(text).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 }
 
 function location(d) {
