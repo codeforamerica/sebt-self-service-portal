@@ -177,13 +177,6 @@
       "count": 1
     },
     {
-      "rule": "security/hardcoded-secret",
-      "engine": "security",
-      "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoCbmsServiceBase.cs",
-      "fingerprint": "71b134a8746f4579",
-      "count": 1
-    },
-    {
       "rule": "ai-slop/csharp-null-forgiving",
       "engine": "ai-slop",
       "file": "apps/connectors/co/src/SEBT.Portal.StatePlugins.CO/ColoradoEnrollmentCheckService.cs",
@@ -3198,27 +3191,6 @@
       "engine": "code-quality",
       "file": "package.json",
       "fingerprint": "521ccf2bac6a9b97",
-      "count": 1
-    },
-    {
-      "rule": "security/vulnerable-dependency",
-      "engine": "security",
-      "file": "package.json",
-      "fingerprint": "message:444f8ff4bb05c1d9",
-      "count": 1
-    },
-    {
-      "rule": "security/vulnerable-dependency",
-      "engine": "security",
-      "file": "package.json",
-      "fingerprint": "message:98e60e395f226c8a",
-      "count": 1
-    },
-    {
-      "rule": "security/vulnerable-dependency",
-      "engine": "security",
-      "file": "package.json",
-      "fingerprint": "message:99f451d7899a4525",
       "count": 1
     },
     {

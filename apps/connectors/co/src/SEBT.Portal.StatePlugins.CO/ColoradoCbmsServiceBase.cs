@@ -117,6 +117,7 @@ public abstract class ColoradoCbmsServiceBase
                 }
 
                 clientId = "mock-client-id";
+                // aislop-ignore-next-line security/hardcoded-secret -- placeholder credential for the in-memory mock CBMS handler
                 clientSecret = "mock-client-secret";
                 var dataStore = new MockCbmsDataStore(_cache);
                 handler = new MockCbmsHttpHandler(dataStore);

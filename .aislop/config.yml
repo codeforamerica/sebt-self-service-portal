@@ -4,6 +4,10 @@ exclude:
   # EF Core generates these; findings there aren't actionable.
   - apps/portal/src/SEBT.Portal.Infrastructure/Migrations
 
+rules:
+  # Dependabot and Aikido own dependency advisories.
+  security/vulnerable-dependency: "off"
+
 overrides:
   # Primary constructors take their DI dependencies as parameters.
   - files: ["**/*CommandHandler.cs", "**/Controllers/**/*.cs"]
