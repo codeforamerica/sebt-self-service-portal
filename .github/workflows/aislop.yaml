@@ -36,6 +36,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
+      # Both apps import a locale module the build generates and git ignores; without
+      # it, knip reports the imports as unresolved.
+      - name: Generate locale resources
+        run: |
+          pnpm --silent --dir apps/portal/src/SEBT.Portal.Web run copy:locales
+          pnpm --silent --dir apps/portal/src/SEBT.EnrollmentChecker.Web run copy:locales
+
       # aislop checks Python with ruff; the baseline was recorded with this version.
       - name: Install ruff
         run: pipx install ruff==0.17.1
