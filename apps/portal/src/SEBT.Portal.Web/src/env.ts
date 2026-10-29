@@ -47,7 +47,12 @@ export const env = createEnv({
     // Where the dashboard's apply links go; omit when applications have no destination.
     // PEAK params: the destination is Colorado's PEAK form, which takes a `language` param.
     APPLICATION_URL: z.url().optional(),
-    APPLICATION_URL_PEAK_PARAMS: z.enum(['true', 'false']).optional(),
+    APPLICATION_URL_PEAK_PARAMS: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.enum(['true', 'false']))
+      .optional(),
     // Which state this process serves. Unprefixed so one artifact can serve any
     // state: the server stamps it onto <html data-state> per request, and client
     // code reads it back from there (see getState in @sebt/design-system).

@@ -99,6 +99,12 @@ describe('getRuntimeConfig', () => {
     expect(getRuntimeConfig().applicationUrlPeakParams).toBe(true)
   })
 
+  it('reads the PEAK params toggle case-insensitively, as env.ts validates it', () => {
+    vi.stubEnv('APPLICATION_URL_PEAK_PARAMS', ' TRUE ')
+
+    expect(getRuntimeConfig().applicationUrlPeakParams).toBe(true)
+  })
+
   it('treats any non-"true" PEAK params value, including blank, as off', () => {
     vi.stubEnv('APPLICATION_URL_PEAK_PARAMS', 'yes')
     expect(getRuntimeConfig().applicationUrlPeakParams).toBe(false)

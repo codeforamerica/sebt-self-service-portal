@@ -72,7 +72,8 @@ export function getRuntimeConfig(): RuntimeConfig {
     socureDiSdkKey: optional(process.env.SOCURE_DI_SDK_KEY),
     smartyEmbeddedKey: optional(process.env.SMARTY_EMBEDDED_KEY),
     applicationUrl: optionalUrl(process.env.APPLICATION_URL),
-    applicationUrlPeakParams: process.env.APPLICATION_URL_PEAK_PARAMS === 'true',
+    applicationUrlPeakParams:
+      process.env.APPLICATION_URL_PEAK_PARAMS?.trim().toLowerCase() === 'true',
     debugRepeatOidcStepUp: process.env.DEBUG_REPEAT_OIDC_STEP_UP === 'true'
   }
 }
