@@ -45,7 +45,7 @@ const flowConfigs: Record<StateCode, FlowConfig> = {
 export function getFlowConfig(): FlowConfig {
   const state = getState()
   // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  return flowConfigs[state] ?? flowConfigs.dc
+  return flowConfigs[state]
 }
 
 /**

@@ -136,14 +136,32 @@ const stateConfigs: Record<StateCode, StateConfig> = {
   }
 }
 
-const defaultConfig: StateConfig = stateConfigs.dc as StateConfig
+function isKnownStateCode(value: string): value is StateCode {
+  return Object.prototype.hasOwnProperty.call(stateConfigs, value)
+}
+
+/** Throws for a code that is not in the registry, so every per-state lookup fails the same way. */
+export function assertKnownStateCode(value: string): asserts value is StateCode {
+  if (!isKnownStateCode(value)) {
+    throw new Error(`Unknown state code: ${value}`)
+  }
+}
+
+function toStateCode(raw: string): StateCode {
+  const code = raw.toLowerCase()
+  if (!isKnownStateCode(code)) {
+    throw new Error(`Unknown state code: ${raw}`)
+  }
+  return code
+}
 
 /**
- * Get the full configuration for a state
+ * Get the full configuration for a state. Throws for a code that is not registered.
  */
 export function getStateConfig(state: StateCode): StateConfig {
-  // eslint-disable-next-line security/detect-object-injection -- state is StateCode union
-  return stateConfigs[state] ?? defaultConfig
+  assertKnownStateCode(state)
+  // eslint-disable-next-line security/detect-object-injection -- validated as an own key above
+  return stateConfigs[state]
 }
 
 /**
@@ -163,10 +181,12 @@ export function getState(): StateCode {
   if (typeof document !== 'undefined') {
     const fromDocument = document.documentElement.dataset.state
     if (fromDocument) {
-      return fromDocument.toLowerCase() as StateCode
+      return toStateCode(fromDocument)
     }
   }
-  return (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase() as StateCode
+  const fromEnv = process.env.STATE || process.env.NEXT_PUBLIC_STATE
+  // Absent on purpose during the state-agnostic image build; a wrong value never is.
+  return fromEnv ? toStateCode(fromEnv) : 'dc'
 }
 
 /**

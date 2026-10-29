@@ -2,9 +2,8 @@
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
-import { RichText, TextLink, getStateLinks } from '@sebt/design-system'
+import { RichText, TextLink, getStateConfig, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
-import { MyColoradoLogo } from './MyColoradoLogo'
 
 function splitParagraphs(text: string): string[] {
   return text
@@ -20,7 +19,7 @@ function splitListItems(text: string): string[] {
     .filter(Boolean)
 }
 
-export function COLoginPage({ state }: { state: StateCode }) {
+export function OidcLoginPage({ state }: { state: StateCode }) {
   const links = getStateLinks(state)
   const { t, i18n } = useTranslation('login')
   const { t: tCommon } = useTranslation('common')
@@ -29,19 +28,17 @@ export function COLoginPage({ state }: { state: StateCode }) {
   const aboutParagraphs = splitParagraphs(t('cardBody1'))
   const aboutListItems = splitListItems(t('cardBody2'))
 
-  // The `logIn` translation key resolves to the current UI language's label, and
-  // `logInEsp` resolves to the *other* language's label. Pair each button's link
-  // target with its label so the user lands in the language they chose.
-  const currentLang = i18n.language.startsWith('es') ? 'es' : 'en'
-  const otherLang = currentLang === 'es' ? 'en' : 'es'
+  // `logInEsp` resolves to the other language's label, not to Spanish.
+  const { supportedLanguages } = getStateConfig(state)
+  const currentLang = supportedLanguages.find((lang) => i18n.language.startsWith(lang)) ?? 'en'
+  const otherLang = supportedLanguages.find((lang) => lang !== currentLang)
 
   function startOidcLogin(language: string) {
     trackEvent(AnalyticsEvents.OIDC_START)
     // Persist the user's language choice so the UI matches after the redirect.
     localStorage.setItem('i18nextLng', language)
-    // Navigate to the server-side authorize endpoint, which builds the full
-    // authorization URL and returns a 302 redirect to PingOne. The browser
-    // never sees the authorization endpoint URL (V04 fix).
+    // Navigate to the server-side authorize endpoint, which redirects to the identity provider;
+    // the browser never sees the authorization URL.
     window.location.href = `/api/auth/oidc/${state}/authorize?language=${encodeURIComponent(language)}`
   }
 
@@ -64,27 +61,35 @@ export function COLoginPage({ state }: { state: StateCode }) {
             <button
               type="button"
               onClick={() => startOidcLogin(currentLang)}
-              className="usa-button usa-button--mycolorado display-flex flex-align-center"
+              className="usa-button usa-button--idp display-flex flex-align-center"
               lang={currentLang}
               data-analytics-cta="login_cta"
             >
-              <MyColoradoLogo className="margin-right-1" />
+              <span
+                className="usa-button__idp-logo margin-right-1"
+                aria-hidden="true"
+              />
               {tCommon('logIn')}
             </button>
           </div>
 
-          <div className="margin-top-2">
-            <button
-              type="button"
-              onClick={() => startOidcLogin(otherLang)}
-              className="usa-button usa-button--outline usa-button--mycolorado display-flex flex-align-center"
-              lang={otherLang}
-              data-analytics-cta="login_cta_alt_lang"
-            >
-              <MyColoradoLogo className="margin-right-1" />
-              {tCommon('logInEsp')}
-            </button>
-          </div>
+          {otherLang && (
+            <div className="margin-top-2">
+              <button
+                type="button"
+                onClick={() => startOidcLogin(otherLang)}
+                className="usa-button usa-button--outline usa-button--idp display-flex flex-align-center"
+                lang={otherLang}
+                data-analytics-cta="login_cta_alt_lang"
+              >
+                <span
+                  className="usa-button__idp-logo margin-right-1"
+                  aria-hidden="true"
+                />
+                {tCommon('logInEsp')}
+              </button>
+            </div>
+          )}
 
           <p className="margin-top-4 font-sans-sm">
             <TextLink

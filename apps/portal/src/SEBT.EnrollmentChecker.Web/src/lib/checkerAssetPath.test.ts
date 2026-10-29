@@ -26,9 +26,9 @@ describe('getCheckerAssetPath', () => {
       expect(getCheckerAssetPath('formCard')).toBe('/images/states/dc/icon-form-card.svg')
     })
 
-    it('returns undefined for a state with no asset configuration', () => {
+    it('throws for a state that is not registered', () => {
       vi.stubEnv('NEXT_PUBLIC_STATE', 'zz')
-      expect(getCheckerAssetPath('formCard')).toBeUndefined()
+      expect(() => getCheckerAssetPath('formCard')).toThrow('Unknown state code: zz')
     })
   })
 
