@@ -228,6 +228,27 @@ public class DependenciesTests
     }
 
     [Fact]
+    public void ResolveHouseholdRepository_WhenMockFlagChanges_FollowsFlagValue()
+    {
+        var configuration = new ConfigurationManager();
+        configuration[$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = "true";
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(HostEnvironment(Environments.Development));
+        services.AddSingleton(Substitute.For<ISummerEbtCaseService>());
+        services.AddRepositories();
+        using var provider = services.BuildServiceProvider();
+
+        Assert.IsType<MockHouseholdRepository>(provider.GetRequiredService<IHouseholdRepository>());
+
+        configuration[$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = "false";
+
+        Assert.IsType<HouseholdRepository>(provider.GetRequiredService<IHouseholdRepository>());
+    }
+
+    [Fact]
     public void HouseholdMockGate_WhenProductionAndFlagOn_LogsWarningAndReturnsFalse()
     {
         var configuration = new ConfigurationBuilder()
