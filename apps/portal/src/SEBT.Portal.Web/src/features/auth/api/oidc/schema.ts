@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 /**
  * Zod schemas for OIDC authentication API responses.
- * Used by COLoginPage (config fetch) and CallbackPage (token exchange).
+ * Used by OidcLoginPage (config fetch) and CallbackPage (token exchange).
  */
 
 export const OidcCallbackTokenResponseSchema = z.object({

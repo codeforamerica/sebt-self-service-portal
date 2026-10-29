@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { getStateLinks } from './links'
+import type { StateCode } from './state'
 
 // Pins the shared link values the maintenance page's action buttons depend on.
 // The button labels are literal URLs, so the hrefs must match the copy exactly.
@@ -20,5 +21,9 @@ describe('getStateLinks', () => {
   it('routes the CO contact destination to the help desk mailbox', () => {
     const co = getStateLinks('co').help
     expect(co.contactUs).toBe(co.helpDeskEmail)
+  })
+
+  it('throws for a code that is not in the registry', () => {
+    expect(() => getStateLinks('xx' as StateCode)).toThrow('Unknown state code: xx')
   })
 })
