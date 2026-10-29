@@ -39,7 +39,7 @@ public sealed class SmartyAddressVerificationDiagnostics(
         return RunAsync(new FixedResponseHandler(transportFailure: true), cancellationToken);
     }
 
-    private Task<Result<AddressUpdateSuccess>> RunAsync(
+    private async Task<Result<AddressUpdateSuccess>> RunAsync(
         FixedResponseHandler handler,
         CancellationToken cancellationToken)
     {
@@ -51,7 +51,10 @@ public sealed class SmartyAddressVerificationDiagnostics(
         var service = new SmartyAddressVerificationService(
             factory, smartySettingsSnapshot, policySettingsSnapshot, logger);
 
-        return service.ValidateAndNormalizeAsync(new AddressUpdateOperationRequest
+        using var diagnosticScope = logger.BeginScope(
+            new Dictionary<string, object> { ["IsDiagnostic"] = true });
+
+        return await service.ValidateAndNormalizeAsync(new AddressUpdateOperationRequest
         {
             StreetAddress1 = "123 Main St",
             City = "Denver",

@@ -104,26 +104,29 @@ public class CsvBlockedAddressDataSourceTests
     }
 
     [Fact]
-    public void Constructor_WithMissingResource_ReturnsEmpty()
+    public void FromEmbeddedFile_WithMissingFile_Throws()
     {
-        var assembly = typeof(CsvBlockedAddressDataSource).Assembly;
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => CsvBlockedAddressDataSource.FromEmbeddedFile("no-such-file.csv"));
 
-        var source = new CsvBlockedAddressDataSource(assembly, "SEBT.Portal.Infrastructure.NoSuchResource.csv");
+        Assert.Contains("no-such-file.csv", ex.Message);
+    }
 
-        Assert.Empty(source.GetEntries());
+    [Theory]
+    [InlineData("co-undeliverable-addresses.csv", true)]
+    [InlineData("no-such-file.csv", false)]
+    public void EmbeddedFileExists_ReportsWhetherFileIsEmbedded(string fileName, bool expected)
+    {
+        Assert.Equal(expected, CsvBlockedAddressDataSource.EmbeddedFileExists(fileName));
     }
 
     [Fact]
-    public void Constructor_WithEmbeddedCoCsv_LoadsKnownDenverEntry()
+    public void FromEmbeddedFile_WithCoCsv_LoadsKnownDenverEntry()
     {
         // The CO undeliverable-address CSV ships as an embedded resource in
         // SEBT.Portal.Infrastructure.csproj. This test pins down that the wiring
         // (file path, resource name, parser) is consistent end-to-end.
-        var assembly = typeof(CsvBlockedAddressDataSource).Assembly;
-
-        var source = new CsvBlockedAddressDataSource(
-            assembly,
-            "SEBT.Portal.Infrastructure.BlockedAddresses.co-undeliverable-addresses.csv");
+        var source = CsvBlockedAddressDataSource.FromEmbeddedFile("co-undeliverable-addresses.csv");
 
         var entries = source.GetEntries();
         Assert.NotEmpty(entries);

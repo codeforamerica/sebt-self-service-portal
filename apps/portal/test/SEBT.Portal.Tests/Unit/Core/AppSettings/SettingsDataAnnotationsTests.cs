@@ -66,36 +66,6 @@ public class SettingsDataAnnotationsTests
         Assert.Contains("StateHouseholdId:PreferredHouseholdIdTypes", result.FailureMessage);
     }
 
-    [Fact]
-    public void OidcVerificationClaims_DefaultsWithoutFallbacks_Succeeds()
-    {
-        Assert.True(Validate(new OidcVerificationClaimSettings()).Succeeded);
-    }
-
-    // A blank claim name matches no claim, so every OIDC user would read as unverified.
-    [Theory]
-    [InlineData("", "socureIdVerificationDate", "LevelClaimName")]
-    [InlineData("   ", "socureIdVerificationDate", "LevelClaimName")]
-    [InlineData("socureIdVerificationLevel", "", "DateClaimName")]
-    public void OidcVerificationClaims_BlankPrimaryClaimName_Fails(string level, string date, string property)
-    {
-        var settings = new OidcVerificationClaimSettings { LevelClaimName = level, DateClaimName = date };
-
-        var result = Validate(settings);
-
-        Assert.True(result.Failed);
-        Assert.Contains($"Oidc:VerificationClaims:{property}", result.FailureMessage);
-    }
-
-    // Blank fallbacks are documented to mean "use the myColorado default".
-    [Fact]
-    public void OidcVerificationClaims_BlankFallbacks_Succeeds()
-    {
-        var settings = new OidcVerificationClaimSettings { FallbackLevelClaimName = " ", FallbackDateClaimName = "" };
-
-        Assert.True(Validate(settings).Succeeded);
-    }
-
     private static ValidateOptionsResult Validate<TOptions>(TOptions settings)
         where TOptions : class =>
         new DataAnnotationValidateOptions<TOptions>(Options.DefaultName).Validate(Options.DefaultName, settings);

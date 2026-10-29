@@ -61,6 +61,7 @@ builder.Services.AddDevelopmentOverrides();
 
 var app = builder.Build();
 
+app.LogOidcVerificationClaimNames();
 await app.MigrateAndSeedDatabaseAsync();
 
 // Configure the HTTP request pipeline.

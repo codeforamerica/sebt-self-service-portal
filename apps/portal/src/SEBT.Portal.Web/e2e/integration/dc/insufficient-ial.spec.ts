@@ -3,12 +3,14 @@ import { expect, test } from '@playwright/test'
 import { skipUnlessFullStack } from '../../fixtures/full-stack'
 import { loginWithEmailOtpExpecting } from '../../fixtures/login-dc'
 import { DC_ID_PROOF_IN_PROGRESS_EMAIL } from '../../fixtures/seed-users'
-import { skipUnlessState } from '../../fixtures/state'
+import { skipUnlessLoginMode, skipUnlessState } from '../../fixtures/state'
 
 test.describe('DC insufficient IAL redirect (full stack)', () => {
   test.beforeEach(() => {
     skipUnlessFullStack()
+    // The seeded persona and the Mailpit flow are DC's; the mode gate names the mechanism.
     skipUnlessState('dc')
+    skipUnlessLoginMode('otp')
   })
 
   test('redirects to id-proofing when household data returns 403 with requiredIal', async ({

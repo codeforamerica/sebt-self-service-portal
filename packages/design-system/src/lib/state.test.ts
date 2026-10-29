@@ -4,7 +4,8 @@ import {
   getPortalMetadataDescription,
   getSiteDisplayName,
   getStateConfig,
-  STATE_CODES
+  STATE_CODES,
+  type StateCode
 } from './state'
 
 describe('getStateConfig — supportedLanguages', () => {
@@ -101,5 +102,29 @@ describe('STATE_CODES', () => {
     for (const state of STATE_CODES) {
       expect(getStateConfig(state).name).toBeTruthy()
     }
+  })
+})
+
+describe('getStateConfig showLoadingInterstitial', () => {
+  it('keeps the blank loading screen for DC', () => {
+    expect(getStateConfig('dc').showLoadingInterstitial).toBe(false)
+  })
+
+  it('shows the loading interstitial for CO', () => {
+    expect(getStateConfig('co').showLoadingInterstitial).toBe(true)
+  })
+})
+
+describe('getStateConfig loginMode', () => {
+  it('uses email one-time-code login for DC', () => {
+    expect(getStateConfig('dc').loginMode).toBe('otp')
+  })
+
+  it('uses OIDC login for CO', () => {
+    expect(getStateConfig('co').loginMode).toBe('oidc')
+  })
+
+  it('falls back to the default config, and so to otp, for an unknown state code', () => {
+    expect(getStateConfig('xx' as StateCode).loginMode).toBe('otp')
   })
 })

@@ -52,7 +52,7 @@
     "docs:manifest": "tsx scripts/docs/write-site-manifest.ts",
     "release-notes:generate": "tsx scripts/release-notes/generate.ts",
     "check:cooldown-exclusions": "tsx scripts/security/check-cooldown-exclusions.ts",
-    "test:scripts": "tsx --test scripts/**/*.test.ts",
+    "test:scripts": "tsx --test \"scripts/**/*.test.ts\" \"aspire-apphost/*.test.mts\" \"aspire-apphost/capabilities/**/*.test.mts\"",
     "prepare": "husky || true",
     "aspire:start": "pnpm --dir aspire-apphost run aspire:start",
     "aspire:dc": "pnpm --dir aspire-apphost run aspire:dc",
@@ -64,7 +64,7 @@
     "aspire:dev": "pnpm --dir aspire-apphost run aspire:dev"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.6",
     "husky": "^9.1.7",
     "knip": "^6.36.0",
     "lint-staged": "^17.5.1",

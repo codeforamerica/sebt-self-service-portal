@@ -16,14 +16,16 @@ overrides:
   vite: '>=8.0.16' # CVEs — path traversal, dev-server WS arbitrary read, server.fs.deny bypass; Dependabot alerts #156 #157
   js-yaml: '>=4.3.1 <5.0.0' # GHSA-5p4m-2wfm-xmqj — O(n^2) key scan in !!omap resolution; upper bound keeps it off the 5.x rewrite; Dependabot alerts #173 #243
   # Split by line: minimatch 3 pulls the 1.x line, minimatch 10 the 5.x.
-  # Each floor is the later of the two DoS advisories, so it covers GHSA-mh99-v99m-4gvg too.
-  'minimatch@3>brace-expansion': '>=1.1.18 <2.0.0' # GHSA-rgw5-rvv9-x895 — unbounded intermediate arrays; Dependabot alerts #227 #228
-  brace-expansion: '>=5.0.9 <6.0.0' # same advisory on the 5.x line; Dependabot alerts #226 #229
+  # Each floor is the latest fix on its line, so it also covers the earlier DoS advisories
+  # (GHSA-rgw5-rvv9-x895, GHSA-mh99-v99m-4gvg; Dependabot alerts #226-#229).
+  'minimatch@3>brace-expansion': '>=1.1.21 <2.0.0' # GHSA-q2hr-2g5m-vwhr quadratic `{a},b}` expansion, GHSA-qhr7-859c-m2p7 and GHSA-6j4f-fj2g-mc7p unbounded recursion; Dependabot alerts #261 #263 #265
+  brace-expansion: '>=5.0.12 <6.0.0' # GHSA-q2hr-2g5m-vwhr on the 5.x line; Dependabot alert #264
   browserslist: '>=4.28.7' # GHSA-c83g-rgw3-j3cx unbounded query cache, GHSA-73wf-gq98-2v4g normalizeStats crash on a poisoned browserslist-stats.json; Dependabot alerts #248 #249
   tmp: '>=0.2.6' # CVE-2026-44705 — path traversal via unsanitized prefix/postfix (also covers prior symlink-write CVE)
   uuid: '>=11.1.1' # CVE — missing buffer bounds check
+  source-map-js: '>=1.2.2' # CVE-2026-93749 / GHSA-68fv-2mgg-jv7q — event-loop DoS through indexed source-map section offsets; Dependabot alert #272
   ip-address: '>=10.3.1' # GHSA-mwp4-54f8-5fhr — Address4 reads a leading-zero octet as decimal while resolvers read it as octal, so an SSRF guard passes a host that resolves internally; floor also covers the CIDR-suffix and NAT64 misclassifications; Dependabot alerts #239 #240 #241
-  shell-quote: '>=1.9.0' # GHSA-395f-4hp3-45gv O(n^2) concat-in-reduce in parse(); floor also covers the earlier quote() newline-escaping CVE-2026-9277; Dependabot alerts #150 #174
+  shell-quote: '>=1.11.0' # CVE-2026-102422 / GHSA-pqg4-j6r4-53mv — quote() command injection via a line terminator after a `{ comment }` token; floor also covers GHSA-395f-4hp3-45gv (O(n^2) parse) and CVE-2026-9277; Dependabot alerts #150 #174 #274
   # GHSA-jmr9-qjv8-65gv: extract-zip has no fixed release and only Puppeteer 24 pulls it in. pa11y-ci 4.1.1 still
   # pins Puppeteer 24, so move it to pa11y 10 and Puppeteer 25, which dropped extract-zip; Dependabot alert #246
   'pa11y-ci>pa11y': '^10.0.0'
@@ -35,24 +37,6 @@ minimumReleaseAge: 10080 # 7 days (minutes)
 # [SECURITY] Version-pinned exemptions to the cooldown above. Each entry must
 # reference a specific package@version, so the exemption ages out automatically
 # on the next version bump. Justify each addition with a CVE or ticket link.
-minimumReleaseAgeExclude:
-  # CVE-2026-94545 (critical): Satori does not escape attacker-controlled values in
-  # the Node.js `ImageResponse` path of `next/og`, so injected SVG markup becomes
-  # remote code execution in the Next process. Patched in 16.3.6, published inside
-  # the cooldown window. The siblings move together to keep the Next family aligned.
-  - next@16.3.6
-  - eslint-config-next@16.3.6
-  - '@next/bundle-analyzer@16.3.6'
-  - '@next/env@16.3.6'
-  - '@next/eslint-plugin-next@16.3.6'
-  - '@next/swc-darwin-arm64@16.3.6'
-  - '@next/swc-darwin-x64@16.3.6'
-  - '@next/swc-linux-arm64-gnu@16.3.6'
-  - '@next/swc-linux-arm64-musl@16.3.6'
-  - '@next/swc-linux-x64-gnu@16.3.6'
-  - '@next/swc-linux-x64-musl@16.3.6'
-  - '@next/swc-win32-arm64-msvc@16.3.6'
-  - '@next/swc-win32-x64-msvc@16.3.6'
-  - '@next/third-parties@16.3.6'
+minimumReleaseAgeExclude: []
 
 
