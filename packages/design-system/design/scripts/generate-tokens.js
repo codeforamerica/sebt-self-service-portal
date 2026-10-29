@@ -15,8 +15,8 @@
  * - Build integration: Auto-runs during predev and prebuild
  *
  * Workflow:
- * 1. Read design/states/{state}.json (source of truth from Figma)
- * 2. Check if transformation needed (timestamp-based)
+ * 1. Read the state's token file (see state-token-source.js)
+ * 2. Check if transformation needed (timestamp and source based)
  * 3. Extract 'theme' object (USWDS has 'system' tokens built-in)
  * 4. Convert to CSS custom properties with semantic naming
  * 5. Output to design/tokens.css (imported in layout.tsx)
@@ -26,6 +26,7 @@ import './load-env.js';
 import { readFileSync, writeFileSync, existsSync, statSync } from 'fs';
 import { join, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { resolveStateTokens } from './state-token-source.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,14 +39,12 @@ const USWDS_PREFIXES = new Set([
 ]);
 
 function getStatePaths(state) {
-  const designDir = join(rootDir, 'design', 'states');
-  const designOutputDir = join(rootDir, 'design');
+  const source = resolveStateTokens(state);
 
   return {
-    input: join(designDir, `${state}.json`),
-    output: join(designOutputDir, 'tokens.css'),
-    designDir,
-    designOutputDir
+    input: source.path,
+    sourceLabel: source.label,
+    output: join(rootDir, 'design', 'tokens.css')
   };
 }
 
@@ -112,15 +111,24 @@ function processThemeObject(obj, prefix = '') {
   return variables;
 }
 
-function needsRegeneration(inputPath, outputPath) {
+function sourceLine(sourceLabel) {
+  return ` * Source: ${sourceLabel} (theme object only)`;
+}
+
+/**
+ * Timestamps alone can't tell when tokens.css came from another state or token
+ * source, so the source recorded in its header must match too.
+ */
+export function needsRegeneration(inputPath, outputPath, sourceLabel) {
   if (!existsSync(outputPath)) {
     return true;
   }
 
-  const inputStats = statSync(inputPath);
-  const outputStats = statSync(outputPath);
+  if (!readFileSync(outputPath, 'utf8').includes(sourceLine(sourceLabel))) {
+    return true;
+  }
 
-  return inputStats.mtimeMs > outputStats.mtimeMs;
+  return statSync(inputPath).mtimeMs > statSync(outputPath).mtimeMs;
 }
 
 function formatCssVariable({ name, value, description }) {
@@ -133,13 +141,6 @@ function formatCssVariable({ name, value, description }) {
 function processState(state) {
   const paths = getStatePaths(state);
 
-  // Check if design tokens directory exists
-  if (!existsSync(paths.designDir)) {
-    console.log('⚠️  No design/states/ directory found.');
-    console.log('   Skipping token generation. Add design tokens when ready.\n');
-    return { state, skipped: true, success: true };
-  }
-
   // Check if state token file exists
   if (!existsSync(paths.input)) {
     console.log(`⚠️  No token file found for ${state.toUpperCase()} at:`);
@@ -149,7 +150,7 @@ function processState(state) {
   }
 
   // Check if regeneration needed
-  if (!needsRegeneration(paths.input, paths.output)) {
+  if (!needsRegeneration(paths.input, paths.output, paths.sourceLabel)) {
     console.log(`⚡ Tokens unchanged for ${state.toUpperCase()}`);
     console.log(`   ${rel(paths.input)} → ${rel(paths.output)}`);
     return { state, cached: true, success: true };
@@ -173,7 +174,7 @@ function processState(state) {
  * State-Specific Design Tokens - ${state.toUpperCase()}
  *
  * Auto-generated from Figma Tokens Studio
- * Source: design/states/${state}.json (theme object only)
+${sourceLine(paths.sourceLabel)}
  * DO NOT EDIT DIRECTLY - This file is regenerated from design tokens
  *
  * Generated: ${new Date().toISOString()}
@@ -209,9 +210,9 @@ a {
 }
 
 function main() {
-  try {
-    const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase();
+  const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase();
 
+  try {
     console.log(`🎨 Generating design tokens for ${state.toUpperCase()}...`);
 
     const result = processState(state);
@@ -232,4 +233,7 @@ function main() {
   }
 }
 
-main();
+// Only auto-run when invoked as a script, not when imported by tests.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}

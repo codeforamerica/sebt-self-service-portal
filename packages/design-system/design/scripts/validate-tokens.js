@@ -23,11 +23,7 @@
  */
 
 import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, '..', '..');
+import { resolveStateTokens } from './state-token-source.js';
 
 // USWDS color palette (subset for validation)
 const USWDS_COLORS = new Set([
@@ -264,7 +260,13 @@ class TokenValidator {
 }
 
 function validateState(state) {
-  const tokenPath = join(projectRoot, `design/states/${state}.json`);
+  let tokenPath;
+  try {
+    tokenPath = resolveStateTokens(state).path;
+  } catch (error) {
+    console.error(`❌ ${error.message}`);
+    return { success: false };
+  }
 
   if (!existsSync(tokenPath)) {
     console.error(`❌ Token file not found: ${tokenPath}`);

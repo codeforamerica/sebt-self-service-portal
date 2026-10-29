@@ -21,6 +21,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { resolveStateTokens } from './state-token-source.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..', '..');
@@ -93,13 +94,13 @@ function processThemeObject(obj, prefix = '') {
 /**
  * Generate TypeScript interface from properties
  */
-function generateInterface(state, properties) {
+function generateInterface(state, properties, sourceLabel) {
   const interfaceName = `${state.toUpperCase()}Theme`;
   const lines = [];
 
   lines.push('/**');
   lines.push(` * Design tokens for ${state.toUpperCase()} state`);
-  lines.push(` * Auto-generated from design/states/${state}.json`);
+  lines.push(` * Auto-generated from ${sourceLabel}`);
   lines.push(' * DO NOT EDIT DIRECTLY - Regenerated from design tokens');
   lines.push(' */');
   lines.push(`export interface ${interfaceName} {`);
@@ -149,7 +150,8 @@ function generateTokenMap(state, properties) {
  */
 function generateTypes(state) {
   const startTime = performance.now();
-  const tokenPath = join(projectRoot, `design/states/${state}.json`);
+  const source = resolveStateTokens(state);
+  const tokenPath = source.path;
   const outputDir = join(projectRoot, 'src/types');
   const outputPath = join(outputDir, 'design-tokens.d.ts');
 
@@ -173,10 +175,10 @@ function generateTypes(state) {
   // Generate TypeScript content
   const content = `// design-tokens.d.ts
 // Auto-generated TypeScript definitions for design tokens
-// Source: design/states/${state}.json
+// Source: ${source.label}
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens on build
 
-${generateInterface(state, properties)}
+${generateInterface(state, properties, source.label)}
 
 ${generateTokenMap(state, properties)}
 
