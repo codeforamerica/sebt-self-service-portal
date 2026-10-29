@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.StatesPlugins.Interfaces;
@@ -29,6 +30,9 @@ internal static class Dependencies
 
             if (useMockHouseholdData)
             {
+                logger?.LogWarning(
+                    "Household request served from mock data. Feature flag {FeatureFlag} is enabled.",
+                    FeatureFlags.UseMockHouseholdData);
                 return sp.GetRequiredService<MockHouseholdRepository>();
             }
 

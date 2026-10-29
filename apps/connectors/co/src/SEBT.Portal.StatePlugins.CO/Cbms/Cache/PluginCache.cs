@@ -74,6 +74,11 @@ internal static class PluginCache
             _builtUseMockResponses = cbmsConnection.UseMockResponses;
             _pinnedForTesting = false;
 
+            var cacheLogger = loggerFactory.CreateLogger(nameof(PluginCache));
+            cacheLogger.LogInformation(
+                "CBMS household cache rebuilt; mock responses = {UseMockResponses}",
+                cbmsConnection.UseMockResponses);
+
             return built;
         }
     }

@@ -60,6 +60,12 @@ public class FeatureGatedMockAddressUpdateServiceTests
         Assert.True(mock.IsValueCreated);
         await _mock.Received(1).UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
         await _live.DidNotReceive().UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+        _logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains("served from mock data")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [Fact]
@@ -94,6 +100,12 @@ public class FeatureGatedMockAddressUpdateServiceTests
             LogLevel.Warning,
             Arg.Any<EventId>(),
             Arg.Is<object>(state => state.ToString()!.Contains(FeatureFlags.UseMockHouseholdData)),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
+        _logger.DidNotReceive().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains("served from mock data")),
             Arg.Any<Exception>(),
             Arg.Any<Func<object, Exception?, string>>());
     }

@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.CbmsApi.Models;
 using SEBT.Portal.StatesPlugins.Interfaces.Models.EnrollmentCheck;
@@ -55,6 +57,45 @@ public class ColoradoEnrollmentCheckServiceTests
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.CheckEnrollmentAsync(request));
+    }
+
+    [Fact]
+    public async Task CheckEnrollmentAsync_WhenMockResponses_LogsWarning()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = "Development",
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
+            })
+            .Build();
+        var logger = Substitute.For<ILogger>();
+        var loggerFactory = Substitute.For<ILoggerFactory>();
+        loggerFactory.CreateLogger(Arg.Any<string>()).Returns(logger);
+        var service = new ColoradoEnrollmentCheckService(config, loggerFactory);
+        var request = new EnrollmentCheckRequest
+        {
+            Children = new List<ChildCheckRequest>
+            {
+                new ChildCheckRequest
+                {
+                    CheckId = Guid.NewGuid(),
+                    FirstName = "Jane",
+                    LastName = "Doe",
+                    DateOfBirth = new DateOnly(2015, 3, 12),
+                    SchoolName = "Lincoln Elementary"
+                }
+            }
+        };
+
+        await service.CheckEnrollmentAsync(request);
+
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains("served from mock responses")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [Theory]

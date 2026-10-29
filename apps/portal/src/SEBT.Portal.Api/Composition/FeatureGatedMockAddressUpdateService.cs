@@ -23,9 +23,14 @@ internal sealed class FeatureGatedMockAddressUpdateService(
         PluginAddressUpdateRequest request,
         CancellationToken cancellationToken = default)
     {
-        var service = HouseholdMockGate.IsEnabled(configuration, hostEnvironment, logger)
-            ? mock.Value
-            : live;
-        return service.UpdateAddressAsync(request, cancellationToken);
+        if (!HouseholdMockGate.IsEnabled(configuration, hostEnvironment, logger))
+        {
+            return live.UpdateAddressAsync(request, cancellationToken);
+        }
+
+        logger.LogWarning(
+            "Address update served from mock data. Feature flag {FeatureFlag} is enabled.",
+            FeatureFlags.UseMockHouseholdData);
+        return mock.Value.UpdateAddressAsync(request, cancellationToken);
     }
 }

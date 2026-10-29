@@ -220,6 +220,32 @@ public class DependenciesTests
     }
 
     [Fact]
+    public void ResolveIHouseholdRepository_WhenFlagOn_LogsThatRequestIsServedFromMock()
+    {
+        var logs = new List<(LogLevel Level, string Message)>();
+        var services = new ServiceCollection();
+        services.AddLogging(builder => builder.AddProvider(new HouseholdMockLogCollector(logs)));
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = "true"
+            })
+            .Build());
+        services.AddSingleton(HostEnvironment(Environments.Development));
+        services.AddSingleton(Substitute.For<ISummerEbtCaseService>());
+        services.AddRepositories();
+
+        using var provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IHouseholdRepository>();
+
+        Assert.Contains(
+            logs,
+            entry => entry.Level == LogLevel.Warning
+                && entry.Message.Contains("served from mock data", StringComparison.Ordinal)
+                && entry.Message.Contains(FeatureFlags.UseMockHouseholdData, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ResolveIHouseholdRepository_WhenProductionAndFlagOn_UsesLive()
     {
         var repository = ResolveHouseholdRepository(Environments.Production, mockFlag: true);
@@ -405,5 +431,38 @@ public class DependenciesTests
         services.AddServices(config);
 
         return services.BuildServiceProvider();
+    }
+
+    private sealed class HouseholdMockLogCollector(List<(LogLevel Level, string Message)> entries) : ILoggerProvider
+    {
+        public ILogger CreateLogger(string categoryName) => new Collector(entries);
+
+        public void Dispose()
+        {
+        }
+
+        private sealed class Collector(List<(LogLevel Level, string Message)> entries) : ILogger
+        {
+            public IDisposable BeginScope<TState>(TState state) where TState : notnull => new Scope();
+
+            public bool IsEnabled(LogLevel logLevel) => true;
+
+            public void Log<TState>(
+                LogLevel logLevel,
+                EventId eventId,
+                TState state,
+                Exception? exception,
+                Func<TState, Exception?, string> formatter)
+            {
+                entries.Add((logLevel, formatter(state, exception)));
+            }
+
+            private sealed class Scope : IDisposable
+            {
+                public void Dispose()
+                {
+                }
+            }
+        }
     }
 }

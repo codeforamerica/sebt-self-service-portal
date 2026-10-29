@@ -4,6 +4,7 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.CbmsApi.Models;
 using SEBT.Portal.StatesPlugins.Interfaces.Services;
 
@@ -24,6 +25,7 @@ internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
     private readonly ILogger<CbmsHouseholdCache> _logger;
     private readonly CbmsHouseholdCacheOptions _options;
     private readonly CbmsFetchAccountDetailsDelegate _fetchFromCbms;
+    private readonly bool _useMockResponses;
     private readonly ConcurrentDictionary<string, Task> _inFlightRefreshes = new();
     private readonly string _keyPrefix;
 
@@ -42,6 +44,7 @@ internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
         _logger = loggerFactory.CreateLogger<CbmsHouseholdCache>();
         _options = options.Value;
         _fetchFromCbms = fetchFromCbms;
+        _useMockResponses = useMockResponses;
         _keyPrefix = "co:cbms:" + (useMockResponses ? "mock:" : "live:");
     }
 
@@ -50,6 +53,13 @@ internal sealed class CbmsHouseholdCache : ICbmsHouseholdCache
 
     public async Task<GetAccountDetailsResponse?> GetAsync(string normalizedPhone, bool includeCardService, CancellationToken cancellationToken)
     {
+        if (_useMockResponses)
+        {
+            _logger.LogWarning(
+                "CBMS household request served from mock responses. Feature flag {FeatureFlag} is enabled.",
+                CbmsOptionsHelper.UseMockResponsesFlagName);
+        }
+
         var key = KeyFor(normalizedPhone, includeCardService);
         var hybridOptions = new HybridCacheEntryOptions
         {

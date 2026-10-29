@@ -124,6 +124,9 @@ public class ColoradoEnrollmentCheckService : ColoradoCbmsServiceBase, IEnrollme
 
         if (options.UseMockResponses)
         {
+            _logger.LogWarning(
+                "CBMS enrollment check served from mock responses. Feature flag {FeatureFlag} is enabled.",
+                CbmsOptionsHelper.UseMockResponsesFlagName);
             return BuildMockResult(request.Children);
         }
 
