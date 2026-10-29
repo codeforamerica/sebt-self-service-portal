@@ -1,25 +1,29 @@
+import type { StateCode } from '@sebt/design-system'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-let mockState = 'co'
+let mockShowLoadingInterstitial = true
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => mockState
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      showLoadingInterstitial: mockShowLoadingInterstitial
+    })
   }
 })
 
-import { CoLoadingScreen } from './CoLoadingScreen'
+import { LoadingScreen } from './LoadingScreen'
 
-describe('CoLoadingScreen', () => {
+describe('LoadingScreen', () => {
   beforeEach(() => {
-    mockState = 'co'
+    mockShowLoadingInterstitial = true
   })
 
-  it('renders the loading interstitial when state is CO', () => {
+  it('renders the loading interstitial when the state enables it', () => {
     render(
-      <CoLoadingScreen
+      <LoadingScreen
         title="Please wait..."
         message="Do not exit the page."
       />
@@ -29,10 +33,10 @@ describe('CoLoadingScreen', () => {
     expect(screen.getByText('Do not exit the page.')).toBeInTheDocument()
   })
 
-  it('renders nothing when state is not CO', () => {
-    mockState = 'dc'
+  it('renders nothing when the state keeps the blank loading screen', () => {
+    mockShowLoadingInterstitial = false
     const { container } = render(
-      <CoLoadingScreen
+      <LoadingScreen
         title="Please wait..."
         message="Do not exit the page."
       />

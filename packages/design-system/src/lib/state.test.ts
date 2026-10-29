@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { getPortalMetadataDescription, getSiteDisplayName, getStateConfig } from './state'
+import {
+  getPortalMetadataDescription,
+  getSiteDisplayName,
+  getStateConfig,
+  type StateCode
+} from './state'
 
 describe('getStateConfig — supportedLanguages', () => {
   it('omits Amharic from the CO config', () => {
@@ -87,5 +92,36 @@ describe('getStateConfig — address', () => {
       showAbbreviatedNotice: false,
       autocompletePreferStates: 'CO'
     })
+  })
+})
+
+describe('getStateConfig showLoadingInterstitial', () => {
+  it('keeps the blank loading screen for DC', () => {
+    expect(getStateConfig('dc').showLoadingInterstitial).toBe(false)
+  })
+
+  it('shows the loading interstitial for CO', () => {
+    expect(getStateConfig('co').showLoadingInterstitial).toBe(true)
+  })
+})
+
+describe('getStateConfig loginMode', () => {
+  it('uses email one-time-code login for DC', () => {
+    expect(getStateConfig('dc').loginMode).toBe('otp')
+  })
+
+  it('uses OIDC login for CO', () => {
+    expect(getStateConfig('co').loginMode).toBe('oidc')
+  })
+})
+
+describe('getStateConfig unknown codes', () => {
+  it('throws for a code that is not in the registry', () => {
+    expect(() => getStateConfig('xx' as StateCode)).toThrow('Unknown state code: xx')
+  })
+
+  it('throws for inherited object keys instead of returning a prototype member', () => {
+    expect(() => getStateConfig('constructor' as StateCode)).toThrow('Unknown state code: constructor')
+    expect(() => getStateConfig('__proto__' as StateCode)).toThrow('Unknown state code: __proto__')
   })
 })
