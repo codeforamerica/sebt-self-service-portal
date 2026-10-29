@@ -26,26 +26,26 @@
     <ItemGroup>
       <PackageReference Include="DistributedLock.Redis" Version="1.1.1" />
       <PackageReference Include="DistributedLock.SqlServer" Version="1.0.7" />
-      <PackageReference Include="MailKit" Version="4.18.0" />
+      <PackageReference Include="MailKit" Version="4.18.1" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.12" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13" />
       <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" Version="10.10.0" />
       <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.12" />
       <PackageReference Include="Bogus" Version="35.6.5" />
-      <PackageReference Include="libphonenumber-csharp" Version="9.0.39" />
-      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.12" />
-      <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.12" />
-      <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
-      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.12" />
-      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.12" />
-      <PackageReference Include="Microsoft.FeatureManagement" Version="4.7.0" />
-      <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.22.0" />
-      <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.22.0" />
-      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
+      <PackageReference Include="libphonenumber-csharp" Version="9.0.41" />
+      <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.13" />
+      <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.13" />
+      <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.13" />
+      <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.13" />
+      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
+      <PackageReference Include="Microsoft.FeatureManagement" Version="4.8.0" />
+      <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.23.0" />
+      <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
+      <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
       <!-- Transitive dependency of MimeKit and Microsoft.Data.SqlClient; pinned directly so
            NuGetAudit restores clean after GHSA-846f-f764-76mx (fixed in 10.0.13). Remove the
            pin once both depend on a patched version. -->
