@@ -1,3 +1,4 @@
+import { STATE_CODES } from '@sebt/design-system/src/lib/state'
 import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
 
@@ -15,7 +16,7 @@ export const env = createEnv({
     BACKEND_URL: z.string().url().default('http://localhost:5280')
   },
   client: {
-    NEXT_PUBLIC_STATE: z.enum(['dc', 'co']),
+    NEXT_PUBLIC_STATE: z.enum(STATE_CODES),
     NEXT_PUBLIC_BASE_PATH: z.string().optional().default(''),
     NEXT_PUBLIC_API_BASE_URL: z.string().url().optional(),
     NEXT_PUBLIC_SHOW_SCHOOL_FIELD: boolEnv(false),
@@ -27,6 +28,8 @@ export const env = createEnv({
     // Optional since DC-701: with applications closed a deployment may have no
     // application destination; apply link blocks hide when it is unset.
     NEXT_PUBLIC_APPLICATION_URL: z.string().url().optional(),
+    // Off by default: PEAK's language and referrer params only suit a PEAK destination.
+    NEXT_PUBLIC_APPLICATION_URL_PEAK_PARAMS: boolEnv(false),
     NEXT_PUBLIC_AMPLITUDE_API_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_META_PIXEL: z.string().min(1).optional(),
     NEXT_PUBLIC_META_PIXEL_ACTION: z.string().min(1).optional(),
@@ -47,6 +50,7 @@ export const env = createEnv({
     NEXT_PUBLIC_BOT_PROTECTION_ENABLED: process.env.NEXT_PUBLIC_BOT_PROTECTION_ENABLED,
     NEXT_PUBLIC_PORTAL_URL: process.env.NEXT_PUBLIC_PORTAL_URL,
     NEXT_PUBLIC_APPLICATION_URL: process.env.NEXT_PUBLIC_APPLICATION_URL,
+    NEXT_PUBLIC_APPLICATION_URL_PEAK_PARAMS: process.env.NEXT_PUBLIC_APPLICATION_URL_PEAK_PARAMS,
     NEXT_PUBLIC_AMPLITUDE_API_KEY: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
     NEXT_PUBLIC_META_PIXEL: process.env.NEXT_PUBLIC_META_PIXEL,
     NEXT_PUBLIC_META_PIXEL_ACTION: process.env.NEXT_PUBLIC_META_PIXEL_ACTION,

@@ -8,6 +8,9 @@
  */
 export async function register(): Promise<void> {
   assertStateConfigured()
+  // Loading env.ts validates every variable, so a malformed one stops startup
+  // with its name logged, rather than failing each /api request later.
+  await import('./env')
 
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     await import('./instrumentation.node')

@@ -25,9 +25,9 @@ export default function OffBoardingPage() {
   const state = getState()
   const links = getStateLinks(state)
 
-  // Null when applications are closed (enable_apply flag off) or the state has
-  // no apply destination (DC since DC-701); that suppresses the apply section
-  // below regardless of the query param.
+  // Null when applications are closed (enable_apply flag off) or no apply URL
+  // is configured; that suppresses the apply section below regardless of the
+  // query param.
   const applyHref = useApplyHref()
 
   // Prefer the web contact page; fall back to help desk email for states

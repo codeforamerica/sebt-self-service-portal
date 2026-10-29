@@ -8,6 +8,7 @@
  *   import { env } from '@/env';
  *   const state = env.STATE; // Type-safe!
  */
+import { STATE_CODES } from '@sebt/design-system/src/lib/state'
 import { createEnv } from '@t3-oss/env-nextjs'
 import { z } from 'zod'
 
@@ -43,10 +44,19 @@ export const env = createEnv({
     // When set, the change-address form shows type-ahead suggestions.
     // Omit to disable autocomplete (users type addresses manually).
     SMARTY_EMBEDDED_KEY: z.string().min(1).optional(),
+    // Where the dashboard's apply links go; omit when applications have no destination.
+    // PEAK params: the destination is Colorado's PEAK form, which takes a `language` param.
+    APPLICATION_URL: z.url().optional(),
+    APPLICATION_URL_PEAK_PARAMS: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .pipe(z.enum(['true', 'false']))
+      .optional(),
     // Which state this process serves. Unprefixed so one artifact can serve any
     // state: the server stamps it onto <html data-state> per request, and client
     // code reads it back from there (see getState in @sebt/design-system).
-    STATE: z.enum(['dc', 'co']).optional()
+    STATE: z.enum(STATE_CODES).optional()
     // OIDC secrets (CLIENT_SECRET, COMPLETE_LOGIN_SIGNING_KEY, etc.) moved to
     // .NET appsettings. The Next.js OIDC callback route was deleted — all OIDC exchange
     // and validation now happens server-side in OidcExchangeService.
@@ -73,6 +83,8 @@ export const env = createEnv({
     SOCURE_DI_SDK_KEY: process.env.SOCURE_DI_SDK_KEY,
     DEBUG_REPEAT_OIDC_STEP_UP: process.env.DEBUG_REPEAT_OIDC_STEP_UP,
     SMARTY_EMBEDDED_KEY: process.env.SMARTY_EMBEDDED_KEY,
+    APPLICATION_URL: process.env.APPLICATION_URL,
+    APPLICATION_URL_PEAK_PARAMS: process.env.APPLICATION_URL_PEAK_PARAMS,
     STATE: process.env.STATE
   },
 

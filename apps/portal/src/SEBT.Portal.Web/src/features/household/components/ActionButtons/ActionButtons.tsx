@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getState, getStateConfig } from '@sebt/design-system'
 
+import { useFeatureFlag } from '@/features/feature-flags'
 import { useApplyHref } from '@/lib/useApplyHref'
 
 import type { AllowedActions } from '../../api'
@@ -14,7 +15,7 @@ interface ActionButton {
   /** Static destination. Omitted only for the apply CTA, whose URL comes from useApplyHref. */
   href?: string
   /**
-   * The apply CTA's destination is resolved at render time by useApplyHref (per-state,
+   * The apply CTA's destination is resolved at render time by useApplyHref (runtime-configured,
    * locale-aware, gated by the enable_apply feature flag). Null hides the CTA.
    */
   isApplyAction?: boolean
@@ -27,8 +28,8 @@ interface ActionButton {
   requiresCases?: boolean
   /** When true, the CTA is hidden if hasApplications is explicitly false. Omitting hasApplications keeps the CTA visible (backward-compatible). */
   requiresApplications?: boolean
-  /** When set, the CTA renders only for these states. Omitting it shows the CTA for every state. */
-  states?: string[]
+  /** When true, the CTA is hidden unless the enable_activate_card feature flag is on. */
+  requiresActivateCardFlag?: boolean
   /** When true, the CTA is hidden unless at least one child's benefits are expiring or expired. */
   requiresBenefitExpiration?: boolean
   /** When true, the CTA is hidden in states whose content has no label for it. */
@@ -49,9 +50,8 @@ interface ActionButtonsProps {
 // Keys map to CSV: "S2 - Portal Dashboard - Action Navigation - {Key}"
 const ACTIONS: ActionButton[] = [
   {
-    // Outbound link to the state's apply form. Hidden when applications are
-    // closed (enable_apply flag off) or the state has no apply destination
-    // (DC since DC-701).
+    // Outbound link to the apply form. Hidden when applications are closed
+    // (enable_apply flag off) or no apply URL is configured.
     labelKey: 'actionNavigationApply',
     isApplyAction: true,
     external: true,
@@ -89,13 +89,13 @@ const ACTIONS: ActionButton[] = [
     requiresApplications: true
   },
   {
-    // CO-only for now: the authored label exists for CO, while DC's is still !N/A!
-    // upstream. Add 'dc' once the DC content is published (see DC-162 follow-up).
+    // Only CO's sheet authors this label; with the flag on and no label the button shows the
+    // raw key, so enable it for another state only once its content is published.
     labelKey: 'actionNavigationActivateCard',
     href: '/cards/activate',
     ctaId: 'activate_card_cta',
     requiresCases: true,
-    states: ['co']
+    requiresActivateCardFlag: true
   }
 ]
 
@@ -106,12 +106,12 @@ export function ActionButtons({
   hasBenefitExpiration
 }: ActionButtonsProps) {
   const { t } = useTranslation('dashboard')
-  const currentState = getState()
-  const { actionButtonBg, actionButtonText } = getStateConfig(currentState)
+  const { actionButtonBg, actionButtonText } = getStateConfig(getState())
   const applyHref = useApplyHref()
+  const activateCardEnabled = useFeatureFlag('enable_activate_card')
 
   const visibleActions = ACTIONS.filter((action) => {
-    if (action.states && !action.states.includes(currentState)) return false
+    if (action.requiresActivateCardFlag && !activateCardEnabled) return false
     if (action.isApplyAction && applyHref === null) return false
     if (action.requiresCases && hasCases === false) return false
     if (action.requiresApplications && hasApplications === false) return false

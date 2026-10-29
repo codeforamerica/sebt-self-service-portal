@@ -29,6 +29,10 @@ export interface RuntimeConfig {
   socureDiSdkKey?: string | undefined
   /** Smarty US Autocomplete Pro embeddable key. Omitted to disable type-ahead. */
   smartyEmbeddedKey?: string | undefined
+  /** Where apply links go. Omitted when applications have no destination. */
+  applicationUrl?: string | undefined
+  /** Whether `applicationUrl` is Colorado's PEAK form, which takes a `language` param. */
+  applicationUrlPeakParams: boolean
   /**
    * Development only: keep sending users through OIDC step-up even when the
    * portal JWT already carries IAL1+. Ignored outside development.
@@ -40,6 +44,16 @@ export interface RuntimeConfig {
 function optional(value: string | undefined): string | undefined {
   const trimmed = value?.trim()
   return trimmed ? trimmed : undefined
+}
+
+/** Like `optional`, but a value that is not a URL is dropped so a client `new URL()` cannot throw. */
+function optionalUrl(value: string | undefined): string | undefined {
+  const url = optional(value)
+  if (url && !URL.canParse(url)) {
+    console.error(`Runtime config: ignoring an invalid URL (${url})`)
+    return undefined
+  }
+  return url
 }
 
 /**
@@ -57,6 +71,9 @@ export function getRuntimeConfig(): RuntimeConfig {
     siteImproveId: optional(process.env.SITEIMPROVE_ID),
     socureDiSdkKey: optional(process.env.SOCURE_DI_SDK_KEY),
     smartyEmbeddedKey: optional(process.env.SMARTY_EMBEDDED_KEY),
+    applicationUrl: optionalUrl(process.env.APPLICATION_URL),
+    applicationUrlPeakParams:
+      process.env.APPLICATION_URL_PEAK_PARAMS?.trim().toLowerCase() === 'true',
     debugRepeatOidcStepUp: process.env.DEBUG_REPEAT_OIDC_STEP_UP === 'true'
   }
 }

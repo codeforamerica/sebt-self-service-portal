@@ -15,13 +15,11 @@
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync, readdirSync } from 'fs';
+import { STATE_CODES } from '../../src/lib/state.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..', '..');
-
-// Supported states configuration
-const STATES = ['dc', 'co']; // Add new states here as they're added
 
 console.log('🎨 Generating design tokens for all states...\n');
 
@@ -54,7 +52,7 @@ console.log(`📂 Found ${availableTokens.length} state(s): ${availableTokens.jo
 let successCount = 0;
 let failureCount = 0;
 
-for (const state of STATES) {
+for (const state of STATE_CODES) {
   if (!availableTokens.includes(state)) {
     console.log(`⏭️  Skipping ${state.toUpperCase()} - no token file found`);
     continue;
@@ -97,7 +95,7 @@ console.log('─'.repeat(50));
 console.log(`📊 Token Generation Summary:`);
 console.log(`   ✅ Success: ${successCount}`);
 console.log(`   ❌ Failed:  ${failureCount}`);
-console.log(`   ⏭️  Skipped: ${STATES.length - successCount - failureCount}`);
+console.log(`   ⏭️  Skipped: ${STATE_CODES.length - successCount - failureCount}`);
 console.log('─'.repeat(50));
 
 if (failureCount > 0) {
