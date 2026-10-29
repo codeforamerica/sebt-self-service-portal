@@ -147,6 +147,23 @@ jobs:
           path: apps/portal/src/SEBT.Portal.Web/playwright-report/
           retention-days: 7
 
+  # The required check for e2e: a skipped matrix job never reports its per-state check names.
+  e2e-result:
+    name: Playwright E2E result
+    needs: [changes, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fail unless change detection succeeded and e2e passed or was skipped
+        if: needs.changes.result != 'success' || !contains(fromJSON('["success", "skipped"]'), needs.e2e.result)
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          echo "Detect Changed Areas: $CHANGES_RESULT; Playwright E2E Tests: $E2E_RESULT"
+          exit 1
+
   # Integration E2E drives the full stack (real API + web), so it reacts to both areas.
   # The enrollment checker's suite mocks its API at the browser level, so it
   # only needs the Next dev server the Playwright config boots itself.
