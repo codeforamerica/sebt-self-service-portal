@@ -1,6 +1,6 @@
 'use client'
 
-import { CoLoadingScreen } from '@/components/CoLoadingScreen'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import { useAuth } from '@/features/auth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type ReactNode } from 'react'
@@ -34,12 +34,11 @@ export function AuthGuard({ children }: AuthGuardProps) {
     }
   }, [isHydrated, isAuthenticated, isLoading, router])
 
-  // While the auth-status fetch is in flight, CO shows an interstitial so the
-  // user knows the dashboard is still loading. Other states keep the existing
-  // blank-screen behavior until their content is wired up.
+  // While the auth-status fetch is in flight, states that enable the interstitial show it so the
+  // user knows the dashboard is still loading; other states keep the blank screen.
   if (!isHydrated || isLoading) {
     return (
-      <CoLoadingScreen
+      <LoadingScreen
         title={t('title')}
         message={t('body')}
       />

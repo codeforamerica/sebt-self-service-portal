@@ -30,6 +30,10 @@ has_frontend_changes() {
   git diff --cached --name-only | grep -qE '^apps/portal/src/SEBT\.Portal\.Web/' || return 1
 }
 
+staged_dockerfiles() {
+  git diff --cached --name-only --diff-filter=ACMR | grep -E '(^|/)(Dockerfile(\.[^/]*)?|[^/]*\.[Dd]ockerfile)$' || true
+}
+
 # Check if cooldown-exclusion sources were staged (workspace policy or lockfile)
 has_cooldown_exclusion_changes() {
   git diff --cached --name-only | grep -qE '^(pnpm-workspace\.yaml|pnpm-lock\.yaml)$' || return 1
@@ -60,6 +64,11 @@ if has_cooldown_exclusion_changes; then
   TOTAL_STEPS=$((TOTAL_STEPS + 1))  # cooldown exclusion staleness check
 fi
 
+STAGED_DOCKERFILES=$(staged_dockerfiles)
+if [ -n "$STAGED_DOCKERFILES" ]; then
+  TOTAL_STEPS=$((TOTAL_STEPS + 1))  # hadolint
+fi
+
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   TOTAL_STEPS=$((TOTAL_STEPS + 3))  # lint-staged + build + tests
 fi
@@ -81,7 +90,40 @@ if [ "$COOLDOWN_CHANGES" = "true" ]; then
   echo ""
 fi
 
-# Step 2: Frontend linting (if frontend changes)
+# Step 2: Dockerfile linting (if Dockerfiles staged)
+if [ -n "$STAGED_DOCKERFILES" ]; then
+  STEP_NUM=$((STEP_NUM + 1))
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Linting staged Dockerfiles with hadolint..."
+  cd "$PROJECT_ROOT"
+
+  # First runtime that is installed and running; either CLI runs the same command.
+  CONTAINER_CLI=""
+  for runtime in docker podman; do
+    if command -v "$runtime" > /dev/null 2>&1 && "$runtime" info > /dev/null 2>&1; then
+      CONTAINER_CLI="$runtime"
+      break
+    fi
+  done
+
+  if [ -z "$CONTAINER_CLI" ]; then
+    log_error "No running container runtime found - hadolint runs in a container. Install and start Docker or Podman (e.g. 'podman machine start'): https://podman.io/docs/installation"
+    exit 1
+  fi
+
+  # Pinned so every developer lints against the same rule set. hadolint v2.15.1.
+  # Fully qualified so Podman doesn't need short-name resolution.
+  HADOLINT_IMAGE="docker.io/hadolint/hadolint@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d"
+
+  # shellcheck disable=SC2086 # word-split the newline-separated file list into arguments
+  "$CONTAINER_CLI" run --rm -v "$PROJECT_ROOT:/repo:ro" -w /repo "$HADOLINT_IMAGE" hadolint $STAGED_DOCKERFILES || {
+    log_error "Dockerfile linting failed - fix the issues above, or suppress a rule with an inline '# hadolint ignore=DLxxxx' comment"
+    exit 1
+  }
+  log_success "Dockerfile linting passed"
+  echo ""
+fi
+
+# Step 3: Frontend linting (if frontend changes)
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running linters and auto-fixing staged files..."
@@ -110,7 +152,7 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 fi
 
-# Step 3: Backend formatting (if backend changes)
+# Step 4: Backend formatting (if backend changes)
 if [ "$BACKEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running .NET code formatting and analyzer checks..."
@@ -147,7 +189,7 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   echo ""
 fi
 
-# Step 4: Backend build (if backend changes)
+# Step 5: Backend build (if backend changes)
 if [ "$BACKEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Validating backend build..."
@@ -170,7 +212,7 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   echo ""
 fi
 
-# Step 5: Frontend build (if frontend changes)
+# Step 6: Frontend build (if frontend changes)
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Validating frontend build..."
@@ -188,7 +230,7 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 fi
 
-# Step 6: Backend tests (if backend changes)
+# Step 7: Backend tests (if backend changes)
 if [ "$BACKEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running backend tests..."
@@ -210,7 +252,7 @@ if [ "$BACKEND_CHANGES" = "true" ]; then
   echo ""
 fi
 
-# Step 7: Frontend tests (if frontend changes)
+# Step 8: Frontend tests (if frontend changes)
 if [ "$FRONTEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
   log_info "Step $STEP_NUM/$TOTAL_STEPS: Running frontend tests..."
@@ -228,7 +270,7 @@ if [ "$FRONTEND_CHANGES" = "true" ]; then
   cd "$PROJECT_ROOT"
 fi
 
-if [ "$BACKEND_CHANGES" = "false" ] && [ "$FRONTEND_CHANGES" = "false" ]; then
+if [ "$BACKEND_CHANGES" = "false" ] && [ "$FRONTEND_CHANGES" = "false" ] && [ -z "$STAGED_DOCKERFILES" ]; then
   log_info "No staged changes detected. Skipping pre-commit checks."
   exit 0
 fi

@@ -1,10 +1,10 @@
 /**
  * Login Page Unit Tests (Co-located)
  *
- * Tests the login page for both CO and DC states.
- * CO renders the external auth landing page (COLoginPage).
- * DC renders the OTP email form (LoginForm).
+ * The login page is selected by the state's loginMode: oidc renders the identity-provider
+ * entry page, otp renders the email one-time-code form. Covers both modes and the cross-wired cases.
  */
+import type { LoginMode, StateCode, SupportedLanguage } from '@sebt/design-system'
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -19,11 +19,19 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), push: vi.fn() })
 }))
 
+let mockLoginMode: LoginMode = 'oidc'
+let mockSupportedLanguages: readonly SupportedLanguage[] | undefined
+
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
     getState: vi.fn(),
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      loginMode: mockLoginMode,
+      ...(mockSupportedLanguages && { supportedLanguages: mockSupportedLanguages })
+    }),
     getStateLinks: vi.fn().mockReturnValue({
       external: {
         contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
@@ -32,7 +40,7 @@ vi.mock('@sebt/design-system', async (importOriginal) => {
   }
 })
 
-// COLoginPage uses the client-side useTranslation() hook. Mock the hook so the
+// OidcLoginPage uses the client-side useTranslation() hook. Mock the hook so the
 // CO/DC cases stay isolated from the project's real i18n init (which boots in
 // DC mode for tests), but feed the CO mock the *generated* CO bundles rather
 // than hand-typed copy. Content-sheet syncs rewrite these strings; a fixture
@@ -115,10 +123,13 @@ describe('LoginPage', () => {
     mockTrackEvent.mockClear()
     mockLanguage = 'en'
     mockState = 'co'
+    mockLoginMode = 'oidc'
+    mockSupportedLanguages = undefined
   })
 
-  describe('CO state', () => {
+  describe('OIDC login mode (CO)', () => {
     beforeEach(() => {
+      mockLoginMode = 'oidc'
       mockGetState.mockReturnValue('co')
       mockState = 'co'
     })
@@ -199,28 +210,34 @@ describe('LoginPage', () => {
       ).toBeInTheDocument()
     })
 
-    it('renders the Log in button with myColorado branded styling', () => {
+    it('renders the Log in button as the filled identity-provider button', () => {
       render(<LoginPage />)
       const logInButton = screen.getByRole('button', { name: /Sign in with myColorado/i })
       expect(logInButton).toHaveClass('usa-button')
-      expect(logInButton).toHaveClass('usa-button--mycolorado')
+      expect(logInButton).toHaveClass('usa-button--idp')
       expect(logInButton).not.toHaveClass('usa-button--outline')
     })
 
-    it('renders the Iniciar sesión button as an outlined myColorado variant', () => {
+    it('renders the Iniciar sesión button as the outlined identity-provider variant', () => {
       render(<LoginPage />)
       const espButton = screen.getByRole('button', { name: /Iniciar con myColorado/i })
       expect(espButton).toHaveAttribute('lang', 'es')
-      expect(espButton).toHaveClass('usa-button--mycolorado')
+      expect(espButton).toHaveClass('usa-button--idp')
       expect(espButton).toHaveClass('usa-button--outline')
     })
 
-    it('renders the myColorado logo inside both auth buttons', () => {
+    it('renders the identity-provider logo slot inside both auth buttons', () => {
       render(<LoginPage />)
       const logInButton = screen.getByRole('button', { name: /Sign in with myColorado/i })
       const espButton = screen.getByRole('button', { name: /Iniciar con myColorado/i })
-      expect(logInButton.querySelector('[data-testid="mycolorado-logo"]')).toBeInTheDocument()
-      expect(espButton.querySelector('[data-testid="mycolorado-logo"]')).toBeInTheDocument()
+      expect(logInButton.querySelector('.usa-button__idp-logo')).toHaveAttribute(
+        'aria-hidden',
+        'true'
+      )
+      expect(espButton.querySelector('.usa-button__idp-logo')).toHaveAttribute(
+        'aria-hidden',
+        'true'
+      )
     })
 
     it('does not render LoginForm', () => {
@@ -328,11 +345,37 @@ describe('LoginPage', () => {
         expect(assignedHref).toContain('language=en')
         expect(localStorage.getItem('i18nextLng')).toBe('en')
       })
+
+      it("routes the secondary button to the state's other supported language", () => {
+        mockSupportedLanguages = ['en', 'am']
+        mockLanguage = 'en'
+        render(<LoginPage />)
+        const secondary = screen.getByRole('button', { name: /Iniciar con myColorado/i })
+
+        expect(secondary).toHaveAttribute('lang', 'am')
+
+        secondary.click()
+
+        expect(assignedHref).toContain('language=am')
+        expect(localStorage.getItem('i18nextLng')).toBe('am')
+      })
+
+      it('renders only the primary button when the state supports one language', () => {
+        mockSupportedLanguages = ['en']
+        render(<LoginPage />)
+
+        expect(screen.getByRole('button', { name: /Sign in with myColorado/i })).toHaveAttribute(
+          'lang',
+          'en'
+        )
+        expect(screen.queryByRole('button', { name: /Iniciar con myColorado/i })).toBeNull()
+      })
     })
   })
 
-  describe('DC state', () => {
+  describe('OTP login mode (DC)', () => {
     beforeEach(() => {
+      mockLoginMode = 'otp'
       mockGetState.mockReturnValue('dc')
       mockState = 'dc'
     })
@@ -353,6 +396,32 @@ describe('LoginPage', () => {
       render(<LoginPage />)
       const heading = screen.getByRole('heading', { level: 1 })
       expect(heading).not.toHaveClass('text-primary-dark')
+    })
+  })
+
+  describe('page selection', () => {
+    it('selects the OIDC page by login mode, not by state code', () => {
+      mockGetState.mockReturnValue('dc')
+      mockState = 'co' // CO translations so the myColorado label resolves
+      mockLoginMode = 'oidc'
+
+      render(<LoginPage />)
+
+      expect(screen.getByRole('button', { name: /Sign in with myColorado/i })).toBeInTheDocument()
+      expect(screen.queryByTestId('login-form')).not.toBeInTheDocument()
+    })
+
+    it('selects the OTP page by login mode, not by state code', () => {
+      mockGetState.mockReturnValue('co')
+      mockState = 'dc'
+      mockLoginMode = 'otp'
+
+      render(<LoginPage />)
+
+      expect(screen.getByTestId('login-form')).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /Sign in with myColorado/i })
+      ).not.toBeInTheDocument()
     })
   })
 })
