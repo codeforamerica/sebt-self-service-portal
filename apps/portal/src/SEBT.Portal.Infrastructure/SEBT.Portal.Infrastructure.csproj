@@ -45,6 +45,7 @@
       <PackageReference Include="Microsoft.FeatureManagement" Version="4.7.0" />
       <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.22.0" />
       <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.22.0" />
+      <PackageReference Include="StackExchange.Redis" Version="3.4.5" />
       <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.22.0" />
       <!-- Transitive dependency of MimeKit and Microsoft.Data.SqlClient; pinned directly so
            NuGetAudit restores clean after GHSA-846f-f764-76mx (fixed in 10.0.13). Remove the
