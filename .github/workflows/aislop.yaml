@@ -1,0 +1,80 @@
+name: aislop
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: aislop scan (advisory)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: "10"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # aislop's dead-code checks (knip) resolve imports through node_modules.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --prefer-offline
+
+      # Both apps import a locale module the build generates and git ignores; without
+      # it, knip reports the imports as unresolved.
+      - name: Generate locale resources
+        run: |
+          pnpm --silent --dir apps/portal/src/SEBT.Portal.Web run copy:locales
+          pnpm --silent --dir apps/portal/src/SEBT.EnrollmentChecker.Web run copy:locales
+
+      # aislop checks Python with ruff; the baseline was recorded with this version.
+      - name: Install ruff
+        run: pipx install ruff==0.17.1
+
+      # Scans the whole repo, not just changed files: code scanning compares a PR's
+      # alerts against main's, and dismissals only stick to alerts that exist on main.
+      - name: Run aislop
+        continue-on-error: true
+        run: pnpm dlx aislop@0.18.1 scan --sarif > aislop.sarif
+
+      # The JSON report marks which findings the baseline already covers.
+      - name: Run aislop (JSON report)
+        continue-on-error: true
+        run: pnpm dlx aislop@0.18.1 ci > aislop.json
+
+      - name: Upload results to code scanning
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
+        with:
+          sarif_file: aislop.sarif
+          category: aislop
+
+      - name: Summarize findings on the PR
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const fs = require('fs');
+            const postAislopComment = require('./.github/workflows/scripts/post-aislop-comment.js');
+            await postAislopComment({
+              github,
+              context,
+              core,
+              report: JSON.parse(fs.readFileSync('aislop.json', 'utf8')),
+              runUrl: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+              codeScanningUrl: '${{ github.server_url }}/${{ github.repository }}/security/code-scanning?query=tool%3Aaislop',
+            });
