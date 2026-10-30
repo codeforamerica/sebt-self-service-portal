@@ -7,7 +7,7 @@ namespace SEBT.Portal.Api.Composition.Defaults;
 
 /// <summary>
 /// Mock implementation of the state address update plugin for development/testing.
-/// Used when UseMockHouseholdData is enabled so that address updates are persisted
+/// Used when the use_mock_household_data feature flag is enabled so that address updates are persisted
 /// to the in-memory mock household store instead of calling the real state backend.
 /// </summary>
 internal class MockStateAddressUpdateService(MockHouseholdRepository mockHouseholdRepository)

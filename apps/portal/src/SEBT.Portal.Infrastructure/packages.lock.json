@@ -201,6 +201,17 @@
           "System.IdentityModel.Tokens.Jwt": "8.22.0"
         }
       },
+      "StackExchange.Redis": {
+        "type": "Direct",
+        "requested": "[3.4.5, )",
+        "resolved": "3.4.5",
+        "contentHash": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.5",
+          "RESPite": "3.4.5",
+          "System.IO.Hashing": "10.0.12"
+        }
+      },
       "System.IdentityModel.Tokens.Jwt": {
         "type": "Direct",
         "requested": "[8.22.0, )",
@@ -612,19 +623,10 @@
         "resolved": "13.0.4",
         "contentHash": "pdgNNMai3zv51W5aq268sujXUyx7SNdE2bj1wZcWjAQrKMFZV260lbqYop1d2GM67JI1huLRwxo9ZqnfF/lC6A=="
       },
-      "Pipelines.Sockets.Unofficial": {
+      "RESPite": {
         "type": "Transitive",
-        "resolved": "2.2.8",
-        "contentHash": "zG2FApP5zxSx6OcdJQLbZDk2AVlN2BNQD6MorwIfV6gVj0RRxWPEp2LXAxqDGZqeNV1Zp0BNPcNaey/GXmTdvQ=="
-      },
-      "StackExchange.Redis": {
-        "type": "Transitive",
-        "resolved": "2.7.33",
-        "contentHash": "2kCX5fvhEE824a4Ab5Imyi8DRuGuTxyklXV01kegkRpsWJcPmO6+GAQ+HegKxvXAxlXZ8yaRspvWJ8t3mMClfQ==",
-        "dependencies": {
-          "Microsoft.Extensions.Logging.Abstractions": "6.0.0",
-          "Pipelines.Sockets.Unofficial": "2.2.8"
-        }
+        "resolved": "3.4.5",
+        "contentHash": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
       },
       "Swashbuckle.AspNetCore": {
         "type": "Transitive",
@@ -733,6 +735,11 @@
         "type": "Transitive",
         "resolved": "9.0.11",
         "contentHash": "2Us/NchH6SM69NYWzf8NRyeftdv3ILso8LMiMdAjT7ECTiZKzddiXWhAyQj6ZzbddoAOHS9GdlPbAAkwCPID3Q=="
+      },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "10.0.12",
+        "contentHash": "jDix4bBMYnpZdSPcnY+KDV6ik3SRMzpMKby/bZl/XUwIiflwRNAFZ0oOl61R/pSaveIJ8t1gs2BUlrGsPs/bcg=="
       },
       "System.Memory.Data": {
         "type": "Transitive",

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using SEBT.Portal.StatePlugins.CO;
+using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.Cbms.Cache;
 using SEBT.Portal.StatePlugins.CO.CbmsApi.Models;
 using SEBT.Portal.StatesPlugins.Interfaces.Models;
@@ -51,7 +52,7 @@ public class ColoradoSummerEbtCaseServiceTests : IDisposable
     private static IConfiguration CreateEmptyConfiguration()
     {
         return new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["Cbms:UseMockResponses"] = "false" })
+            .AddInMemoryCollection(new Dictionary<string, string?> { [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false" })
             .Build();
     }
 
@@ -65,7 +66,7 @@ public class ColoradoSummerEbtCaseServiceTests : IDisposable
             {
                 ["Cbms:ClientId"] = clientId,
                 ["Cbms:ClientSecret"] = clientSecret,
-                ["Cbms:UseMockResponses"] = useMockResponses ? "true" : "false"
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = useMockResponses ? "true" : "false"
             })
             .Build();
     }
@@ -75,9 +76,10 @@ public class ColoradoSummerEbtCaseServiceTests : IDisposable
         return new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
+                ["ASPNETCORE_ENVIRONMENT"] = "Development",
                 ["Cbms:ClientId"] = "test-id",
                 ["Cbms:ClientSecret"] = "test-secret",
-                ["Cbms:UseMockResponses"] = "true",
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
                 ["Cbms:Cache:SoftExpirationMinutes"] = "5",
                 ["Cbms:Cache:HardExpirationMinutes"] = "60",
             })

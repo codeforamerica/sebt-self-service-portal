@@ -27,6 +27,8 @@ public class FeaturesEndpointTests : IClassFixture<PortalWebApplicationFactory>
 
         Assert.False(flags.ContainsKey(FeatureFlags.BypassOtp));
         Assert.False(flags.ContainsKey(FeatureFlags.TestErrorEndpointsEnabled));
+        Assert.False(flags.ContainsKey(FeatureFlags.UseMockHouseholdData));
+        Assert.False(flags.ContainsKey(FeatureFlags.UseMockCbmsResponses));
         Assert.True(flags.ContainsKey(FeatureFlags.OutagePageEnabled));
         Assert.True(flags.ContainsKey("enable_beta_banner"));
     }

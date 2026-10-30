@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using SEBT.Portal.Api.Controllers.Diagnostics;
@@ -58,6 +60,9 @@ public class DevSeedControllerTests
     {
         var settings = Substitute.For<IOptionsSnapshot<SeedingSettings>>();
         settings.Value.Returns(new SeedingSettings { EnableDevEndpoints = enableDevEndpoints });
-        return new DevSeedController(_databaseSeeder, settings, _configuration);
+        var environment = Substitute.For<IHostEnvironment>();
+        environment.EnvironmentName.Returns(Environments.Development);
+        var logger = Substitute.For<ILogger<DevSeedController>>();
+        return new DevSeedController(_databaseSeeder, settings, _configuration, environment, logger);
     }
 }
