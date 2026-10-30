@@ -546,10 +546,10 @@
           "OpenTelemetry.Api": "1.18.0"
         }
       },
-      "Pipelines.Sockets.Unofficial": {
+      "RESPite": {
         "type": "Transitive",
-        "resolved": "2.2.8",
-        "contentHash": "zG2FApP5zxSx6OcdJQLbZDk2AVlN2BNQD6MorwIfV6gVj0RRxWPEp2LXAxqDGZqeNV1Zp0BNPcNaey/GXmTdvQ=="
+        "resolved": "3.4.5",
+        "contentHash": "EzMx67+IXC8lQRI78yeSBWKCTn9qvSIaale6XZ1RJLKpr2NJqmptgn3UqgguWqoeGUsoohiy3SWeiVLAj1n9DA=="
       },
       "Serilog": {
         "type": "Transitive",
@@ -591,10 +591,11 @@
       },
       "StackExchange.Redis": {
         "type": "Transitive",
-        "resolved": "2.7.33",
-        "contentHash": "2kCX5fvhEE824a4Ab5Imyi8DRuGuTxyklXV01kegkRpsWJcPmO6+GAQ+HegKxvXAxlXZ8yaRspvWJ8t3mMClfQ==",
+        "resolved": "3.4.5",
+        "contentHash": "LtbEuNmaW6N75tvLAlXoDGDJHTCwmrHFL8/9OeQknWoCWcZhUcUnPvG2ijSO7tTyC7XID9LskIu42spa0b/nMQ==",
         "dependencies": {
-          "Pipelines.Sockets.Unofficial": "2.2.8"
+          "RESPite": "3.4.5",
+          "System.IO.Hashing": "10.0.12"
         }
       },
       "Std.UriTemplate": {
@@ -701,6 +702,11 @@
           "Microsoft.IdentityModel.Tokens": "8.22.0"
         }
       },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "10.0.12",
+        "contentHash": "jDix4bBMYnpZdSPcnY+KDV6ik3SRMzpMKby/bZl/XUwIiflwRNAFZ0oOl61R/pSaveIJ8t1gs2BUlrGsPs/bcg=="
+      },
       "System.Memory.Data": {
         "type": "Transitive",
         "resolved": "8.0.1",
@@ -745,6 +751,7 @@
           "SEBT.Portal.Infrastructure.Seeding": "[1.0.0, )",
           "SEBT.Portal.Kernel": "[1.0.0, )",
           "SEBT.Portal.TestUtilities": "[1.0.0, )",
+          "StackExchange.Redis": "[3.4.5, )",
           "System.IdentityModel.Tokens.Jwt": "[8.22.0, )",
           "System.Security.Cryptography.Pkcs": "[10.0.13, )",
           "libphonenumber-csharp": "[9.0.39, )"
