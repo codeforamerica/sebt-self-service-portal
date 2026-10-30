@@ -1,5 +1,6 @@
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Services;
+using SEBT.Portal.Infrastructure.Configuration;
 using SEBT.Portal.Infrastructure.Services;
 using Serilog;
 
@@ -34,7 +35,13 @@ internal static class DatabaseStartup
             var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
             if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)
             {
-                var useMockHouseholdData = app.Configuration.GetValue<bool>("UseMockHouseholdData", false);
+                var seedLogger = scope.ServiceProvider
+                    .GetService<ILoggerFactory>()
+                    ?.CreateLogger(nameof(HouseholdMockGate));
+                var useMockHouseholdData = HouseholdMockGate.IsEnabled(
+                    app.Configuration,
+                    app.Environment,
+                    seedLogger);
                 var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
 
                 // In Development, clear stale seed data before re-seeding so that scenario

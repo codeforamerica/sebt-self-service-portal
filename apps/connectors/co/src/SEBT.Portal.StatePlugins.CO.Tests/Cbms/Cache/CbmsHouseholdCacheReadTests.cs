@@ -123,7 +123,7 @@ public class CbmsHouseholdCacheReadTests
         var result = await sut.GetAsync(Phone, true, CancellationToken.None);
 
         Assert.Null(result);
-        var key = "co:cbms:hash:" + Phone + ":full";
+        var key = "co:cbms:live:hash:" + Phone + ":full";
         var latestOpts = hybrid.LatestOptionsFor(key);
         Assert.NotNull(latestOpts);
         Assert.Equal(options.NegativeCacheExpiration, latestOpts!.Expiration);
@@ -152,7 +152,7 @@ public class CbmsHouseholdCacheReadTests
 
         await sut.GetAsync(Phone, true, CancellationToken.None);
 
-        var key = "co:cbms:hash:" + Phone + ":full";
+        var key = "co:cbms:live:hash:" + Phone + ":full";
         var latestOpts = hybrid.LatestOptionsFor(key);
         Assert.NotNull(latestOpts);
         Assert.Equal(options.HardExpiration, latestOpts!.Expiration);
@@ -173,7 +173,7 @@ public class CbmsHouseholdCacheReadTests
     public async Task Negative_detection_works_for_envelopes_with_independently_allocated_empty_response()
     {
         var (sut, hybrid, fetch) = Build();
-        var key = "co:cbms:hash:" + Phone + ":full";
+        var key = "co:cbms:live:hash:" + Phone + ":full";
         var freshEmpty = new GetAccountDetailsResponse { StdntEnrollDtls = new() };
         var now = DateTimeOffset.UtcNow;
         var envelope = new CbmsHouseholdCacheEnvelope(

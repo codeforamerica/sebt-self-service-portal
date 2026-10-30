@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NSubstitute;
@@ -31,7 +32,7 @@ public class CbmsHouseholdCacheKeyHashingTests
 
         await sut.GetAsync(Phone, true, CancellationToken.None);
 
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:deadbeef:full", out _));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:deadbeef:full", out _));
     }
 
     [Fact]
@@ -111,7 +112,82 @@ public class CbmsHouseholdCacheKeyHashingTests
         await sut.GetAsync(Phone, includeCardService: true, CancellationToken.None);
 
         Assert.Equal(2, fetchCount);
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:abc123:shell", out _));
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:abc123:full", out _));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:abc123:shell", out _));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:abc123:full", out _));
+    }
+
+    [Fact]
+    public async Task GetAsync_stores_mock_and_live_responses_under_separate_keys()
+    {
+        var hybrid = new InMemoryHybridCache();
+        var hasher = Substitute.For<IHMACSHA256Hasher>();
+        hasher.Hash(Phone).Returns("deadbeef");
+        var lifetime = Substitute.For<IHostApplicationLifetime>();
+        lifetime.ApplicationStopping.Returns(CancellationToken.None);
+
+        var liveFetches = 0;
+        var mockFetches = 0;
+        CbmsFetchAccountDetailsDelegate liveFetch = (_, _, _) =>
+        {
+            liveFetches++;
+            return Task.FromResult<GetAccountDetailsResponse?>(
+                new() { StdntEnrollDtls = new() { new GetAccountStudentDetail() } });
+        };
+        CbmsFetchAccountDetailsDelegate mockFetch = (_, _, _) =>
+        {
+            mockFetches++;
+            return Task.FromResult<GetAccountDetailsResponse?>(
+                new() { StdntEnrollDtls = new() { new GetAccountStudentDetail() } });
+        };
+
+        var live = new CbmsHouseholdCache(
+            hybrid, hasher, lifetime, NullLoggerFactory.Instance,
+            Options.Create(new CbmsHouseholdCacheOptions()),
+            liveFetch);
+        var mock = new CbmsHouseholdCache(
+            hybrid, hasher, lifetime, NullLoggerFactory.Instance,
+            Options.Create(new CbmsHouseholdCacheOptions()),
+            mockFetch,
+            useMockResponses: true);
+
+        await live.GetAsync(Phone, true, CancellationToken.None);
+        await mock.GetAsync(Phone, true, CancellationToken.None);
+        await mock.GetAsync(Phone, true, CancellationToken.None);
+
+        Assert.Equal(1, liveFetches);
+        Assert.Equal(1, mockFetches);
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:deadbeef:full", out _));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:mock:deadbeef:full", out _));
+    }
+
+    [Fact]
+    public async Task GetAsync_when_built_for_mock_responses_logs_warning()
+    {
+        var logger = Substitute.For<ILogger>();
+        var loggerFactory = Substitute.For<ILoggerFactory>();
+        loggerFactory.CreateLogger(Arg.Any<string>()).Returns(logger);
+
+        var hybrid = new InMemoryHybridCache();
+        var hasher = Substitute.For<IHMACSHA256Hasher>();
+        hasher.Hash(Phone).Returns("deadbeef");
+        var lifetime = Substitute.For<IHostApplicationLifetime>();
+        lifetime.ApplicationStopping.Returns(CancellationToken.None);
+        CbmsFetchAccountDetailsDelegate fetch = (_, _, _) => Task.FromResult<GetAccountDetailsResponse?>(
+            new() { StdntEnrollDtls = new() { new GetAccountStudentDetail() } });
+
+        var sut = new CbmsHouseholdCache(
+            hybrid, hasher, lifetime, loggerFactory,
+            Options.Create(new CbmsHouseholdCacheOptions()),
+            fetch,
+            useMockResponses: true);
+
+        await sut.GetAsync(Phone, true, CancellationToken.None);
+
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains("served from mock responses")),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 }

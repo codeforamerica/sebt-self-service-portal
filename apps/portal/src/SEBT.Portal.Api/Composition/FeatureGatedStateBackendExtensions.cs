@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using SEBT.Portal.Core.StateBackends;
 using SEBT.Portal.StatesPlugins.Interfaces;
@@ -13,12 +15,9 @@ internal static class FeatureGatedStateBackendExtensions
     /// without a restart. The MEF connector stays reachable via keyed DI
     /// (<see cref="StatePluginKeys.Connector"/>).
     /// </summary>
-    public static IServiceCollection AddFeatureGatedStateBackendRouting(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddFeatureGatedStateBackendRouting(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
 
         services.AddSingleton<ISummerEbtCaseService>(sp =>
             new FeatureGatedSummerEbtCaseService(
@@ -38,15 +37,17 @@ internal static class FeatureGatedStateBackendExtensions
                 sp.GetRequiredKeyedService<IEnrollmentCheckService>(StatePluginKeys.Connector),
                 sp.GetService<IEnrollmentCheckBackend>()));
 
-        bool useMockHouseholdData = configuration.GetValue("UseMockHouseholdData", false);
-        if (!useMockHouseholdData)
-        {
-            services.AddSingleton<IAddressUpdateService>(sp =>
+        services.AddSingleton<Defaults.MockStateAddressUpdateService>();
+        services.AddSingleton<IAddressUpdateService>(sp =>
+            new FeatureGatedMockAddressUpdateService(
+                sp.GetRequiredService<IConfiguration>(),
+                sp.GetRequiredService<IHostEnvironment>(),
+                sp.GetRequiredService<ILogger<FeatureGatedMockAddressUpdateService>>(),
+                new Lazy<IAddressUpdateService>(() => sp.GetRequiredService<Defaults.MockStateAddressUpdateService>()),
                 new FeatureGatedAddressUpdateService(
                     sp.GetRequiredService<IFeatureManager>(),
                     sp.GetRequiredKeyedService<IAddressUpdateService>(StatePluginKeys.Connector),
-                    sp.GetService<IAddressUpdateBackend>()));
-        }
+                    sp.GetService<IAddressUpdateBackend>())));
 
         services.AddHealthChecks().Add(new HealthCheckRegistration(
             ConfigurableStateBackendHealthCheck.CheckName,

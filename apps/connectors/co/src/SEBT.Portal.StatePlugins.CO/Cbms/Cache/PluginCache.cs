@@ -10,23 +10,35 @@ using SEBT.Portal.StatePlugins.CO.CbmsApi.Sebt.GetAccountDetails;
 namespace SEBT.Portal.StatePlugins.CO.Cbms.Cache;
 
 /// <summary>
-/// Process-wide singleton holder for <see cref="ICbmsHouseholdCache"/>.
-/// Constructed lazily on first call using the host service provider for shared
-/// services (HybridCache, IHMACSHA256Hasher, IHostApplicationLifetime,
-/// ILoggerFactory) and explicit args for plugin-internal options and the CBMS
-/// fetch delegate. Tests substitute a fake via <see cref="OverrideForTesting"/>.
+/// Process-wide holder for <see cref="ICbmsHouseholdCache"/>.
+/// Rebuilds when <c>use_mock_cbms_responses</c> changes. Tests substitute a fake
+/// via <see cref="OverrideForTesting"/>.
 /// </summary>
 internal static class PluginCache
 {
     private static ICbmsHouseholdCache? _instance;
+    private static bool? _builtUseMockResponses;
+    private static bool _pinnedForTesting;
     private static readonly object _lock = new();
 
     public static ICbmsHouseholdCache GetOrBuild(IServiceProvider hostProvider, IConfiguration configuration)
     {
-        if (_instance is not null) return _instance;
+        var current = CurrentInstance(CbmsOptionsHelper.GetCbmsOptions(configuration).UseMockResponses);
+        if (current is not null)
+        {
+            return current;
+        }
+
         lock (_lock)
         {
-            if (_instance is not null) return _instance;
+            var loggerFactory = hostProvider.GetRequiredService<ILoggerFactory>();
+            var cbmsLogger = loggerFactory.CreateLogger("CbmsHouseholdCache.CbmsClient");
+            var cbmsConnection = CbmsOptionsHelper.GetCbmsOptions(configuration, cbmsLogger);
+            current = CurrentInstance(cbmsConnection.UseMockResponses);
+            if (current is not null)
+            {
+                return current;
+            }
 
             var cacheOptions = new CbmsHouseholdCacheOptions();
             configuration.GetSection("Cbms:Cache").Bind(cacheOptions);
@@ -34,11 +46,6 @@ internal static class PluginCache
             {
                 throw new InvalidOperationException("Cbms:Cache configuration invalid: " + error);
             }
-
-            // Build the CBMS fetch delegate once using the resolved connection options.
-            var cbmsConnection = CbmsOptionsHelper.GetCbmsOptions(configuration);
-            var loggerFactory = hostProvider.GetRequiredService<ILoggerFactory>();
-            var cbmsLogger = loggerFactory.CreateLogger("CbmsHouseholdCache.CbmsClient");
 
             HttpMessageHandler? handler = null;
             if (cbmsConnection.UseMockResponses)
@@ -58,13 +65,37 @@ internal static class PluginCache
 
             CbmsFetchAccountDetailsDelegate fetchFromCbms = BuildFetchDelegate(cbmsClient);
 
-            _instance = ActivatorUtilities.CreateInstance<CbmsHouseholdCache>(
+            var built = ActivatorUtilities.CreateInstance<CbmsHouseholdCache>(
                 hostProvider,
                 Options.Create(cacheOptions),
-                fetchFromCbms);
+                fetchFromCbms,
+                cbmsConnection.UseMockResponses);
+            _instance = built;
+            _builtUseMockResponses = cbmsConnection.UseMockResponses;
+            _pinnedForTesting = false;
 
+            var cacheLogger = loggerFactory.CreateLogger(nameof(PluginCache));
+            cacheLogger.LogInformation(
+                "CBMS household cache rebuilt; mock responses = {UseMockResponses}",
+                cbmsConnection.UseMockResponses);
+
+            return built;
+        }
+    }
+
+    private static ICbmsHouseholdCache? CurrentInstance(bool useMockResponses)
+    {
+        if (_instance is null)
+        {
+            return null;
+        }
+
+        if (_pinnedForTesting || _builtUseMockResponses == useMockResponses)
+        {
             return _instance;
         }
+
+        return null;
     }
 
     /// <summary>
@@ -103,6 +134,8 @@ internal static class PluginCache
         lock (_lock)
         {
             _instance = testCache;
+            _builtUseMockResponses = null;
+            _pinnedForTesting = true;
         }
     }
 
@@ -115,6 +148,8 @@ internal static class PluginCache
         lock (_lock)
         {
             _instance = null;
+            _builtUseMockResponses = null;
+            _pinnedForTesting = false;
         }
     }
 }
