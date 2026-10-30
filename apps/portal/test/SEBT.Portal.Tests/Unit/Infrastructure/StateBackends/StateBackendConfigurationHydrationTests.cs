@@ -317,6 +317,30 @@ public class StateBackendConfigurationHydrationTests
         Assert.True(capabilities.EnrollmentCheck);
     }
 
+    [Fact]
+    public void Hydrates_CbmsBundle_FromProjectYaml()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "state-backends", "cbms.yml");
+        var config = StateBackendConfigurationLoader.Load(File.ReadAllText(path));
+
+        Assert.Equal(
+            new Uri("https://test-ch2-api.state.co.us/ext-uat-c-cbms-cfa-eapi/api/"),
+            config.BaseUrl);
+
+        StateBackendOAuthClientCredentialsAuthScheme oauthAuth =
+            Assert.IsType<StateBackendOAuthClientCredentialsAuthScheme>(config.Auth);
+        Assert.Equal(
+            new Uri("https://test-ch2-api.state.co.us/ext-uat-c-cbms-oauth-app/token"),
+            oauthAuth.TokenUrl);
+        Assert.Equal("Cbms:ClientSecret", oauthAuth.ClientSecretRef);
+
+        Assert.Equal(
+            "sebt/get-account-details?ebtCardService=Y",
+            config.Operations.HouseholdLookup?.Path);
+        Assert.Equal("ping", config.Operations.Health?.Path);
+        Assert.Equal(CardReplacementCapability.Batch, config.Capabilities.CardReplacement);
+    }
+
     // A canonical value that is NOT a real member of the target C# enum must fail loud at LOAD time.
     [Fact]
     public void Validate_FailsLoud_WhenCanonicalValueIsNotARealEnumMember()

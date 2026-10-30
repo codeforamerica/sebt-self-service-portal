@@ -67,6 +67,8 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", "IAL1");
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", "IAL1plus");
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__LevelClaimName", "socureIdVerificationLevel");
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__DateClaimName", "socureIdVerificationDate");
 
         builder.ConfigureServices(services =>
         {
@@ -124,6 +126,8 @@ public class PluginIntegrationWebApplicationFactory : WebApplicationFactory<Prog
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__application", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__coloadedStreamline", null);
         Environment.SetEnvironmentVariable("IdProofingRequirements__household+view__streamline", null);
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__LevelClaimName", null);
+        Environment.SetEnvironmentVariable("Oidc__VerificationClaims__DateClaimName", null);
         foreach (var key in _envKeysToClean)
         {
             Environment.SetEnvironmentVariable(key, null);
