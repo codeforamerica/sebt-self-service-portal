@@ -36,9 +36,9 @@ public class CbmsHouseholdCacheStampedeTests
 
         // Prime cache with a stale envelope.
         await sut.SetAsync(Phone, new GetAccountDetailsResponse { StdntEnrollDtls = new() { new GetAccountStudentDetail() } }, CancellationToken.None);
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:full", out var envelope));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:full", out var envelope));
         var staleEnvelope = envelope! with { SoftExpiryUtc = DateTimeOffset.UtcNow.AddMinutes(-5) };
-        await hybrid.SetAsync("co:cbms:hash:full", staleEnvelope);
+        await hybrid.SetAsync("co:cbms:live:hash:full", staleEnvelope);
 
         // Fire 50 concurrent reads; each should return the stale envelope and (collectively) trigger only 1 fetch.
         var tasks = Enumerable.Range(0, 50)

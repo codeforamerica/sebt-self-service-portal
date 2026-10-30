@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SEBT.Portal.StatePlugins.CO.CbmsApi;
 
 namespace SEBT.Portal.StatePlugins.CO.Cbms;
@@ -6,11 +7,28 @@ namespace SEBT.Portal.StatePlugins.CO.Cbms;
 /// <summary>
 /// Reads CBMS configuration. Uses Cbms:ClientId, Cbms:ClientSecret, Cbms:ApiBaseUrl,
 /// Cbms:TokenEndpointUrl (and Cbms__* env vars when configuration is null or keys are absent).
+/// Mock responses come from the <c>use_mock_cbms_responses</c> feature flag.
 /// Precedence: configuration source first, then environment variables. Uses <see cref="CbmsDefaults"/> when URLs are not set.
 /// </summary>
 internal static class CbmsOptionsHelper
 {
-    public static CbmsConnectionOptions GetCbmsOptions(IConfiguration? configuration)
+    /// <summary>
+    /// Flag name for <see cref="CbmsConnectionOptions.UseMockResponses"/>.
+    /// Matches <c>FeatureFlags.UseMockCbmsResponses</c> in the portal.
+    /// </summary>
+    internal const string UseMockResponsesFlagName = "use_mock_cbms_responses";
+
+    /// <summary>
+    /// Configuration key for <see cref="UseMockResponsesFlagName"/>.
+    /// </summary>
+    internal const string UseMockResponsesConfigurationKey = "FeatureManagement:" + UseMockResponsesFlagName;
+
+    /// <summary>
+    /// Environment variable for <see cref="UseMockResponsesFlagName"/>.
+    /// </summary>
+    internal const string UseMockResponsesEnvironmentVariable = "FeatureManagement__" + UseMockResponsesFlagName;
+
+    public static CbmsConnectionOptions GetCbmsOptions(IConfiguration? configuration, ILogger? logger = null)
     {
         var clientId = configuration?["Cbms:ClientId"]
             ?? Environment.GetEnvironmentVariable("Cbms__ClientId")
@@ -25,11 +43,31 @@ internal static class CbmsOptionsHelper
             ?? Environment.GetEnvironmentVariable("Cbms__TokenEndpointUrl")
             ?? CbmsDefaults.SandboxTokenEndpointUrl;
 
-        var useMockResponsesRaw = configuration?["Cbms:UseMockResponses"]
-            ?? Environment.GetEnvironmentVariable("Cbms__UseMockResponses");
+        var useMockResponsesRaw = configuration?[UseMockResponsesConfigurationKey]
+            ?? Environment.GetEnvironmentVariable(UseMockResponsesEnvironmentVariable);
         var useMockResponses = useMockResponsesRaw?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+        if (useMockResponses && IsProduction(configuration))
+        {
+            logger?.LogWarning(
+                "Feature flag {FeatureFlag} is enabled in Production and will be ignored.",
+                UseMockResponsesFlagName);
+            useMockResponses = false;
+        }
 
         return new CbmsConnectionOptions(clientId, clientSecret, apiBaseUrl, tokenEndpointUrl, useMockResponses);
+    }
+
+    private static bool IsProduction(IConfiguration? configuration)
+    {
+        // A missing name is Production, matching IHostEnvironment. A provided
+        // configuration is not filled in from the process environment.
+        var environmentName = configuration is not null
+            ? configuration["environment"] ?? configuration["ASPNETCORE_ENVIRONMENT"]
+            : Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+                ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+
+        return string.IsNullOrEmpty(environmentName)
+            || string.Equals(environmentName, "Production", StringComparison.OrdinalIgnoreCase);
     }
 }
 

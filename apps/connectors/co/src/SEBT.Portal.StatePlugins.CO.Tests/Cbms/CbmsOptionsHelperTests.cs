@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
 using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.CbmsApi;
 
@@ -13,7 +15,7 @@ public class CbmsOptionsHelperTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Cbms:UseMockResponses"] = "false",
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false",
                 ["Cbms:ClientId"] = "",
                 ["Cbms:ClientSecret"] = ""
             })
@@ -64,13 +66,77 @@ public class CbmsOptionsHelperTests
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Cbms:UseMockResponses"] = "true"
+                ["ASPNETCORE_ENVIRONMENT"] = "Development",
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true"
             })
             .Build();
         var options = CbmsOptionsHelper.GetCbmsOptions(config);
 
         Assert.True(options.IsConfigured);
         Assert.True(options.UseMockResponses);
+    }
+
+    [Fact]
+    public void GetCbmsOptions_UseMockResponses_when_environment_is_unset_is_ignored()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
+                ["Cbms:ClientId"] = "",
+                ["Cbms:ClientSecret"] = ""
+            })
+            .Build();
+
+        var options = CbmsOptionsHelper.GetCbmsOptions(config);
+
+        Assert.False(options.UseMockResponses);
+        Assert.False(options.IsConfigured);
+    }
+
+    [Theory]
+    [InlineData("Development")]
+    [InlineData("Staging")]
+    public void GetCbmsOptions_UseMockResponses_outside_production_stays_enabled(string environmentName)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = environmentName,
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true"
+            })
+            .Build();
+
+        var options = CbmsOptionsHelper.GetCbmsOptions(config);
+
+        Assert.True(options.UseMockResponses);
+        Assert.True(options.IsConfigured);
+    }
+
+    [Fact]
+    public void GetCbmsOptions_UseMockResponses_in_production_is_ignored()
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = "Production",
+                [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true",
+                ["Cbms:ClientId"] = "",
+                ["Cbms:ClientSecret"] = ""
+            })
+            .Build();
+        var logger = Substitute.For<ILogger>();
+
+        var options = CbmsOptionsHelper.GetCbmsOptions(config, logger);
+
+        Assert.False(options.UseMockResponses);
+        Assert.False(options.IsConfigured);
+        logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(state => state.ToString()!.Contains(CbmsOptionsHelper.UseMockResponsesFlagName)),
+            Arg.Any<Exception>(),
+            Arg.Any<Func<object, Exception?, string>>());
     }
 
     [Fact]

@@ -304,6 +304,8 @@ public class FeatureFlagServiceTests
         {
             FeatureFlags.BypassOtp,
             FeatureFlags.TestErrorEndpointsEnabled,
+            FeatureFlags.UseMockHouseholdData,
+            FeatureFlags.UseMockCbmsResponses,
             FeatureFlags.OutagePageEnabled,
             betaBanner
         };
@@ -315,6 +317,8 @@ public class FeatureFlagServiceTests
 
         Assert.False(result.ContainsKey(FeatureFlags.BypassOtp));
         Assert.False(result.ContainsKey(FeatureFlags.TestErrorEndpointsEnabled));
+        Assert.False(result.ContainsKey(FeatureFlags.UseMockHouseholdData));
+        Assert.False(result.ContainsKey(FeatureFlags.UseMockCbmsResponses));
         Assert.True(result.ContainsKey(FeatureFlags.OutagePageEnabled));
         Assert.True(result.ContainsKey(betaBanner));
         Assert.Equal(enabled, result[FeatureFlags.OutagePageEnabled]);

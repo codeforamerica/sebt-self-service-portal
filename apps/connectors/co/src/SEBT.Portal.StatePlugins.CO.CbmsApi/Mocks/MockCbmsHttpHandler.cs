@@ -7,9 +7,9 @@ namespace SEBT.Portal.StatePlugins.CO.CbmsApi.Mocks;
 
 /// <summary>
 /// HttpMessageHandler that returns mock CBMS API responses.
-/// Phone lookup (get-account-details) and PATCH (update-std-dtls) are delegated
-/// to <see cref="MockCbmsDataStore"/> for phone-indexed, cache-backed responses.
-/// Token, ping, and check-enrollment return static embedded JSON.
+/// Token, ping, and check-enrollment return static embedded JSON and do not need a data store.
+/// Phone lookup (get-account-details) and PATCH (update-std-dtls) require
+/// <see cref="MockCbmsDataStore"/>.
 /// </summary>
 public sealed class MockCbmsHttpHandler : HttpMessageHandler
 {
@@ -18,17 +18,28 @@ public sealed class MockCbmsHttpHandler : HttpMessageHandler
     private const string GetAccountDetailsPath = "sebt/get-account-details";
     private const string UpdateStdDtlsPath = "sebt/update-std-dtls";
 
-    private readonly MockCbmsDataStore _dataStore;
+    private readonly MockCbmsDataStore? _dataStore;
 
     private static readonly string MockTokenResponse = LoadStaticMockJson("token.json");
     private static readonly string MockPingResponse = LoadStaticMockJson("ping.json");
     private static readonly string MockCheckEnrollmentResponse = LoadStaticMockJson("check-enrollment.json");
+
+    /// <summary>
+    /// Handler for static mock responses (token, ping, check-enrollment).
+    /// </summary>
+    public MockCbmsHttpHandler()
+    {
+    }
 
     public MockCbmsHttpHandler(MockCbmsDataStore dataStore)
     {
         ArgumentNullException.ThrowIfNull(dataStore);
         _dataStore = dataStore;
     }
+
+    private MockCbmsDataStore RequireDataStore() =>
+        _dataStore ?? throw new InvalidOperationException(
+            "Phone lookup and address updates require a MockCbmsDataStore.");
 
     protected override HttpResponseMessage Send(HttpRequestMessage request, CancellationToken cancellationToken) =>
         SendAsync(request, cancellationToken).GetAwaiter().GetResult();
@@ -57,7 +68,7 @@ public sealed class MockCbmsHttpHandler : HttpMessageHandler
         {
             var body = await request.Content!.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             var phone = ExtractPhoneFromRequestBody(body);
-            var response = await _dataStore.GetResponseForPhoneAsync(phone, cancellationToken).ConfigureAwait(false);
+            var response = await RequireDataStore().GetResponseForPhoneAsync(phone, cancellationToken).ConfigureAwait(false);
             if (url.Contains("ebtCardService=N", StringComparison.OrdinalIgnoreCase))
             {
                 response = MockCbmsGetAccountDetailsResponse.WithoutCardFields(response);
@@ -69,7 +80,7 @@ public sealed class MockCbmsHttpHandler : HttpMessageHandler
         if (url.Contains(UpdateStdDtlsPath, StringComparison.OrdinalIgnoreCase) && method == HttpMethod.Patch)
         {
             var body = await request.Content!.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var response = await _dataStore.ApplyPatchAsync(body, cancellationToken).ConfigureAwait(false);
+            var response = await RequireDataStore().ApplyPatchAsync(body, cancellationToken).ConfigureAwait(false);
 
             if (response.Contains("\"code\":\"404\""))
             {

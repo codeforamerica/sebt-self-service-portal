@@ -349,7 +349,7 @@ jobs:
           PluginAssemblyPaths__0: "plugins-dc"
           Seeding__State: dc
           Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
-          UseMockHouseholdData: "true"
+          FeatureManagement__use_mock_household_data: "true"
           Socure__UseStub: "true"
           SmtpClientSettings__SmtpServer: "localhost"
           SmtpClientSettings__SmtpPort: "1025"
@@ -533,8 +533,8 @@ jobs:
           Oidc__StepUp__ClientId: sebt-portal-stepup
           Oidc__StepUp__ClientSecret: sebt-portal-stepup-dev-secret
           PluginAssemblyPaths__0: "plugins-co"
-          UseMockHouseholdData: "true"
-          Cbms__UseMockResponses: "true"
+          FeatureManagement__use_mock_household_data: "true"
+          FeatureManagement__use_mock_cbms_responses: "true"
         run: |
           # The CO overlay (IAL requirements, phone-based household ids, seeding)
           # ships as an example file; the env above overrides its Redis/OIDC bits.
@@ -646,7 +646,7 @@ jobs:
           PluginAssemblyPaths__0: "plugins-dc"
           Seeding__State: dc
           Seeding__EmailPattern: "sebt.dc+{0}@codeforamerica.org"
-          UseMockHouseholdData: "true"
+          FeatureManagement__use_mock_household_data: "true"
         run: |
           ASPNETCORE_ENVIRONMENT=Development dotnet run --project apps/portal/src/SEBT.Portal.Api --launch-profile http --configuration Release --no-build &
           (cd apps/portal/src/SEBT.Portal.Web && pnpm start) &
