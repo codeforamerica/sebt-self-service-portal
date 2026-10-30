@@ -104,12 +104,21 @@ describe('HouseholdSummary', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders combined status when cases exist with pending application', () => {
+  it('shows only the enrolled status when cases exist with a pending application', () => {
     const pendingApp: Application = { ...mockApplication, applicationStatus: 'Pending' }
     mockReturnData = { ...defaultMockData, applications: [pendingApp] }
     render(<HouseholdSummary />)
     expect(screen.getByText('Enrolled')).toBeInTheDocument()
-    expect(screen.getByText('Application pending')).toBeInTheDocument()
+    expect(screen.queryByText('Application pending')).not.toBeInTheDocument()
+    expect(screen.queryByText('/')).not.toBeInTheDocument()
+  })
+
+  it('shows only the enrolled status when cases exist with a denied application', () => {
+    const deniedApp: Application = { ...mockApplication, applicationStatus: 'Denied' }
+    mockReturnData = { ...defaultMockData, applications: [deniedApp] }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Enrolled')).toBeInTheDocument()
+    expect(screen.queryByText('Application denied')).not.toBeInTheDocument()
   })
 
   it('renders in-progress status for pending application when no cases', () => {
@@ -154,6 +163,14 @@ describe('HouseholdSummary', () => {
     expect(screen.queryByText('Status unavailable')).not.toBeInTheDocument()
   })
 
+  it('does not render the enrolled description for an approved application with no cases', () => {
+    mockReturnData = { ...defaultMockData, summerEbtCases: [] }
+    render(<HouseholdSummary />)
+    expect(
+      screen.queryByText(/are enrolled because we have enough information/)
+    ).not.toBeInTheDocument()
+  })
+
   it('renders cancelled status for a cancelled application when no cases', () => {
     const cancelledApp: Application = { ...mockApplication, applicationStatus: 'Cancelled' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [cancelledApp] }
@@ -161,11 +178,12 @@ describe('HouseholdSummary', () => {
     expect(screen.getByText('Application cancelled')).toBeInTheDocument()
   })
 
-  it('renders a safe default when the application status is unmapped', () => {
+  it('renders no status when the application status is unmapped', () => {
     const unknownApp: Application = { ...mockApplication, applicationStatus: 'Unknown' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [unknownApp] }
     render(<HouseholdSummary />)
-    expect(screen.getByText('Status unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Status')).not.toBeInTheDocument()
+    expect(screen.queryByText('Status unavailable')).not.toBeInTheDocument()
     expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
   })
 

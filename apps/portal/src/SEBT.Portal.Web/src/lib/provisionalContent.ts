@@ -23,7 +23,6 @@ export const PROVISIONAL_EN = {
   dashboard: {
     profileTableStatusApplicationApproved: 'Application approved',
     profileTableStatusCancelled: 'Application cancelled',
-    profileTableStatusUnknown: 'Status unavailable',
     applicationsTableStatusUnderReview: 'Under review',
     applicationsTableStatusCancelled: 'Cancelled',
     applicationsTableStatusUnknown: 'Status unavailable'
