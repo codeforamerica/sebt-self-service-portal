@@ -376,7 +376,8 @@ describe('CardSelection', () => {
               eligibilityType: 'NSLP',
               issuanceType: 1,
               allowCardReplacement: true,
-              cardRequestedAt: recentlyRequested
+              cardRequestedAt: recentlyRequested,
+              inCardReplacementCooldown: true
             }
           ],
           applications: [],
@@ -647,6 +648,56 @@ describe('CardSelection', () => {
 
     const checkboxes = screen.getAllByRole('checkbox')
     expect(checkboxes).toHaveLength(1)
+  })
+
+  it('excludes cases the API reports as in cooldown', async () => {
+    server.use(
+      http.get('/api/household/data', () => {
+        return HttpResponse.json({
+          email: 'mixed@example.com',
+          phone: '3035550100',
+          benefitIssuanceType: 1,
+          summerEbtCases: [
+            {
+              summerEBTCaseID: 'SEBT-FREE',
+              childFirstName: 'Free',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1,
+              allowCardReplacement: true,
+              inCardReplacementCooldown: false
+            },
+            {
+              summerEBTCaseID: 'SEBT-COOL',
+              childFirstName: 'Cooling',
+              childLastName: 'Child',
+              householdType: 'OSSE',
+              eligibilityType: 'NSLP',
+              issuanceType: 1,
+              allowCardReplacement: true,
+              inCardReplacementCooldown: true
+            }
+          ],
+          applications: [],
+          addressOnFile: {
+            streetAddress1: '123 Main St',
+            city: 'Washington',
+            state: 'DC',
+            postalCode: '20001'
+          }
+        })
+      })
+    )
+
+    renderCardSelection()
+
+    await waitFor(() => {
+      expect(screen.getByText(/Free Child/)).toBeInTheDocument()
+    })
+
+    expect(screen.queryByText(/Cooling Child/)).not.toBeInTheDocument()
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1)
   })
 
   it('renders SummerEbt-only households unchanged', async () => {

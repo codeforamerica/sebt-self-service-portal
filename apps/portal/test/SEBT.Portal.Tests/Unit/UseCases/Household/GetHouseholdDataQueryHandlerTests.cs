@@ -114,6 +114,41 @@ public class GetHouseholdDataQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_SetsInCardReplacementCooldown_PerCase_FromEvaluator()
+    {
+        var email = "guardian@example.com";
+        var normalizedEmail = EmailNormalizer.Normalize(email);
+        var principal = CreateUser(email, UserIalLevel.IAL1plus);
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>())
+            .Returns(new HouseholdIdentifier(PreferredHouseholdIdType.Email, normalizedEmail));
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(),
+                Arg.Any<PiiVisibility>(),
+                Arg.Any<UserIalLevel>(),
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData
+            {
+                Email = normalizedEmail,
+                SummerEbtCases =
+                [
+                    new SummerEbtCase { SummerEBTCaseID = "SEBT-COOL", ChildFirstName = "A", ChildLastName = "B" },
+                    new SummerEbtCase { SummerEBTCaseID = "SEBT-FREE", ChildFirstName = "C", ChildLastName = "D" }
+                ]
+            });
+        _selfServiceEvaluator
+            .IsInCardReplacementCooldown(Arg.Is<SummerEbtCase>(c => c.SummerEBTCaseID == "SEBT-COOL"))
+            .Returns(true);
+
+        var result = await CreateHandler().Handle(new GetHouseholdDataQuery { User = principal });
+
+        var household = Assert.IsType<SuccessResult<HouseholdData>>(result).Value;
+        Assert.True(household.SummerEbtCases.Single(c => c.SummerEBTCaseID == "SEBT-COOL").InCardReplacementCooldown);
+        Assert.False(household.SummerEbtCases.Single(c => c.SummerEBTCaseID == "SEBT-FREE").InCardReplacementCooldown);
+    }
+
+    [Fact]
     public async Task Handle_WhenEmailLookupFails_AndCoLoadedUserHasBenefitIc_LoadsHouseholdViaIcDobFallback()
     {
         var email = "guardian@example.com";

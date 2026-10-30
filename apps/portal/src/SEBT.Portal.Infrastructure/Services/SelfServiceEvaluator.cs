@@ -67,6 +67,26 @@ public class SelfServiceEvaluator(
             : null;
     }
 
+    /// <inheritdoc />
+    public TimeSpan CardReplacementCooldownPeriod
+    {
+        get
+        {
+            var days = optionsMonitor.CurrentValue.CardReplacement.CooldownDays
+                ?? throw new InvalidOperationException(
+                    "SelfServiceRules:CardReplacement:CooldownDays is not configured.");
+            return TimeSpan.FromDays(days);
+        }
+    }
+
+    /// <inheritdoc />
+    public bool IsInCardReplacementCooldown(SummerEbtCase summerEbtCase)
+    {
+        // Strict comparison, same as the repository's RequestedAt > cutoff; null never qualifies.
+        var cutoff = timeProvider.GetUtcNow().UtcDateTime - CardReplacementCooldownPeriod;
+        return summerEbtCase.CardRequestedAt > cutoff;
+    }
+
     private bool IsCardReplacementAllowed(ActionRuleSettings rule, SummerEbtCase summerEbtCase)
     {
         if (!IsActionAllowedForCase(rule, summerEbtCase))

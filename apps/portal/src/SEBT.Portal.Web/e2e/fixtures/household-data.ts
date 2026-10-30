@@ -59,6 +59,8 @@ export interface MockSummerEbtCase {
   benefitExpirationDate: string
   eligibilitySource: string | null
   issuanceType: IssuanceTypeInt
+  /** Server-evaluated cooldown state; the UI reads this, never the date. */
+  inCardReplacementCooldown: boolean
   allowAddressChange: boolean
   allowCardReplacement: boolean
 }
@@ -182,6 +184,7 @@ export function makeSummerEbtCase(overrides: SummerEbtCaseOptions = {}): MockSum
     benefitExpirationDate,
     eligibilitySource: null,
     issuanceType,
+    inCardReplacementCooldown: false,
     allowAddressChange: true,
     allowCardReplacement: true,
     ...extra

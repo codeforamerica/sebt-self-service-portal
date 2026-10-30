@@ -67,6 +67,21 @@ public class ActionRuleSettings
     /// </summary>
     public int? DisableDaysBeforeExpiration { get; set; }
 
+    /// <summary>Lowest accepted <see cref="CooldownDays"/>.</summary>
+    public const int MinCooldownDays = 1;
+
+    /// <summary>
+    /// Highest accepted <see cref="CooldownDays"/>. Summer EBT benefits are seasonal, so a wait
+    /// longer than a year has no meaning, and the cap keeps absurd values from failing at request time.
+    /// </summary>
+    public const int MaxCooldownDays = 365;
+
+    /// <summary>
+    /// Days a case must wait between card replacement requests. Required for card replacement,
+    /// <see cref="MinCooldownDays"/> to <see cref="MaxCooldownDays"/>; not supported for address update.
+    /// </summary>
+    public int? CooldownDays { get; set; }
+
     /// <summary>
     /// Per-issuance-type rules. Keys are <see cref="IssuanceType"/> enum names
     /// (e.g., "SummerEbt", "TanfEbtCard", "SnapEbtCard", "Unknown").

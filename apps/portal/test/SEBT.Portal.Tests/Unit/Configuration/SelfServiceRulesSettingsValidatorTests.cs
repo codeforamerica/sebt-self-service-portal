@@ -36,7 +36,7 @@ public class SelfServiceRulesSettingsValidatorTests
         var settings = new SelfServiceRulesSettings
         {
             AddressUpdate = new ActionRuleSettings { Enabled = false },
-            CardReplacement = new ActionRuleSettings { Enabled = false }
+            CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = 14 }
         };
 
         var result = _validator.Validate(null, settings);
@@ -54,7 +54,7 @@ public class SelfServiceRulesSettingsValidatorTests
                 Enabled = true,
                 ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>()
             },
-            CardReplacement = new ActionRuleSettings { Enabled = false }
+            CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = 14 }
         };
 
         var result = _validator.Validate(null, settings);
@@ -77,7 +77,7 @@ public class SelfServiceRulesSettingsValidatorTests
                     [IssuanceType.SummerEbt] = new() { Enabled = true, AllowedCardStatuses = [] }
                 }
             },
-            CardReplacement = new ActionRuleSettings { Enabled = false }
+            CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = 14 }
         };
 
         var result = _validator.Validate(null, settings);
@@ -102,6 +102,7 @@ public class SelfServiceRulesSettingsValidatorTests
                 { "SelfServiceRules:CardReplacement:ByIssuanceType:SummerEbt:Enabled", "true" },
                 { "SelfServiceRules:CardReplacement:ByIssuanceType:SummerEbt:AllowedCardStatuses:0", "Lost" },
                 { "SelfServiceRules:CardReplacement:ByIssuanceType:SummerEbt:AllowedCardStatuses:1", "Stolen" },
+                { "SelfServiceRules:CardReplacement:CooldownDays", "14" },
                 { "SelfServiceRules:CardReplacement:ByIssuanceType:SummerEbt:AllowedCardStatuses:2", "Damaged" }
             })
             .Build();
@@ -117,6 +118,8 @@ public class SelfServiceRulesSettingsValidatorTests
         Assert.False(settings.AddressUpdate.ByIssuanceType[IssuanceType.TanfEbtCard].Enabled);
 
         Assert.True(settings.CardReplacement.Enabled);
+        Assert.Equal(14, settings.CardReplacement.CooldownDays);
+        Assert.Null(settings.AddressUpdate.CooldownDays);
         Assert.Contains(CardStatus.Lost, settings.CardReplacement.ByIssuanceType[IssuanceType.SummerEbt].AllowedCardStatuses);
         Assert.Contains(CardStatus.Stolen, settings.CardReplacement.ByIssuanceType[IssuanceType.SummerEbt].AllowedCardStatuses);
         Assert.Contains(CardStatus.Damaged, settings.CardReplacement.ByIssuanceType[IssuanceType.SummerEbt].AllowedCardStatuses);
@@ -151,6 +154,7 @@ public class SelfServiceRulesSettingsValidatorTests
             CardReplacement = new ActionRuleSettings
             {
                 Enabled = true,
+                CooldownDays = 14,
                 DisableDaysBeforeExpiration = -1,
                 ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
                 {
@@ -174,6 +178,7 @@ public class SelfServiceRulesSettingsValidatorTests
             CardReplacement = new ActionRuleSettings
             {
                 Enabled = true,
+                CooldownDays = 14,
                 DisableDaysBeforeExpiration = 0,
                 ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
                 {
@@ -196,6 +201,7 @@ public class SelfServiceRulesSettingsValidatorTests
             CardReplacement = new ActionRuleSettings
             {
                 Enabled = false,
+                CooldownDays = 14,
                 DisableDaysBeforeExpiration = -3
             }
         };
@@ -204,6 +210,71 @@ public class SelfServiceRulesSettingsValidatorTests
 
         Assert.False(result.Succeeded);
         Assert.Contains("DisableDaysBeforeExpiration", result.Failures!.Single());
+    }
+
+    [Fact]
+    public void Validate_CardReplacementCooldownDays_Missing_ReturnsRequiredFailure()
+    {
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false },
+            CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = null }
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("CardReplacement:CooldownDays is required.", result.Failures!.Single());
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(366)]
+    public void Validate_CardReplacementCooldownDays_OutOfRange_ReturnsFailure(int cooldownDays)
+    {
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false },
+            CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = cooldownDays }
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("CardReplacement:CooldownDays must be between 1 and 365.", result.Failures!.Single());
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(14)]
+    [InlineData(365)]
+    public void Validate_CardReplacementCooldownDays_InRange_ReturnsSuccess(int cooldownDays)
+    {
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false },
+            CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = cooldownDays }
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public void Validate_AddressUpdateCooldownDays_ReturnsFailure()
+    {
+        var settings = new SelfServiceRulesSettings
+        {
+            AddressUpdate = new ActionRuleSettings { Enabled = false, CooldownDays = 10 },
+            CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = 14 }
+        };
+
+        var result = _validator.Validate(null, settings);
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("AddressUpdate:CooldownDays", result.Failures!.Single());
     }
 
     private static SelfServiceRulesSettings CreateDcSettings() => new()
@@ -224,6 +295,7 @@ public class SelfServiceRulesSettingsValidatorTests
         {
             Enabled = true,
             DisabledMessageKey = "actionNavigationSelfServiceUnavailable",
+            CooldownDays = 14,
             ByIssuanceType = new Dictionary<IssuanceType, IssuanceTypeRuleSettings>
             {
                 [IssuanceType.SummerEbt] = new() { Enabled = true, AllowedCardStatuses = [CardStatus.Lost, CardStatus.Stolen, CardStatus.Damaged] },
@@ -237,6 +309,6 @@ public class SelfServiceRulesSettingsValidatorTests
     private static SelfServiceRulesSettings CreateCoSettings() => new()
     {
         AddressUpdate = new ActionRuleSettings { Enabled = false },
-        CardReplacement = new ActionRuleSettings { Enabled = false }
+        CardReplacement = new ActionRuleSettings { Enabled = false, CooldownDays = 14 }
     };
 }

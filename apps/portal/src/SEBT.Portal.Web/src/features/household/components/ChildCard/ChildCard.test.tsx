@@ -143,14 +143,14 @@ describe('ChildCard', () => {
     expect(screen.queryByRole('list')).toBeNull()
   })
 
-  it('renders cooldown timeline when cardRequestedAt is within cooldown window', () => {
-    // 1 day ago — inside 14-day cooldown
+  it('renders cooldown timeline when the API reports a cooldown', () => {
     const recent = new Date()
     recent.setDate(recent.getDate() - 1)
     const dcCase = createMockSummerEbtCase({
       ...mockCase,
       ebtCardStatus: 'Active',
-      cardRequestedAt: recent.toISOString()
+      cardRequestedAt: recent.toISOString(),
+      inCardReplacementCooldown: true
     })
 
     renderWithFlags({ summerEbtCase: dcCase })
@@ -160,11 +160,12 @@ describe('ChildCard', () => {
     expect(screen.getByText('Card status')).toBeInTheDocument()
   })
 
-  it('renders status badge when cardRequestedAt is older than the cooldown window', () => {
+  it('renders status badge when the API reports no cooldown for a past request', () => {
     const dcActiveCase = createMockSummerEbtCase({
       ...mockCase,
       ebtCardStatus: 'Active',
-      cardRequestedAt: '2025-01-01T00:00:00Z'
+      cardRequestedAt: '2025-01-01T00:00:00Z',
+      inCardReplacementCooldown: false
     })
 
     renderWithFlags({ summerEbtCase: dcActiveCase })
@@ -346,6 +347,29 @@ describe('ChildCard', () => {
     )
 
     expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
+  })
+
+  it('does not infer a cooldown from a recent request date when the API reports none', () => {
+    const recent = new Date()
+    recent.setDate(recent.getDate() - 1)
+    const summerEbtCase = createMockSummerEbtCase({
+      ...mockCase,
+      issuanceType: 'SummerEbt',
+      cardRequestedAt: recent.toISOString(),
+      inCardReplacementCooldown: false
+    })
+
+    renderWithFlags(
+      { summerEbtCase, canRequestReplacementCard: true },
+      {
+        flags: { ...TEST_FEATURE_FLAGS, enable_card_replacement: true },
+        isLoading: false,
+        isError: false
+      }
+    )
+
+    expect(screen.getByText('Request a replacement card')).toBeInTheDocument()
+    expect(screen.getByTestId('card-status-badge')).toBeInTheDocument()
   })
 
   it('hides replacement link when per-case allowCardReplacement is false', () => {

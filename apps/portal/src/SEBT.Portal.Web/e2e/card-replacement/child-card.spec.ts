@@ -127,13 +127,15 @@ test.describe('ChildCard', () => {
       ).toBeVisible()
     })
 
-    test('hides replacement link when card was requested within the last 14 days (cooldown)', async ({
-      page
-    }) => {
+    test('hides replacement link while the API reports a cooldown', async ({ page }) => {
       await setupApiRoutes(page, {
         householdData: makeHouseholdData({
           summerEbtCases: [
-            makeSummerEbtCase({ issuanceType: 1, cardRequestedAt: recentCardDate() })
+            makeSummerEbtCase({
+              issuanceType: 1,
+              cardRequestedAt: recentCardDate(),
+              inCardReplacementCooldown: true
+            })
           ]
         })
       })

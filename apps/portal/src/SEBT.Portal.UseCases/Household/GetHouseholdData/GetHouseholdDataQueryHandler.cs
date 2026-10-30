@@ -155,8 +155,8 @@ public class GetHouseholdDataQueryHandler(
             householdData.BenefitIssuanceType = BenefitIssuanceType.SummerEbt;
         }
 
-        // Hydrate CardRequestedAt from portal DB — the authoritative source for
-        // replacement request timestamps. The frontend uses this to enforce cooldown UI.
+        // Hydrate CardRequestedAt from portal DB, the authoritative source for replacement
+        // request timestamps. The cooldown flag below and the timeline UI both read it.
         var householdHash = identifierHasher.Hash(identifier.Value);
         if (householdHash != null)
         {
@@ -178,6 +178,7 @@ public class GetHouseholdDataQueryHandler(
         {
             summerEbtCase.AllowedActions = selfServiceEvaluator.Evaluate(summerEbtCase);
             summerEbtCase.BenefitExpirationStatus = selfServiceEvaluator.GetBenefitExpirationStatus(summerEbtCase);
+            summerEbtCase.InCardReplacementCooldown = selfServiceEvaluator.IsInCardReplacementCooldown(summerEbtCase);
         }
 
         // Household-level rollup for top-level CTAs evaluates only non-co-loaded cases:

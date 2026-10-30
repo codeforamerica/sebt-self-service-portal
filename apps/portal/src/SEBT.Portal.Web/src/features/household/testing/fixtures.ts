@@ -28,6 +28,7 @@ export function createMockSummerEbtCase(overrides?: Partial<SummerEbtCase>): Sum
     benefitAvailableDate: '2026-06-01T00:00:00Z',
     benefitExpirationDate: '2026-08-31T00:00:00Z',
     cardRequestedAt: null,
+    inCardReplacementCooldown: false,
     allowAddressChange: true,
     allowCardReplacement: true,
     ...overrides
