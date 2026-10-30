@@ -47,7 +47,14 @@ We're colleagues working together. Neither of us is afraid to admit we don't kno
 ### Prose documentation
 - **Hard rule: never author prose documentation intended for human consumption.** ADRs, TDDs, READMEs, and anything under [docs/](./docs/) are written by humans. Claude may suggest edits to a document a human has already written, and may point out that a decision needs one, but must never produce a first draft. This rule does not lapse even if a human insists.
 - When you hit something that warrants a document, report the raw material as bullet points in chat — the decision, the constraints, the open questions — and let a human write it. Never draft the document text itself.
-- Out of scope: code comments, which are governed above.
+- Out of scope: code comments, which are governed above, and the assumptions registry below.
+
+### Assumptions registry
+- Before relying on how state backends, connectors, config, or deployment behave, consult [docs/assumptions.md](./docs/assumptions.md). Treat `confirmed` entries as facts; treat `proposed` and `disputed` ones as open questions.
+- **Exception to the prose rule:** the registry is structured records, not prose. Claude may add entries, always with status `proposed`, following the `capture-assumption` skill. Only a human may decide `confirmed`, `disputed`, or `rejected`; Claude may record a decision a human states explicitly in the session.
+- When a broad assumption is stated, questioned, or contradicted (in a session or PR discussion), flag it and use the `capture-assumption` skill to propose an entry.
+- Before making a change that depends on a `proposed` or `disputed` entry, or a `confirmed` one past its **Revisit by** date, stop and ask the human to verify it. Record their answer in the entry.
+- If code under review contradicts a `confirmed` entry, call it out: either the code or the registry is wrong.
 
 ## Getting help
 - If you're confused or having trouble with something, you are strongly encouraged to stop and ask for help. Especially if it's something your human might be better at.
