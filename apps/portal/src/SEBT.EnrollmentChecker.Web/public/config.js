@@ -9,6 +9,7 @@
 //
 // Every key is optional. Recognized keys:
 //   apiBaseUrl, portalUrl, applicationUrl,
+//   applicationUrlPeakParams (true when applicationUrl is PEAK's, so it gets PEAK's params),
 //   showSchoolField, checkerEnabled, botProtectionEnabled,
 //   amplitudeApiKey, mixpanelToken, siteImproveId,
 //   metaPixel, metaPixelAction, adentifiPixelLanding, adentifiPixelApplyNow
