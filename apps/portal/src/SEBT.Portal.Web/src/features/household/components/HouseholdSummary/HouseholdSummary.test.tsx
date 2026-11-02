@@ -166,6 +166,7 @@ describe('HouseholdSummary', () => {
   it('does not render the enrolled description for an approved application with no cases', () => {
     mockReturnData = { ...defaultMockData, summerEbtCases: [] }
     render(<HouseholdSummary />)
+    expect(screen.getByText('Application approved')).toBeInTheDocument()
     expect(
       screen.queryByText(/are enrolled because we have enough information/)
     ).not.toBeInTheDocument()
