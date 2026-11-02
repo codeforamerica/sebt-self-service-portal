@@ -50,6 +50,7 @@ export { SkipNav } from './components/layout/SkipNav'
 // State configuration
 export type { LoginMode, StateCode, StateConfig } from './lib/state'
 export {
+  STATE_CODES,
   getState,
   getStateConfig,
   getStateName,

@@ -253,6 +253,8 @@ jobs:
       # Browser-facing web config, set on the container at request time rather than
       # passed to the image build (docs/adr/0023-runtime-client-config.md).
       TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
+      TF_VAR_application_url: ${{ vars.APPLICATION_URL }}
+      TF_VAR_application_url_peak_params: ${{ vars.APPLICATION_URL_PEAK_PARAMS }}
       TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
       TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
       TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
@@ -375,6 +377,8 @@ jobs:
       # Browser-facing web config, set on the container at request time rather than
       # passed to the image build (docs/adr/0023-runtime-client-config.md).
       TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
+      TF_VAR_application_url: ${{ vars.APPLICATION_URL }}
+      TF_VAR_application_url_peak_params: ${{ vars.APPLICATION_URL_PEAK_PARAMS }}
       TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
       TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
       TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
