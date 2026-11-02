@@ -97,7 +97,7 @@ export function ChildCard({
       : ''
 
   return (
-    <div className="usa-accordion__item">
+    <>
       <h3 className="usa-accordion__heading">
         <button
           type="button"
@@ -208,6 +208,6 @@ export function ChildCard({
           </Link>
         )}
       </div>
-    </div>
+    </>
   )
 }

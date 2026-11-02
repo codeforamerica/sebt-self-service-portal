@@ -64,6 +64,44 @@ describe('getClientConfig', () => {
     expect(config.showSchoolField).toBe(true)
   })
 
+  describe('applicationUrlPeakParams', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    it('defaults to off when neither config.js nor the build supplies it', () => {
+      expect(getClientConfig().applicationUrlPeakParams).toBe(false)
+    })
+
+    it.each([
+      [true, true],
+      [false, false],
+      ['true', true],
+      ['false', false]
+    ])('reads the %j override as %s', (override, expected) => {
+      window.__CHECKER_CONFIG__ = { applicationUrlPeakParams: override }
+
+      expect(getClientConfig().applicationUrlPeakParams).toBe(expected)
+    })
+
+    it('ignores an unrecognized override and keeps the default', () => {
+      window.__CHECKER_CONFIG__ = { applicationUrlPeakParams: 'yes' }
+
+      expect(getClientConfig().applicationUrlPeakParams).toBe(false)
+    })
+
+    it('lets a deployed false win over a build-time true', async () => {
+      vi.stubEnv('NEXT_PUBLIC_APPLICATION_URL_PEAK_PARAMS', 'true')
+      vi.resetModules()
+      const { getClientConfig: freshGetClientConfig } = await import('./client-config')
+
+      expect(freshGetClientConfig().applicationUrlPeakParams).toBe(true)
+
+      window.__CHECKER_CONFIG__ = { applicationUrlPeakParams: false }
+      expect(freshGetClientConfig().applicationUrlPeakParams).toBe(false)
+    })
+  })
+
   it('ignores a non-string override rather than coercing it', () => {
     window.__CHECKER_CONFIG__ = { portalUrl: 42 }
 

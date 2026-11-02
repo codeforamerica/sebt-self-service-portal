@@ -1,38 +1,31 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { FeatureFlagsContext } from '@/features/feature-flags'
+import type { RuntimeConfig } from '@/lib/runtime-config'
+import { RuntimeConfigProvider } from '@/providers'
+import { PEAK_APPLY_CONFIG, PEAK_APPLY_URL, makeRuntimeConfig } from '@/test-utils/runtime-config'
 
 import { EmptyState } from './EmptyState'
 
-vi.mock('@sebt/design-system', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@sebt/design-system')>()
-  return {
-    ...actual,
-    getState: vi.fn().mockReturnValue('dc')
-  }
-})
-
-const { getState } = await import('@sebt/design-system')
-const mockGetState = vi.mocked(getState)
-
-function withApplyFlag(children: ReactNode, enableApply: boolean) {
+function withApplyFlag(
+  children: ReactNode,
+  enableApply: boolean,
+  config: RuntimeConfig = PEAK_APPLY_CONFIG
+) {
   return (
-    <FeatureFlagsContext.Provider
-      value={{ flags: { enable_apply: enableApply }, isLoading: false, isError: false }}
-    >
-      {children}
-    </FeatureFlagsContext.Provider>
+    <RuntimeConfigProvider config={config}>
+      <FeatureFlagsContext.Provider
+        value={{ flags: { enable_apply: enableApply }, isLoading: false, isError: false }}
+      >
+        {children}
+      </FeatureFlagsContext.Provider>
+    </RuntimeConfigProvider>
   )
 }
 
 describe('EmptyState', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetState.mockReturnValue('dc')
-  })
-
   it('renders a warning alert', () => {
     render(<EmptyState />)
 
@@ -40,32 +33,32 @@ describe('EmptyState', () => {
     expect(alert).toBeInTheDocument()
   })
 
-  it('does not render an apply link for DC even when applications are open', () => {
-    render(withApplyFlag(<EmptyState />, true))
+  it('does not render an apply link when applications are open but no apply URL is configured', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    render(withApplyFlag(<EmptyState />, true, makeRuntimeConfig()))
 
     expect(screen.queryByRole('link')).toBeNull()
+    warn.mockRestore()
   })
 
-  it('renders the CO apply link pointing at the PEAK form when applications are open', () => {
-    mockGetState.mockReturnValue('co')
+  it('renders an apply link pointing at the configured apply form when applications are open', () => {
     render(withApplyFlag(<EmptyState />, true))
 
-    const link = screen.getByRole('link')
-    expect(link.getAttribute('href')).toContain(
-      'peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
-    )
+    expect(screen.getByRole('link')).toHaveAttribute('href', `${PEAK_APPLY_URL}?language=en_US`)
   })
 
-  it('does not render the CO apply link when the enable_apply flag is off', () => {
-    mockGetState.mockReturnValue('co')
+  it('does not render the apply link when the enable_apply flag is off', () => {
     render(withApplyFlag(<EmptyState />, false))
 
     expect(screen.queryByRole('link')).toBeNull()
   })
 
-  it('does not render the CO apply link outside the feature-flags provider (fail closed)', () => {
-    mockGetState.mockReturnValue('co')
-    render(<EmptyState />)
+  it('does not render the apply link outside the feature-flags provider (fail closed)', () => {
+    render(
+      <RuntimeConfigProvider config={PEAK_APPLY_CONFIG}>
+        <EmptyState />
+      </RuntimeConfigProvider>
+    )
 
     expect(screen.queryByRole('link')).toBeNull()
   })

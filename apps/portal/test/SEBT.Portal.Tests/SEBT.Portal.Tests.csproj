@@ -31,7 +31,7 @@
         <PackageReference Include="NSubstitute" Version="6.2.0" />
         <PackageReference Include="OpenTelemetry.Exporter.InMemory" Version="1.18.0" />
         <PackageReference Include="RichardSzalay.MockHttp" Version="7.1.0" />
-        <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
+        <PackageReference Include="StackExchange.Redis" Version="3.4.5" />
         <!-- Transitive dependency of Testcontainers; pinned directly so NuGetAudit
              restores clean after GHSA-q939-rpr3-3284 (fixed in 2026.0.0). Remove the
              pin once Testcontainers depends on a patched version. -->

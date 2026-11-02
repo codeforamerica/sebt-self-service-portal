@@ -53,11 +53,9 @@ export function DashboardContent() {
   const deferEbtCardLoading = useFeatureFlag('defer_ebt_card_data_loading')
   const state = getState()
   const { showLoadingInterstitial } = getStateConfig(state)
-  // Card deferral stays state-gated until its feature flag moves behind a per-state setting.
-  const isCO = state === 'co'
   const { data, isLoading, isError, error, requiresProofing, isLoadingCardDetails } =
     useHouseholdData({
-      deferCardDetailsOnLoad: isCO && deferEbtCardLoading
+      deferCardDetailsOnLoad: deferEbtCardLoading
     })
   const { setPageData, setUserData, trackEvent } = useDataLayer()
   const { session } = useAuth()
