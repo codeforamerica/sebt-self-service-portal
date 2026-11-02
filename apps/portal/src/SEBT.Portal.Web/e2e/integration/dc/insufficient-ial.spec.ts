@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 import { skipUnlessFullStack } from '../../fixtures/full-stack'
-import { loginWithEmailOtpExpecting } from '../../fixtures/login-dc'
+import { loginWithEmailOtpExpecting } from '../../fixtures/login-otp'
 import { DC_ID_PROOF_IN_PROGRESS_EMAIL } from '../../fixtures/seed-users'
 import { skipUnlessLoginMode, skipUnlessState } from '../../fixtures/state'
 

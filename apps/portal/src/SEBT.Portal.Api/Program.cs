@@ -43,7 +43,7 @@ builder.Services.AddSwaggerGen(); // Configured by ConfigureSwaggerGenOptions, w
 
 // Add Feature Management
 builder.Services.AddFeatureManagement(builder.Configuration.GetSection("FeatureManagement"));
-builder.Services.AddFeatureGatedStateBackendRouting(builder.Configuration);
+builder.Services.AddFeatureGatedStateBackendRouting();
 
 // Adds use cases (i.e., query and command handlers) for portal business logic
 builder.Services.AddUseCases();

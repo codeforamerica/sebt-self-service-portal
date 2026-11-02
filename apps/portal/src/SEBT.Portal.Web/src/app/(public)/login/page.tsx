@@ -1,11 +1,11 @@
 'use client'
 
 import { getState, getStateConfig, type LoginMode, type StateCode } from '@sebt/design-system'
-import { COLoginPage } from './COLoginPage'
+import { OidcLoginPage } from './OidcLoginPage'
 import { OtpLoginPage } from './OtpLoginPage'
 
 const loginPages: Record<LoginMode, React.ComponentType<{ state: StateCode }>> = {
-  oidc: COLoginPage,
+  oidc: OidcLoginPage,
   otp: OtpLoginPage
 }
 

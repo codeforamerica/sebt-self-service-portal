@@ -73,7 +73,7 @@ export function getCheckerAssetPath(asset: CheckerAsset): string | undefined {
   const state = getState()
 
   // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  const fileName = checkerAssets[state]?.[asset]
+  const fileName = checkerAssets[state][asset]
   if (!fileName) {
     return undefined
   }

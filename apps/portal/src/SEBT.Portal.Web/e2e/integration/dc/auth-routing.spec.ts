@@ -5,7 +5,7 @@ import {
   loginWithEmailOtpExpecting,
   reachOtpVerifyPage,
   submitOtpOnVerifyPage
-} from '../../fixtures/login-dc'
+} from '../../fixtures/login-otp'
 import { waitForOtpEmail } from '../../fixtures/mailpit'
 import {
   DC_CANCELLED_EMAIL,
