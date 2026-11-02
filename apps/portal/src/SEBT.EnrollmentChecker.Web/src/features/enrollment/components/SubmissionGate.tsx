@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert, LoadingInterstitial } from '@sebt/design-system'
+import { Alert, LoadingInterstitial, PageColumn } from '@sebt/design-system'
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -30,7 +30,7 @@ export function SubmissionGate({ submission, portalUrl, children }: SubmissionGa
 
   if (submission.isSubmitting) {
     return (
-      <div className="grid-container maxw-tablet">
+      <PageColumn>
         <LoadingInterstitial
           title={tProcessing('title', 'Please wait...')}
           message={tProcessing(
@@ -38,7 +38,7 @@ export function SubmissionGate({ submission, portalUrl, children }: SubmissionGa
             'Do not exit the page. Checking to see if we have enough information.'
           )}
         />
-      </div>
+      </PageColumn>
     )
   }
 

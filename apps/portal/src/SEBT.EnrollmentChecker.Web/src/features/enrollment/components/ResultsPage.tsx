@@ -9,7 +9,7 @@ import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
-import { RichText } from '@sebt/design-system'
+import { PageColumn, RichText } from '@sebt/design-system'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ApplicationAvailable } from './ApplicationAvailable'
@@ -155,205 +155,203 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   const icon = getCheckerAssetPath(isNotEnrolledOutcome ? notEnrolledAsset : 'resultsEnrolled')
 
   return (
-    <div className="usa-section">
-      <div className="grid-container">
-        {icon && (
-          <Image
-            src={icon}
-            alt=""
-            width={100}
-            height={75}
-            aria-hidden="true"
-          />
-        )}
-        <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>
-          {t(titleKey)}
-        </h1>
+    <PageColumn>
+      {icon && (
+        <Image
+          src={icon}
+          alt=""
+          width={100}
+          height={75}
+          aria-hidden="true"
+        />
+      )}
+      <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>
+        {t(titleKey)}
+      </h1>
 
-        {/* Only a household summary names the children it checked. */}
-        {summarizesHousehold &&
-          ['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
-            <div className="usa-summary-box">
-              <EnrolledSection results={enrolled} />
-            </div>
-          )}
-
-        {summarizesHousehold && householdEnrollmentResult === 'mixedEnrolled' && (
-          <section
-            className="margin-top-3"
-            data-testid="not-enrolled-inline"
-          >
-            <RichText>{t('applyForSebtClosedBody1')}</RichText>
-            <ul>
-              {notEnrolled.map((child) => (
-                <ChildResultCard
-                  key={child.checkId}
-                  firstName={child.firstName}
-                  lastName={child.lastName}
-                  displayStatus="notEnrolled"
-                />
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
+      {/* Only a household summary names the children it checked. */}
+      {summarizesHousehold &&
+        ['mixedEnrolled', 'allEnrolled'].includes(householdEnrollmentResult) && (
           <div className="usa-summary-box">
-            <NotEnrolledSection results={notEnrolled} />
+            <EnrolledSection results={enrolled} />
           </div>
         )}
 
-        {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
-          <div
-            className="usa-summary-box"
-            data-testid="no-info-summary-box"
-          >
-            <section>
-              <h4 className="usa-summary-box__heading">{t('noneBody1')}</h4>
-              <div className="usa-summary-box__text">
-                <ul>
-                  {errors.map((child) => (
-                    <ChildResultCard
-                      key={child.checkId}
-                      firstName={child.firstName}
-                      lastName={child.lastName}
-                      displayStatus="error"
-                    />
-                  ))}
-                </ul>
-              </div>
-            </section>
-          </div>
-        )}
+      {summarizesHousehold && householdEnrollmentResult === 'mixedEnrolled' && (
+        <section
+          className="margin-top-3"
+          data-testid="not-enrolled-inline"
+        >
+          <RichText>{t('applyForSebtClosedBody1')}</RichText>
+          <ul>
+            {notEnrolled.map((child) => (
+              <ChildResultCard
+                key={child.checkId}
+                firstName={child.firstName}
+                lastName={child.lastName}
+                displayStatus="notEnrolled"
+              />
+            ))}
+          </ul>
+        </section>
+      )}
 
-        {summarizesHousehold &&
-          householdEnrollmentResult === 'mixedEnrolled' &&
-          nextSeasonApplyHref && (
-            <section data-testid="next-steps">
-              <h2 className="font-family-sans margin-top-4">
-                {t('streamlinedEnrolledStepsHeading')}
-              </h2>
-              <ol className="usa-process-list  margin-top-1">
-                <li className="usa-process-list__item margin-top-2">{portalNextStep}</li>
-                <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>
-              </ol>
-            </section>
-          )}
+      {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
+        <div className="usa-summary-box">
+          <NotEnrolledSection results={notEnrolled} />
+        </div>
+      )}
 
-        {/* Without an application destination the 2027 step would be an
-            instruction with nothing to act on, so the portal step stands alone
-            (as on the all-enrolled page) and the not-enrolled children get the
-            same explanation and closure line as the no-results page. */}
-        {summarizesHousehold &&
-          householdEnrollmentResult === 'mixedEnrolled' &&
-          !nextSeasonApplyHref && (
-            <>
-              <section>{portalNextStep}</section>
-              <section className="margin-top-3">
-                <p>{t('applyForSebtBody2')}</p>
-                {apply2027Block()}
-              </section>
-            </>
-          )}
+      {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
+        <div
+          className="usa-summary-box"
+          data-testid="no-info-summary-box"
+        >
+          <section>
+            <h4 className="usa-summary-box__heading">{t('noneBody1')}</h4>
+            <div className="usa-summary-box__text">
+              <ul>
+                {errors.map((child) => (
+                  <ChildResultCard
+                    key={child.checkId}
+                    firstName={child.firstName}
+                    lastName={child.lastName}
+                    displayStatus="error"
+                  />
+                ))}
+              </ul>
+            </div>
+          </section>
+        </div>
+      )}
 
-        {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
-          <section className="margin-top-3">{apply2027Block()}</section>
-        )}
-
-        {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
-          <section className="margin-top-3">
-            <p>{t('applyForSebtBody2')}</p>
-            {apply2027Block()}
+      {summarizesHousehold &&
+        householdEnrollmentResult === 'mixedEnrolled' &&
+        nextSeasonApplyHref && (
+          <section data-testid="next-steps">
+            <h2 className="font-family-sans margin-top-4">
+              {t('streamlinedEnrolledStepsHeading')}
+            </h2>
+            <ol className="usa-process-list  margin-top-1">
+              <li className="usa-process-list__item margin-top-2">{portalNextStep}</li>
+              <li className="usa-process-list__item margin-top-2">{apply2027NextStep}</li>
+            </ol>
           </section>
         )}
 
-        {summarizesHousehold && householdEnrollmentResult === 'allEnrolled' && (
-          <section>{portalNextStep}</section>
+      {/* Without an application destination the 2027 step would be an
+          instruction with nothing to act on, so the portal step stands alone
+          (as on the all-enrolled page) and the not-enrolled children get the
+          same explanation and closure line as the no-results page. */}
+      {summarizesHousehold &&
+        householdEnrollmentResult === 'mixedEnrolled' &&
+        !nextSeasonApplyHref && (
+          <>
+            <section>{portalNextStep}</section>
+            <section className="margin-top-3">
+              <p>{t('applyForSebtBody2')}</p>
+              {apply2027Block()}
+            </section>
+          </>
         )}
 
-        {/* One answer for one child: the heading states the outcome and the
-            body explains what it means. An enrolled student then gets the
-            portal, which is where the benefit details live. */}
-        {!summarizesHousehold && singleOutcomeHasBody && (
-          <section className="margin-top-3">
-            <div className="usa-prose">
-              <RichText>{t(singleOutcomeKey('Body'))}</RichText>
-            </div>
+      {summarizesHousehold && householdEnrollmentResult === 'noneEnrolled' && (
+        <section className="margin-top-3">{apply2027Block()}</section>
+      )}
 
-            {enrolled.length > 0 ? (
-              <section data-testid="next-step-portal">
-                {isClosed ? (
-                  /* No alert once the season is over: an alert marks something to
-                     act on, and this is a record of where benefits already went.
-                     The portal pointer leads and the explanation follows it. */
-                  <div className="usa-prose margin-top-4">
-                    <p>
-                      <a
-                        href={portalUrl}
-                        className="text-bold"
-                        data-testid="portal-alert-link"
-                      >
-                        {t(singleOutcomeKey('AlertTitle'))}
-                      </a>
-                    </p>
-                    <RichText>{t(singleOutcomeKey('AlertBody'))}</RichText>
-                  </div>
-                ) : (
-                  /* USWDS alert classes rather than the shared Alert: this body is
-                     several paragraphs, which cannot nest inside that component's
-                     single <p>, and its role="alert" would make static page content
-                     interrupt screen readers. */
-                  <div className="usa-alert usa-alert--success margin-top-4">
-                    <div className="usa-alert__body">
-                      <h2 className="usa-alert__heading font-family-sans font-sans-md">
-                        {t('streamlinedEnrolledAlertTitle')}
-                      </h2>
-                      <div className="usa-alert__text">
-                        <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
-                        <p>
-                          <a
-                            href={portalUrl}
-                            className="text-bold"
-                            data-testid="portal-alert-link"
-                          >
-                            {t('streamlinedEnrolledAlertAction')}
-                          </a>
-                        </p>
-                      </div>
+      {summarizesHousehold && householdEnrollmentResult === 'indeterminate' && (
+        <section className="margin-top-3">
+          <p>{t('applyForSebtBody2')}</p>
+          {apply2027Block()}
+        </section>
+      )}
+
+      {summarizesHousehold && householdEnrollmentResult === 'allEnrolled' && (
+        <section>{portalNextStep}</section>
+      )}
+
+      {/* One answer for one child: the heading states the outcome and the
+          body explains what it means. An enrolled student then gets the
+          portal, which is where the benefit details live. */}
+      {!summarizesHousehold && singleOutcomeHasBody && (
+        <section className="margin-top-3">
+          <div className="usa-prose">
+            <RichText>{t(singleOutcomeKey('Body'))}</RichText>
+          </div>
+
+          {enrolled.length > 0 ? (
+            <section data-testid="next-step-portal">
+              {isClosed ? (
+                /* No alert once the season is over: an alert marks something to
+                   act on, and this is a record of where benefits already went.
+                   The portal pointer leads and the explanation follows it. */
+                <div className="usa-prose margin-top-4">
+                  <p>
+                    <a
+                      href={portalUrl}
+                      className="text-bold"
+                      data-testid="portal-alert-link"
+                    >
+                      {t(singleOutcomeKey('AlertTitle'))}
+                    </a>
+                  </p>
+                  <RichText>{t(singleOutcomeKey('AlertBody'))}</RichText>
+                </div>
+              ) : (
+                /* USWDS alert classes rather than the shared Alert: this body is
+                   several paragraphs, which cannot nest inside that component's
+                   single <p>, and its role="alert" would make static page content
+                   interrupt screen readers. */
+                <div className="usa-alert usa-alert--success margin-top-4">
+                  <div className="usa-alert__body">
+                    <h2 className="usa-alert__heading font-family-sans font-sans-md">
+                      {t('streamlinedEnrolledAlertTitle')}
+                    </h2>
+                    <div className="usa-alert__text">
+                      <RichText>{t('streamlinedEnrolledAlertBody')}</RichText>
+                      <p>
+                        <a
+                          href={portalUrl}
+                          className="text-bold"
+                          data-testid="portal-alert-link"
+                        >
+                          {t('streamlinedEnrolledAlertAction')}
+                        </a>
+                      </p>
                     </div>
                   </div>
-                )}
-                <p>
-                  <a
-                    href={portalUrl}
-                    className="usa-button"
-                    data-testid="portal-link"
-                  >
-                    {t('streamlinedEnrolledAction')}
-                  </a>
-                </p>
-              </section>
-            ) : (
-              <EligibilityAccordion applyHref={applyHref} />
-            )}
-          </section>
-        )}
+                </div>
+              )}
+              <p>
+                <a
+                  href={portalUrl}
+                  className="usa-button"
+                  data-testid="portal-link"
+                >
+                  {t('streamlinedEnrolledAction')}
+                </a>
+              </p>
+            </section>
+          ) : (
+            <EligibilityAccordion applyHref={applyHref} />
+          )}
+        </section>
+      )}
 
-        {/* A single-outcome flow finishes one child at a time, so the results
-            are where the next check begins. It sits above the deadline so the
-            household is settled before the visitor leaves to apply. Both
-            outcomes share one past-tense wording once the season has closed. */}
-        {allowsSequentialChecks() && (
-          <CheckAnotherChildCard
-            copy={enrolled.length > 0 ? 'streamlinedEnrolledCard2' : 'applyForSebtCard2'}
-            {...(isClosed && { bodyKey: 'applyForSebtClosedCard2Body' })}
-          />
-        )}
+      {/* A single-outcome flow finishes one child at a time, so the results
+          are where the next check begins. It sits above the deadline so the
+          household is settled before the visitor leaves to apply. Both
+          outcomes share one past-tense wording once the season has closed. */}
+      {allowsSequentialChecks() && (
+        <CheckAnotherChildCard
+          copy={enrolled.length > 0 ? 'streamlinedEnrolledCard2' : 'applyForSebtCard2'}
+          {...(isClosed && { bodyKey: 'applyForSebtClosedCard2Body' })}
+        />
+      )}
 
-        {!summarizesHousehold && enrolled.length === 0 && !isClosed && (
-          <ApplicationAvailable applyHref={applyHref} />
-        )}
-      </div>
-    </div>
+      {!summarizesHousehold && enrolled.length === 0 && !isClosed && (
+        <ApplicationAvailable applyHref={applyHref} />
+      )}
+    </PageColumn>
   )
 }

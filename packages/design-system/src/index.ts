@@ -9,7 +9,7 @@
 export type { ButtonProps, ButtonVariant, AlertProps, AlertVariant, DetailsProps, DetailsHeadingLevel, InputFieldProps } from './components/ui/types'
 
 // Layout component types
-export type { StateProps, HeaderProps, FooterProps, HelpSectionProps, LanguageSelectorProps } from './components/layout/types'
+export type { StateProps, HeaderProps, FooterProps, HelpSectionProps, LanguageSelectorProps, PageColumnProps } from './components/layout/types'
 
 // Provider types
 export type { I18nProviderProps } from './providers/types'
@@ -46,6 +46,7 @@ export type { OutageFlagCache } from './lib/outageFlagCache'
 
 // Layout chrome (server-safe — no react-i18next dependency)
 export { SkipNav } from './components/layout/SkipNav'
+export { PageColumn } from './components/layout/PageColumn'
 
 // State configuration
 export type { LoginMode, StateCode, StateConfig } from './lib/state'
