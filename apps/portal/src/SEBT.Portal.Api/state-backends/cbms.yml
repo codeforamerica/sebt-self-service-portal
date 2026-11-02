@@ -2,7 +2,7 @@ baseUrl: https://test-ch2-api.state.co.us/ext-uat-c-cbms-cfa-eapi/api/
 auth:
   scheme: client_credentials
   tokenUrl: https://test-ch2-api.state.co.us/ext-uat-c-cbms-oauth-app/token
-  clientId: b9145338658e4dc9afd9d7ad098aa879
+  clientIdRef: "Cbms:ClientId"
   clientSecretRef: "Cbms:ClientSecret"
 operations:
   householdLookup:

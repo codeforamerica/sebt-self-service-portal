@@ -334,6 +334,10 @@ public class StateBackendConfigurationHydrationTests
             oauthAuth.TokenUrl);
         Assert.Equal("Cbms:ClientSecret", oauthAuth.ClientSecretRef);
 
+        // The client id varies per environment, so it comes from config rather than the bundle.
+        Assert.Null(oauthAuth.ClientId);
+        Assert.Equal("Cbms:ClientId", oauthAuth.ClientIdRef);
+
         Assert.Equal(
             "sebt/get-account-details?ebtCardService=Y",
             config.Operations.HouseholdLookup?.Path);
@@ -552,6 +556,50 @@ public class StateBackendConfigurationHydrationTests
             () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("incomplete", ex.Message);
         Assert.Contains("cardReplacement", ex.Message);
+    }
+
+    [Fact]
+    public void Load_HydratesClientIdRef_WhenClientCredentialsUsesConfigReference()
+    {
+        const string yaml = """
+            baseUrl: http://backend.test
+            auth:
+              scheme: client_credentials
+              tokenUrl: http://backend.test/oauth/token
+              clientIdRef: Backend:ClientId
+              clientSecretRef: Backend:ClientSecret
+            operations: {}
+            """;
+
+        var config = StateBackendConfigurationLoader.Load(yaml);
+
+        StateBackendOAuthClientCredentialsAuthScheme oauthAuth =
+            Assert.IsType<StateBackendOAuthClientCredentialsAuthScheme>(config.Auth);
+        Assert.Null(oauthAuth.ClientId);
+        Assert.Equal("Backend:ClientId", oauthAuth.ClientIdRef);
+    }
+
+    [Theory]
+    [InlineData("co-client", "Backend:ClientId")]
+    [InlineData(null, null)]
+    public void Validate_FailsLoud_UnlessExactlyOneOfClientIdOrClientIdRefIsSet(
+        string? clientId, string? clientIdRef)
+    {
+        StateBackendConfiguration config = StateBackendTestConfig.Base() with
+        {
+            Auth = new StateBackendOAuthClientCredentialsAuthScheme
+            {
+                TokenUrl = new Uri("http://backend.test/oauth/token"),
+                ClientId = clientId,
+                ClientIdRef = clientIdRef,
+                ClientSecretRef = "Backend:ClientSecret",
+            },
+        };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("clientId", ex.Message);
+        Assert.Contains("clientIdRef", ex.Message);
     }
 
     [Fact]

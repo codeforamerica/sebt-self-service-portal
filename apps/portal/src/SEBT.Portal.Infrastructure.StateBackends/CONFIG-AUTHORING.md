@@ -20,7 +20,7 @@ auth:
   keyRef: dc-api-key
 ```
 
-**Client credentials (CO).** An OAuth 2.0 client-credentials grant. `tokenUrl` is the token endpoint, `clientId` is the client identifier, and `clientSecretRef` names the *configuration key* that holds the client secret. An optional `scope` may be set.
+**Client credentials (CO).** An OAuth 2.0 client-credentials grant. `tokenUrl` is the token endpoint. Set exactly one of `clientId` (literal) or `clientIdRef` (config key); both or neither fails at load. `clientSecretRef` names the configuration key that holds the client secret. An optional `scope` may be set.
 
 ```yaml
 baseUrl: http://localhost:8086
@@ -31,7 +31,7 @@ auth:
   clientSecretRef: co-client-secret
 ```
 
-**Secrets are references, never values.** `keyRef` and `clientSecretRef` hold the *name* of a configuration key, not the secret itself. The runtime resolves that name against the environment / `/run/secrets`. Never paste an actual key or secret into the YAML.
+**Secrets are references, never values.** `keyRef`, `clientSecretRef`, and `clientIdRef` hold the *name* of a configuration key, not the value itself. The runtime resolves that name against the environment / `/run/secrets`. Never paste an actual key or secret into the YAML.
 
 ## Step 2: Declare the operations
 
@@ -360,6 +360,7 @@ The worked precedent is `confidenceThreshold`. CO needed a match that couldn't b
 
 Config validates at **load** via `StateBackendConfigurationValidator`, immediately after deserialization. Every check is a function of the config alone, so a bad config fails at **startup**, not on the first user request. What fails fast:
 
+- A `client_credentials` auth scheme that sets both `clientId` and `clientIdRef`, or neither.
 - A response field mapping that targets an unknown canonical field, a date-typed field without an exact `format`, or a sequence `from` without `keywordRules`.
 - A malformed JSON path
 - A `keywordRules` block on a non-enum field, whose `order` doesn't cover every `map` key, that names a non-member (including its `default`), or that lists an empty keyword.

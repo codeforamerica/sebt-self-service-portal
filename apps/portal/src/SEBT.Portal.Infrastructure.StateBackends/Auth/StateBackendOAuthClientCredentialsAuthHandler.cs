@@ -131,12 +131,13 @@ public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHa
 
     private async Task<TokenResponse> FetchTokenAsync(CancellationToken cancellationToken)
     {
+        string clientId = ResolveClientId();
         string clientSecret = _secretResolver.Resolve(_scheme.ClientSecretRef);
 
         var form = new Dictionary<string, string>
         {
             ["grant_type"] = "client_credentials",
-            ["client_id"] = _scheme.ClientId,
+            ["client_id"] = clientId,
             ["client_secret"] = clientSecret,
         };
         if (!string.IsNullOrWhiteSpace(_scheme.Scope))
@@ -163,6 +164,18 @@ public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHa
 
         return tokenResponse
             ?? throw new InvalidOperationException("Token endpoint returned an empty response.");
+    }
+
+    private string ResolveClientId()
+    {
+        if (!string.IsNullOrWhiteSpace(_scheme.ClientIdRef))
+        {
+            return _secretResolver.Resolve(_scheme.ClientIdRef);
+        }
+
+        return _scheme.ClientId
+            ?? throw new InvalidOperationException(
+                "Auth scheme 'client_credentials' has neither 'clientId' nor 'clientIdRef' set.");
     }
 
     private static async Task<HttpRequestMessage> CloneAsync(
