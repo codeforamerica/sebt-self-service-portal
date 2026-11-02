@@ -4,6 +4,7 @@ import {
   getPortalMetadataDescription,
   getSiteDisplayName,
   getStateConfig,
+  STATE_CODES,
   type StateCode
 } from './state'
 
@@ -92,6 +93,15 @@ describe('getStateConfig — address', () => {
       showAbbreviatedNotice: false,
       autocompletePreferStates: 'CO'
     })
+  })
+})
+
+describe('STATE_CODES', () => {
+  it('lists every state with a registry entry', () => {
+    expect(STATE_CODES).toEqual(['dc', 'co'])
+    for (const state of STATE_CODES) {
+      expect(getStateConfig(state).name).toBeTruthy()
+    }
   })
 })
 

@@ -47,12 +47,15 @@ expect_failure() {
 # --- Test 1: configured values are written with the right types ---
 echo "[write-checker-config_test] case 1: writes configured values"
 run API_BASE_URL=https://api.example.gov PORTAL_URL=https://portal.example.gov \
-  AMPLITUDE_API_KEY=amp-key CHECKER_ENABLED=false SHOW_SCHOOL_FIELD=true
+  AMPLITUDE_API_KEY=amp-key CHECKER_ENABLED=false SHOW_SCHOOL_FIELD=true \
+  APPLICATION_URL=https://peak.my.site.com/x APPLICATION_URL_PEAK_PARAMS=true
 assert_file_exists "$CONFIG"
 assert_eq "$(read_config 'config.apiBaseUrl')" '"https://api.example.gov"'
 assert_eq "$(read_config 'config.amplitudeApiKey')" '"amp-key"'
 assert_eq "$(read_config 'config.checkerEnabled')" 'false'
 assert_eq "$(read_config 'config.showSchoolField')" 'true'
+assert_eq "$(read_config 'config.applicationUrl')" '"https://peak.my.site.com/x"'
+assert_eq "$(read_config 'config.applicationUrlPeakParams')" 'true'
 echo "[write-checker-config_test] case 1: OK"
 
 # --- Test 2: a value with quotes and backslashes cannot break out of its string ---
@@ -67,11 +70,18 @@ run PORTAL_URL='   ' AMPLITUDE_API_KEY='' CHECKER_ENABLED=''
 assert_eq "$(read_config 'Object.keys(config).length')" '0'
 echo "[write-checker-config_test] case 3: OK"
 
+# --- Test 3b: an explicit false is written, so it can override a build-time true ---
+echo "[write-checker-config_test] case 3b: writes an explicit false"
+run APPLICATION_URL_PEAK_PARAMS=false
+assert_eq "$(read_config 'config.applicationUrlPeakParams')" 'false'
+echo "[write-checker-config_test] case 3b: OK"
+
 # --- Test 4: malformed values fail the step and write nothing ---
 echo "[write-checker-config_test] case 4: rejects malformed values"
 expect_failure "APPLICATION_URL must be an http(s) URL" APPLICATION_URL='not a url'
 expect_failure "PORTAL_URL must be an http(s) URL" PORTAL_URL='javascript:alert(1)'
 expect_failure 'BOT_PROTECTION_ENABLED must be "true" or "false"' BOT_PROTECTION_ENABLED=yes
+expect_failure 'APPLICATION_URL_PEAK_PARAMS must be "true" or "false"' APPLICATION_URL_PEAK_PARAMS=yes
 echo "[write-checker-config_test] case 4: OK"
 
 # --- Test 5: the output path is required ---

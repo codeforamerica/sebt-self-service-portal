@@ -65,9 +65,9 @@ vi.mock('next/navigation', () => ({
   })
 }))
 
-// Mirrors the real hook's shape: a URL only when applications are open AND the
-// state has an apply destination (CO). Flag composition is covered by the
-// hook's own tests; here we only need null vs non-null behavior.
+// Mirrors the real hook's shape: a URL only when applications are open AND a
+// destination is configured (CO here). Flag and config composition are covered
+// by the hook's own tests; here we only need null vs non-null behavior.
 let mockApplyOpen = true
 vi.mock('@/lib/useApplyHref', async () => {
   const { getState } = await import('@sebt/design-system')
@@ -381,8 +381,8 @@ describe('OffBoardingPage', () => {
   })
 
   describe('apply closure (DC-701)', () => {
-    // Outer beforeEach pins getState to 'dc'; useApplyHref returns null for DC, so the
-    // page must force canApply false and OffBoardingContent suppresses the apply section.
+    // Outer beforeEach pins getState to 'dc'; the mocked useApplyHref returns null for DC, so
+    // the page must force canApply false and OffBoardingContent suppresses the apply section.
     it('forces canApply to false regardless of the query param', () => {
       renderPage({ canApply: 'true' })
 
