@@ -21,6 +21,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { STATE_CODES } from '../../src/lib/state.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..', '..');
@@ -213,14 +214,13 @@ ${generateTokenMap(state, properties)}
 
 function main() {
   try {
-    const VALID_STATES = ['dc', 'co'];
     const args = process.argv.slice(2);
     const state = (args[0] || process.env.STATE || 'dc').toLowerCase();
 
     // Validate state
-    if (!VALID_STATES.includes(state)) {
+    if (!STATE_CODES.includes(state)) {
       console.error(`❌ Invalid state: "${state}"`);
-      console.error(`   Valid states: ${VALID_STATES.join(', ')}`);
+      console.error(`   Valid states: ${STATE_CODES.join(', ')}`);
       process.exit(1);
     }
 

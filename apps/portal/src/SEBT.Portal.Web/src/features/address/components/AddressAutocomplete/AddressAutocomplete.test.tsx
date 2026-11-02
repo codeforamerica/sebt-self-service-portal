@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 import { RuntimeConfigProvider } from '@/providers'
+import { makeRuntimeConfig } from '@/test-utils/runtime-config'
 import type { StateCode, StateConfig } from '@sebt/design-system'
 
 import type { SelectedAddress, SmartySuggestion } from './types'
@@ -54,12 +55,7 @@ afterEach(() => {
 // wrapper is how a test represents "no key configured".
 function withSmartyKey({ children }: { children: ReactNode }) {
   return (
-    <RuntimeConfigProvider
-      config={{
-        smartyEmbeddedKey: 'test-embedded-key',
-        debugRepeatOidcStepUp: false
-      }}
-    >
+    <RuntimeConfigProvider config={makeRuntimeConfig({ smartyEmbeddedKey: 'test-embedded-key' })}>
       {children}
     </RuntimeConfigProvider>
   )
