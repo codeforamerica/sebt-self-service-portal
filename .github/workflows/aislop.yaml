@@ -10,16 +10,18 @@ permissions:
   contents: read
 
 jobs:
+  # Read-only: this job runs third-party code (pnpm install, aislop and its deps),
+  # so the write-scoped token lives only in the report job below.
   scan:
     name: aislop scan (advisory)
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      security-events: write
-      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
 
       - name: Setup pnpm
         uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -58,6 +60,48 @@ jobs:
         continue-on-error: true
         run: pnpm dlx aislop@0.18.1 ci > aislop.json
 
+      - name: Upload aislop results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: aislop-results
+          path: |
+            aislop.sarif
+            aislop.json
+          if-no-files-found: error
+          retention-days: 7
+
+      # Stale entries would silently accept the same finding if it came back, so the
+      # PR that fixes a finding also removes it from the baseline.
+      - name: Check the baseline has no fixed findings
+        run: |
+          stale=$(jq '.baseline.stale' aislop.json)
+          if [ "$stale" -gt 0 ]; then
+            echo "::error file=.aislop/ci-baseline.json::$stale baseline entries no longer match a finding. Run 'pnpm aislop:baseline:prune' and commit the result."
+            exit 1
+          fi
+
+  report:
+    name: aislop report
+    needs: scan
+    # Still report when the scan job fails its stale-baseline check.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
+    steps:
+      # upload-sarif fingerprints results from the source, since aislop's SARIF has none.
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Download aislop results
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: aislop-results
+
       - name: Upload results to code scanning
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4
         with:
@@ -78,13 +122,3 @@ jobs:
               runUrl: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
               codeScanningUrl: '${{ github.server_url }}/${{ github.repository }}/security/code-scanning?query=tool%3Aaislop',
             });
-
-      # Stale entries would silently accept the same finding if it came back, so the
-      # PR that fixes a finding also removes it from the baseline.
-      - name: Check the baseline has no fixed findings
-        run: |
-          stale=$(jq '.baseline.stale' aislop.json)
-          if [ "$stale" -gt 0 ]; then
-            echo "::error file=.aislop/ci-baseline.json::$stale baseline entries no longer match a finding. Run 'pnpm aislop:baseline:prune' and commit the result."
-            exit 1
-          fi
