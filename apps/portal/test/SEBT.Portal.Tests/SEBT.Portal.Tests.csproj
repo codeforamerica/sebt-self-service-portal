@@ -40,7 +40,7 @@
         <PackageReference Include="Testcontainers.MsSql" Version="4.15.0" />
         <PackageReference Include="Testcontainers.Redis" Version="4.15.0" />
         <PackageReference Include="xunit" Version="2.9.3" />
-        <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
+        <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1" />
         <PackageReference Include="Xunit.SkippableFact" Version="1.5.85" />
         <PackageReference Include="YamlDotNet" Version="18.1.0" />
     </ItemGroup>
