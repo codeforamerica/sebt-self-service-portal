@@ -141,6 +141,7 @@ components:
           stdSchlCd: SCH44
           sebtYear: "2024"
           stdReqInd: REQ-001
+          programYear: [2025, 2026]
       type: array
       items:
         type: object
@@ -173,6 +174,15 @@ components:
           stdReqInd:
             type: string
             pattern: ^(|[^<>{}\[\]]+)$
+          programYear:
+            type: array
+            description: Optional array of years as integers
+            items:
+              type: integer
+              format: int32
+              minimum: 2024
+              maximum: 2125
+            uniqueItems: true
     CheckEnrollmentResponse:
       example:
         respCd: "200"
@@ -245,6 +255,7 @@ components:
     GetAccountDetailsRequest:
       example:
         phnNm: "3035550199"
+        programYear: [2025, 2026]
       type: object
       required:
         - phnNm
@@ -252,6 +263,15 @@ components:
         phnNm:
           type: string
           pattern: ^[0-9]{10}$
+        programYear:
+          type: array
+          description: Optional array of years as integers
+          items:
+            type: integer
+            format: int32
+            minimum: 2024
+            maximum: 2125
+          uniqueItems: true
     GetAccountDetailsResponse:
       example:
         stdntEnrollDtls:
@@ -397,6 +417,10 @@ components:
           type: string
         sebtYear:
           type: integer
+        benAvalDt:
+          type: string
+        benExpDt:
+          type: string
         sebtAppSts:
           description: |
             AI - Address Incomplete
