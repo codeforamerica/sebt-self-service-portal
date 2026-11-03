@@ -78,3 +78,13 @@ jobs:
               runUrl: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
               codeScanningUrl: '${{ github.server_url }}/${{ github.repository }}/security/code-scanning?query=tool%3Aaislop',
             });
+
+      # Stale entries would silently accept the same finding if it came back, so the
+      # PR that fixes a finding also removes it from the baseline.
+      - name: Check the baseline has no fixed findings
+        run: |
+          stale=$(jq '.baseline.stale' aislop.json)
+          if [ "$stale" -gt 0 ]; then
+            echo "::error file=.aislop/ci-baseline.json::$stale baseline entries no longer match a finding. Run 'pnpm aislop:baseline:prune' and commit the result."
+            exit 1
+          fi

@@ -50,9 +50,11 @@ function rulesTable(diagnostics) {
   return table;
 }
 
-function buildCommentBody(report, { runUrl, codeScanningUrl }) {
+// The baseline is a snapshot, so findings main gained after it was written also
+// show as unbaselined; restricting to the PR's files keeps those off this PR.
+function buildCommentBody(report, { runUrl, codeScanningUrl, changedFiles }) {
   const diagnostics = report.diagnostics;
-  const fresh = diagnostics.filter((d) => !d.baselined);
+  const fresh = diagnostics.filter((d) => !d.baselined && changedFiles.has(d.filePath));
   const errors = diagnostics.filter((d) => d.severity === 'error');
   const severityCounts = countBy(diagnostics, 'severity');
   const [errorCount, warningCount, infoCount] = SEVERITIES.map((s) => severityCounts.get(s) ?? 0);
@@ -65,7 +67,7 @@ function buildCommentBody(report, { runUrl, codeScanningUrl }) {
   body += `### New in this PR (${fresh.length})\n\n`;
   body += fresh.length > 0
     ? findingsTable(fresh)
-    : '_None. Every finding is already recorded in `.aislop/ci-baseline.json`._\n';
+    : '_None. Every finding in the files this PR changes is already recorded in `.aislop/ci-baseline.json`._\n';
 
   body += `\n### Errors (${errors.length})\n\n`;
   body += errors.length > 0 ? findingsTable(errors) : '_None._\n';
@@ -85,11 +87,20 @@ function buildJobSummary(report) {
   for (const [rule, findings] of sorted) {
     summary += `<details><summary><code>${rule}</code> (${findings.length})</summary>\n\n`;
     for (const d of findings) {
-      summary += `- \`${location(d)}\`${d.baselined ? '' : ' **(new)**'}: ${escapeCell(d.message)}\n`;
+      summary += `- \`${location(d)}\`${d.baselined ? '' : ' **(not in baseline)**'}: ${escapeCell(d.message)}\n`;
     }
     summary += `\n</details>\n`;
   }
   return summary;
+}
+
+async function listChangedFiles(github, context) {
+  const files = await github.paginate(github.rest.pulls.listFiles, {
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    pull_number: context.issue.number,
+  });
+  return new Set(files.map((f) => f.filename));
 }
 
 async function upsertComment(github, context, body) {
@@ -121,7 +132,8 @@ module.exports = async ({ github, context, core, report, runUrl, codeScanningUrl
   await core.summary.addRaw(buildJobSummary(report)).write();
 
   if (context.payload.pull_request) {
-    await upsertComment(github, context, buildCommentBody(report, { runUrl, codeScanningUrl }));
+    const changedFiles = await listChangedFiles(github, context);
+    await upsertComment(github, context, buildCommentBody(report, { runUrl, codeScanningUrl, changedFiles }));
   }
 };
 
