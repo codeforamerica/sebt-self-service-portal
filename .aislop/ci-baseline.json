@@ -3451,13 +3451,6 @@
       "file": "tofu/modules/sebt_ses/lambda/rotate_smtp_credentials.py",
       "fingerprint": "message:eb8329b770c7842a",
       "count": 1
-    },
-    {
-      "rule": "ai-slop/narrative-comment",
-      "engine": "ai-slop",
-      "file": "src/does-not-exist.ts",
-      "fingerprint": "deadbeefdeadbeef",
-      "count": 1
     }
   ]
 }
