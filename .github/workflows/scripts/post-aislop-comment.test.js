@@ -23,16 +23,23 @@ const links = { runUrl: 'https://run', codeScanningUrl: 'https://scan' };
 const options = { ...links, changedFiles: new Set(['src/example.ts', 'src/new.ts']) };
 
 describe('buildCommentBody', () => {
-  it('headlines the total and new counts and says it is not blocking', () => {
+  it('headlines the new count and says it is not blocking', () => {
     const body = buildCommentBody(
       report([finding(), finding({ baselined: false }), finding({ severity: 'error' })]),
       options
     );
 
     assert.ok(body.startsWith(COMMENT_MARKER));
-    assert.match(body, /aislop: 3 findings \(1 new\)/);
+    assert.match(body, /aislop: 1 new finding\b/);
     assert.match(body, /not blocking/i);
-    assert.match(body, /1 error · 2 warnings · 0 info/);
+  });
+
+  it('says the findings are resolved when nothing is new', () => {
+    const body = buildCommentBody(report([finding(), finding({ severity: 'error' })]), options);
+
+    assert.ok(body.startsWith(COMMENT_MARKER));
+    assert.match(body, /no new findings/i);
+    assert.doesNotMatch(body, /### /);
   });
 
   it('lists only findings missing from the baseline under "New in this PR"', () => {
@@ -55,9 +62,8 @@ describe('buildCommentBody', () => {
       options
     );
 
-    assert.match(body, /aislop: 1 finding \(0 new\)/);
-    const newSection = body.split('### New in this PR')[1].split('###')[0];
-    assert.doesNotMatch(newSection, /login-otp\.ts/);
+    assert.match(body, /no new findings/i);
+    assert.doesNotMatch(body, /login-otp\.ts/);
   });
 
   it('caps the new-findings table and says how many were left out', () => {
@@ -70,26 +76,26 @@ describe('buildCommentBody', () => {
     assert.match(body, /…and 5 more/);
   });
 
-  it('calls out error-severity findings even when they are baselined', () => {
+  it('calls out baselined errors only in files the PR changes', () => {
     const body = buildCommentBody(
-      report([finding({ severity: 'error', rule: 'ai-slop/swallowed-exception', filePath: 'src/auth.ts' })]),
+      report([
+        finding({ filePath: 'src/new.ts', baselined: false }),
+        finding({ severity: 'error', rule: 'ai-slop/swallowed-exception', filePath: 'src/example.ts' }),
+        finding({ severity: 'error', filePath: 'src/untouched.ts' }),
+      ]),
       options
     );
 
     const errorSection = body.split('### Errors')[1].split('###')[0];
-    assert.match(errorSection, /src\/auth\.ts:10/);
+    assert.match(errorSection, /src\/example\.ts:10/);
     assert.match(errorSection, /ai-slop\/swallowed-exception/);
+    assert.doesNotMatch(errorSection, /src\/untouched\.ts/);
   });
 
-  it('tallies findings per rule, most frequent first', () => {
-    const body = buildCommentBody(
-      report([finding({ rule: 'knip/exports' }), finding({ rule: 'knip/exports' }), finding({ rule: 'ai-slop/todo-stub' })]),
-      options
-    );
+  it('leaves repo-wide rule totals to the job summary', () => {
+    const body = buildCommentBody(report([finding({ baselined: false })]), options);
 
-    const byRule = body.split('### By rule')[1];
-    assert.ok(byRule.indexOf('knip/exports') < byRule.indexOf('ai-slop/todo-stub'));
-    assert.match(byRule, /\| `knip\/exports` \| 2 \|/);
+    assert.doesNotMatch(body, /### By rule/);
   });
 
   it('escapes pipes so a message cannot break the table', () => {
@@ -111,19 +117,25 @@ describe('buildJobSummary', () => {
 });
 
 describe('postAislopComment', () => {
+  // Only paginated reads are wired up, so an unpaginated listComments call fails the test.
   function fakeGithub(existingComments, prFiles = []) {
     const calls = [];
     const listFiles = async () => {};
+    const listComments = async () => {};
     return {
       calls,
       paginate: async (method, args) => {
-        assert.equal(method, listFiles);
-        assert.equal(args.pull_number, 5);
-        return prFiles;
+        if (method === listFiles) {
+          assert.equal(args.pull_number, 5);
+          return prFiles;
+        }
+        assert.equal(method, listComments);
+        assert.equal(args.issue_number, 5);
+        return existingComments;
       },
       rest: {
         issues: {
-          listComments: async () => ({ data: existingComments }),
+          listComments,
           updateComment: async (args) => calls.push(['update', args]),
           createComment: async (args) => calls.push(['create', args]),
         },
@@ -146,14 +158,39 @@ describe('postAislopComment', () => {
 
   const prContext = { repo: { owner: 'o', repo: 'r' }, issue: { number: 5 }, payload: { pull_request: {} } };
 
-  it('updates the existing sticky comment instead of adding another', async () => {
-    const github = fakeGithub([{ id: 42, user: { type: 'Bot' }, body: `${COMMENT_MARKER}\nold` }]);
+  const stickyComment = { id: 42, user: { type: 'Bot' }, body: `${COMMENT_MARKER}\nold` };
+
+  it('does not comment when nothing is new and there is no earlier comment', async () => {
+    const github = fakeGithub([], [{ filename: 'src/example.ts' }]);
 
     await postAislopComment({ github, context: prContext, core: fakeCore(), report: report([finding()]), ...links });
+
+    assert.equal(github.calls.length, 0);
+  });
+
+  it('updates the existing sticky comment instead of adding another', async () => {
+    const github = fakeGithub([stickyComment], [{ filename: 'src/example.ts' }]);
+
+    await postAislopComment({
+      github,
+      context: prContext,
+      core: fakeCore(),
+      report: report([finding({ baselined: false })]),
+      ...links,
+    });
 
     assert.equal(github.calls.length, 1);
     assert.equal(github.calls[0][0], 'update');
     assert.equal(github.calls[0][1].comment_id, 42);
+  });
+
+  it('marks an earlier comment resolved once nothing is new', async () => {
+    const github = fakeGithub([stickyComment], [{ filename: 'src/example.ts' }]);
+
+    await postAislopComment({ github, context: prContext, core: fakeCore(), report: report([finding()]), ...links });
+
+    assert.equal(github.calls[0][0], 'update');
+    assert.match(github.calls[0][1].body, /no new findings/i);
   });
 
   it('counts unbaselined findings as new only in files the PR changes', async () => {
@@ -165,8 +202,9 @@ describe('postAislopComment', () => {
 
     await postAislopComment({ github, context: prContext, core: fakeCore(), report: report(findings), ...links });
 
+    assert.equal(github.calls[0][0], 'create');
     const body = github.calls[0][1].body;
-    assert.match(body, /\(1 new\)/);
+    assert.match(body, /1 new finding\b/);
     const newSection = body.split('### New in this PR')[1].split('###')[0];
     assert.match(newSection, /src\/touched\.ts/);
     assert.doesNotMatch(newSection, /src\/untouched\.ts/);

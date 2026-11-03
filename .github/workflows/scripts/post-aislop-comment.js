@@ -1,12 +1,7 @@
-// Posts (or updates) a sticky PR comment summarizing every aislop finding, and writes
-// the full list to the job summary. Used by aislop.yaml via actions/github-script.
-//
-// Code scanning only annotates findings a PR introduces, so baselined findings would
-// otherwise be invisible on the PR. This keeps all of them in view while the check
-// stays advisory.
+// Posts a sticky PR comment when a PR adds aislop findings, and writes every finding
+// to the job summary. Used by aislop.yaml via actions/github-script.
 const COMMENT_MARKER = '<!-- aislop-findings -->';
 const MAX_ROWS = 50;
-const SEVERITIES = ['error', 'warning', 'info'];
 
 function escapeCell(text) {
   return String(text).replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
@@ -18,14 +13,6 @@ function location(d) {
 
 function plural(count, word) {
   return `${count} ${word}${count === 1 ? '' : 's'}`;
-}
-
-function countBy(items, key) {
-  const counts = new Map();
-  for (const item of items) {
-    counts.set(item[key], (counts.get(item[key]) ?? 0) + 1);
-  }
-  return counts;
 }
 
 function findingsTable(diagnostics) {
@@ -40,40 +27,33 @@ function findingsTable(diagnostics) {
   return table;
 }
 
-function rulesTable(diagnostics) {
-  const severityByRule = new Map(diagnostics.map((d) => [d.rule, d.severity]));
-  const sorted = [...countBy(diagnostics, 'rule')].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
-  let table = '| Rule | Findings | Severity |\n|---|---|---|\n';
-  for (const [rule, count] of sorted) {
-    table += `| \`${rule}\` | ${count} | ${severityByRule.get(rule)} |\n`;
-  }
-  return table;
-}
-
 // The baseline is a snapshot, so findings main gained after it was written also
 // show as unbaselined; restricting to the PR's files keeps those off this PR.
+function newFindings(report, changedFiles) {
+  return report.diagnostics.filter((d) => !d.baselined && changedFiles.has(d.filePath));
+}
+
 function buildCommentBody(report, { runUrl, codeScanningUrl, changedFiles }) {
-  const diagnostics = report.diagnostics;
-  const fresh = diagnostics.filter((d) => !d.baselined && changedFiles.has(d.filePath));
-  const errors = diagnostics.filter((d) => d.severity === 'error');
-  const severityCounts = countBy(diagnostics, 'severity');
-  const [errorCount, warningCount, infoCount] = SEVERITIES.map((s) => severityCounts.get(s) ?? 0);
+  const fresh = newFindings(report, changedFiles);
+  const links = `[Every finding, by rule](${runUrl}) (job summary) · [Code scanning alerts](${codeScanningUrl})\n`;
 
-  let body = `${COMMENT_MARKER}\n## 🧹 aislop: ${plural(diagnostics.length, 'finding')} (${fresh.length} new)\n\n`;
+  if (fresh.length === 0) {
+    return `${COMMENT_MARKER}\n## 🧹 aislop: no new findings\n\n✅ Every finding flagged earlier on this PR is resolved.\n\n${links}`;
+  }
+
+  const errors = report.diagnostics.filter((d) => d.severity === 'error' && changedFiles.has(d.filePath));
+
+  let body = `${COMMENT_MARKER}\n## 🧹 aislop: ${plural(fresh.length, 'new finding')}\n\n`;
   body += `> [!WARNING]\n`;
-  body += `> **Advisory: not blocking merges yet.** ${plural(errorCount, 'error')} · ${plural(warningCount, 'warning')} · ${infoCount} info. `;
-  body += `Score ${report.score}/100 (${report.label}).\n\n`;
+  body += `> **Advisory: not blocking merges yet.** Score ${report.score}/100 (${report.label}).\n\n`;
 
-  body += `### New in this PR (${fresh.length})\n\n`;
-  body += fresh.length > 0
-    ? findingsTable(fresh)
-    : '_None. Every finding in the files this PR changes is already recorded in `.aislop/ci-baseline.json`._\n';
+  body += `### New in this PR (${fresh.length})\n\n${findingsTable(fresh)}`;
 
-  body += `\n### Errors (${errors.length})\n\n`;
-  body += errors.length > 0 ? findingsTable(errors) : '_None._\n';
+  if (errors.length > 0) {
+    body += `\n### Errors in files this PR changes (${errors.length})\n\n${findingsTable(errors)}`;
+  }
 
-  body += `\n### By rule\n\n${rulesTable(diagnostics)}`;
-  body += `\n[Every finding, by rule](${runUrl}) (job summary) · [Code scanning alerts](${codeScanningUrl})\n`;
+  body += `\n${links}`;
   return body;
 }
 
@@ -103,8 +83,10 @@ async function listChangedFiles(github, context) {
   return new Set(files.map((f) => f.filename));
 }
 
-async function upsertComment(github, context, body) {
-  const { data: comments } = await github.rest.issues.listComments({
+// Only starts a comment when there is something new, but keeps an existing one
+// current so it can't go on listing findings the author has since fixed.
+async function upsertComment(github, context, body, hasNewFindings) {
+  const comments = await github.paginate(github.rest.issues.listComments, {
     owner: context.repo.owner,
     repo: context.repo.repo,
     issue_number: context.issue.number,
@@ -118,7 +100,7 @@ async function upsertComment(github, context, body) {
       comment_id: existing.id,
       body,
     });
-  } else {
+  } else if (hasNewFindings) {
     await github.rest.issues.createComment({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -133,7 +115,8 @@ module.exports = async ({ github, context, core, report, runUrl, codeScanningUrl
 
   if (context.payload.pull_request) {
     const changedFiles = await listChangedFiles(github, context);
-    await upsertComment(github, context, buildCommentBody(report, { runUrl, codeScanningUrl, changedFiles }));
+    const body = buildCommentBody(report, { runUrl, codeScanningUrl, changedFiles });
+    await upsertComment(github, context, body, newFindings(report, changedFiles).length > 0);
   }
 };
 
