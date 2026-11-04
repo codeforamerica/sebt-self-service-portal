@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RichardSzalay.MockHttp;
+using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Infrastructure.Configuration;
 using Xunit;
 
@@ -63,6 +64,35 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         Assert.Equal("false", value2);
         Assert.True(provider.TryGet("FeatureManagement:feature3", out var value3));
         Assert.Equal("true", value3);
+    }
+
+    [Fact]
+    public void Load_FeatureFlagProfile_MapsMockFlagUnderFeatureManagement()
+    {
+        var profile = new AppConfigAgentProfile
+        {
+            BaseUrl = "http://localhost:2772",
+            ApplicationId = "test-app",
+            EnvironmentId = "test-env",
+            ProfileId = "test-profile",
+            IsFeatureFlag = true
+        };
+
+        var featureFlagsJson = new Dictionary<string, object>
+        {
+            [FeatureFlags.UseMockHouseholdData] = new { enabled = true }
+        };
+
+        _mockHttpHandler
+            .When("http://localhost:2772/applications/test-app/environments/test-env/configurations/test-profile")
+            .Respond(HttpStatusCode.OK, "application/json", JsonSerializer.Serialize(featureFlagsJson));
+
+        var provider = new AppConfigAgentConfigurationProvider(_httpClient, profile, _logger, ownsHttpClient: false);
+
+        provider.Load();
+
+        Assert.True(provider.TryGet($"FeatureManagement:{FeatureFlags.UseMockHouseholdData}", out var value));
+        Assert.Equal("true", value);
     }
 
     [Fact]
@@ -862,7 +892,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
             IsFeatureFlag = false
         };
 
-        var configJson = """{"Cbms": {"UseMockResponses": true}}""";
+        var configJson = """{"FeatureManagement": {"use_mock_cbms_responses": true}}""";
         var handler = new FailThenSucceedHandler(
             failCount: 3,
             successResponse: new HttpResponseMessage(HttpStatusCode.OK)
@@ -877,7 +907,7 @@ public class AppConfigAgentConfigurationProviderTests : IDisposable
         provider.Load();
 
         // Assert — config should be loaded after retries
-        Assert.True(provider.TryGet("Cbms:UseMockResponses", out var value));
+        Assert.True(provider.TryGet("FeatureManagement:use_mock_cbms_responses", out var value));
         Assert.Equal("true", value);
         Assert.Equal(4, handler.CallCount); // 3 failures + 1 success
 

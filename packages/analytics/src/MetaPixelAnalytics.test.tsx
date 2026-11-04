@@ -35,6 +35,14 @@ describe('MetaPixelAnalytics', () => {
     const stub = scripts.find((s) => s.id === 'meta-pixel-stub')
 
     expect(stub?.html).toContain('connect.facebook.net')
-    expect(stub?.html).toContain("fbq('init','test-pixel')")
+    expect(stub?.html).toContain(`fbq('init',"test-pixel")`)
+  })
+
+  it('encodes the pixel ID as a string literal so it cannot inject script', () => {
+    render(<MetaPixelAnalytics pixelId={`x');alert(1);//`} />)
+
+    const stub = scripts.find((s) => s.id === 'meta-pixel-stub')
+
+    expect(stub?.html).toContain(`fbq('init',"x');alert(1);//")`)
   })
 })

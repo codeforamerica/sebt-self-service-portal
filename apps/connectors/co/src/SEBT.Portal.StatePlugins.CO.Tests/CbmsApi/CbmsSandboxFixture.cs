@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using SEBT.Portal.StatePlugins.CO.Cbms;
 using SEBT.Portal.StatePlugins.CO.CbmsApi;
 using SEBT.Portal.StatePlugins.CO.CbmsApi.Mocks;
 
@@ -10,7 +11,7 @@ namespace SEBT.Portal.StatePlugins.CO.Tests.CbmsApi;
 /// Shared xUnit fixture that creates a <see cref="CbmsSebtApiClient"/> pointed at the
 /// CBMS sandbox (UAT) environment. When no credentials are configured,
 /// <see cref="CredentialsConfigured"/> is false and tests should skip gracefully.
-/// When <c>Cbms:UseMockResponses</c> is true, uses mock responses from the API spec examples instead.
+/// When the <c>use_mock_cbms_responses</c> feature flag is on, uses mock responses from the API spec examples instead.
 /// </summary>
 /// <remarks>
 /// Configure credentials via:
@@ -23,7 +24,8 @@ namespace SEBT.Portal.StatePlugins.CO.Tests.CbmsApi;
 ///     <c>Cbms__ClientId</c> and <c>Cbms__ClientSecret</c>
 ///   </item>
 /// </list>
-/// Enable mock responses (no real API calls): <c>Cbms:UseMockResponses=true</c> or <c>Cbms__UseMockResponses=true</c>.
+/// Enable mock responses (no real API calls): set <c>FeatureManagement:use_mock_cbms_responses</c> to true,
+/// or <c>FeatureManagement__use_mock_cbms_responses=true</c>.
 /// API and token URLs default to <see cref="CbmsDefaults"/> UAT values;
 /// optional overrides: <c>Cbms:ApiBaseUrl</c> / <c>Cbms:TokenEndpointUrl</c> (or env <c>Cbms__*</c>).
 /// </remarks>
@@ -47,12 +49,15 @@ public class CbmsSandboxFixture : IAsyncLifetime
     public Task InitializeAsync()
     {
         var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            })
             .AddUserSecrets<CbmsSandboxFixture>(optional: true)
             .AddEnvironmentVariables()
             .Build();
 
-        var useMock = configuration["Cbms:UseMockResponses"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true
-            || configuration["Cbms__UseMockResponses"]?.Equals("true", StringComparison.OrdinalIgnoreCase) == true;
+        var useMock = CbmsOptionsHelper.GetCbmsOptions(configuration).UseMockResponses;
 
         if (useMock)
         {

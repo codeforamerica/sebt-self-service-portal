@@ -43,8 +43,9 @@ public static class StateBackendServiceCollectionExtensions
                 "Point it at a YAML bundle or leave it empty to keep the MEF plugin path.");
         }
 
-        StateBackendConfiguration backendConfig = StateBackendConfigurationLoader.Load(
-            File.ReadAllText(resolvedPath));
+        StateBackendConfiguration backendConfig = StateBackendConfigurationOverrides.Apply(
+            StateBackendConfigurationLoader.Load(File.ReadAllText(resolvedPath)),
+            configuration);
         services.AddSingleton(backendConfig);
 
         services.AddHttpClient(TokenHttpClientName);

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { server } from '@/mocks/server'
 import { RuntimeConfigProvider } from '@/providers'
+import { makeRuntimeConfig } from '@/test-utils/runtime-config'
 
 import type { SmartySuggestion } from './types'
 
@@ -21,12 +22,7 @@ afterEach(() => {
 // The hook reads the Smarty key from RuntimeConfigProvider, so every renderHook
 // supplies it the way the root layout does.
 const wrapper = ({ children }: { children: ReactNode }) => (
-  <RuntimeConfigProvider
-    config={{
-      smartyEmbeddedKey: 'test-embedded-key',
-      debugRepeatOidcStepUp: false
-    }}
-  >
+  <RuntimeConfigProvider config={makeRuntimeConfig({ smartyEmbeddedKey: 'test-embedded-key' })}>
     {children}
   </RuntimeConfigProvider>
 )

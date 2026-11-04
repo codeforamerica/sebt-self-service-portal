@@ -88,6 +88,18 @@ variable "amplitude_api_key" {
   default     = ""
 }
 
+variable "application_url" {
+  type        = string
+  description = "Apply-form URL served to the web tier at request time. Empty means applications have no destination, which hides the apply UI."
+  default     = ""
+}
+
+variable "application_url_peak_params" {
+  type        = string
+  description = "Set to \"true\" when application_url is Colorado's PEAK form, so the portal adds its language param. Anything else leaves the URL as given."
+  default     = "false"
+}
+
 variable "mixpanel_token" {
   type        = string
   description = "Mixpanel project token served to the web tier at request time. Empty leaves Mixpanel off."

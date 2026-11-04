@@ -6,8 +6,13 @@
  * to `stateConfigs`. No inline conditionals needed in components.
  */
 
-/** Supported state codes — add new states here */
-export type StateCode = 'dc' | 'co'
+/**
+ * Supported state codes — add new states here. The single list: the apps' env schemas
+ * and the design-token scripts import it, and `stateConfigs` must cover every entry.
+ */
+export const STATE_CODES = ['dc', 'co'] as const
+
+export type StateCode = (typeof STATE_CODES)[number]
 
 /** How a guardian signs in: email one-time code, or an OpenID Connect identity provider. */
 export type LoginMode = 'otp' | 'oidc'

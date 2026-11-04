@@ -17,9 +17,8 @@ type RouteContext = {
   params: Promise<{ path?: string[] }>
 }
 
-// all API paths (including auth/oidc/callback) now proxy to the .NET backend.
-// The OIDC token exchange was moved from Next.js to .NET so code_verifier and client
-// secret never leave the server; the Next.js OIDC callback route is no longer used.
+// All API paths, including auth/oidc/callback, proxy to the .NET backend, which owns the
+// OIDC token exchange so code_verifier and the client secret never leave the server.
 
 async function proxyRequest(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const { path } = await context.params
@@ -68,7 +67,6 @@ async function proxyRequest(request: NextRequest, context: RouteContext): Promis
         span.setStatus({ code: SpanStatusCode.ERROR })
       }
 
-      // Create response with backend headers
       const responseHeaders = new Headers(response.headers)
       // Remove hop-by-hop headers
       responseHeaders.delete('transfer-encoding')
