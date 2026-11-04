@@ -1308,7 +1308,7 @@
           "Microsoft.EntityFrameworkCore.SqlServer": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore.Tools": "[10.0.14, )",
           "Microsoft.Extensions.Caching.Hybrid": "[10.10.0, )",
-          "Microsoft.Extensions.Caching.Memory": "[10.0.12, )",
+          "Microsoft.Extensions.Caching.Memory": "[10.0.14, )",
           "Microsoft.Extensions.Caching.StackExchangeRedis": "[10.0.14, )",
           "Microsoft.Extensions.Http": "[10.0.14, )",
           "Microsoft.Extensions.Logging": "[10.0.14, )",
