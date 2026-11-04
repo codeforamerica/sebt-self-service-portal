@@ -41,9 +41,6 @@ const APPLICATION_CANCELLED: StatusInfo = {
   labelKey: 'profileTableStatusCancelled',
   variant: 'info'
 }
-// Safe default when a connector reports a status the portal does not recognize. Distinct from
-// APPLICATION_APPROVED, which is a known state that simply has no issued case yet.
-const STATUS_UNAVAILABLE: StatusInfo = { labelKey: 'profileTableStatusUnknown', variant: 'info' }
 
 /**
  * Every status label this component can render. Exported so statusLabelCoverage.test.ts can
@@ -54,8 +51,7 @@ export const PROFILE_STATUS_LABEL_KEYS = [
   APPLICATION_APPROVED,
   APPLICATION_DENIED,
   APPLICATION_IN_PROGRESS,
-  APPLICATION_CANCELLED,
-  STATUS_UNAVAILABLE
+  APPLICATION_CANCELLED
 ].map((status) => status.labelKey)
 
 function getApplicationStatus(data: HouseholdData): StatusInfo | null {
@@ -68,30 +64,12 @@ function getApplicationStatus(data: HouseholdData): StatusInfo | null {
   }
   if (statuses.includes('Cancelled')) return APPLICATION_CANCELLED
   if (statuses.every((s) => s === 'Approved')) return APPLICATION_APPROVED
-  return STATUS_UNAVAILABLE
+  return null
 }
 
-function getOverallStatus(data: HouseholdData): {
-  primary: StatusInfo
-  secondary: StatusInfo | null
-} {
-  const hasEnrolledCases = data.summerEbtCases.length > 0
-  const appStatus = getApplicationStatus(data)
-
-  if (hasEnrolledCases) {
-    // "Enrolled" already communicates approval, so an approved application adds nothing.
-    return {
-      primary: ENROLLED,
-      secondary: appStatus === APPLICATION_APPROVED ? null : appStatus
-    }
-  }
-
-  if (appStatus) {
-    return { primary: appStatus, secondary: null }
-  }
-
-  // No cases and no applications. DashboardContent renders EmptyState before reaching here.
-  return { primary: STATUS_UNAVAILABLE, secondary: null }
+function getOverallStatus(data: HouseholdData): StatusInfo | null {
+  if (data.summerEbtCases.length > 0) return ENROLLED
+  return getApplicationStatus(data)
 }
 
 function getStatusTextClass(variant: string): string {
@@ -111,7 +89,7 @@ function getStatusTextClass(variant: string): string {
 export function HouseholdSummary() {
   const { t } = useTranslation('dashboard')
   const data = useRequiredHouseholdData()
-  const { primary, secondary } = getOverallStatus(data)
+  const status = getOverallStatus(data)
   const canUpdateAddress = data.allowedActions?.canUpdateAddress ?? true
   const showContactPreferences = useFeatureFlag('show_contact_preferences')
   const anyBenefitsExpired = data.summerEbtCases.some(
@@ -123,29 +101,25 @@ export function HouseholdSummary() {
       <div className="usa-card__body">
         <dl className="margin-0">
           {/* Status */}
-          <dt className="text-bold">{t('profileTableHeadingStatus')}</dt>
-          <dd className="margin-left-0 margin-bottom-2">
-            <span className={`text-bold ${getStatusTextClass(primary.variant)}`}>
-              {t(primary.labelKey)}
-            </span>
-            {secondary && (
-              <>
-                <span className="text-base-dark">{' / '}</span>
-                <span className={`text-bold ${getStatusTextClass(secondary.variant)}`}>
-                  {t(secondary.labelKey)}
+          {status && (
+            <>
+              <dt className="text-bold">{t('profileTableHeadingStatus')}</dt>
+              <dd className="margin-left-0 margin-bottom-2">
+                <span className={`text-bold ${getStatusTextClass(status.variant)}`}>
+                  {t(status.labelKey)}
                 </span>
-              </>
-            )}
-            {primary.variant === 'success' && (
-              <p className="margin-top-1 margin-bottom-0">
-                {t(
-                  anyBenefitsExpired
-                    ? 'profileTableExpiredStatusEnrolledDescription'
-                    : 'profileTableStatusEnrolledDescription'
+                {status === ENROLLED && (
+                  <p className="margin-top-1 margin-bottom-0">
+                    {t(
+                      anyBenefitsExpired
+                        ? 'profileTableExpiredStatusEnrolledDescription'
+                        : 'profileTableStatusEnrolledDescription'
+                    )}
+                  </p>
                 )}
-              </p>
-            )}
-          </dd>
+              </dd>
+            </>
+          )}
 
           {/* Your mailing address */}
           <dt className="text-bold">{t('profileTableHeadingAddress')}</dt>
