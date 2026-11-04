@@ -31,7 +31,6 @@ internal static class AuthenticationSetup
 
         services.AddSingleton<IStateAllowlist>(new StateAllowlist(allowedOidcStates));
 
-        // Configure JWT Authentication
         services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;

@@ -68,6 +68,7 @@ export async function apiFetch<T>(endpoint: string, options: ApiFetchOptions<T> 
   if (method === 'GET') {
     // Append per-request UUID so edge caches (e.g. Cloudflare) can never
     // serve User A's authenticated response to User B. See ADR 0016.
+    // aislop-ignore-next-line ai-slop/hardcoded-url -- reserved .invalid base, only used to parse a relative path
     const url = new URL(endpoint, 'http://placeholder.invalid')
     url.searchParams.set('_', crypto.randomUUID())
     resolvedEndpoint = `${url.pathname}${url.search}`

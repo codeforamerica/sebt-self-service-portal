@@ -1,5 +1,6 @@
 import type { SmartyAutocompleteResponse, SmartySuggestion } from './types'
 
+// aislop-ignore-next-line ai-slop/hardcoded-url -- Smarty's public API endpoint, same in every environment
 const SMARTY_AUTOCOMPLETE_URL = 'https://us-autocomplete-pro.api.smarty.com/lookup'
 
 export interface SmartyAutocompleteParams {
