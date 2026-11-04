@@ -19,7 +19,8 @@
 #   META_PIXEL, META_PIXEL_ACTION
 #   ADENTIFI_PIXEL_LANDING, ADENTIFI_PIXEL_APPLY_NOW
 #   SHOW_SCHOOL_FIELD, CHECKER_ENABLED,
-#   BOT_PROTECTION_ENABLED                           "true" or "false"
+#   BOT_PROTECTION_ENABLED, APPLICATION_URL_PEAK_PARAMS
+#                                                    "true" or "false"
 #
 # A malformed URL or boolean fails the step and writes nothing, so a bad value is
 # caught at deploy instead of breaking the checker in visitors' browsers.
@@ -50,6 +51,7 @@ const STRINGS = {
   adentifiPixelApplyNow: 'ADENTIFI_PIXEL_APPLY_NOW'
 }
 const BOOLEANS = {
+  applicationUrlPeakParams: 'APPLICATION_URL_PEAK_PARAMS',
   showSchoolField: 'SHOW_SCHOOL_FIELD',
   checkerEnabled: 'CHECKER_ENABLED',
   botProtectionEnabled: 'BOT_PROTECTION_ENABLED'

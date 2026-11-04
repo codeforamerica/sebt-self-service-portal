@@ -535,6 +535,7 @@ jobs:
           PluginAssemblyPaths__0: "plugins-co"
           FeatureManagement__use_mock_household_data: "true"
           FeatureManagement__use_mock_cbms_responses: "true"
+          FeatureManagement__use_configurable_state_backend: "false"
         run: |
           # The CO overlay (IAL requirements, phone-based household ids, seeding)
           # ships as an example file; the env above overrides its Redis/OIDC bits.

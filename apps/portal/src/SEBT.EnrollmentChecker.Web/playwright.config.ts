@@ -21,9 +21,10 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       PORT: '3001',
-      NEXT_PUBLIC_STATE: 'co',
+      NEXT_PUBLIC_STATE: process.env.NEXT_PUBLIC_STATE ?? 'co',
       NEXT_PUBLIC_PORTAL_URL: 'http://localhost:3000',
       NEXT_PUBLIC_APPLICATION_URL: 'http://localhost:3000/apply',
+      NEXT_PUBLIC_APPLICATION_URL_PEAK_PARAMS: 'true',
       SKIP_ENV_VALIDATION: 'true'
     }
   }
