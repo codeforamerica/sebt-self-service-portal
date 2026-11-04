@@ -145,7 +145,11 @@ public sealed class StateBackendOAuthClientCredentialsAuthHandler : DelegatingHa
             form["scope"] = _scheme.Scope;
         }
 
-        using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, _scheme.TokenUrl)
+        Uri tokenUrl = _scheme.TokenUrl
+            ?? throw new InvalidOperationException(
+                "Auth scheme 'client_credentials' has no resolved 'tokenUrl'.");
+
+        using var tokenRequest = new HttpRequestMessage(HttpMethod.Post, tokenUrl)
         {
             Content = new FormUrlEncodedContent(form),
         };

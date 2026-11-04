@@ -1,7 +1,9 @@
 baseUrl: https://test-ch2-api.state.co.us/ext-uat-c-cbms-cfa-eapi/api/
+baseUrlRef: "Cbms:ApiBaseUrl"
 auth:
   scheme: client_credentials
   tokenUrl: https://test-ch2-api.state.co.us/ext-uat-c-cbms-oauth-app/token
+  tokenUrlRef: "Cbms:TokenEndpointUrl"
   clientIdRef: "Cbms:ClientId"
   clientSecretRef: "Cbms:ClientSecret"
 operations:

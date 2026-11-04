@@ -15,6 +15,7 @@ internal static class StateBackendConfigurationValidator
     {
         ArgumentNullException.ThrowIfNull(configuration);
 
+        RequireUrlOrRef(configuration.BaseUrl, configuration.BaseUrlRef, "baseUrl");
         ValidateAuth(configuration.Auth);
 
         StateBackendResponseMapper.ValidateFieldMappings(configuration);
@@ -53,12 +54,23 @@ internal static class StateBackendConfigurationValidator
             return;
         }
 
+        RequireUrlOrRef(clientCredentials.TokenUrl, clientCredentials.TokenUrlRef, "tokenUrl");
+
         bool hasClientId = !string.IsNullOrWhiteSpace(clientCredentials.ClientId);
         bool hasClientIdRef = !string.IsNullOrWhiteSpace(clientCredentials.ClientIdRef);
         if (hasClientId == hasClientIdRef)
         {
             throw new InvalidOperationException(
                 "Auth scheme 'client_credentials' must set exactly one of 'clientId' or 'clientIdRef'.");
+        }
+    }
+
+    private static void RequireUrlOrRef(Uri? url, string? urlRef, string fieldName)
+    {
+        if (url is null && string.IsNullOrWhiteSpace(urlRef))
+        {
+            throw new InvalidOperationException(
+                $"Config must set '{fieldName}', '{fieldName}Ref', or both.");
         }
     }
 

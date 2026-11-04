@@ -338,6 +338,10 @@ public class StateBackendConfigurationHydrationTests
         Assert.Null(oauthAuth.ClientId);
         Assert.Equal("Cbms:ClientId", oauthAuth.ClientIdRef);
 
+        // The UAT URLs above are defaults; these config keys override them per environment.
+        Assert.Equal("Cbms:ApiBaseUrl", config.BaseUrlRef);
+        Assert.Equal("Cbms:TokenEndpointUrl", oauthAuth.TokenUrlRef);
+
         Assert.Equal(
             "sebt/get-account-details?ebtCardService=Y",
             config.Operations.HouseholdLookup?.Path);
@@ -600,6 +604,35 @@ public class StateBackendConfigurationHydrationTests
             () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("clientId", ex.Message);
         Assert.Contains("clientIdRef", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenNeitherBaseUrlNorBaseUrlRefIsSet()
+    {
+        StateBackendConfiguration config = StateBackendTestConfig.Base() with { BaseUrl = null };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("baseUrl", ex.Message);
+        Assert.Contains("baseUrlRef", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenNeitherTokenUrlNorTokenUrlRefIsSet()
+    {
+        StateBackendConfiguration config = StateBackendTestConfig.Base() with
+        {
+            Auth = new StateBackendOAuthClientCredentialsAuthScheme
+            {
+                ClientId = "co-client",
+                ClientSecretRef = "Backend:ClientSecret",
+            },
+        };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("tokenUrl", ex.Message);
+        Assert.Contains("tokenUrlRef", ex.Message);
     }
 
     [Fact]

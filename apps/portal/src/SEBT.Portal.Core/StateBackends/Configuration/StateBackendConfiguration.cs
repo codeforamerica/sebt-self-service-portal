@@ -6,7 +6,14 @@ namespace SEBT.Portal.Core.StateBackends.Configuration;
 /// <summary>The C# records a state's YAML maps onto.</summary>
 public record StateBackendConfiguration
 {
-    public required Uri BaseUrl { get; init; }
+    /// <summary>Default base URL. Set this, <see cref="BaseUrlRef"/>, or both.</summary>
+    public Uri? BaseUrl { get; init; }
+
+    /// <summary>
+    /// Configuration key whose value, when present, overrides <see cref="BaseUrl"/> so the same
+    /// bundle can target different environments.
+    /// </summary>
+    public string? BaseUrlRef { get; init; }
 
     public required StateBackendAuthScheme Auth { get; init; }
 

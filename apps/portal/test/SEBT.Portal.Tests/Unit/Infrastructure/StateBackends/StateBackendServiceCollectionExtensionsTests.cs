@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SEBT.Portal.Core.StateBackends;
+using SEBT.Portal.Core.StateBackends.Configuration;
 using SEBT.Portal.Infrastructure.StateBackends;
 using SEBT.Portal.Infrastructure.StateBackends.Auth;
 
@@ -95,6 +96,43 @@ public class StateBackendServiceCollectionExtensionsTests
             Assert.Same(backend, provider.GetRequiredService<IAddressUpdateBackend>());
             Assert.Same(backend, provider.GetRequiredService<IEnrollmentCheckBackend>());
             Assert.Same(backend, provider.GetRequiredService<IStateBackendHealth>());
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void AddConfigurableStateBackend_RegistersConfiguration_WithBaseUrlOverrideApplied()
+    {
+        string path = Path.Combine(Path.GetTempPath(), $"sebt-backend-{Guid.NewGuid():N}.yaml");
+        File.WriteAllText(path, """
+            baseUrl: http://localhost:9
+            baseUrlRef: Backend:ApiBaseUrl
+            auth:
+              scheme: api_key
+              header: X-Api-Key
+              keyRef: test-api-key
+            operations: {}
+            """);
+
+        try
+        {
+            var services = new ServiceCollection();
+            var config = new ConfigurationBuilder()
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["StateBackend:ConfigPath"] = path,
+                    ["Backend:ApiBaseUrl"] = "https://override.test/api",
+                })
+                .Build();
+
+            services.AddConfigurableStateBackend(config);
+
+            using var provider = services.BuildServiceProvider();
+            StateBackendConfiguration registered = provider.GetRequiredService<StateBackendConfiguration>();
+            Assert.Equal(new Uri("https://override.test/api/"), registered.BaseUrl);
         }
         finally
         {
