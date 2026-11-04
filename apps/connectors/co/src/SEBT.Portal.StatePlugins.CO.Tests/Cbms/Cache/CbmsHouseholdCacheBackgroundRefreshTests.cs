@@ -34,14 +34,14 @@ public class CbmsHouseholdCacheBackgroundRefreshTests
 
         // Prime with v1, then forcibly stale the envelope.
         await sut.SetAsync(Phone, Populated("v1"), CancellationToken.None);
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:full", out var envelope));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:full", out var envelope));
         Assert.NotNull(envelope);
         var staleEnvelope = envelope! with
         {
             SoftExpiryUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
             HardExpiryUtc = DateTimeOffset.UtcNow.AddHours(2)
         };
-        await hybrid.SetAsync("co:cbms:hash:full", staleEnvelope);
+        await hybrid.SetAsync("co:cbms:live:hash:full", staleEnvelope);
 
         fetch.NextResponse = Populated("v2");
         fetch.CallCount = 0;
@@ -67,12 +67,12 @@ public class CbmsHouseholdCacheBackgroundRefreshTests
             fetch.Delegate);
 
         await sut.SetAsync(Phone, Populated("v1"), CancellationToken.None);
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:full", out var envelope));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:full", out var envelope));
         var staleEnvelope = envelope! with
         {
             SoftExpiryUtc = DateTimeOffset.UtcNow.AddMinutes(-5)
         };
-        await hybrid.SetAsync("co:cbms:hash:full", staleEnvelope);
+        await hybrid.SetAsync("co:cbms:live:hash:full", staleEnvelope);
 
         fetch.NextResponse = Populated("v2");
         fetch.CallCount = 0;
@@ -104,9 +104,9 @@ public class CbmsHouseholdCacheBackgroundRefreshTests
             failingFetch.Delegate);
 
         await sut.SetAsync(Phone, Populated("v1"), CancellationToken.None);
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:full", out var envelope));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:full", out var envelope));
         var staleEnvelope = envelope! with { SoftExpiryUtc = DateTimeOffset.UtcNow.AddMinutes(-5) };
-        await hybrid.SetAsync("co:cbms:hash:full", staleEnvelope);
+        await hybrid.SetAsync("co:cbms:live:hash:full", staleEnvelope);
 
         failingFetch.CallCount = 0;
         var result = await sut.GetAsync(Phone, true, CancellationToken.None);
@@ -117,7 +117,7 @@ public class CbmsHouseholdCacheBackgroundRefreshTests
         await Task.Delay(100); // let background refresh attempt happen
 
         // Cache still has v1 (refresh failed).
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:full", out var stillThere));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:full", out var stillThere));
         Assert.NotNull(stillThere);
         var stillThereResponse = JsonSerializer.Deserialize<GetAccountDetailsResponse>(stillThere!.ResponseJson);
         Assert.Equal("v1", stillThereResponse!.StdntEnrollDtls![0].GurdFstNm);
