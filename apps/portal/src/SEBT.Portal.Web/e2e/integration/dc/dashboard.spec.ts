@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
 
 import { isFullStackE2E, skipUnlessFullStack } from '../../fixtures/full-stack'
-import { loginToVerifiedDashboard } from '../../fixtures/login-dc'
+import { loginToVerifiedDashboard } from '../../fixtures/login-otp'
 import { skipUnlessState } from '../../fixtures/state'
 
 const authDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../.auth')

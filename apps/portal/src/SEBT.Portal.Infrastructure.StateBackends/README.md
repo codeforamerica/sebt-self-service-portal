@@ -24,7 +24,7 @@ Card data is batch-loaded today: both DC and CO return card details inline in th
 
 Config picks from a fixed set of narrow, named primitives. It never exposes comparison or boolean operators. Detail and worked YAML live in [CONFIG-AUTHORING.md](./CONFIG-AUTHORING.md).
 
-- **Auth schemes.** `api_key` (header + `keyRef`) or `client_credentials` (`tokenUrl` + `clientId` + `clientSecretRef`). Secrets are key *references*, resolved from env / `/run/secrets` — never inlined.
+- **Auth schemes.** `api_key` (header + `keyRef`) or `client_credentials` (`tokenUrl` + exactly one of `clientId` / `clientIdRef` + `clientSecretRef`). Secrets are key *references*, resolved from env / `/run/secrets` — never inlined.
 - **Field mapping.** `from` (source property), optional exact date `format`, optional named `enum` table. LHS is our canonical field name, RHS is the state's flavor.
 - **Enum tables.** Top-level `enums:` domain-centered `OurValue: [state tokens]` plus an optional `default` (absent default + unlisted token fails fast). Matching is case-insensitive substring-contains over one or more `from` sources.
 - **Disaggregation.** Group records into applications and decide case inclusion via a closed `rule` (`presence` / `valueInSet`) and named `caseInclusion` predicates — not an expression DSL. `valueInSet` requires a non-empty `applicationValues` list at load (a missing list would silently treat every row as not application-based); matching is case-insensitive, matching Colorado's existing classifier.
@@ -37,6 +37,7 @@ Config picks from a fixed set of narrow, named primitives. It never exposes comp
 
 Config loads from YAML in `StateBackendConfigurationLoader`. Immediately after deserialization, `StateBackendConfigurationValidator` runs. A bad config throws at load time. Some examples of what it checks are:
 
+- **Auth** — `client_credentials` must set exactly one of `clientId` or `clientIdRef`.
 - **Field mappings** — every canonical target is a known field; date-typed targets carry an exact `format`; a sequence `from` is only valid with `keywordRules`.
 - **JSON paths** — read `root` / enrollment `messageField` are dotted segments and `[index]` only; write targets are dotted properties only
 - **Enum tables** — the referenced table exists, targets an enum-typed field, every canonical key is a real enum member, and no state token is listed under two canonical values.

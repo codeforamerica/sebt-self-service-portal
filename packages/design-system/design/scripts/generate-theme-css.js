@@ -30,12 +30,10 @@ import { fileURLToPath } from 'node:url'
 
 import { LOCAL_FONTS_MAP, assertLocalFontFilesExist, extractFonts } from './generate-fonts.js'
 import { resolveStateTokens } from './state-token-source.js'
+import { STATE_CODES } from '../../src/lib/state.ts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const designSystemRoot = resolve(scriptDir, '../..')
-
-// Keep in step with generate-all-tokens.js.
-const STATES = ['dc', 'co']
 
 const appRoot = process.cwd()
 const require = createRequire(join(appRoot, '/'))
@@ -167,12 +165,12 @@ function main() {
 
   let states
   try {
-    states = selectThemeStates(buildState, STATES, (state) => existsSync(resolveStateTokens(state).path))
+    states = selectThemeStates(buildState, STATE_CODES, (state) => existsSync(resolveStateTokens(state).path))
   } catch (error) {
     console.error(`❌ ${error.message}`)
     process.exit(1)
   }
-  for (const state of STATES.filter((s) => !states.includes(s))) {
+  for (const state of STATE_CODES.filter((s) => !states.includes(s))) {
     console.log(`   ${state}: no token file, skipping`)
   }
 

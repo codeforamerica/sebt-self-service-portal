@@ -48,8 +48,9 @@ export type { OutageFlagCache } from './lib/outageFlagCache'
 export { SkipNav } from './components/layout/SkipNav'
 
 // State configuration
-export type { StateCode, StateConfig } from './lib/state'
+export type { LoginMode, StateCode, StateConfig } from './lib/state'
 export {
+  STATE_CODES,
   getState,
   getStateConfig,
   getStateName,

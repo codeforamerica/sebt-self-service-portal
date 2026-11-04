@@ -317,6 +317,38 @@ public class StateBackendConfigurationHydrationTests
         Assert.True(capabilities.EnrollmentCheck);
     }
 
+    [Fact]
+    public void Hydrates_CbmsBundle_FromProjectYaml()
+    {
+        string path = Path.Combine(AppContext.BaseDirectory, "state-backends", "cbms.yml");
+        var config = StateBackendConfigurationLoader.Load(File.ReadAllText(path));
+
+        Assert.Equal(
+            new Uri("https://test-ch2-api.state.co.us/ext-uat-c-cbms-cfa-eapi/api/"),
+            config.BaseUrl);
+
+        StateBackendOAuthClientCredentialsAuthScheme oauthAuth =
+            Assert.IsType<StateBackendOAuthClientCredentialsAuthScheme>(config.Auth);
+        Assert.Equal(
+            new Uri("https://test-ch2-api.state.co.us/ext-uat-c-cbms-oauth-app/token"),
+            oauthAuth.TokenUrl);
+        Assert.Equal("Cbms:ClientSecret", oauthAuth.ClientSecretRef);
+
+        // The client id varies per environment, so it comes from config rather than the bundle.
+        Assert.Null(oauthAuth.ClientId);
+        Assert.Equal("Cbms:ClientId", oauthAuth.ClientIdRef);
+
+        // The UAT URLs above are defaults; these config keys override them per environment.
+        Assert.Equal("Cbms:ApiBaseUrl", config.BaseUrlRef);
+        Assert.Equal("Cbms:TokenEndpointUrl", oauthAuth.TokenUrlRef);
+
+        Assert.Equal(
+            "sebt/get-account-details?ebtCardService=Y",
+            config.Operations.HouseholdLookup?.Path);
+        Assert.Equal("ping", config.Operations.Health?.Path);
+        Assert.Equal(CardReplacementCapability.Batch, config.Capabilities.CardReplacement);
+    }
+
     // A canonical value that is NOT a real member of the target C# enum must fail loud at LOAD time.
     [Fact]
     public void Validate_FailsLoud_WhenCanonicalValueIsNotARealEnumMember()
@@ -528,6 +560,79 @@ public class StateBackendConfigurationHydrationTests
             () => StateBackendConfigurationValidator.Validate(config));
         Assert.Contains("incomplete", ex.Message);
         Assert.Contains("cardReplacement", ex.Message);
+    }
+
+    [Fact]
+    public void Load_HydratesClientIdRef_WhenClientCredentialsUsesConfigReference()
+    {
+        const string yaml = """
+            baseUrl: http://backend.test
+            auth:
+              scheme: client_credentials
+              tokenUrl: http://backend.test/oauth/token
+              clientIdRef: Backend:ClientId
+              clientSecretRef: Backend:ClientSecret
+            operations: {}
+            """;
+
+        var config = StateBackendConfigurationLoader.Load(yaml);
+
+        StateBackendOAuthClientCredentialsAuthScheme oauthAuth =
+            Assert.IsType<StateBackendOAuthClientCredentialsAuthScheme>(config.Auth);
+        Assert.Null(oauthAuth.ClientId);
+        Assert.Equal("Backend:ClientId", oauthAuth.ClientIdRef);
+    }
+
+    [Theory]
+    [InlineData("co-client", "Backend:ClientId")]
+    [InlineData(null, null)]
+    public void Validate_FailsLoud_UnlessExactlyOneOfClientIdOrClientIdRefIsSet(
+        string? clientId, string? clientIdRef)
+    {
+        StateBackendConfiguration config = StateBackendTestConfig.Base() with
+        {
+            Auth = new StateBackendOAuthClientCredentialsAuthScheme
+            {
+                TokenUrl = new Uri("http://backend.test/oauth/token"),
+                ClientId = clientId,
+                ClientIdRef = clientIdRef,
+                ClientSecretRef = "Backend:ClientSecret",
+            },
+        };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("clientId", ex.Message);
+        Assert.Contains("clientIdRef", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenNeitherBaseUrlNorBaseUrlRefIsSet()
+    {
+        StateBackendConfiguration config = StateBackendTestConfig.Base() with { BaseUrl = null };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("baseUrl", ex.Message);
+        Assert.Contains("baseUrlRef", ex.Message);
+    }
+
+    [Fact]
+    public void Validate_FailsLoud_WhenNeitherTokenUrlNorTokenUrlRefIsSet()
+    {
+        StateBackendConfiguration config = StateBackendTestConfig.Base() with
+        {
+            Auth = new StateBackendOAuthClientCredentialsAuthScheme
+            {
+                ClientId = "co-client",
+                ClientSecretRef = "Backend:ClientSecret",
+            },
+        };
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(
+            () => StateBackendConfigurationValidator.Validate(config));
+        Assert.Contains("tokenUrl", ex.Message);
+        Assert.Contains("tokenUrlRef", ex.Message);
     }
 
     [Fact]

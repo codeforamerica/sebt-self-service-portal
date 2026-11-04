@@ -64,7 +64,7 @@ export async function submitOtpOnVerifyPage(page: Page, otp: string) {
 }
 
 /**
- * Completes the DC email OTP login flow against a live backend.
+ * Completes the email OTP login flow against a live backend.
  * Clears Mailpit first, submits the login form, reads the OTP from Mailpit, and verifies.
  */
 export async function loginWithEmailOtp(page: Page, email: string): Promise<void> {

@@ -82,12 +82,12 @@ public class CbmsHouseholdCacheWriteThroughTests
             fetch.Delegate);
 
         await sut.GetAsync(Phone, includeCardService: false, CancellationToken.None);
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:shell", out _));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:shell", out _));
 
         await sut.SetAsync(Phone, Populated("written"), CancellationToken.None);
 
-        Assert.False(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:shell", out _));
-        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:hash:full", out _));
+        Assert.False(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:shell", out _));
+        Assert.True(hybrid.TryGet<CbmsHouseholdCacheEnvelope?>("co:cbms:live:hash:full", out _));
 
         fetch.NextResponse = Populated("refetched-shell");
         await sut.GetAsync(Phone, includeCardService: false, CancellationToken.None);

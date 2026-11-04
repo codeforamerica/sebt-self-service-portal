@@ -27,8 +27,8 @@ describe('getFlowConfig', () => {
     expect(getFlowConfig().distinguishNoResults).toBe(false)
   })
 
-  it('falls back to a configured state rather than throwing', () => {
+  it('throws for a state that is not registered', () => {
     vi.stubEnv('NEXT_PUBLIC_STATE', 'zz')
-    expect(typeof getFlowConfig().useReviewStep).toBe('boolean')
+    expect(() => getFlowConfig()).toThrow('Unknown state code: zz')
   })
 })

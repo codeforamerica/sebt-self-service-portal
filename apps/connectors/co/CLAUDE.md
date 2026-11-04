@@ -49,13 +49,13 @@ changes.
 ## CBMS API Integration
 
 - OAuth2 Client Credentials flow for authentication.
-- Mock responses available for offline development — set `Cbms:UseMockResponses=true` in config.
+- Mock responses available for offline development — enable the `use_mock_cbms_responses` feature flag.
 - Mock data files are embedded resources in the CbmsApi project under `TestData/CbmsMocks/`.
 
 ## Configuration
 
 CBMS credentials via user secrets or env vars (`Cbms__ClientId`, `Cbms__ClientSecret`). Set
-`Cbms:UseMockResponses=true` for offline development without real credentials.
+`use_mock_cbms_responses` for offline development without real credentials.
 
 ## Common Commands
 

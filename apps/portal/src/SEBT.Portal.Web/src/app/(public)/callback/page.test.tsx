@@ -11,6 +11,7 @@
  * (stateCode, isStepUp, returnUrl, state validation) is now handled server-side
  * via the pre-auth session (V04 fix).
  */
+import type { StateCode } from '@sebt/design-system'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -72,12 +73,16 @@ vi.mock('react-i18next', () => ({
   })
 }))
 
-// Mock state
+// Mock the per-state setting; the component must not care which state code produced it.
+let mockShowLoadingInterstitial = true
 vi.mock('@sebt/design-system', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@sebt/design-system')>()
   return {
     ...actual,
-    getState: () => 'co'
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      showLoadingInterstitial: mockShowLoadingInterstitial
+    })
   }
 })
 
@@ -85,6 +90,7 @@ import CallbackPage from './page'
 
 describe('CallbackPage', () => {
   beforeEach(() => {
+    mockShowLoadingInterstitial = true
     vi.clearAllMocks()
     sessionState.current = null
     authLoading.current = false
@@ -141,7 +147,7 @@ describe('CallbackPage', () => {
       )
     })
 
-    it('shows the CO loading interstitial initially', () => {
+    it('shows the loading interstitial initially when the state enables it', () => {
       render(<CallbackPage />)
       const status = screen.getByRole('status')
       expect(status).toHaveAttribute('aria-busy', 'true')
@@ -171,6 +177,29 @@ describe('CallbackPage', () => {
 
       await waitFor(() => {
         expect(mockReplace).toHaveBeenCalledWith('/profile/address')
+      })
+    })
+
+    describe('when the state keeps the blank loading screen', () => {
+      beforeEach(() => {
+        mockShowLoadingInterstitial = false
+      })
+
+      it('shows the plain signing-in status instead of the interstitial', () => {
+        render(<CallbackPage />)
+        const status = screen.getByRole('status')
+        expect(status).toHaveTextContent('Signing you in…')
+        expect(status).not.toHaveAttribute('aria-busy')
+        expect(screen.queryByText('Please wait...')).not.toBeInTheDocument()
+      })
+
+      it('still exchanges the code and redirects to the dashboard', async () => {
+        render(<CallbackPage />)
+
+        await waitFor(() => {
+          expect(mockReplace).toHaveBeenCalledWith('/dashboard')
+        })
+        expect(mockLogin).toHaveBeenCalledWith()
       })
     })
   })
