@@ -35,7 +35,7 @@
   "dependencies": {
     "@amplitude/analytics-browser": "^2.48.1",
     "@next/third-parties": "16.4.3",
-    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/api": "^1.9.1",
     "@sebt/analytics": "workspace:*",
     "@sebt/design-system": "workspace:*",
     "@sebt/observability": "workspace:*",
@@ -54,7 +54,7 @@
   "devDependencies": {
     "@axe-core/react": "^4.14.0",
     "@next/bundle-analyzer": "16.4.3",
-    "@opentelemetry/sdk-trace-base": "^2.12.0",
+    "@opentelemetry/sdk-trace-base": "^2.11.0",
     "@playwright/test": "^1.64.1",
     "@size-limit/file": "^13.0.3",
     "@testing-library/jest-dom": "^7.0.1",
