@@ -156,14 +156,14 @@ export function DashboardAlerts() {
           <span className="display-block margin-top-1">{t('alertCheckAddressBody')}</span>
           <Button
             variant="unstyled"
-            className="display-block margin-top-2"
+            className="display-block margin-top-2 text-bold text-ink"
             onClick={dismissAddressVerify}
           >
             {t('alertCheckAddressLink1')}
           </Button>
           <Link
             href="/profile/address"
-            className="usa-link display-block margin-top-1"
+            className="usa-link display-block margin-top-2 text-bold text-ink"
           >
             {t('alertCheckAddressLink2')}
           </Link>
