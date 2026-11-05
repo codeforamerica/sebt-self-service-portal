@@ -4,6 +4,7 @@ import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { useTranslation } from 'react-i18next'
 
 import { useApplyHref } from '@/lib/useApplyHref'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
 
 export default function NotFound() {
   const { t } = useTranslation('404EnrollmentChecker')
@@ -13,7 +14,9 @@ export default function NotFound() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className={`font-family-sans font-sans-xl ${pageTitleText}`}>{t('title')}</h1>
+        <PageHeading className={`font-family-sans font-sans-xl ${pageTitleText}`}>
+          {t('title')}
+        </PageHeading>
         <p>{t('body1')}</p>
         {applyHref && (
           <a

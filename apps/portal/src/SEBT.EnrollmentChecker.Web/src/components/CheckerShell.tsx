@@ -7,6 +7,7 @@ import { Footer } from '@sebt/design-system/src/components/layout/Footer'
 import { Header } from '@sebt/design-system/src/components/layout/Header'
 import { HelpSection } from '@sebt/design-system/src/components/layout/HelpSection'
 import { SkipNav } from '@sebt/design-system/src/components/layout/SkipNav'
+import { PageFocusProvider } from '@sebt/design-system/src/components/ui/PageFocusProvider'
 import type { StateCode } from '@sebt/design-system/src/lib/state'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
@@ -31,10 +32,15 @@ export function CheckerShell({ children, state }: CheckerShellProps) {
       <SkipNav />
       {!isOutagePage && <MaintenanceBanner />}
       <Header state={state} />
-      <main id="main-content">
-        {/* The outage page carries no season-dependent copy, so it is not worth
-            holding for a features poll that has nothing to tell it. */}
-        <OutageGuard>{isOutagePage ? children : <SeasonGate>{children}</SeasonGate>}</OutageGuard>
+      <main
+        id="main-content"
+        tabIndex={-1}
+      >
+        <PageFocusProvider>
+          {/* The outage page carries no season-dependent copy, so it is not worth
+              holding for a features poll that has nothing to tell it. */}
+          <OutageGuard>{isOutagePage ? children : <SeasonGate>{children}</SeasonGate>}</OutageGuard>
+        </PageFocusProvider>
       </main>
       <HelpSection state={state} />
       <Footer state={state} />
