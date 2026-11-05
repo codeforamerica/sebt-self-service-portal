@@ -1,3 +1,4 @@
+import type { LoginMode, StateCode } from '@sebt/design-system'
 import { i18n } from '@sebt/design-system/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -22,6 +23,20 @@ vi.mock('next/navigation', () => ({
     prefetch: vi.fn()
   })
 }))
+
+// IalGuard decides on the login mode, not the state code; the state attribute set in
+// beforeEach is still needed for the authorize URL assertion.
+let mockLoginMode: LoginMode = 'oidc'
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      loginMode: mockLoginMode
+    })
+  }
+})
 
 const apiFetchMock = vi.fn()
 vi.mock('@/api', () => ({
@@ -79,9 +94,7 @@ function setupApiFetchMock(options: {
 }
 
 describe('IalGuard', () => {
-
-  // IalGuard renders CO-only step-up copy (the gate is CO-specific). Tests run under
-  // DC locale by default, so load the CO bundles for these namespaces explicitly.
+  // The OIDC step-up copy lives in the CO bundles; tests boot under the DC locale, so load them here.
   beforeAll(() => {
     i18n.addResourceBundle('en', 'stepUpDisclaimer', enCoStepUpDisclaimer, true, true)
     i18n.addResourceBundle('en', 'step-upProcessing', enCoStepUpProcessing, true, true)
@@ -96,6 +109,7 @@ describe('IalGuard', () => {
     // IalGuard is a client component, so it reads the state from the attribute the
     // server stamped on <html> — the same path the browser takes at runtime.
     document.documentElement.dataset.state = 'co'
+    mockLoginMode = 'oidc'
     vi.useFakeTimers({ shouldAdvanceTime: true })
     apiFetchMock.mockReset()
     mockBack.mockReset()
@@ -124,6 +138,27 @@ describe('IalGuard', () => {
 
     expect(await screen.findByText('Protected')).toBeInTheDocument()
     expect(screen.queryByText(/Please wait/)).not.toBeInTheDocument()
+  })
+
+  it('renders children without a challenge when the login mode is OTP', async () => {
+    mockLoginMode = 'otp'
+    setupApiFetchMock({ ial: '1' })
+
+    render(
+      <AuthProvider>
+        <IalGuard>
+          <p>Protected</p>
+        </IalGuard>
+      </AuthProvider>
+    )
+
+    expect(await screen.findByText('Protected')).toBeInTheDocument()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(600)
+    })
+    expect(screen.queryByText(/Please wait/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Verify' })).not.toBeInTheDocument()
+    expect(window.location.href).not.toContain('/api/auth/oidc/')
   })
 
   it('shows checking then challenge; Verify starts step-up redirect', async () => {

@@ -7,8 +7,16 @@ describe('state', () => {
   const originalPublicState = process.env.NEXT_PUBLIC_STATE
 
   afterEach(() => {
-    process.env.STATE = originalState
-    process.env.NEXT_PUBLIC_STATE = originalPublicState
+    if (originalState === undefined) {
+      delete process.env.STATE
+    } else {
+      process.env.STATE = originalState
+    }
+    if (originalPublicState === undefined) {
+      delete process.env.NEXT_PUBLIC_STATE
+    } else {
+      process.env.NEXT_PUBLIC_STATE = originalPublicState
+    }
     delete document.documentElement.dataset.state
   })
 
@@ -59,6 +67,16 @@ describe('state', () => {
       process.env.STATE = ''
       process.env.NEXT_PUBLIC_STATE = ''
       expect(getState()).toBe('dc')
+    })
+
+    it('throws when STATE holds a code that is not in the registry', () => {
+      process.env.STATE = 'xx'
+      expect(() => getState()).toThrow('Unknown state code: xx')
+    })
+
+    it('throws when data-state holds a code that is not in the registry', () => {
+      document.documentElement.dataset.state = 'xx'
+      expect(() => getState()).toThrow('Unknown state code: xx')
     })
   })
 

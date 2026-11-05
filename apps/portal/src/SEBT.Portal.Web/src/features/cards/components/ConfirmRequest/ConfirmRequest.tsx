@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { setReplacementFlash } from '@/features/cards/utils/replacementFlash'
@@ -14,8 +14,7 @@ import {
   getState,
   getStateConfig,
   ProcessingIndicator,
-  RichText,
-  SummaryBox
+  RichText
 } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
@@ -49,6 +48,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   const { t: tDashboard } = useTranslation('dashboard')
 
   const router = useRouter()
+  const summaryHeadingId = useId()
   const identifiesCardByLastFour = getStateConfig(getState()).cardIdentifier === 'cardLastFour'
   const mutation = useRequestCardReplacement()
   const { setPageData, trackEvent } = useDataLayer()
@@ -108,7 +108,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   return (
     <div>
       {preTitle && <p className="margin-bottom-0">{preTitle}</p>}
-      <h1 className="font-sans-xl text-primary">{t('title')}</h1>
+      <h1 className="font-sans-xl text-primary margin-bottom-4">{t('title')}</h1>
 
       <div className="margin-top-05">
         <ul className="usa-list margin-top-2">
@@ -120,36 +120,48 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
         </ul>
       </div>
 
-      <SummaryBox className="margin-top-3">
-        <h2 className="font-sans-md margin-0">{tOrder('summaryTitle')}</h2>
+      <div
+        className="usa-summary-box margin-top-3"
+        role="region"
+        aria-labelledby={summaryHeadingId}
+      >
+        <div className="usa-summary-box__body">
+          <h2
+            className="usa-summary-box__heading"
+            id={summaryHeadingId}
+          >
+            {tOrder('summaryTitle')}
+          </h2>
+          <div className="usa-summary-box__text">
+            <ul className="usa-list">
+              {cases.map((c) => (
+                <li key={c.summerEBTCaseID}>
+                  {fillCardPlaceholders(tOptional("who'sCard"), c)}
+                  {identifiesCardByLastFour && c.ebtCardLastFour && (
+                    <span className="display-block">
+                      {fillCardPlaceholders(tOptional('cardNumber'), c)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
 
-        <ul className="usa-list margin-0">
-          {cases.map((c) => (
-            <li key={c.summerEBTCaseID}>
-              {fillCardPlaceholders(tOptional("who'sCard"), c)}
-              {identifiesCardByLastFour && c.ebtCardLastFour && (
-                <span className="display-block">
-                  {fillCardPlaceholders(tOptional('cardNumber'), c)}
-                </span>
+            <p>{tOrder('summaryAddress')}</p>
+
+            <address>
+              {address.streetAddress1 && (
+                <span className="display-block">{address.streetAddress1}</span>
               )}
-            </li>
-          ))}
-        </ul>
-
-        <p className="margin-0 margin-top-1">{tOrder('summaryAddress')}</p>
-
-        <address className="font-sans-sm">
-          {address.streetAddress1 && (
-            <span className="display-block">{address.streetAddress1}</span>
-          )}
-          {address.streetAddress2 && (
-            <span className="display-block">{address.streetAddress2}</span>
-          )}
-          <span className="display-block">
-            {address.city}, {address.state} {address.postalCode}
-          </span>
-        </address>
-      </SummaryBox>
+              {address.streetAddress2 && (
+                <span className="display-block">{address.streetAddress2}</span>
+              )}
+              <span className="display-block">
+                {address.city}, {address.state} {address.postalCode}
+              </span>
+            </address>
+          </div>
+        </div>
+      </div>
 
       {errorKey && (
         <Alert

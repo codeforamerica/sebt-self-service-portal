@@ -1,3 +1,4 @@
+import type { StateCode } from '@sebt/design-system'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
@@ -60,12 +61,28 @@ vi.mock('@/features/auth', async (importOriginal) => {
   }
 })
 
+const mockFlags = vi.hoisted(() => ({ deferEbtCardDataLoading: false }))
+
 vi.mock('@/features/feature-flags', () => ({
   useFeatureFlag: (flag: string) => {
     if (flag === 'show_contact_preferences') return true
+    if (flag === 'defer_ebt_card_data_loading') return mockFlags.deferEbtCardDataLoading
     return false
   }
 }))
+
+// The dashboard chooses its loading UI by the interstitial setting; the state code is irrelevant.
+let mockShowLoadingInterstitial = false
+vi.mock('@sebt/design-system', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@sebt/design-system')>()
+  return {
+    ...actual,
+    getStateConfig: (state: StateCode) => ({
+      ...actual.getStateConfig(state),
+      showLoadingInterstitial: mockShowLoadingInterstitial
+    })
+  }
+})
 
 function createTestQueryClient() {
   return new QueryClient({
@@ -89,14 +106,26 @@ describe('DashboardContent', () => {
     mockSetUserData.mockClear()
     mockTrackEvent.mockClear()
     mockAuthSession.isCoLoaded = false
+    mockFlags.deferEbtCardDataLoading = false
+    mockShowLoadingInterstitial = false
   })
 
-  it('shows loading skeleton initially', () => {
+  it('shows the loading skeleton initially when the state keeps the skeleton', () => {
     renderWithProviders(<DashboardContent />)
 
     const loadingStatus = screen.getByRole('status')
-    expect(loadingStatus).toBeInTheDocument()
     expect(loadingStatus).toHaveAttribute('aria-label', 'Loading dashboard')
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  })
+
+  it('shows the loading interstitial initially when the state enables it', () => {
+    mockShowLoadingInterstitial = true
+    renderWithProviders(<DashboardContent />)
+
+    const status = screen.getByRole('status')
+    expect(status).toHaveAttribute('aria-busy', 'true')
+    expect(status).not.toHaveAttribute('aria-label', 'Loading dashboard')
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
   })
 
   it('renders household data on success', async () => {
@@ -789,6 +818,37 @@ describe('DashboardContent', () => {
         'analytics'
       ])
       expect(mockSetPageData).toHaveBeenCalledWith('household_type', 'co_loaded_only')
+    })
+  })
+
+  describe('defer_ebt_card_data_loading flag', () => {
+    function captureIncludeCardDetails(): (string | null)[] {
+      const values: (string | null)[] = []
+      server.use(
+        http.get('/api/household/data', ({ request }) => {
+          values.push(new URL(request.url).searchParams.get('includeCardDetails'))
+          return HttpResponse.json(TEST_HOUSEHOLD_DATA)
+        })
+      )
+      return values
+    }
+
+    it('loads household data without card details first when the flag is on, in any state', async () => {
+      mockFlags.deferEbtCardDataLoading = true
+      const includeCardDetails = captureIncludeCardDetails()
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => expect(includeCardDetails[0]).toBe('false'))
+    })
+
+    it('loads household data with card details when the flag is off', async () => {
+      const includeCardDetails = captureIncludeCardDetails()
+
+      renderWithProviders(<DashboardContent />)
+
+      await waitFor(() => expect(includeCardDetails).toHaveLength(1))
+      expect(includeCardDetails[0]).toBeNull()
     })
   })
 })

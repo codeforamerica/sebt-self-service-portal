@@ -267,6 +267,45 @@ describe('ConfirmRequest', () => {
     expect(list).not.toHaveClass('usa-list--unstyled')
   })
 
+  it('spaces the page title from the bullets below it', () => {
+    renderConfirmRequest()
+    expect(screen.getByRole('heading', { level: 1 })).toHaveClass('margin-bottom-4')
+  })
+
+  // --- Card order summary box ---
+
+  it('renders the card order summary as a USWDS summary box region named by its heading', () => {
+    renderConfirmRequest()
+    const region = screen.getByRole('region', { name: 'Card order summary' })
+    expect(region).toHaveClass('usa-summary-box')
+  })
+
+  it('renders the summary title as the summary box heading, one level below the page title', () => {
+    renderConfirmRequest()
+    const heading = screen.getByRole('heading', { level: 2, name: 'Card order summary' })
+    expect(heading).toHaveClass('usa-summary-box__heading')
+  })
+
+  it('places the card list, address line, and address inside the summary box text', () => {
+    renderConfirmRequest()
+    const summaryText = screen
+      .getByRole('region', { name: 'Card order summary' })
+      .querySelector('.usa-summary-box__text')
+    expect(summaryText).toContainElement(screen.getByText(/Sophia Martinez/))
+    expect(summaryText).toContainElement(
+      screen.getByText('New cards will be mailed to the following address:')
+    )
+    expect(summaryText).toContainElement(screen.getByText(/123 Main St/))
+  })
+
+  it('keeps each card number in the same list item as its card owner', () => {
+    mockState = 'co'
+    loadStateBundles('co')
+    renderConfirmRequest({ cases: [TEST_CASES[0]!] })
+    const item = screen.getByText(/Sophia Martinez/).closest('li')
+    expect(item).toHaveTextContent(/1234 \(last 4 digits\)/)
+  })
+
   // --- Single vs multi card copy ---
 
   it('uses plural copy for a multi-card order', () => {

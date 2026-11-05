@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth/context'
 import { isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
 import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import { useRuntimeConfig } from '@/providers'
-import { Button, getState, SummaryBox } from '@sebt/design-system'
+import { Button, getState, getStateConfig, SummaryBox } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +34,7 @@ function startOidcStepUpRedirect(language: string): void {
 }
 
 /**
- * Colorado OIDC step-up gate: brief “checking” UI, then an explicit challenge screen before redirect.
+ * OIDC step-up gate: brief "checking" UI, then an explicit challenge screen before redirect.
  * Mount only on routes that need this gate; the authenticated layout does not wrap the whole app.
  * `DEBUG_REPEAT_OIDC_STEP_UP=true` forces the challenge path in development even when the JWT already has IAL1+.
  */
@@ -45,7 +45,7 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
   const { t: tDisclaimer } = useTranslation('stepUpDisclaimer')
   const { t: tProcessing } = useTranslation('step-upProcessing')
 
-  const useOidcStepUpGate = getState() === 'co'
+  const useOidcStepUpGate = getStateConfig(getState()).loginMode === 'oidc'
   const debugRepeatOidcStepUp = isDebugRepeatOidcStepUp(useRuntimeConfig().debugRepeatOidcStepUp)
 
   const ialAndIdProofingSufficient =

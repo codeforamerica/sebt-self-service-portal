@@ -1,81 +1,93 @@
-using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SEBT.Portal.StatePlugins.CO;
+using SEBT.Portal.StatePlugins.CO.Cbms;
 
 namespace SEBT.Portal.StatePlugins.CO.Tests;
 
 public class ColoradoHealthCheckServiceTests
 {
-    [Fact]
-    public async Task AlwaysDegradedHealthCheck_ReturnsDegraded_WithGivenMessage()
-    {
-        // Arrange
-        var message = "CBMS credentials are not configured.";
-        var check = new AlwaysDegradedHealthCheck(message);
-
-        // Act
-        var result = await check.CheckHealthAsync(new HealthCheckContext());
-
-        // Assert
-        Assert.Equal(HealthStatus.Degraded, result.Status);
-        Assert.Equal(message, result.Description);
-    }
-
     private const string CbmsCheckName = "co-cbms-api-ping";
 
     [Fact]
-    public async Task ConfigureHealthChecks_registers_degraded_check_when_not_configured()
+    public async Task ConfigureHealthChecks_follows_UseMockResponses_on_each_check()
     {
         var services = new ServiceCollection();
         services.AddLogging();
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            ["Cbms:ClientId"] = "",
+            ["Cbms:ClientSecret"] = "",
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "false"
+        });
+        services.AddSingleton<IConfiguration>(config);
         var builder = services.AddHealthChecks();
-        // Explicit empty config to override env vars; CbmsOptionsHelper falls back to environment otherwise
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Cbms:ClientId"] = "",
-                ["Cbms:ClientSecret"] = "",
-                ["Cbms:UseMockResponses"] = "false"
-            })
-            .Build();
-        var healthCheckService = new ColoradoHealthCheckService(config);
+        var healthCheckService = new ColoradoHealthCheckService();
 
         healthCheckService.ConfigureHealthChecks(builder);
 
         var provider = services.BuildServiceProvider();
         var healthCheck = provider.GetRequiredService<HealthCheckService>();
-        var result = await healthCheck.CheckHealthAsync();
 
-        Assert.Equal(HealthStatus.Degraded, result.Status);
-        var entry = result.Entries[CbmsCheckName];
-        Assert.Contains("CBMS credentials are not configured", entry.Description);
+        var degraded = await healthCheck.CheckHealthAsync();
+        Assert.Equal(HealthStatus.Degraded, degraded.Status);
+        Assert.Contains("CBMS credentials are not configured", degraded.Entries[CbmsCheckName].Description);
+
+        config[CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true";
+        var healthy = await healthCheck.CheckHealthAsync();
+        Assert.Equal(HealthStatus.Healthy, healthy.Status);
     }
 
     [Fact]
-    public async Task ConfigureHealthChecks_registers_CbmsApiHealthCheck_when_UseMockResponses_true()
+    public async Task ConfigureHealthChecks_mock_ping_does_not_require_hybrid_cache()
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddHybridCache();
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true"
+        });
+        services.AddSingleton<IConfiguration>(config);
         var builder = services.AddHealthChecks();
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Cbms:UseMockResponses"] = "true"
-            })
-            .Build();
-        var cacheProvider = services.BuildServiceProvider();
-        var cache = cacheProvider.GetRequiredService<HybridCache>();
-        var healthCheckService = new ColoradoHealthCheckService(config, cache);
 
-        healthCheckService.ConfigureHealthChecks(builder);
+        new ColoradoHealthCheckService().ConfigureHealthChecks(builder);
 
         var provider = services.BuildServiceProvider();
         var healthCheck = provider.GetRequiredService<HealthCheckService>();
+
         var result = await healthCheck.CheckHealthAsync();
 
         Assert.Equal(HealthStatus.Healthy, result.Status);
+        Assert.Equal(HealthStatus.Healthy, result.Entries[CbmsCheckName].Status);
+    }
+
+    [Fact]
+    public async Task ConfigureHealthChecks_in_production_ignores_mock_flag()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var config = new ConfigurationManager();
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Production",
+            ["Cbms:ClientId"] = "",
+            ["Cbms:ClientSecret"] = "",
+            [CbmsOptionsHelper.UseMockResponsesConfigurationKey] = "true"
+        });
+        services.AddSingleton<IConfiguration>(config);
+        var builder = services.AddHealthChecks();
+
+        new ColoradoHealthCheckService().ConfigureHealthChecks(builder);
+
+        var provider = services.BuildServiceProvider();
+        var result = await provider.GetRequiredService<HealthCheckService>().CheckHealthAsync();
+
+        Assert.Equal(HealthStatus.Degraded, result.Status);
+        Assert.Contains("CBMS credentials are not configured", result.Entries[CbmsCheckName].Description);
     }
 }

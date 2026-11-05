@@ -1,7 +1,7 @@
 'use client'
 
 import { apiFetch } from '@/api'
-import { CoLoadingScreen } from '@/components/CoLoadingScreen'
+import { LoadingScreen } from '@/components/LoadingScreen'
 import { useAuth } from '@/features/auth'
 import {
   OidcCallbackTokenResponseSchema,
@@ -9,7 +9,7 @@ import {
   redirectToOidcOffBoarding
 } from '@/features/auth/api/oidc'
 import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
-import { getState } from '@sebt/design-system'
+import { getState, getStateConfig } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,7 +40,7 @@ export default function CallbackPage() {
   const { t } = useTranslation('login')
   const { t: tProcessing } = useTranslation('step-upProcessing')
   const exchangeStartedRef = useRef(false)
-  const isCO = getState() === 'co'
+  const { showLoadingInterstitial } = getStateConfig(getState())
 
   const isProofedReEntry = useMemo(
     () => hasIal1Plus(session) && isIdProofingCompletionFresh(session),
@@ -131,9 +131,9 @@ export default function CallbackPage() {
     }
   }, [isAuthenticated, isLoading, isProofedReEntry, login, router])
 
-  if (isCO) {
+  if (showLoadingInterstitial) {
     return (
-      <CoLoadingScreen
+      <LoadingScreen
         title={tProcessing('title', 'Please wait...')}
         message={tProcessing(
           'body',

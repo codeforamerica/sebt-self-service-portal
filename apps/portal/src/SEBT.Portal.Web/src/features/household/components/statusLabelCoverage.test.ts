@@ -14,7 +14,7 @@ import { PROFILE_STATUS_LABEL_KEYS } from './HouseholdSummary/HouseholdSummary'
  * The status labels carry no `t()` fallback — see .claude/rules/localization.md — so a missing
  * or blank content cell reaches the user directly. i18next returns the key itself when a
  * translation is missing everywhere, and an empty string when the key exists with an empty
- * value. Both render as garbage: a guardian sees the literal text `profileTableStatusUnknown`,
+ * value. Both render as garbage: a guardian sees the literal text `profileTableStatusEnrolled`,
  * or a blank status. Neither throws, so nothing else in the suite would notice.
  *
  * This resolves each key through a real i18next instance configured like the app's, so it
@@ -57,7 +57,7 @@ describe('dashboard status label coverage', () => {
   it('exercises every status label the dashboard can render', () => {
     // Sanity check on the fixture: if a component stops exporting its keys, the loops below
     // would silently pass over an empty list.
-    expect(STATUS_LABEL_KEYS.length).toBe(12)
+    expect(STATUS_LABEL_KEYS.length).toBe(11)
   })
 
   describe.each(STATES)('%s', (state) => {

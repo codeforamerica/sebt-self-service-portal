@@ -52,7 +52,8 @@
     "docs:manifest": "tsx scripts/docs/write-site-manifest.ts",
     "release-notes:generate": "tsx scripts/release-notes/generate.ts",
     "check:cooldown-exclusions": "tsx scripts/security/check-cooldown-exclusions.ts",
-    "test:scripts": "tsx --test \"scripts/**/*.test.ts\" \"aspire-apphost/*.test.mts\" \"aspire-apphost/capabilities/**/*.test.mts\"",
+    "aislop:baseline:prune": "pnpm dlx aislop@0.18.1 baseline prune",
+    "test:scripts": "tsx --test \"scripts/**/*.test.ts\" \".github/workflows/scripts/*.test.js\" \"aspire-apphost/*.test.mts\" \"aspire-apphost/capabilities/**/*.test.mts\"",
     "prepare": "husky || true",
     "aspire:start": "pnpm --dir aspire-apphost run aspire:start",
     "aspire:dc": "pnpm --dir aspire-apphost run aspire:dc",
@@ -66,10 +67,10 @@
   "devDependencies": {
     "concurrently": "^10.0.6",
     "husky": "^9.1.7",
-    "knip": "^6.36.0",
-    "lint-staged": "^17.5.1",
+    "knip": "^6.42.1",
+    "lint-staged": "^17.6.0",
     "rapidoc": "9.3.8",
-    "tsx": "^4.23.13",
+    "tsx": "^4.23.15",
     "yaml": "~2.9.1"
   },
   "engines": {

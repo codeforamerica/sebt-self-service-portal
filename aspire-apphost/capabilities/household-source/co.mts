@@ -17,17 +17,17 @@ function provision(): Promise<HouseholdSourceCapability> {
     requirements: {
       settings: [
         {
-          key: "UseMockHouseholdData",
+          key: "FeatureManagement__use_mock_household_data",
           value: "true",
           why: "Sends the household reads and writes of the portal to MockHouseholdRepository.",
         },
-        // There are 2 mock switches, and both are necessary. UseMockHouseholdData above
-        // belongs to the portal. The switch below belongs to the CO connector. That
+        // There are 2 mock switches, and both are feature flags. use_mock_household_data
+        // belongs to the portal. use_mock_cbms_responses belongs to the CO connector. That
         // connector makes its own CBMS HTTP client, and it needs Cbms:ClientId and
         // Cbms:ClientSecret. Without the switch, the co-cbms-api-ping health check of
         // the connector reports Degraded on a checkout that has no credentials.
         {
-          key: "Cbms__UseMockResponses",
+          key: "FeatureManagement__use_mock_cbms_responses",
           value: "true",
           why: "Stops the CO connector from asking for CBMS credentials that a local checkout does not have.",
         },
