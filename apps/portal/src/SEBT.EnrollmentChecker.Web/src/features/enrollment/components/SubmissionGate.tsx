@@ -48,8 +48,13 @@ export function SubmissionGate({ submission, portalUrl, children }: SubmissionGa
 
   return (
     <>
+      {/* PageColumn's frame without its section: the page below brings its own section padding. */}
       {submission.errorKind === 'rateLimit' && (
-        <Alert variant="error">{getRateLimitErrorMessage(i18n.language)}</Alert>
+        <div className="grid-container">
+          <div className="maxw-mobile-lg margin-x-auto margin-top-4">
+            <Alert variant="error">{getRateLimitErrorMessage(i18n.language)}</Alert>
+          </div>
+        </div>
       )}
       {children}
     </>

@@ -14,6 +14,13 @@ describe('EnrolledSection', () => {
     expect(screen.getByText(/are already enrolled in Summer EBT for 2026/i)).toBeInTheDocument()
   })
 
+  it('titles the section one level below the page heading', () => {
+    render(<EnrolledSection results={enrolled} />)
+    expect(
+      screen.getByRole('heading', { level: 2, name: /are already enrolled/i })
+    ).toBeInTheDocument()
+  })
+
   it('renders enrolled child names', () => {
     render(<EnrolledSection results={enrolled} />)
     expect(screen.getByText(/Jane Doe/i)).toBeInTheDocument()

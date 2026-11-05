@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import {
   completeCheckFlow,
@@ -15,12 +15,14 @@ const COLUMN_MAX_WIDTH = 480
 
 test.use({ viewport: { width: 1419, height: 858 } })
 
-async function expectContentColumn(page: Page): Promise<void> {
-  const heading = page.getByRole('heading', { level: 1 }).first()
-  await expect(heading).toBeVisible()
+async function expectContentColumn(
+  page: Page,
+  content: Locator = page.getByRole('heading', { level: 1 }).first()
+): Promise<void> {
+  await expect(content).toBeVisible()
 
-  const box = await heading.boundingBox()
-  expect(box, 'h1 has a bounding box').not.toBeNull()
+  const box = await content.boundingBox()
+  expect(box, 'content has a bounding box').not.toBeNull()
   const { x, width } = box!
 
   // Measure against the layout width, not the viewport: a scrollbar narrows it.
@@ -72,6 +74,23 @@ test.describe('Content column', () => {
     await mockCheckResults(page, [makeResult()])
     await completeCheckFlow(page)
     await expectContentColumn(page)
+  })
+
+  test('rate-limit alert', async ({ page }) => {
+    await page.route('**/api/enrollment/check', (route) => route.fulfill({ status: 429 }))
+    await startCheckFlow(page)
+    await fillChildForm(page, {
+      firstName: 'Jane',
+      lastName: 'Doe',
+      month: '4',
+      day: '12',
+      year: '2015'
+    })
+    await page.getByRole('button', { name: /continue/i }).click()
+    await page.waitForURL('**/review')
+    await page.getByRole('button', { name: /submit/i }).click()
+    // Scoped to main: Next's route announcer is also role="alert".
+    await expectContentColumn(page, page.getByRole('main').getByRole('alert'))
   })
 
   test('closed-season landing page', async ({ page }) => {

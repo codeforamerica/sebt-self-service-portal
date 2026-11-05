@@ -10,7 +10,7 @@ export function EnrolledSection({ results }: { results: ChildCheckApiResponse[] 
 
   return (
     <section data-testid="enrolled-summary-box">
-      <h4 className="usa-summary-box__heading">{t('streamlinedEnrolledBody1')}</h4>
+      <h2 className="usa-summary-box__heading">{t('streamlinedEnrolledBody1')}</h2>
       <div className="usa-summary-box__text">
         <ul>
           {results.map((child) => (

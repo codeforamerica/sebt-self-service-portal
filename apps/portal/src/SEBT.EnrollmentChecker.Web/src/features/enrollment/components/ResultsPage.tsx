@@ -208,7 +208,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
           data-testid="no-info-summary-box"
         >
           <section>
-            <h4 className="usa-summary-box__heading">{t('noneBody1')}</h4>
+            <h2 className="usa-summary-box__heading">{t('noneBody1')}</h2>
             <div className="usa-summary-box__text">
               <ul>
                 {errors.map((child) => (
@@ -304,7 +304,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
                    interrupt screen readers. */
                 <div className="usa-alert usa-alert--success margin-top-4">
                   <div className="usa-alert__body">
-                    <h2 className="usa-alert__heading font-family-sans font-sans-md">
+                    <h2 className="usa-alert__heading font-family-sans font-sans-md line-height-sans-2">
                       {t('streamlinedEnrolledAlertTitle')}
                     </h2>
                     <div className="usa-alert__text">
