@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth/context'
 import { isDebugRepeatOidcStepUp } from '@/lib/ial-guard-config'
 import { hasIal1Plus, isIdProofingCompletionFresh } from '@/lib/jwt'
 import { useRuntimeConfig } from '@/providers'
-import { Button, getState, getStateConfig, SummaryBox } from '@sebt/design-system'
+import { Button, PageHeading, SummaryBox, getState, getStateConfig } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -106,12 +106,12 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
             aria-busy="true"
             aria-labelledby="ial-guard-checking-title"
           >
-            <h1
+            <PageHeading
               id="ial-guard-checking-title"
               className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
             >
               {checkingCopy.title}
-            </h1>
+            </PageHeading>
             <div
               role="status"
               aria-live="polite"
@@ -131,12 +131,12 @@ export function IalGuard({ children, requiredIal = STEP_UP_REQUIRED_IAL }: IalGu
       <div className="usa-section">
         <div className="grid-container maxw-tablet">
           <section aria-labelledby="ial-guard-challenge-title">
-            <h1
+            <PageHeading
               id="ial-guard-challenge-title"
               className="font-heading-lg text-primary margin-bottom-3 line-height-sans-1"
             >
               {tDisclaimer('title')}
-            </h1>
+            </PageHeading>
             <p className="font-sans-sm margin-bottom-3">{tDisclaimer('body')}</p>
             <div className="display-flex flex-row flex-wrap flex-gap-2 margin-top-3">
               <Button

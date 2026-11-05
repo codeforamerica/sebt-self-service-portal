@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { usePageFocusState } from '@sebt/design-system/src/components/ui/PageFocusProvider'
+
 import { AppShell } from './AppShell'
 
 const mockPathname = vi.fn(() => '/login')
@@ -75,5 +77,32 @@ describe('AppShell', () => {
     expect(screen.getByTestId('site-footer')).toBeInTheDocument()
     expect(screen.queryByTestId('beta-banner')).not.toBeInTheDocument()
     expect(screen.getByText('Outage page')).toBeInTheDocument()
+  })
+})
+
+describe('AppShell page focus', () => {
+  function FocusProbe() {
+    const state = usePageFocusState()
+    return <div>{state ? 'focus state provided' : 'focus state missing'}</div>
+  }
+
+  it('makes the main landmark a programmatic focus target for the skip link', () => {
+    render(
+      <AppShell state="dc">
+        <div>Portal page</div>
+      </AppShell>
+    )
+
+    expect(document.getElementById('main-content')).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('provides page focus state to the routed content', () => {
+    render(
+      <AppShell state="dc">
+        <FocusProbe />
+      </AppShell>
+    )
+
+    expect(screen.getByText('focus state provided')).toBeInTheDocument()
   })
 })

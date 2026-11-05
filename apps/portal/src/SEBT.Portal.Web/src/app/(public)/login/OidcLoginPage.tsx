@@ -2,7 +2,7 @@
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import type { StateCode } from '@sebt/design-system'
-import { RichText, TextLink, getStateConfig, getStateLinks } from '@sebt/design-system'
+import { PageHeading, RichText, TextLink, getStateConfig, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
 function splitParagraphs(text: string): string[] {
@@ -46,12 +46,12 @@ export function OidcLoginPage({ state }: { state: StateCode }) {
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
         <section aria-labelledby="login-title">
-          <h1
+          <PageHeading
             id="login-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3 text-primary"
           >
             {t('title')}
-          </h1>
+          </PageHeading>
 
           <p className="margin-top-4 font-sans-sm">
             <RichText inline>{t('logInDisclaimerBody1')}</RichText>

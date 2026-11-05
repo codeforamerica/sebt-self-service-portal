@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@sebt/design-system'
+import { Button, PageHeading } from '@sebt/design-system'
 
 interface DocVerifyInterstitialProps {
   allowIdRetry: boolean
@@ -26,12 +26,12 @@ export function DocVerifyInterstitial({
 
   return (
     <section aria-labelledby="doc-verify-title">
-      <h1
+      <PageHeading
         id="doc-verify-title"
         className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
       >
         {tOffboard('title')}
-      </h1>
+      </PageHeading>
 
       <p className="font-sans-sm">{tOffboard('body1')}</p>
 

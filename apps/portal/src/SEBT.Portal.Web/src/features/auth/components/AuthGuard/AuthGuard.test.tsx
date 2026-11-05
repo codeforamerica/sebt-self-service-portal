@@ -103,7 +103,7 @@ describe('AuthGuard', () => {
       </AuthGuard>
     )
 
-    expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('status')).not.toHaveAttribute('aria-busy')
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument()
     expect(mockReplace).not.toHaveBeenCalled()
   })

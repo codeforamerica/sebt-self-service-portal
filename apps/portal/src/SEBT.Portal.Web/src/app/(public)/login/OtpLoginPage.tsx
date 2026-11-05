@@ -1,7 +1,7 @@
 'use client'
 
 import { LoginForm } from '@/features/auth'
-import { TextLink, getStateLinks, type StateCode } from '@sebt/design-system'
+import { PageHeading, type StateCode, TextLink, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
 export function OtpLoginPage({ state }: { state: StateCode }) {
@@ -12,12 +12,12 @@ export function OtpLoginPage({ state }: { state: StateCode }) {
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
         <section aria-labelledby="login-title">
-          <h1
+          <PageHeading
             id="login-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
           >
             {t('title')}
-          </h1>
+          </PageHeading>
 
           <p className="margin-top-4 font-sans-sm">{t('body')}</p>
           <LoginForm />
