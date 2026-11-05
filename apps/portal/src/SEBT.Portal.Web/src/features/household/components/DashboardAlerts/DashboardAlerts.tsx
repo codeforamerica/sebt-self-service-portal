@@ -10,7 +10,26 @@ import { clearReplacementFlash, getReplacementFlash } from '@/features/cards/uti
 import { useHouseholdData } from '@/features/household'
 
 import type { Address } from '../../api'
+import { hasUndeliverableCard } from '../../api'
 import { fillReplacementHeading } from './replacementHeading'
+
+const ADDRESS_CHECK_DISMISSED_KEY = 'dashboard_addressCheckDismissed'
+
+function readAddressCheckDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(ADDRESS_CHECK_DISMISSED_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function rememberAddressCheckDismissed(): void {
+  try {
+    sessionStorage.setItem(ADDRESS_CHECK_DISMISSED_KEY, 'true')
+  } catch {
+    // Storage unavailable (e.g. private mode): the dismissal still holds until reload.
+  }
+}
 
 /** Renders a mailing address as stacked lines. */
 function AddressLines({ address }: { address: Address }) {
@@ -33,9 +52,9 @@ function AddressLines({ address }: { address: Address }) {
  * persists (rendering is driven by captured state, not live params). The card-replacement
  * success body reads the household cache for the address to avoid PII in URL params.
  *
- * Triggers are URL params today. The address-verification ("check your mailing address")
- * alert will eventually be driven by a backend returned-mail signal; until that data
- * exists, any producer can deep-link to /dashboard?addressVerification=true.
+ * The address-verification ("Is your address correct?") alert also appears whenever a card
+ * is Undeliverable, and can be deep-linked with /dashboard?addressVerification=true.
+ * Dismissing it lasts for the browser session.
  */
 export function DashboardAlerts() {
   const { t, i18n } = useTranslation('dashboard')
@@ -64,25 +83,32 @@ export function DashboardAlerts() {
     clearReplacementFlash()
   }, [])
 
-  // "Yes, this is my address" dismisses the check-address prompt in place. There is no
-  // backend acknowledgment yet, so this is local-only.
-  const [addressVerifyDismissed, setAddressVerifyDismissed] = useState(false)
+  // No backend acknowledgment exists, so "Yes, this is my address" is remembered per session.
+  const [addressVerifyDismissed, setAddressVerifyDismissed] = useState(readAddressCheckDismissed)
+  const dismissAddressVerify = () => {
+    rememberAddressCheckDismissed()
+    setAddressVerifyDismissed(true)
+  }
 
-  const hasAlerts =
+  const showAddressVerification =
+    (alerts.addressVerification || hasUndeliverableCard(householdData?.summerEbtCases ?? [])) &&
+    !addressVerifyDismissed
+
+  const hasStatusAlerts =
     alerts.addressUpdated ||
     alerts.cardReplaced ||
     alerts.contactUpdated ||
     alerts.addressUpdateFailed ||
-    alerts.contactUpdateFailed ||
-    alerts.addressVerification
+    alerts.contactUpdateFailed
+  const hasUrlParams = hasStatusAlerts || alerts.addressVerification
 
   useEffect(() => {
-    if (hasAlerts) {
+    if (hasUrlParams) {
       router.replace(pathname, { scroll: false })
     }
-  }, [hasAlerts, router, pathname])
+  }, [hasUrlParams, router, pathname])
 
-  if (!hasAlerts) {
+  if (!hasStatusAlerts && !showAddressVerification) {
     return null
   }
 
@@ -121,17 +147,17 @@ export function DashboardAlerts() {
         <Alert variant="warning">{t('alertContactUpdateError')}</Alert>
       )}
 
-      {alerts.addressVerification && !addressVerifyDismissed && (
+      {showAddressVerification && (
         <Alert
           variant="warning"
           heading={t('alertCheckAddressTitle')}
         >
-          {t('alertCheckAddressBody')}
           {householdData?.addressOnFile && <AddressLines address={householdData.addressOnFile} />}
+          <span className="display-block margin-top-1">{t('alertCheckAddressBody')}</span>
           <Button
             variant="unstyled"
             className="display-block margin-top-2"
-            onClick={() => setAddressVerifyDismissed(true)}
+            onClick={dismissAddressVerify}
           >
             {t('alertCheckAddressLink1')}
           </Button>
