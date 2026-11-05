@@ -10,6 +10,7 @@ import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
 import { useEnrollment, type Child } from '../context/EnrollmentContext'
 import type { ChildFormValues } from '../schemas/childSchema'
 import { ChildForm } from './ChildForm'
+import { RequiredFieldsNote } from '@sebt/design-system'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ChildFormPageProps {
@@ -95,7 +96,7 @@ export function ChildFormPage({
         )}
         <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t(titleKey)) : t(titleKey)}</h1>
         <p className="usa-prose">{t(bodyKey)}</p>
-        <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
+        <RequiredFieldsNote text={t('requiredFields', { ns: 'common' })} />
         <ChildForm
           {...(editingChild && { initialValues: editingChild })}
           onSubmit={handleSubmit}
