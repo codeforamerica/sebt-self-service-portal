@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
+using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Helpers;
 using SEBT.Portal.Infrastructure.Services;
@@ -15,19 +16,30 @@ namespace SEBT.Portal.Tests.Unit.Services;
 /// <seealso cref="SqlServerTestFixture"/>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
-public class PiiPlaintextEncryptionBackfillTests : IClassFixture<SqlServerTestFixture>
+public class PiiPlaintextEncryptionBackfillTests : IAsyncLifetime
 {
     private readonly SqlServerTestFixture _fixture;
+    private string _connectionString = null!;
 
     public PiiPlaintextEncryptionBackfillTests(SqlServerTestFixture fixture)
     {
         _fixture = fixture;
     }
 
+    // Isolated database: the backfill rewrites every legacy row, so other classes' rows would change its decrypt order.
+    public async Task InitializeAsync()
+    {
+        _connectionString = await _fixture.GetIsolatedDatabaseAsync(nameof(PiiPlaintextEncryptionBackfillTests));
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
+    private PortalDbContext CreateContext() => SqlServerTestFixture.CreateContext(_connectionString);
+
     [Fact]
     public async Task ApplyAsync_invokedTwice_leaves_stable_envelopes_and_hashes()
     {
-        using var db = _fixture.CreateContext();
+        using var db = CreateContext();
         var email = $"backfill-twice-{Guid.NewGuid()}@example.com";
 
         var user = UserFactory.CreateUserEntity(e =>
@@ -55,7 +67,7 @@ public class PiiPlaintextEncryptionBackfillTests : IClassFixture<SqlServerTestFi
 
         async Task ApplyBackfillOnFreshContextAsync()
         {
-            using var fresh = _fixture.CreateContext();
+            using var fresh = CreateContext();
             var backfill = new PiiPlaintextEncryptionBackfill(
                 fresh,
                 TestPortalCryptography.PiiSymmetricEncryption,
@@ -110,7 +122,7 @@ public class PiiPlaintextEncryptionBackfillTests : IClassFixture<SqlServerTestFi
     [Fact]
     public async Task ApplyAsync_whenDecryptFails_doesNotPartiallyCommitBatch()
     {
-        using var seedDb = _fixture.CreateContext();
+        using var seedDb = CreateContext();
         var firstEmail = $"backfill-fail-first-{Guid.NewGuid()}@example.com";
         var secondEmail = $"backfill-fail-second-{Guid.NewGuid()}@example.com";
 
@@ -133,7 +145,7 @@ public class PiiPlaintextEncryptionBackfillTests : IClassFixture<SqlServerTestFi
             inner: TestPortalCryptography.PiiSymmetricEncryption,
             throwOnCall: 2);
 
-        using var runDb = _fixture.CreateContext();
+        using var runDb = CreateContext();
         var backfill = new PiiPlaintextEncryptionBackfill(
             runDb,
             throwingCrypto,
@@ -142,7 +154,7 @@ public class PiiPlaintextEncryptionBackfillTests : IClassFixture<SqlServerTestFi
 
         await Assert.ThrowsAsync<PiiDecryptException>(() => backfill.ApplyAsync());
 
-        using var verifyDb = _fixture.CreateContext();
+        using var verifyDb = CreateContext();
         var users = await verifyDb.Users
             .Where(u => u.Email == firstEmail || u.Email == secondEmail)
             .OrderBy(u => u.Email)
