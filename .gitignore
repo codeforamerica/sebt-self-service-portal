@@ -13,6 +13,10 @@
 
 scripts/scratch/
 
+## aislop per-developer state (score history, agent-hook baseline)
+.aislop/history.jsonl
+.aislop/baseline.json
+
 # Generated TLS certs for local Redis dev (see scripts/dev/gen-redis-certs.sh)
 certs/
 

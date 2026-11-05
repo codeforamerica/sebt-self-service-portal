@@ -1,4 +1,5 @@
 using SEBT.Portal.Core.StateBackends.Configuration;
+using SEBT.Portal.Core.StateBackends.Configuration.Auth;
 using SEBT.Portal.Core.StateBackends.Configuration.Operations;
 using SEBT.Portal.Infrastructure.StateBackends.Mapping;
 
@@ -13,6 +14,9 @@ internal static class StateBackendConfigurationValidator
     public static void Validate(StateBackendConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
+
+        RequireUrlOrRef(configuration.BaseUrl, configuration.BaseUrlRef, "baseUrl");
+        ValidateAuth(configuration.Auth);
 
         StateBackendResponseMapper.ValidateFieldMappings(configuration);
         StateBackendResponseMapper.ValidateEnumTables(configuration);
@@ -41,6 +45,33 @@ internal static class StateBackendConfigurationValidator
         }
 
         ValidateJsonPaths(operations);
+    }
+
+    private static void ValidateAuth(StateBackendAuthScheme auth)
+    {
+        if (auth is not StateBackendOAuthClientCredentialsAuthScheme clientCredentials)
+        {
+            return;
+        }
+
+        RequireUrlOrRef(clientCredentials.TokenUrl, clientCredentials.TokenUrlRef, "tokenUrl");
+
+        bool hasClientId = !string.IsNullOrWhiteSpace(clientCredentials.ClientId);
+        bool hasClientIdRef = !string.IsNullOrWhiteSpace(clientCredentials.ClientIdRef);
+        if (hasClientId == hasClientIdRef)
+        {
+            throw new InvalidOperationException(
+                "Auth scheme 'client_credentials' must set exactly one of 'clientId' or 'clientIdRef'.");
+        }
+    }
+
+    private static void RequireUrlOrRef(Uri? url, string? urlRef, string fieldName)
+    {
+        if (url is null && string.IsNullOrWhiteSpace(urlRef))
+        {
+            throw new InvalidOperationException(
+                $"Config must set '{fieldName}', '{fieldName}Ref', or both.");
+        }
     }
 
     private static void RejectIncompleteWrite(StateBackendOperationConfig? operation, string operationName)
