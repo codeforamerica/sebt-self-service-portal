@@ -26,23 +26,11 @@ export async function addApi(
   builder: DistributedApplicationBuilder,
   config: AppHostConfig,
   shared: PortalDatabase,
+  options: { jwtSecretSupplied: boolean },
 ): Promise<ProjectResource> {
-  // JwtSettings.SecretKey is empty in appsettings.json. The key is [Required], and it has
-  // a minimum of 32 characters. Thus the API fails its options validation at start,
-  // unless the gitignored appsettings.Development.json gives a value.
-  //
-  // Aspire makes this value, and this module does not write one. Thus no repository holds
-  // a signing key. A token from before a restart is not valid after the restart. This is
-  // not a problem on a local machine, because a token expires in 15 minutes.
-  const jwtSecret = await builder.addParameterWithGeneratedValue(
-    "jwt-secret",
-    { minLength: 64, lower: true, upper: true, numeric: true },
-    { secret: true },
-  );
-
   // The `http` launch profile gives ASPNETCORE_ENVIRONMENT and
   // Seeding__EnableDevEndpoints. Thus this module does not set them again.
-  return builder
+  const api = await builder
     .addProject(
       "api",
       resolve(
@@ -53,7 +41,6 @@ export async function addApi(
     )
     .withEnvironment("STATE", config.state)
     .withEnvironment("ConnectionStrings__DefaultConnection", shared.portalDb)
-    .withEnvironment("JwtSettings__SecretKey", jwtSecret)
     // PluginAssemblyPaths is not here. The connector build capability stages the DLLs,
     // and it gives the path. Read ../capabilities/connector-build/contract.mts.
     //
@@ -61,6 +48,25 @@ export async function addApi(
     // runs after the web applications exist, because all 3 of them export. Read
     // ../capabilities/telemetry/contract.mts.
     .waitFor(shared.portalDb);
+
+  // Doppler supplies the signing key when it is in use, and the API must get one value only.
+  if (!options.jwtSecretSupplied) {
+    // JwtSettings.SecretKey is empty in appsettings.json. The key is [Required], and it has
+    // a minimum of 32 characters. Thus the API fails its options validation at start,
+    // unless the gitignored appsettings.Development.json gives a value.
+    //
+    // Without Doppler, Aspire makes this value, and this module does not write one. Thus no
+    // repository holds a signing key. A token from before a restart is not valid after the
+    // restart. This is not a problem on a local machine, because a token expires in 15 minutes.
+    const jwtSecret = await builder.addParameterWithGeneratedValue(
+      "jwt-secret",
+      { minLength: 64, lower: true, upper: true, numeric: true },
+      { secret: true },
+    );
+    await api.withEnvironment("JwtSettings__SecretKey", jwtSecret);
+  }
+
+  return api;
 }
 
 export async function addWebApps(

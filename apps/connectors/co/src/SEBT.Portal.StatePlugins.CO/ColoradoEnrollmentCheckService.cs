@@ -124,6 +124,9 @@ public class ColoradoEnrollmentCheckService : ColoradoCbmsServiceBase, IEnrollme
 
         if (options.UseMockResponses)
         {
+            _logger.LogWarning(
+                "CBMS enrollment check served from mock responses. Feature flag {FeatureFlag} is enabled.",
+                CbmsOptionsHelper.UseMockResponsesFlagName);
             return BuildMockResult(request.Children);
         }
 
@@ -372,7 +375,7 @@ public class ColoradoEnrollmentCheckService : ColoradoCbmsServiceBase, IEnrollme
             : null;
 
     /// <summary>
-    /// Returns a hardcoded result set when <c>Cbms:UseMockResponses</c> is enabled.
+    /// Returns a hardcoded result set when the <c>use_mock_cbms_responses</c> feature flag is enabled.
     /// Children with the last name "Wibert" (case-insensitive) are returned as Match
     /// with 95% confidence; all others are NonMatch.
     /// Test persona: first name "Dimple", last name "Wibert".

@@ -82,6 +82,17 @@ describe('InputField', () => {
       expect(screen.getByText('*')).toBeInTheDocument()
       expect(screen.getByRole('textbox')).toHaveAttribute('aria-required', 'true')
     })
+
+    it('should render the required indicator in the error color', () => {
+      render(
+        <InputField
+          label="Required field"
+          isRequired
+        />
+      )
+
+      expect(screen.getByText('*')).toHaveClass('text-error')
+    })
   })
 
   describe('Hint Text', () => {

@@ -12,9 +12,21 @@ import { connectorBuildProviderFor } from "./capabilities/connector-build/contra
 import type { ConnectorBuildProvider } from "./capabilities/connector-build/contract.mjs";
 import { householdSourceProviderFor } from "./capabilities/household-source/contract.mjs";
 import type { HouseholdSourceProvider } from "./capabilities/household-source/contract.mjs";
+import type { DeveloperSecrets } from "./capabilities/developer-secrets/doppler.mjs";
+import {
+  assertNoCapabilityOverlap,
+  jwtSecretKey,
+  routeSecrets,
+} from "./capabilities/developer-secrets/routing.mjs";
+import type { RoutedSecrets } from "./capabilities/developer-secrets/routing.mjs";
+import { developerSecretSettings } from "./capabilities/developer-secrets/settings.mjs";
 import {
   applyRequirements,
   runPreflight,
+} from "./capabilities/requirements.mjs";
+import type {
+  CapabilityTargets,
+  Requirements,
 } from "./capabilities/requirements.mjs";
 import { signInProviderFor } from "./capabilities/sign-in/contract.mjs";
 import type { SignInProvider } from "./capabilities/sign-in/contract.mjs";
@@ -80,21 +92,40 @@ export async function runCapabilityPreflight(
 export async function composeGraph(
   builder: DistributedApplicationBuilder,
   config: AppHostConfig,
+  developerSecrets: DeveloperSecrets,
 ): Promise<void> {
   const { cache, connectorBuild, householdSource, signIn, telemetry } =
     capabilitiesFor(config.state);
 
+  // Each key a capability sets, so the Doppler secrets can be checked against them.
+  const capabilityKeys: string[] = [];
+  const apply = async (
+    targets: CapabilityTargets,
+    capability: string,
+    requirements: Requirements,
+  ): Promise<void> => {
+    for (const setting of [...requirements.settings, ...(requirements.portalSettings ?? [])]) {
+      capabilityKeys.push(setting.key);
+    }
+    await applyRequirements(targets, capability, requirements);
+  };
+
+  const routed = routeDeveloperSecrets(developerSecrets);
+  const secretSettings = await developerSecretSettings(builder, routed);
+
   const database = await addPortalDatabase(builder, config);
-  const api = await addApi(builder, config, database);
+  const api = await addApi(builder, config, database, {
+    jwtSecretSupplied: secretSettings.api.some((setting) => setting.key === jwtSecretKey),
+  });
 
   const cacheCapability = await cache.provision({ builder, config });
-  await applyRequirements({ api }, "cache", cacheCapability.requirements);
+  await apply({ api }, "cache", cacheCapability.requirements);
 
   const connectorBuildCapability = await connectorBuild.provision({
     builder,
     config,
   });
-  await applyRequirements(
+  await apply(
     { api },
     "connector-build",
     connectorBuildCapability.requirements,
@@ -105,14 +136,14 @@ export async function composeGraph(
     config,
     saPassword: database.saPassword,
   });
-  await applyRequirements(
+  await apply(
     { api },
     "household-source",
     householdSourceCapability.requirements,
   );
 
   const signInCapability = await signIn.provision({ builder, config });
-  await applyRequirements({ api }, "sign-in", signInCapability.requirements);
+  await apply({ api }, "sign-in", signInCapability.requirements);
 
   const apps = await addWebApps(builder, config, api);
 
@@ -123,16 +154,40 @@ export async function composeGraph(
     web: apps.web,
     checker: apps.checker,
   });
-  await applyRequirements({ api }, "telemetry", telemetryCapability.requirements);
+  await apply({ api }, "telemetry", telemetryCapability.requirements);
 
   // This is last, because it is the one part of the wiring that reads the endpoint of
   // the portal. The realm of CO redirects back to that endpoint. Thus neither side can
   // hold a fixed port.
   if (signInCapability.bindPortal) {
-    await applyRequirements(
+    await apply(
       { api, portal: apps.web },
       "sign-in portal binding",
       await signInCapability.bindPortal(apps.web),
     );
   }
+
+  // After every capability, so the check sees each key they set.
+  if (secretSettings.api.length + secretSettings.web.length > 0) {
+    assertNoCapabilityOverlap(routed, capabilityKeys);
+    await applyRequirements({ api, portal: apps.web }, "developer-secrets", {
+      settings: secretSettings.api,
+      portalSettings: secretSettings.web,
+      waits: [],
+    });
+  }
+}
+
+function routeDeveloperSecrets(developerSecrets: DeveloperSecrets): RoutedSecrets {
+  if (developerSecrets.source !== "doppler") {
+    return { api: [], web: [], notForwarded: [] };
+  }
+
+  const routed = routeSecrets(developerSecrets.values);
+  if (routed.notForwarded.length > 0) {
+    console.log(
+      `[secrets] Doppler keys not forwarded (add them to capabilities/developer-secrets/routing.mts to use them): ${routed.notForwarded.join(", ")}`,
+    );
+  }
+  return routed;
 }

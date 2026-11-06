@@ -19,6 +19,12 @@ export const supportedStates: readonly SupportedState[] = ["dc", "co"];
 /** The repository root, from the aspire-apphost directory. */
 export const repoRoot = resolve(import.meta.dirname, "..");
 
+/** The Doppler project that holds local development secrets. A team with its own project changes this. */
+export const dopplerProject = "safety-net-sebt-self-service-portal";
+
+/** The only Doppler environment the AppHost loads, so deployed keys never reach a laptop. */
+export const dopplerEnvironment = "local";
+
 export interface AppHostConfig {
   /** The state whose resource graph this AppHost composes. */
   state: SupportedState;
@@ -41,6 +47,24 @@ export interface AppHostConfig {
    * worse than no address.
    */
   dashboardOtlpEndpoint: string | undefined;
+  /** Whether to load secrets from Doppler when this repo is set up for it. USE_DOPPLER=false turns it off. */
+  useDoppler: boolean;
+}
+
+/** Reads USE_DOPPLER: unset or empty uses Doppler when it is set up, and `false` or `0` turns it off. */
+export function parseUseDoppler(raw: string | undefined): boolean {
+  const value = (raw ?? "").trim().toLowerCase();
+
+  if (value === "") {
+    return true;
+  }
+  if (value === "false" || value === "0") {
+    return false;
+  }
+
+  throw new Error(
+    `USE_DOPPLER must be false or 0 to turn Doppler off, or unset to use Doppler when it is set up, but was '${raw}'.`,
+  );
 }
 
 function resolveState(): SupportedState {
@@ -82,5 +106,6 @@ export function loadConfig(): AppHostConfig {
     redisPassword: process.env.REDIS_PASSWORD ?? "LocalDevRedis1!",
     dcConnectorPath: resolveDcConnectorPath(state),
     dashboardOtlpEndpoint: process.env.ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL,
+    useDoppler: parseUseDoppler(process.env.USE_DOPPLER),
   };
 }

@@ -15,7 +15,7 @@ namespace SEBT.Portal.Tests.Unit.Repositories;
 /// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
-public class DatabaseDocVerificationChallengeRepositoryTests : IClassFixture<SqlServerTestFixture>
+public class DatabaseDocVerificationChallengeRepositoryTests
 {
     private readonly SqlServerTestFixture _fixture;
 

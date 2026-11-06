@@ -58,9 +58,9 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
                     continue;
                 }
 
-                // OTP bypass, diagnostic endpoints, and the configurable-backend switch stay
-                // gated server-side via IFeatureManager. Do not advertise their state on the
-                // anonymous features payload.
+                // OTP bypass, diagnostic endpoints, the configurable-backend switch, and the
+                // mock-data switches stay gated server-side. Do not advertise their state on
+                // the anonymous features payload.
                 if (!IsClientExposedFeatureFlag(featureName))
                 {
                     continue;
@@ -147,6 +147,8 @@ public class FeatureFlagQueryService : IFeatureFlagQueryService
         return name is not (
             FeatureFlags.UseConfigurableStateBackend
             or FeatureFlags.BypassOtp
-            or FeatureFlags.TestErrorEndpointsEnabled);
+            or FeatureFlags.TestErrorEndpointsEnabled
+            or FeatureFlags.UseMockHouseholdData
+            or FeatureFlags.UseMockCbmsResponses);
     }
 }

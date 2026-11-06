@@ -205,6 +205,47 @@ public class StateBackendOAuthClientCredentialsAuthHandlerTests
         mockHttp.VerifyNoOutstandingExpectation();
     }
 
+    [Fact]
+    public async Task ClientIdRefConfigured_SendsResolvedClientId_InTokenRequestForm()
+    {
+        // Arrange
+        StateBackendOAuthClientCredentialsAuthScheme scheme = BuildScheme() with
+        {
+            ClientId = null,
+            ClientIdRef = "StateBackend:Auth:ClientId",
+        };
+        var resolver = new DictionarySecretResolver(new Dictionary<string, string>
+        {
+            ["StateBackend:Auth:ClientId"] = "resolved-client",
+            ["StateBackend:Auth:ClientSecret"] = "client-secret-value",
+        });
+
+        var mockHttp = new MockHttpMessageHandler();
+        mockHttp
+            .Expect(HttpMethod.Post, "http://backend.test/oauth/token")
+            .WithFormData("client_id", "resolved-client")
+            .WithFormData("client_secret", "client-secret-value")
+            .Respond("application/json", "{\"access_token\":\"token-abc\",\"token_type\":\"Bearer\",\"expires_in\":3600}");
+        mockHttp
+            .Expect(HttpMethod.Get, "http://backend.test/data")
+            .Respond(HttpStatusCode.OK);
+
+        var handler = new StateBackendOAuthClientCredentialsAuthHandler(
+            scheme,
+            resolver,
+            mockHttp.ToHttpClient())
+        {
+            InnerHandler = mockHttp,
+        };
+        var client = new HttpClient(handler);
+
+        // Act
+        await client.GetAsync("http://backend.test/data");
+
+        // Assert
+        mockHttp.VerifyNoOutstandingExpectation();
+    }
+
     private static HttpClient BuildClientWithTokenBody(string tokenBody)
     {
         var mockHttp = new MockHttpMessageHandler();
@@ -344,5 +385,11 @@ public class StateBackendOAuthClientCredentialsAuthHandlerTests
     private sealed class StubSecretResolver(string value) : IStateBackendSecretResolver
     {
         public string Resolve(string reference) => value;
+    }
+
+    private sealed class DictionarySecretResolver(IReadOnlyDictionary<string, string> values)
+        : IStateBackendSecretResolver
+    {
+        public string Resolve(string reference) => values[reference];
     }
 }

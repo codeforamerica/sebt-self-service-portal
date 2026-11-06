@@ -40,6 +40,8 @@ jobs:
       # the same variables the image build used to take as --build-arg inputs. A
       # config that does not declare one (dev-co has no Socure DI) ignores it.
       TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
+      TF_VAR_application_url: ${{ vars.APPLICATION_URL }}
+      TF_VAR_application_url_peak_params: ${{ vars.APPLICATION_URL_PEAK_PARAMS }}
       TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
       TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
       TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
@@ -58,7 +60,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
 

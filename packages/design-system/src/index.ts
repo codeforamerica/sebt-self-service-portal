@@ -24,6 +24,8 @@ export { TextLink } from './components/ui/TextLink'
 export type { TextLinkProps } from './components/ui/TextLink'
 export { SummaryBox } from './components/ui/SummaryBox'
 export type { SummaryBoxProps } from './components/ui/SummaryBox'
+export { RequiredFieldsNote } from './components/ui/RequiredFieldsNote'
+export type { RequiredFieldsNoteProps } from './components/ui/RequiredFieldsNote'
 export { LoadingInterstitial } from './components/ui/LoadingInterstitial'
 export type { LoadingInterstitialProps } from './components/ui/LoadingInterstitial'
 export { Spinner } from './components/ui/Spinner'
@@ -48,8 +50,9 @@ export type { OutageFlagCache } from './lib/outageFlagCache'
 export { SkipNav } from './components/layout/SkipNav'
 
 // State configuration
-export type { StateCode, StateConfig } from './lib/state'
+export type { LoginMode, StateCode, StateConfig } from './lib/state'
 export {
+  STATE_CODES,
   getState,
   getStateConfig,
   getStateName,

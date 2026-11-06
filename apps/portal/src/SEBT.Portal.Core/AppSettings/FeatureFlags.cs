@@ -16,8 +16,8 @@ public static class FeatureFlags
         "enrollment_check_requires_at_least_one_exact_matched_field";
 
     /// <summary>
-    /// When enabled (CO), the dashboard may request household data without CBMS FIS card
-    /// details first, then load card fields in a follow-up request. Defaults to false.
+    /// When enabled, the dashboard requests household data without card details (CO's come from
+    /// CBMS FIS) first, then loads them in a follow-up request. Defaults to false; CO turns it on.
     /// </summary>
     public const string DeferEbtCardDataLoading = "defer_ebt_card_data_loading";
 
@@ -100,4 +100,20 @@ public static class FeatureFlags
     /// screening against stale figures.
     /// </summary>
     public const string EnableCheckerIncomeEligibility = "enable_checker_income_eligibility";
+
+    /// <summary>
+    /// When enabled outside Production, household reads and writes use
+    /// <c>MockHouseholdRepository</c> instead of the state connector. Ignored when
+    /// the host is Production. Takes effect on the next request.
+    /// </summary>
+    public const string UseMockHouseholdData = "use_mock_household_data";
+
+    /// <summary>
+    /// When enabled outside Production, the Colorado connector returns mock CBMS
+    /// responses and does not require CBMS credentials. Ignored when
+    /// <c>ASPNETCORE_ENVIRONMENT</c> is Production, matching the host
+    /// default. Takes effect on the next request. The connector reads
+    /// <c>FeatureManagement:use_mock_cbms_responses</c>.
+    /// </summary>
+    public const string UseMockCbmsResponses = "use_mock_cbms_responses";
 }
