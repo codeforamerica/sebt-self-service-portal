@@ -67,9 +67,14 @@ describe('generateSettingsContent', () => {
       'theme-primary': color('{cyan-50}'),
       ...fullSemanticSet
     })
-    const content = generateSettingsContent('dc', variables, 'test-timestamp')
+    const content = generateSettingsContent('dc', variables, 'test-timestamp', 'design/states/dc.json')
     expect(content).toContain("$theme-color-primary: 'cyan-50'")
     expect(content).not.toContain('theme-button-bg')
+  })
+
+  it('names the given source when tokens come from elsewhere', () => {
+    const content = generateSettingsContent('co', [], 'test-timestamp', '$EXTERNAL_TOKENS_DIR_CO/co.json')
+    expect(content).toContain('// Source: $EXTERNAL_TOKENS_DIR_CO/co.json\n')
   })
 })
 
@@ -115,12 +120,16 @@ describe('extractSemanticTokens', () => {
 describe('generateSemanticContent', () => {
   it('emits one SASS variable per token with a do-not-edit header', () => {
     const { variables } = extractSemanticTokens(fullSemanticSet)
-    const content = generateSemanticContent('dc', variables, 'test-timestamp')
+    const content = generateSemanticContent('dc', variables, 'test-timestamp', 'design/states/dc.json')
     expect(content).toContain('DO NOT EDIT DIRECTLY')
     expect(content).toContain("$theme-button-bg: 'secondary';")
     expect(content).toContain("$theme-button-outline-bg-active: 'secondary-light';")
   })
 
+  it('names the given source when tokens come from elsewhere', () => {
+    const content = generateSemanticContent('co', [], 'test-timestamp', '$EXTERNAL_TOKENS_DIR_CO/co.json')
+    expect(content).toContain('// Source: $EXTERNAL_TOKENS_DIR_CO/co.json\n')
+  })
 })
 
 describe('real state token files', () => {
