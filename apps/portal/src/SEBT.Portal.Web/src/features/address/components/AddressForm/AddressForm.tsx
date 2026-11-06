@@ -386,7 +386,7 @@ export function AddressForm({ initialAddress, redirectPath }: AddressFormProps) 
               htmlFor="address-state"
             >
               {tCommon('stateOrTerritory')}
-              <span className="text-secondary-dark"> *</span>
+              <span className="text-error"> *</span>
             </label>
             {fieldErrors.state && (
               <span

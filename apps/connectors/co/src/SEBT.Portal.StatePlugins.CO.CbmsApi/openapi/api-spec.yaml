@@ -1,8 +1,10 @@
 openapi: 3.0.0
 info:
   title: cbms-sebt-eapi
-  description: This RAML defines the different methods used by SEBT External System to interact with CBMS system.
-  version: 1.0.1
+  description:
+    This RAML defines the different methods used by SEBT External System to interact with CBMS
+    system.
+  version: 1.0.22
 paths:
   /ping:
     get:
@@ -60,7 +62,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: ['Y', 'N']
+            enum: ["Y", "N"]
       requestBody:
         content:
           application/json:
@@ -131,8 +133,7 @@ components:
   schemas:
     CheckEnrollmentRequest:
       example:
-        -
-          stdFirstName: John
+        - stdFirstName: John
           stdLastName: Smith
           stdDob: 2012-04-20
           cbmsCsId: C12345
@@ -140,6 +141,7 @@ components:
           stdSchlCd: SCH44
           sebtYear: "2024"
           stdReqInd: REQ-001
+          programYear: [2025, 2026]
       type: array
       items:
         type: object
@@ -172,28 +174,39 @@ components:
           stdReqInd:
             type: string
             pattern: ^(|[^<>{}\[\]]+)$
+          programYear:
+            type: array
+            description: Optional array of years as integers
+            items:
+              type: integer
+              format: int32
+              minimum: 2024
+              maximum: 2125
+            uniqueItems: true
     CheckEnrollmentResponse:
       example:
         respCd: "200"
         respMsg: Success
         stdntDtls:
-          -
-            stdFstNm: John
+          - stdFstNm: John
             stdLstNm: Doe
             stdDob: 2015-05-15
             mtchCnfd: 95
-            stdntEligSts: ELIGIBLE
+            sebtStdSts: OT
+            stdntEligSts: "N"
             sebtYear: "2024"
-            sebtAppId: APP12345
-            sebtChldId: CHLD9876
-            stdReqInd: REQ-001
+            sebtAppSts: RC
+            stdReqInd: "1"
+            phnNum: ""
       type: object
       required:
         - stdntDtls
       properties:
         respCd:
+          description: |
+            00 - Success
+            04 - No Records Found
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         respMsg:
           type: string
           pattern: ^(|[^<>{}\[\]]+)$
@@ -208,24 +221,21 @@ components:
           correlationId: 11174770-a6a1-4949-b216-622e363e872e
           timestamp: 2026-01-30T16:00:35.143Z
           errorDetails:
-            -
-              code: "404"
+            - code: "404"
               message: Not Found
         example_1:
           apiName: cbms-sebt-eapi-impl
           correlationId: 11174770-a6a1-4949-b216-622e363e872e
           timestamp: 2026-01-30T16:00:35.143Z
           errorDetails:
-            -
-              code: "500"
+            - code: "500"
               message: Internal Server Error
         amf_example_1:
           apiName: cbms-sebt-eapi-impl
           correlationId: 11174770-a6a1-4949-b216-622e363e872e
           timestamp: 2026-01-30T16:00:35.143Z
           errorDetails:
-            -
-              code: "400"
+            - code: "400"
               message: Bad Request
       type: object
       properties:
@@ -245,6 +255,7 @@ components:
     GetAccountDetailsRequest:
       example:
         phnNm: "3035550199"
+        programYear: [2025, 2026]
       type: object
       required:
         - phnNm
@@ -252,39 +263,46 @@ components:
         phnNm:
           type: string
           pattern: ^[0-9]{10}$
+        programYear:
+          type: array
+          description: Optional array of years as integers
+          items:
+            type: integer
+            format: int32
+            minimum: 2024
+            maximum: 2125
+          uniqueItems: true
     GetAccountDetailsResponse:
       example:
         stdntEnrollDtls:
-          -
-            gurdFstNm: Jane
+          - gurdFstNm: Jane
             gurdLstNm: Smith
-            gurdPhnNm: 555-0123
+            gurdPhnNm: 970-555-0123
             gurdEmailAddr: jane.smith@example.com
             sebtYear: 2024
             sebtAppId: 556677
             stdFstNm: Johnny
             stdLstNm: Smith
             stdDob: 2016-10-20
-            mtchCnfd: 100
-            stdntEligSts: ENROLLED
-            sebtAppSts: APPROVED
-            eligSrc: DIRECT_CERT
-            sebtChldId: 990011
-            sebtChldCwin: 123456789
-            addrLn1: 123 Maple Avenue
-            addrLn2: Apt 4B
-            cty: Denver
+            stdntEligSts: AP
+            sebtAppSts: ""
+            eligSrc: CDE
+            sebtChldId: 667076
+            sebtChldCwin: 9383037
+            addrLn1: 1541 WATER VISTA LN
+            addrLn2: ""
+            cty: SEVERANCE
             staCd: CO
-            zip: "80202"
-            zip4: "1234"
-            ebtCardLastFour: "4422"
-            benAvalDt: 2024-06-01
-            benExpDt: 2024-08-31
-            ebtCardSts: ACTIVE
-            cardIssDt: 2024-05-20
-            cardBal: 120.50
-            cbmsCsId: C8887727
-            dircElig_src: SNAP
+            zip: "80550"
+            zip4: "2881"
+            ebtCardLastFour: ""
+            benAvalDt: ""
+            benExpDt: ""
+            ebtCardSts: ""
+            cardIssDt: ""
+            cardBal: 0
+            cbmsCsId: ""
+            dircEligSrc: ""
       type: object
       required:
         - stdntEnrollDtls
@@ -323,62 +341,112 @@ components:
       properties:
         sebtChldId:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^\d{1,10}$
+          minLength: 1
+          maxLength: 10
         sebtAppId:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^\d{1,10}$
+          minLength: 1
+          maxLength: 10
         addr:
           $ref: "#/components/schemas/Address"
         reqNewCard:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[TFYNtfyn]?$
+          minLength: 0
+          maxLength: 1
         optOut:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[TFYNtfyn]?$
+          minLength: 0
+          maxLength: 1
         gurdFstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[A-Za-z\-'\s]{1,35}$
+          minLength: 1
+          maxLength: 35
         gurdLstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[A-Za-z\-'\s]{1,40}$
+          minLength: 1
+          maxLength: 40
         gurdEmailAddr:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
-        ntfnOptInSw:
+          pattern: ^[a-zA-Z0-9._%+\-]{1,64}@[a-zA-Z0-9.\-]{1,255}\.[a-zA-Z]{2,10}$
+          minLength: 5
+          maxLength: 100
+        emailNtfnOptInSw:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
-        ntfnSrc:
+          pattern: ^[TFYNtfyn]{1}$
+          minLength: 1
+          maxLength: 1
+        textNtfnOptInSw:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[TFYNtfyn]{1}$
+          minLength: 1
+          maxLength: 1
     CheckEnrollmentStudentDetail:
       type: object
       properties:
         stdFstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         stdLstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         stdDob:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         mtchCnfd:
           type: number
-        stdntEligSts:
+        sebtStdSts:
+          description: |
+            AI - Address Incomplete
+            AM - Application/CDE Mismatch
+            AP - Approved
+            DD - Denied-Duplicate
+            DE - Denied
+            DU - Duplicate
+            OT - Opted Out
+            PD - Potential Duplicate
+            PE - Pending
+            PG - Pending Verification-Good Cause
+            PI - Pending Issuance
+            PN - Processed No Issuance
+            PS - Pending Verification-Sampled
+            PW - Processed With Issuance
+            RC - Received
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         sebtYear:
+          type: integer
+        benAvalDt:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
-        sebtAppId:
+        benExpDt:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
-        sebtChldId:
+        sebtAppSts:
+          description: |
+            AI - Address Incomplete
+            AM - Application/CDE Mismatch
+            AP - Approved
+            DD - Denied-Duplicate
+            DE - Denied
+            DU - Duplicate
+            OT - Opted Out
+            PD - Potential Duplicate
+            PE - Pending
+            PG - Pending Verification-Good Cause
+            PI - Pending Issuance
+            PN - Processed No Issuance
+            PS - Pending Verification-Sampled
+            PW - Processed With Issuance
+            RC - Received
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+        sebtEligSts:
+          description: |
+            Y or N
+          type: string
         stdReqInd:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+        phnNum:
+          type: string
     ErrorDetail:
       type: object
       properties:
@@ -393,106 +461,145 @@ components:
       properties:
         gurdFstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         gurdLstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         gurdPhnNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         gurdEmailAddr:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         sebtYear:
           type: integer
         sebtAppId:
           type: integer
         stdFstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         stdLstNm:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         stdDob:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
-        mtchCnfd:
-          type: number
         stdntEligSts:
+          description: |
+            AI - Address Incomplete
+            AM - Application/CDE Mismatch
+            AP - Approved
+            DD - Denied-Duplicate
+            DE - Denied
+            DU - Duplicate
+            OT - Opted Out
+            PD - Potential Duplicate
+            PE - Pending
+            PG - Pending Verification-Good Cause
+            PI - Pending Issuance
+            PN - Processed No Issuance
+            PS - Pending Verification-Sampled
+            PW - Processed With Issuance
+            RC - Received
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         sebtAppSts:
+          description: |
+            AI - Address Incomplete
+            AM - Application/CDE Mismatch
+            AP - Approved
+            DD - Denied-Duplicate
+            DE - Denied
+            DU - Duplicate
+            OT - Opted Out
+            PD - Potential Duplicate
+            PE - Pending
+            PG - Pending Verification-Good Cause
+            PI - Pending Issuance
+            PN - Processed No Issuance
+            PS - Pending Verification-Sampled
+            PW - Processed With Issuance
+            RC - Received
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         eligSrc:
+          description: |
+            PK - Applied through PEAK
+            DIRC - Directly enrolled as they are receiving MA or FS or CW benefit
+            CDE - Directly Enrolled through CDE
+            CBMS - Telephonic Application
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         sebtChldId:
           type: integer
         sebtChldCwin:
           type: integer
         addrLn1:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         addrLn2:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         cty:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         staCd:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         zip:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         zip4:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         ebtCardLastFour:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         benAvalDt:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         benExpDt:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         ebtCardSts:
+          description: |
+            ACTIVE
+            NOT ACTIVATED
+            FROZEN
+            LOST
+            STOLEN
+            DAMAGED
+            DAMAGED, AUTO REISSUE
+            UNDELIVERABLE
+            RETURNED
+            DEACTIVATED
+            DEACTIVATED, NO REISSUE
+            DEACTIVATED BY STATE
+            DEACTIVATED/CANCELLED
+            CANCELED BY PRIMARY NO REISSUE
+            STATUSED BY STATE, NO REISSUE
+            UNAUTHORIZED USE, NO REISSUE
+            COMPROMISED, NO REISSUE
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         cardIssDt:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         cardBal:
           type: number
         cbmsCsId:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
         dircEligSrc:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
     Address:
       type: object
       properties:
         addrLn1:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          minLength: 1
+          maxLength: 44
         addrLn2:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          maxLength: 44
         cty:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[A-Za-z\s\-]{1,50}$
+          minLength: 1
+          maxLength: 50
         staCd:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[A-Z]{2}$
+          minLength: 2
+          maxLength: 2
         zip:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^\d{5}$
+          minLength: 5
+          maxLength: 5
         zip4:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^\d{4}$
+          minLength: 4
+          maxLength: 4
     UpdateStudentDetailsResponse:
       example:
         respCd: "200"
@@ -500,11 +607,14 @@ components:
       type: object
       properties:
         respCd:
+          description: |
+            00 - Success
+            01 - Error
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[^<>]*$
         respMsg:
           type: string
-          pattern: ^(|[^<>{}\[\]]+)$
+          pattern: ^[^<>]*$
   securitySchemes:
     oauth_2_0:
       type: oauth2
@@ -524,7 +634,7 @@ components:
                 type: any
             body:
               application/json:
-                example: "{\"message\": \"API limit exceeded\"}"
+                example: '{"message": "API limit exceeded"}'
                 type: any
           "403":
             description: Bad or expired token.
@@ -535,7 +645,7 @@ components:
                 type: any
             body:
               application/json:
-                example: "{\"message\": \"API limit exceeded\"}"
+                example: '{"message": "API limit exceeded"}'
                 type: any
       flows:
         authorizationCode:
