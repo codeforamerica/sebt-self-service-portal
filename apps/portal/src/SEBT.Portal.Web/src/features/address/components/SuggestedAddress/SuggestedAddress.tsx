@@ -12,6 +12,7 @@ import {
   PageHeading,
   ProcessingFieldset,
   ProcessingIndicator,
+  RequiredFieldsNote,
   getState,
   getStateConfig
 } from '@sebt/design-system'
@@ -178,7 +179,10 @@ export function SuggestedAddress() {
         </Alert>
       )}
 
-      <p className="font-sans-3xs text-base margin-bottom-0">{tCommon('requiredFields')}</p>
+      <RequiredFieldsNote
+        className="font-sans-3xs margin-bottom-0"
+        text={tCommon('requiredFields')}
+      />
 
       <ProcessingFieldset
         isProcessing={updateAddress.isPending}
@@ -186,7 +190,7 @@ export function SuggestedAddress() {
         legend={
           <>
             {t('suggestedLabelSelect')}
-            <span className="text-secondary-dark"> *</span>
+            <span className="text-error"> *</span>
           </>
         }
       >

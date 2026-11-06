@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { useEnrollment, type Child } from '../context/EnrollmentContext'
 import type { ChildFormValues } from '../schemas/childSchema'
 import { ChildForm } from './ChildForm'
+import { RequiredFieldsNote } from '@sebt/design-system'
 
 interface ChildFormPageProps {
   showSchoolField: boolean
@@ -98,7 +99,7 @@ export function ChildFormPage({
           {isEditMode ? t('editHeading', t(titleKey)) : t(titleKey)}
         </PageHeading>
         <p className="usa-prose">{t(bodyKey)}</p>
-        <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
+        <RequiredFieldsNote text={t('requiredFields', { ns: 'common' })} />
         <ChildForm
           {...(editingChild && { initialValues: editingChild })}
           onSubmit={handleSubmit}

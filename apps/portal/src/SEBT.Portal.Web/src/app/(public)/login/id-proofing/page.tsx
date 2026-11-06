@@ -1,7 +1,7 @@
 'use client'
 
 import { IdProofingWithDi } from '@/features/auth/components/id-proofing/IdProofingWithDi'
-import { PageHeading, getState, getStateLinks } from '@sebt/design-system'
+import { PageHeading, RequiredFieldsNote, getState, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -30,7 +30,10 @@ export default function IdProofingPage() {
 
           <p className="margin-top-0 font-sans-sm">{t('body')}</p>
 
-          <p className="margin-top-2 font-sans-sm">{tCommon('requiredFields')}</p>
+          <RequiredFieldsNote
+            className="margin-top-2 font-sans-sm"
+            text={tCommon('requiredFields')}
+          />
 
           <IdProofingWithDi
             idOptions={DC_ID_OPTIONS}
