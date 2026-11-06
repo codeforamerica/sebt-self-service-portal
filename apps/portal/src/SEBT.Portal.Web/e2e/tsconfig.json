@@ -4,6 +4,6 @@
     "plugins": [],
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../playwright.config.ts"],
+  "include": ["./**/*.ts", "../playwright.config.ts", "../playwright.voiceover.config.ts"],
   "exclude": ["node_modules"]
 }
