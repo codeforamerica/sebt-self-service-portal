@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers;
 using Testcontainers.MsSql;
@@ -12,6 +14,7 @@ namespace SEBT.Portal.Tests.Unit.Repositories;
 public class SqlServerTestFixture : IAsyncLifetime
 {
     private readonly MsSqlContainer _container;
+    private readonly ConcurrentDictionary<string, Lazy<Task<string>>> _isolatedDatabases = new();
 
     public SqlServerTestFixture()
     {
@@ -51,14 +54,46 @@ public class SqlServerTestFixture : IAsyncLifetime
     }
 
     /// <summary>
-    /// Creates a new DbContext instance connected to the test container.
+    /// Creates a new DbContext instance connected to the shared database in the test container.
     /// </summary>
     public PortalDbContext CreateContext()
     {
+        return CreateContext(ConnectionString);
+    }
+
+    /// <summary>
+    /// Creates a new DbContext instance connected to the given database.
+    /// </summary>
+    public static PortalDbContext CreateContext(string connectionString)
+    {
         var options = new DbContextOptionsBuilder<PortalDbContext>()
-            .UseSqlServer(ConnectionString)
+            .UseSqlServer(connectionString)
             .Options;
         return new PortalDbContext(options);
+    }
+
+    /// <summary>
+    /// Returns the connection string for a migrated database, separate from the shared one,
+    /// for tests whose subject reads or deletes every row in a table. The database is created
+    /// on the first call for a given name and reused by later calls.
+    /// </summary>
+    public Task<string> GetIsolatedDatabaseAsync(string databaseName)
+    {
+        return _isolatedDatabases
+            .GetOrAdd(databaseName, name => new Lazy<Task<string>>(() => CreateMigratedDatabaseAsync(name)))
+            .Value;
+    }
+
+    private async Task<string> CreateMigratedDatabaseAsync(string databaseName)
+    {
+        var connectionString = new SqlConnectionStringBuilder(ConnectionString)
+        {
+            InitialCatalog = databaseName
+        }.ConnectionString;
+
+        using var context = CreateContext(connectionString);
+        await context.Database.MigrateAsync();
+        return connectionString;
     }
 }
 

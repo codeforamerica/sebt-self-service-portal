@@ -1731,38 +1731,10 @@
       "count": 1
     },
     {
-      "rule": "knip/dependencies",
-      "engine": "code-quality",
-      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
-      "fingerprint": "7579fa04b45ad055",
-      "count": 1
-    },
-    {
-      "rule": "knip/devDependencies",
-      "engine": "code-quality",
-      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
-      "fingerprint": "0f927bb0555d0545",
-      "count": 1
-    },
-    {
       "rule": "knip/devDependencies",
       "engine": "code-quality",
       "file": "apps/portal/src/SEBT.Portal.Web/package.json",
       "fingerprint": "8558488b941a40a0",
-      "count": 1
-    },
-    {
-      "rule": "knip/devDependencies",
-      "engine": "code-quality",
-      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
-      "fingerprint": "86cd57229e2423a1",
-      "count": 1
-    },
-    {
-      "rule": "knip/devDependencies",
-      "engine": "code-quality",
-      "file": "apps/portal/src/SEBT.Portal.Web/package.json",
-      "fingerprint": "95662aeef8d66c90",
       "count": 1
     },
     {
@@ -3152,13 +3124,6 @@
       "count": 1
     },
     {
-      "rule": "knip/devDependencies",
-      "engine": "code-quality",
-      "file": "aspire-apphost/package.json",
-      "fingerprint": "4f2e787061f3e0d9",
-      "count": 1
-    },
-    {
       "rule": "ruff/EXE001",
       "engine": "lint",
       "file": "docs/analytics/scripts/hash_sebt_app_id.py",
@@ -3331,13 +3296,6 @@
       "engine": "code-quality",
       "file": "packages/observability/package.json",
       "fingerprint": "595c3759bf0baf15",
-      "count": 1
-    },
-    {
-      "rule": "knip/dependencies",
-      "engine": "code-quality",
-      "file": "packages/observability/package.json",
-      "fingerprint": "ca1b4dfc9e4d9715",
       "count": 1
     },
     {
