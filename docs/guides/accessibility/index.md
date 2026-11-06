@@ -88,7 +88,7 @@ Pre-commit hooks also run ESLint, Prettier, TypeScript, and token regeneration, 
 
 Automated tooling and code scanning may catch some accessibility issues and help to find regressions but we still recommend manual accessibility testing with screen readers and keyboards. Manual review fills the gaps that automated tools can’t reach, such as keyboard navigation, screen reader behavior, logical focus order, and whether error messages make sense. The client form accessibility principles above are the main rubric for reviewing form flows.
 
-Testing with different screen readers like JAWS, NVDA and VoiceOver as well as different screen reader and browser combinations can be done using [Assistiv Labs](https://assistivlabs.com/). Code for America staff can find login credentials in 1Password.
+Testing with different screen readers like JAWS, NVDA and VoiceOver as well as different screen reader and browser combinations can be done using [Assistiv Labs](https://assistivlabs.com/).
 
 ## Further reading
 
