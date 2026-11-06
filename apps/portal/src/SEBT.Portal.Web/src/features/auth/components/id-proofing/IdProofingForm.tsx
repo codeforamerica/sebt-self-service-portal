@@ -399,7 +399,7 @@ export function IdProofingForm({
       >
         <legend className="usa-legend">
           {t('labelDob')}
-          <span className="text-secondary-dark"> *</span>
+          <span className="text-error"> *</span>
         </legend>
 
         <span
@@ -542,7 +542,7 @@ export function IdProofingForm({
       >
         <legend className="usa-legend">
           {t('labelId')}
-          {!idChoiceOptional && <span className="text-secondary-dark"> *</span>}
+          {!idChoiceOptional && <span className="text-error"> *</span>}
         </legend>
 
         {idTypeError && (
