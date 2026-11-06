@@ -6,11 +6,32 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useAuth } from '@/features/auth'
 import { clearReplacementFlash, getReplacementFlash } from '@/features/cards/utils/replacementFlash'
 import { useHouseholdData } from '@/features/household'
 
 import type { Address } from '../../api'
+import { hasUndeliverableCard } from '../../api'
 import { fillReplacementHeading } from './replacementHeading'
+
+// Holds the userId that dismissed the alert; sign-out is a full page load, so storage outlives it.
+const ADDRESS_CHECK_DISMISSED_BY_KEY = 'dashboard_addressCheckDismissedBy'
+
+function readAddressCheckDismissedBy(): string | null {
+  try {
+    return sessionStorage.getItem(ADDRESS_CHECK_DISMISSED_BY_KEY)
+  } catch {
+    return null
+  }
+}
+
+function rememberAddressCheckDismissedBy(userId: string): void {
+  try {
+    sessionStorage.setItem(ADDRESS_CHECK_DISMISSED_BY_KEY, userId)
+  } catch {
+    // Storage unavailable (e.g. private mode): the dismissal still holds until reload.
+  }
+}
 
 /** Renders a mailing address as stacked lines. */
 function AddressLines({ address }: { address: Address }) {
@@ -33,9 +54,9 @@ function AddressLines({ address }: { address: Address }) {
  * persists (rendering is driven by captured state, not live params). The card-replacement
  * success body reads the household cache for the address to avoid PII in URL params.
  *
- * Triggers are URL params today. The address-verification ("check your mailing address")
- * alert will eventually be driven by a backend returned-mail signal; until that data
- * exists, any producer can deep-link to /dashboard?addressVerification=true.
+ * The address-verification ("Is your address correct?") alert also appears whenever a card
+ * is Undeliverable, and can be deep-linked with /dashboard?addressVerification=true.
+ * Dismissing it lasts for the signed-in user's browser session.
  */
 export function DashboardAlerts() {
   const { t, i18n } = useTranslation('dashboard')
@@ -44,6 +65,7 @@ export function DashboardAlerts() {
   const router = useRouter()
   const pathname = usePathname()
   const { data: householdData } = useHouseholdData()
+  const { session } = useAuth()
 
   // Capture alert state from URL params on first read so the alert survives the
   // URL cleanup that follows.
@@ -64,25 +86,35 @@ export function DashboardAlerts() {
     clearReplacementFlash()
   }, [])
 
-  // "Yes, this is my address" dismisses the check-address prompt in place. There is no
-  // backend acknowledgment yet, so this is local-only.
-  const [addressVerifyDismissed, setAddressVerifyDismissed] = useState(false)
+  // No backend acknowledgment exists, so "Yes, this is my address" is remembered per user
+  // for the browser session.
+  const currentUserId = session?.userId ?? ''
+  const [dismissedBy, setDismissedBy] = useState(readAddressCheckDismissedBy)
+  const dismissAddressVerify = () => {
+    rememberAddressCheckDismissedBy(currentUserId)
+    setDismissedBy(currentUserId)
+  }
 
-  const hasAlerts =
+  const showAddressVerification =
+    (alerts.addressVerification || hasUndeliverableCard(householdData?.summerEbtCases ?? [])) &&
+    !alerts.addressUpdated &&
+    dismissedBy !== currentUserId
+
+  const hasStatusAlerts =
     alerts.addressUpdated ||
     alerts.cardReplaced ||
     alerts.contactUpdated ||
     alerts.addressUpdateFailed ||
-    alerts.contactUpdateFailed ||
-    alerts.addressVerification
+    alerts.contactUpdateFailed
+  const hasUrlParams = hasStatusAlerts || alerts.addressVerification
 
   useEffect(() => {
-    if (hasAlerts) {
+    if (hasUrlParams) {
       router.replace(pathname, { scroll: false })
     }
-  }, [hasAlerts, router, pathname])
+  }, [hasUrlParams, router, pathname])
 
-  if (!hasAlerts) {
+  if (!hasStatusAlerts && !showAddressVerification) {
     return null
   }
 
@@ -121,23 +153,23 @@ export function DashboardAlerts() {
         <Alert variant="warning">{t('alertContactUpdateError')}</Alert>
       )}
 
-      {alerts.addressVerification && !addressVerifyDismissed && (
+      {showAddressVerification && (
         <Alert
           variant="warning"
           heading={t('alertCheckAddressTitle')}
         >
-          {t('alertCheckAddressBody')}
           {householdData?.addressOnFile && <AddressLines address={householdData.addressOnFile} />}
+          <span className="display-block margin-top-1">{t('alertCheckAddressBody')}</span>
           <Button
             variant="unstyled"
-            className="display-block margin-top-2"
-            onClick={() => setAddressVerifyDismissed(true)}
+            className="display-block margin-top-2 text-bold text-ink"
+            onClick={dismissAddressVerify}
           >
             {t('alertCheckAddressLink1')}
           </Button>
           <Link
             href="/profile/address"
-            className="usa-link display-block margin-top-1"
+            className="usa-link display-block margin-top-2 text-bold text-ink"
           >
             {t('alertCheckAddressLink2')}
           </Link>
