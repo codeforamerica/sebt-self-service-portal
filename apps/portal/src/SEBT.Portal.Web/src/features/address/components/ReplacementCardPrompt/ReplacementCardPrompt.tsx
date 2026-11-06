@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig, RequiredFieldsNote } from '@sebt/design-system'
 
 import type { UpdateAddressRequest } from '../../api/schema'
 
@@ -78,7 +78,10 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
         </Alert>
       )}
 
-      <p className="usa-hint margin-bottom-3">{tCommon('requiredFields')}</p>
+      <RequiredFieldsNote
+        className="margin-bottom-3"
+        text={tCommon('requiredFields')}
+      />
 
       <fieldset
         className="usa-fieldset"
@@ -87,7 +90,7 @@ export function ReplacementCardPrompt({ address }: ReplacementCardPromptProps) {
       >
         <legend className="usa-legend text-bold">
           {tCommon('selectOne')}
-          <span className="text-secondary-dark"> *</span>
+          <span className="text-error"> *</span>
         </legend>
 
         {errorKey && (
