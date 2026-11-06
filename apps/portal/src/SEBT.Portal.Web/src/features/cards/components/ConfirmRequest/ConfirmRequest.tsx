@@ -11,10 +11,11 @@ import { useDataLayer } from '@sebt/analytics'
 import {
   Alert,
   Button,
-  getState,
-  getStateConfig,
+  PageHeading,
   ProcessingIndicator,
-  RichText
+  RichText,
+  getState,
+  getStateConfig
 } from '@sebt/design-system'
 
 import { useRequestCardReplacement } from '../../api/client'
@@ -108,7 +109,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   return (
     <div>
       {preTitle && <p className="margin-bottom-0">{preTitle}</p>}
-      <h1 className="font-sans-xl text-primary margin-bottom-4">{t('title')}</h1>
+      <PageHeading className="font-sans-xl text-primary margin-bottom-4">{t('title')}</PageHeading>
 
       <div className="margin-top-05">
         <ul className="usa-list margin-top-2">

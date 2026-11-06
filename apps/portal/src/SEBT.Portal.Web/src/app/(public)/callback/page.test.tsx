@@ -150,7 +150,7 @@ describe('CallbackPage', () => {
     it('shows the loading interstitial initially when the state enables it', () => {
       render(<CallbackPage />)
       const status = screen.getByRole('status')
-      expect(status).toHaveAttribute('aria-busy', 'true')
+      expect(status).not.toHaveAttribute('aria-busy')
       expect(screen.getByText('Please wait...')).toBeInTheDocument()
     })
 

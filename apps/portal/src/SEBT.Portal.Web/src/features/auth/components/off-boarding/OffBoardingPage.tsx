@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@sebt/design-system'
+import { Button, PageHeading } from '@sebt/design-system'
 
 // SessionStorage keys — set by IdProofingForm or DocVerifyPage before navigating here
 const SK_REASON = 'offboarding_reason'
@@ -59,12 +59,12 @@ export function OffBoardingPage({ contactLink, applyLink }: OffBoardingPageProps
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
         <section aria-labelledby="offboarding-title">
-          <h1
+          <PageHeading
             id="offboarding-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
           >
             {isNoIdProvided ? noIdHeading : t('coLoadedTitle')}
-          </h1>
+          </PageHeading>
 
           <p className="font-sans-sm">{isNoIdProvided ? noIdBody : t('coLoadedBody1')}</p>
 

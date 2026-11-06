@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert, Button } from '@sebt/design-system'
+import { Alert, Button, PageHeading } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -21,10 +21,13 @@ export default function Error({ error, reset }: ErrorProps) {
       aria-labelledby="error-heading"
     >
       <div className="grid-container">
-        <Alert
-          variant="error"
-          heading={t('errorSomethingWentWrong', 'Something went wrong')}
+        <PageHeading
+          id="error-heading"
+          className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
         >
+          {t('errorSomethingWentWrong', 'Something went wrong')}
+        </PageHeading>
+        <Alert variant="error">
           <p>
             {t(
               'errorUnexpectedBody',

@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 
 import { RichText } from '@sebt/design-system'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 
@@ -44,7 +45,9 @@ export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>{t('errorTitle')}</h1>
+        <PageHeading className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>
+          {t('errorTitle')}
+        </PageHeading>
         <p>{t('errorBody')}</p>
 
         <section data-testid="next-step-portal">

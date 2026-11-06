@@ -4,7 +4,14 @@ import { useRouter } from 'next/navigation'
 import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button, getState, getStateConfig, getStateLinks } from '@sebt/design-system'
+import {
+  Alert,
+  Button,
+  PageHeading,
+  getState,
+  getStateConfig,
+  getStateLinks
+} from '@sebt/design-system'
 
 import { useAddressFlow } from '../../context'
 
@@ -37,11 +44,11 @@ export function AddressNotFound() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
+      <PageHeading className="font-sans-xl text-primary">
         {isBlocked
           ? t('blockedTitle', "This address can't be used") // TODO REMOVE FALLBACK
           : t('notFoundTitle')}
-      </h1>
+      </PageHeading>
       <p>
         {isBlocked
           ? t(

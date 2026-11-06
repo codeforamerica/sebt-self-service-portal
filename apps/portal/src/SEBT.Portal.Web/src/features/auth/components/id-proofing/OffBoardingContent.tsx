@@ -1,3 +1,4 @@
+import { PageHeading } from '@sebt/design-system'
 import Link from 'next/link'
 
 interface OffBoardingContentProps {
@@ -49,12 +50,12 @@ export function OffBoardingContent({
 
   return (
     <>
-      <h1
+      <PageHeading
         id="off-boarding-title"
         className="font-sans-xl text-bold text-primary line-height-sans-1 margin-bottom-4"
       >
         {title}
-      </h1>
+      </PageHeading>
 
       <p className="font-sans-sm">{body}</p>
 

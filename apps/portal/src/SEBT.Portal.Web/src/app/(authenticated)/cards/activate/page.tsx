@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@sebt/design-system'
+import { Button, PageHeading } from '@sebt/design-system'
 
 // EBT Customer Service activation line. The number also appears inside the
 // `dashboard.body` instructions copy; this constant is the dial target for the
@@ -21,7 +21,7 @@ export default function CardActivationPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4">
-      <h1 className="font-sans-xl text-primary margin-bottom-4">{t('title')}</h1>
+      <PageHeading className="font-sans-xl text-primary margin-bottom-4">{t('title')}</PageHeading>
 
       {paragraphs.map((paragraph) => (
         <p

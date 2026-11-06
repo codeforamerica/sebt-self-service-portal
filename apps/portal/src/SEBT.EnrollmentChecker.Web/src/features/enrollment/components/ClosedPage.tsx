@@ -6,8 +6,9 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { getLandingActions, getLandingConfig } from '@/lib/landingConfig'
-import { useEnrollment } from '../context/EnrollmentContext'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
+import { useEnrollment } from '../context/EnrollmentContext'
 
 /**
  * Post-season landing page: enrollment has ended but the check still works, so
@@ -41,7 +42,9 @@ export function ClosedPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className={`font-family-sans font-sans-xl ${pageTitleText}`}>{t('closedTitle')}</h1>
+        <PageHeading className={`font-family-sans font-sans-xl ${pageTitleText}`}>
+          {t('closedTitle')}
+        </PageHeading>
 
         {/* The design sets this at the theme's H3, one step down from the H2 the
             title uses. margin-top-4 replaces the heading's own em-based margin. */}
@@ -89,7 +92,9 @@ export function ClosedPage() {
             {enrollmentReasons.length > 0 && (
               <ul className="usa-list margin-top-2">
                 {enrollmentReasons.map((item, index) => (
-                  <li key={index}><RichText>{item}</RichText></li>
+                  <li key={index}>
+                    <RichText>{item}</RichText>
+                  </li>
                 ))}
               </ul>
             )}

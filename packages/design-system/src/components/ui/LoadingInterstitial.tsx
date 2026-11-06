@@ -1,3 +1,4 @@
+import { PageHeading } from './PageHeading';
 import { Spinner } from './Spinner';
 
 export interface LoadingInterstitialProps {
@@ -11,14 +12,16 @@ export function LoadingInterstitial({ title, message }: LoadingInterstitialProps
       className="padding-y-4"
       role="status"
       aria-live="polite"
-      aria-busy="true"
     >
       <div className="text-center margin-bottom-0">
         <Spinner />
       </div>
-      <h1 className="font-sans-xl text-primary text-center margin-top-1 margin-bottom-4">
+      <PageHeading
+        screenId="loading"
+        className="font-sans-xl text-primary text-center margin-top-1 margin-bottom-4"
+      >
         {title}
-      </h1>
+      </PageHeading>
       <div className="border-1px border-primary-light bg-primary-lightest radius-md padding-3 margin-bottom-2">
         <p className="margin-0">{message}</p>
       </div>

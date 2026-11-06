@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { usePageFocusState } from '@sebt/design-system/src/components/ui/PageFocusProvider'
+
 import { CheckerShell } from './CheckerShell'
 
 const mockPathname = vi.fn(() => '/')
@@ -74,5 +76,32 @@ describe('CheckerShell', () => {
     expect(screen.getByTestId('site-footer')).toBeInTheDocument()
     expect(screen.queryByTestId('maintenance-banner')).not.toBeInTheDocument()
     expect(screen.getByText('Outage page')).toBeInTheDocument()
+  })
+})
+
+describe('CheckerShell page focus', () => {
+  function FocusProbe() {
+    const state = usePageFocusState()
+    return <div>{state ? 'focus state provided' : 'focus state missing'}</div>
+  }
+
+  it('makes the main landmark a programmatic focus target for the skip link', () => {
+    render(
+      <CheckerShell state="co">
+        <div>Checker page</div>
+      </CheckerShell>
+    )
+
+    expect(document.getElementById('main-content')).toHaveAttribute('tabindex', '-1')
+  })
+
+  it('provides page focus state to the routed content', () => {
+    render(
+      <CheckerShell state="co">
+        <FocusProbe />
+      </CheckerShell>
+    )
+
+    expect(screen.getByText('focus state provided')).toBeInTheDocument()
   })
 })

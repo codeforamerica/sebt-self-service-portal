@@ -1,7 +1,8 @@
-import type { StateCode } from '@sebt/design-system'
+import { PageFocusProvider, PageHeading, type StateCode } from '@sebt/design-system'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
+import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { householdDataQueryKey } from '@/features/household/api/queryKeys'
@@ -100,6 +101,22 @@ function renderWithProviders(ui: React.ReactElement) {
   }
 }
 
+/** Mounts a previous screen first so the dashboard counts as a client-side navigation. */
+function NavigateToDashboard() {
+  const [onDashboard, setOnDashboard] = useState(false)
+  return (
+    <PageFocusProvider>
+      {onDashboard ? <DashboardContent /> : <PageHeading id="login-title">Sign in</PageHeading>}
+      <button
+        type="button"
+        onClick={() => setOnDashboard(true)}
+      >
+        go
+      </button>
+    </PageFocusProvider>
+  )
+}
+
 describe('DashboardContent', () => {
   beforeEach(() => {
     mockSetPageData.mockClear()
@@ -123,9 +140,22 @@ describe('DashboardContent', () => {
     renderWithProviders(<DashboardContent />)
 
     const status = screen.getByRole('status')
-    expect(status).toHaveAttribute('aria-busy', 'true')
+    expect(status).not.toHaveAttribute('aria-busy')
     expect(status).not.toHaveAttribute('aria-label', 'Loading dashboard')
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  })
+
+  it('keeps focus on the dashboard heading once household data replaces the skeleton', async () => {
+    renderWithProviders(<NavigateToDashboard />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'go' }))
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+
+    await waitFor(() => {
+      expect(screen.getByText('Sophia Martinez')).toBeInTheDocument()
+    })
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
   })
 
   it('renders household data on success', async () => {

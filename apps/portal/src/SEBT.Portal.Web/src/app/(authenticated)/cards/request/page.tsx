@@ -8,6 +8,7 @@ import { CardSelection } from '@/features/address/components/CardSelection'
 import { useHouseholdData } from '@/features/household'
 import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
 import { AnalyticsEvents } from '@sebt/analytics'
+import { PageHeading } from '@sebt/design-system'
 
 export default function RequestReplacementCardsPage() {
   const { t: tOptional } = useTranslation('optionalId')
@@ -38,7 +39,7 @@ export default function RequestReplacementCardsPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">{tOptional('title')}</h1>
+      <PageHeading className="font-sans-xl text-primary">{tOptional('title')}</PageHeading>
       <CardSelection confirmPath="/cards/request/confirm" />
     </div>
   )

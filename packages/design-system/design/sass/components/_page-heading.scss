@@ -1,0 +1,17 @@
+/*
+----------------------------------------
+Page heading
+----------------------------------------
+The shared PageHeading takes focus after a client-side navigation. A heading
+kept screen-reader-only (the dashboard's) must still show its focus outline to
+sighted keyboard and voice users, so it is unclipped while it has focus.
+USWDS's sr-only helper is position: absolute; left: -999em.
+----------------------------------------
+*/
+
+@use 'uswds-core' as *;
+
+h1.usa-sr-only:focus {
+  position: static;
+  left: auto;
+}

@@ -12,7 +12,7 @@ export default defineConfig({
     trace: 'on-first-retry'
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } }
+    { name: 'chromium', testIgnore: '**/screen-reader/**', use: { ...devices['Desktop Chrome'] } }
   ],
   webServer: {
     command: 'pnpm dev',

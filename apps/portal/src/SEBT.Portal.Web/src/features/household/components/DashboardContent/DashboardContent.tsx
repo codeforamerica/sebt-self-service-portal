@@ -6,7 +6,7 @@ import { SignOutLink, useAuth } from '@/features/auth'
 import { useFeatureFlag } from '@/features/feature-flags'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { Alert, getState, getStateConfig } from '@sebt/design-system'
+import { Alert, PageHeading, getState, getStateConfig } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -112,7 +112,9 @@ export function DashboardContent() {
   ])
 
   // Visually hidden h1 for accessibility - provides page structure for screen readers
-  const pageHeading = <h1 className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</h1>
+  const pageHeading = (
+    <PageHeading className="usa-sr-only">{t('pageTitle', 'SUN Bucks Dashboard')}</PageHeading>
+  )
 
   if (isLoading || requiresProofing) {
     if (showLoadingInterstitial) {
@@ -169,27 +171,31 @@ export function DashboardContent() {
     )
   }
 
+  // The heading stays the first child of every branch so React keeps it mounted
+  // (and focused) when the skeleton gives way to household data.
   return (
-    <HouseholdCardDetailsLoadingProvider value={isLoadingCardDetails}>
+    <>
       {pageHeading}
-      {/* Copy references enrolled children, so the banner only accompanies cases. */}
-      {data.summerEbtCases.length > 0 && <BenefitExpirationBanner />}
-      <DashboardAlerts />
-      <ActionButtons
-        allowedActions={data.allowedActions}
-        hasCases={data.summerEbtCases.length > 0}
-        hasApplications={data.applications.length > 0}
-        hasBenefitExpiration={data.summerEbtCases.some((c) => c.benefitExpirationStatus)}
-      />
-      {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
-      <HouseholdSummary />
-      {data.summerEbtCases.length > 0 && (
-        <>
-          <EnrolledChildren />
-          <EbtEdgeSection />
-        </>
-      )}
-      <ApplicationsSection />
-    </HouseholdCardDetailsLoadingProvider>
+      <HouseholdCardDetailsLoadingProvider value={isLoadingCardDetails}>
+        {/* Copy references enrolled children, so the banner only accompanies cases. */}
+        {data.summerEbtCases.length > 0 && <BenefitExpirationBanner />}
+        <DashboardAlerts />
+        <ActionButtons
+          allowedActions={data.allowedActions}
+          hasCases={data.summerEbtCases.length > 0}
+          hasApplications={data.applications.length > 0}
+          hasBenefitExpiration={data.summerEbtCases.some((c) => c.benefitExpirationStatus)}
+        />
+        {data.userProfile ? <UserProfileCard /> : <SignOutLink />}
+        <HouseholdSummary />
+        {data.summerEbtCases.length > 0 && (
+          <>
+            <EnrolledChildren />
+            <EbtEdgeSection />
+          </>
+        )}
+        <ApplicationsSection />
+      </HouseholdCardDetailsLoadingProvider>
+    </>
   )
 }

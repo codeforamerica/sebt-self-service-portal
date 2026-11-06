@@ -1,4 +1,4 @@
-import type { LoginMode, StateCode } from '@sebt/design-system'
+import { PageFocusProvider, type LoginMode, type StateCode } from '@sebt/design-system'
 import { i18n } from '@sebt/design-system/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -192,6 +192,32 @@ describe('IalGuard', () => {
     // IalGuard navigates directly to the server-side authorize endpoint (V04 fix).
     expect(window.location.href).toContain('/api/auth/oidc/co/authorize')
     expect(window.location.href).toContain('stepUp=true')
+  })
+
+  it('moves focus to the challenge heading when it replaces the checking screen in place', async () => {
+    setupApiFetchMock({ ial: '1' })
+
+    render(
+      <PageFocusProvider>
+        <AuthProvider>
+          <IalGuard>
+            <p>Protected</p>
+          </IalGuard>
+        </AuthProvider>
+      </PageFocusProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText(/Please wait/)).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /confirm it/i })).toHaveFocus()
+    })
   })
 
   it('challenge heading resolves stepUpDisclaimer.title, not a hardcoded fallback', async () => {

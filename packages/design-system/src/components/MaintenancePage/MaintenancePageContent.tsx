@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { getStateLinks } from '../../lib/links'
 import type { StateCode } from '../../lib/state'
+import { PageHeading } from '../ui/PageHeading'
 
 /**
  * How each state's S.11 mockups arrange the two action buttons: 'stacked' puts
@@ -41,7 +42,7 @@ export function MaintenancePageContent({ namespace, state }: MaintenancePageCont
   return (
     <section className="usa-section">
       <div className="grid-container">
-        <h1>{t('title')}</h1>
+        <PageHeading>{t('title')}</PageHeading>
         <p>{t('body1')}</p>
         <div
           className={
