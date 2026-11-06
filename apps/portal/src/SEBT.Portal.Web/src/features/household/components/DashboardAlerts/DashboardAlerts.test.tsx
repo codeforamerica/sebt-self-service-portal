@@ -57,6 +57,11 @@ vi.mock('@/features/household', () => ({
   useHouseholdData: () => mockHouseholdData
 }))
 
+let mockAuthSession: { userId: string } | null = { userId: 'user-a' }
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({ session: mockAuthSession })
+}))
+
 const mockReplace = vi.fn()
 let mockSearchParams = new URLSearchParams()
 
@@ -77,6 +82,7 @@ describe('DashboardAlerts', () => {
     stateConfigOverride = {}
     clearReplacementFlash()
     sessionStorage.clear()
+    mockAuthSession = { userId: 'user-a' }
   })
 
   afterEach(() => {
@@ -358,6 +364,25 @@ describe('DashboardAlerts', () => {
         unmount()
         render(<DashboardAlerts />)
 
+        expect(screen.queryByText('Is your address correct?')).not.toBeInTheDocument()
+      })
+
+      it('shows the alert again for a different user in the same tab', () => {
+        const { unmount } = render(<DashboardAlerts />)
+        fireEvent.click(screen.getByText('Yes, this is my address'))
+        unmount()
+
+        mockAuthSession = { userId: 'user-b' }
+        render(<DashboardAlerts />)
+
+        expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
+      })
+
+      it('shows only the success alert right after the address was updated', () => {
+        mockSearchParams = new URLSearchParams('addressUpdated=true')
+        render(<DashboardAlerts />)
+
+        expect(screen.getByText(enDcDashboard.alertAddressUpdated)).toBeInTheDocument()
         expect(screen.queryByText('Is your address correct?')).not.toBeInTheDocument()
       })
     })

@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { useAuth } from '@/features/auth'
 import { clearReplacementFlash, getReplacementFlash } from '@/features/cards/utils/replacementFlash'
 import { useHouseholdData } from '@/features/household'
 
@@ -13,19 +14,20 @@ import type { Address } from '../../api'
 import { hasUndeliverableCard } from '../../api'
 import { fillReplacementHeading } from './replacementHeading'
 
-const ADDRESS_CHECK_DISMISSED_KEY = 'dashboard_addressCheckDismissed'
+// Holds the userId that dismissed the alert; sign-out is a full page load, so storage outlives it.
+const ADDRESS_CHECK_DISMISSED_BY_KEY = 'dashboard_addressCheckDismissedBy'
 
-function readAddressCheckDismissed(): boolean {
+function readAddressCheckDismissedBy(): string | null {
   try {
-    return sessionStorage.getItem(ADDRESS_CHECK_DISMISSED_KEY) === 'true'
+    return sessionStorage.getItem(ADDRESS_CHECK_DISMISSED_BY_KEY)
   } catch {
-    return false
+    return null
   }
 }
 
-function rememberAddressCheckDismissed(): void {
+function rememberAddressCheckDismissedBy(userId: string): void {
   try {
-    sessionStorage.setItem(ADDRESS_CHECK_DISMISSED_KEY, 'true')
+    sessionStorage.setItem(ADDRESS_CHECK_DISMISSED_BY_KEY, userId)
   } catch {
     // Storage unavailable (e.g. private mode): the dismissal still holds until reload.
   }
@@ -54,7 +56,7 @@ function AddressLines({ address }: { address: Address }) {
  *
  * The address-verification ("Is your address correct?") alert also appears whenever a card
  * is Undeliverable, and can be deep-linked with /dashboard?addressVerification=true.
- * Dismissing it lasts for the browser session.
+ * Dismissing it lasts for the signed-in user's browser session.
  */
 export function DashboardAlerts() {
   const { t, i18n } = useTranslation('dashboard')
@@ -63,6 +65,7 @@ export function DashboardAlerts() {
   const router = useRouter()
   const pathname = usePathname()
   const { data: householdData } = useHouseholdData()
+  const { session } = useAuth()
 
   // Capture alert state from URL params on first read so the alert survives the
   // URL cleanup that follows.
@@ -83,16 +86,19 @@ export function DashboardAlerts() {
     clearReplacementFlash()
   }, [])
 
-  // No backend acknowledgment exists, so "Yes, this is my address" is remembered per session.
-  const [addressVerifyDismissed, setAddressVerifyDismissed] = useState(readAddressCheckDismissed)
+  // No backend acknowledgment exists, so "Yes, this is my address" is remembered per user
+  // for the browser session.
+  const currentUserId = session?.userId ?? ''
+  const [dismissedBy, setDismissedBy] = useState(readAddressCheckDismissedBy)
   const dismissAddressVerify = () => {
-    rememberAddressCheckDismissed()
-    setAddressVerifyDismissed(true)
+    rememberAddressCheckDismissedBy(currentUserId)
+    setDismissedBy(currentUserId)
   }
 
   const showAddressVerification =
     (alerts.addressVerification || hasUndeliverableCard(householdData?.summerEbtCases ?? [])) &&
-    !addressVerifyDismissed
+    !alerts.addressUpdated &&
+    dismissedBy !== currentUserId
 
   const hasStatusAlerts =
     alerts.addressUpdated ||
