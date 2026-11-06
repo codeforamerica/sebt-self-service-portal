@@ -117,7 +117,7 @@ export function ChildForm({
           <strong>{t('labelBirthdate')}{' '} </strong>
           <span
             title="required"
-            className="usa-hint usa-hint--required"
+            className="text-error"
           >
             *
           </span>
@@ -129,7 +129,7 @@ export function ChildForm({
               htmlFor="date-month"
             >
               {t('labelMonth')}
-              <span className="usa-hint usa-hint--required"> *</span>
+              <span className="text-error"> *</span>
             </label>
             {errors.month && (
               <span
@@ -167,7 +167,7 @@ export function ChildForm({
               htmlFor="date-day"
             >
               {t('labelDay')}
-              <span className="usa-hint usa-hint--required"> *</span>
+              <span className="text-error"> *</span>
             </label>
             {errors.day && (
               <span
@@ -200,7 +200,7 @@ export function ChildForm({
               htmlFor="date-year"
             >
               {t('labelYear')}
-              <span className="usa-hint usa-hint--required"> *</span>
+              <span className="text-error"> *</span>
             </label>
             {errors.year && (
               <span

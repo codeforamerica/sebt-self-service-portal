@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import type { Address, SummerEbtCase } from '@/features/household/api/schema'
-import { Button, getState, getStateConfig } from '@sebt/design-system'
+import { Button, getState, getStateConfig, RequiredFieldsNote } from '@sebt/design-system'
 
 interface ConfirmAddressProps {
   summerEbtCase: SummerEbtCase
@@ -91,7 +91,10 @@ export function ConfirmAddress({
         </p>
       </div>
 
-      <p className="usa-hint margin-bottom-3">{tCommon('requiredFields')}</p>
+      <RequiredFieldsNote
+        className="margin-bottom-3"
+        text={tCommon('requiredFields')}
+      />
 
       <fieldset
         className="usa-fieldset"
@@ -100,7 +103,7 @@ export function ConfirmAddress({
       >
         <legend className="usa-legend text-bold">
           {tCommon('selectOne')}
-          <span className="text-secondary-dark"> *</span>
+          <span className="text-error"> *</span>
         </legend>
 
         {errorKey && (

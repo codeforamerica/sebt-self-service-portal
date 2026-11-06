@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useHouseholdData } from '@/features/household'
 import type { SummerEbtCase } from '@/features/household/api/schema'
-import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
+import { Alert, Button, getState, getStateConfig, RequiredFieldsNote } from '@sebt/design-system'
 
 interface CaseGroup {
   caseId: string
@@ -133,7 +133,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
       onSubmit={handleSubmit}
       noValidate
     >
-      <p className="usa-hint">{tCommon('requiredFields')}</p>
+      <RequiredFieldsNote text={tCommon('requiredFields')} />
 
       <fieldset
         className="usa-fieldset"
@@ -142,7 +142,7 @@ export function CardSelection({ confirmPath = 'select/confirm' }: CardSelectionP
       >
         <legend className="usa-legend">
           {tOptional('labelSelectCards')}
-          <span className="text-secondary-dark"> *</span>
+          <span className="text-error"> *</span>
         </legend>
 
         {errorKey && (
