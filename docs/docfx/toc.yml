@@ -1,3 +1,5 @@
+- name: Docs
+  href: docs/
 - name: API Reference
   items:
     - name: C# API
