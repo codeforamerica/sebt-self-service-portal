@@ -92,7 +92,7 @@ This would remove the need to keep a copy of Colorado's tokens in the portal.
 
 - Until each portal build serves only one state, the portal keeps a copy of each handed-off state's tokens, and that copy can drift.
 - The state's repository has to keep its CI up to date with the portal's build, for example the Node and pnpm versions.
-- Fonts are still in the portal repository. A state can choose only a font whose files the portal already has, or must ask us to add one.
+- Fonts are still in the portal repository. If a state names a font the portal does not host, the build still passes, but the apps fall back to system fonts with only a warning in the build log. A state must ask us to add a new font.
 - Nothing checks a state-owned token file beyond whether the build succeeds. `validate-tokens.js` exists, but no build hook runs it and it is out of date: it predates the semantic button tokens and reports their valid references (such as `theme-primary-dark` and `white`) as errors, so it fails for every state today.
 
 ### Open questions
