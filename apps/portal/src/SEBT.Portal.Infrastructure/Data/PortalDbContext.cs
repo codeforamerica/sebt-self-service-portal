@@ -120,13 +120,13 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.DateOfBirth).HasMaxLength(512);
             entity.Property(e => e.Ssn).HasMaxLength(64);
 
-            // OIDC external provider identifier — nullable, filtered unique index
-            entity.Property(e => e.ExternalProviderId)
+            // OIDC identity provider user identifier — nullable, filtered unique index
+            entity.Property(e => e.IdentityProviderUserId)
                 .HasMaxLength(255);
-            entity.HasIndex(e => e.ExternalProviderId)
+            entity.HasIndex(e => e.IdentityProviderUserId)
                 .IsUnique()
-                .HasDatabaseName("IX_Users_ExternalProviderId")
-                .HasFilter("[ExternalProviderId] IS NOT NULL");
+                .HasDatabaseName("IX_Users_IdentityProviderUserId")
+                .HasFilter("[IdentityProviderUserId] IS NOT NULL");
 
             // The DF_Users_IdProofingAttemptCount default constraint has existed in the DB
             // since migration 20260409181556_AddIdProofingAttemptCountToUsers created the
@@ -137,6 +137,16 @@ public class PortalDbContext : DbContext
             entity.Property(e => e.IdProofingAttemptCount)
                 .IsRequired()
                 .HasDefaultValue(0);
+
+            entity.Property(e => e.LoginCount)
+                .IsRequired()
+                .HasDefaultValue(0);
+
+            // Non-unique: more than one portal account can resolve to the same household.
+            entity.Property(e => e.HouseholdIdentifierHash).HasMaxLength(64);
+            entity.HasIndex(e => e.HouseholdIdentifierHash)
+                .HasDatabaseName("IX_Users_HouseholdIdentifierHash")
+                .HasFilter("[HouseholdIdentifierHash] IS NOT NULL");
         });
 
         modelBuilder.Entity<DocVerificationChallengeEntity>(entity =>
