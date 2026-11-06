@@ -19,7 +19,7 @@ namespace SEBT.Portal.Tests.Unit.Repositories;
 /// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
-public class DatabaseUserRepositoryTests : IClassFixture<SqlServerTestFixture>
+public class DatabaseUserRepositoryTests
 {
     private readonly SqlServerTestFixture _fixture;
     private static readonly IIdentifierHasher TestHasher = new IdentifierHasher(

@@ -44,15 +44,16 @@ Alternatively, edit user emails in the Keycloak admin UI to match your existing 
 
 Password for all users: `password`
 
-Login client (`sebt-portal`) emits `email`, `phone` / `phone_number`, and profile claims.  
-Step-up client (`sebt-portal-stepup`) also emits `socureIdVerificationLevel` / `socureIdVerificationDate` from user attributes when present.
+Usernames match the seeded scenarios in `SeedScenarios.UserScenarios`. The email is `Seeding:EmailPattern` with that username, and the phone attribute is the mock household phone so lookup loads that persona.
+
+Both clients (`sebt-portal` for login, `sebt-portal-stepup` for step-up) emit `email`, `phone` / `phone_number`, and profile claims, plus `socureIdVerificationLevel` / `socureIdVerificationDate` from user attributes when present.
 
 ## Smoke checklist
 
 1. Discovery document loads and lists `authorization_endpoint`, `token_endpoint`, `end_session_endpoint`, JWKS.
 2. CO login redirects to Keycloak; after credentials, lands on `/callback` and establishes a portal session cookie.
 3. Logout hits Keycloak `end_session_endpoint` and clears the IdP SSO session (next login prompts again).
-4. Step-up path uses `sebt-portal-stepup` and raises IAL when verification claims are present (`ial1-only` can be used to exercise the challenge).
+4. Step-up path uses `sebt-portal-stepup` and raises IAL when verification claims are present. `non-co-loaded` has no verification attributes, so step-up for that user exercises the failure path ("IdP returned no verification claims"). To see a successful raise, log in as `non-co-loaded`, then in the admin console set `socureIdVerificationLevel` = `1.5` and a recent `socureIdVerificationDate` on that user before starting step-up.
 
 ## Resetting the realm
 

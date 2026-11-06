@@ -1,7 +1,7 @@
 'use client'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
-import { PageColumn } from '@sebt/design-system'
+import { PageColumn, RequiredFieldsNote } from '@sebt/design-system'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -95,7 +95,7 @@ export function ChildFormPage({
       )}
       <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t(titleKey)) : t(titleKey)}</h1>
       <p className="usa-prose">{t(bodyKey)}</p>
-      <p className="usa-hint">{t('requiredFields', { ns: 'common' })}</p>
+      <RequiredFieldsNote text={t('requiredFields', { ns: 'common' })} />
       <ChildForm
         {...(editingChild && { initialValues: editingChild })}
         onSubmit={handleSubmit}

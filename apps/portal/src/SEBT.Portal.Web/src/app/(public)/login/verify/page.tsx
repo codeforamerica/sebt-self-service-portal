@@ -1,7 +1,7 @@
 'use client'
 
 import { VerifyOtpFormWrapper } from '@/features/auth'
-import { getState, getStateLinks } from '@sebt/design-system'
+import { getState, getStateLinks, RequiredFieldsNote } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
 export default function VerifyPage() {
@@ -22,7 +22,10 @@ export default function VerifyPage() {
               {t('verifyTitle')}
             </h1>
 
-            <p className="margin-top-4 font-sans-sm">{tCommon('requiredFields')}</p>
+            <RequiredFieldsNote
+              className="margin-top-4 font-sans-sm"
+              text={tCommon('requiredFields')}
+            />
 
             <VerifyOtpFormWrapper contactLink={links.external.contactUsAssistance} />
           </section>
