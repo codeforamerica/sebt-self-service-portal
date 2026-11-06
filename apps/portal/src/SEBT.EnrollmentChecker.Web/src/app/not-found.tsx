@@ -1,5 +1,6 @@
 'use client'
 
+import { PageColumn } from '@sebt/design-system'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { useTranslation } from 'react-i18next'
 
@@ -11,20 +12,18 @@ export default function NotFound() {
   const applyHref = useApplyHref()
 
   return (
-    <div className="usa-section">
-      <div className="grid-container">
-        <h1 className={`font-family-sans font-sans-xl ${pageTitleText}`}>{t('title')}</h1>
-        <p>{t('body1')}</p>
-        {applyHref && (
-          <a
-            href={applyHref}
-            className="usa-button margin-top-4"
-            data-analytics-cta="apply_cta"
-          >
-            {t('action')}
-          </a>
-        )}
-      </div>
-    </div>
+    <PageColumn>
+      <h1 className={`font-family-sans font-sans-xl ${pageTitleText}`}>{t('title')}</h1>
+      <p>{t('body1')}</p>
+      {applyHref && (
+        <a
+          href={applyHref}
+          className="usa-button margin-top-4"
+          data-analytics-cta="apply_cta"
+        >
+          {t('action')}
+        </a>
+      )}
+    </PageColumn>
   )
 }

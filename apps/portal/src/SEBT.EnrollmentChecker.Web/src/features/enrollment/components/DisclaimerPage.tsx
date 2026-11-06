@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@sebt/design-system'
+import { Button, PageColumn } from '@sebt/design-system'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { AdentifiPixels } from '@sebt/analytics'
@@ -17,39 +17,37 @@ export function DisclaimerPage() {
   const isClosed = season === 'closed'
 
   return (
-    <div className="usa-section">
-      <div className="grid-container">
-        <h1 className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
-          {t('title')}
-        </h1>
-        {/* Two paragraphs, each a lead sentence on its own line above the text
-            it introduces — display-block breaks the line without adding a gap.
-            The privacy lead (body3) reads the same in either season, so the
-            content sheet holds no closed variant of it. */}
-        <div className="usa-prose">
-          <p>
-            <strong className="display-block">{t(isClosed ? 'closedBody1' : 'body1')}</strong>
-            {t(isClosed ? 'closedBody2' : 'body2')}
-          </p>
-          <p className="margin-top-3">
-            <strong className="display-block">{t('body3')}</strong>
-            {t(isClosed ? 'closedBody4' : 'body4')}
-          </p>
-        </div>
-        <div className="margin-top-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/')}
-          >
-            {t('back', { ns: 'common' })}
-          </Button>
-          <Button onClick={() => router.push('/check')}>{t('continue', { ns: 'common' })}</Button>
-        </div>
+    <PageColumn>
+      <h1 className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
+        {t('title')}
+      </h1>
+      {/* Two paragraphs, each a lead sentence on its own line above the text
+          it introduces — display-block breaks the line without adding a gap.
+          The privacy lead (body3) reads the same in either season, so the
+          content sheet holds no closed variant of it. */}
+      <div className="usa-prose">
+        <p>
+          <strong className="display-block">{t(isClosed ? 'closedBody1' : 'body1')}</strong>
+          {t(isClosed ? 'closedBody2' : 'body2')}
+        </p>
+        <p className="margin-top-3">
+          <strong className="display-block">{t('body3')}</strong>
+          {t(isClosed ? 'closedBody4' : 'body4')}
+        </p>
+      </div>
+      <div className="margin-top-4">
+        <Button
+          variant="outline"
+          onClick={() => router.push('/')}
+        >
+          {t('back', { ns: 'common' })}
+        </Button>
+        <Button onClick={() => router.push('/check')}>{t('continue', { ns: 'common' })}</Button>
       </div>
 
       {adentifiPixelApplyNow && (
         <AdentifiPixels pixelId={adentifiPixelApplyNow} />
       )}
-    </div>
+    </PageColumn>
   )
 }

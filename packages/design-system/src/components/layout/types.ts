@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import type { SupportedLanguage } from '../../lib/i18n'
 import type { StateCode } from '../../lib/state'
 
@@ -11,4 +13,8 @@ export type HelpSectionProps = StateProps
 
 export interface LanguageSelectorProps extends StateProps {
   languages?: readonly SupportedLanguage[]
+}
+
+export interface PageColumnProps {
+  children: ReactNode
 }
