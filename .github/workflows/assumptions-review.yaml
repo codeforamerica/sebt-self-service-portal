@@ -1,0 +1,51 @@
+name: Assumptions Review
+
+# Monthly, opens or updates one issue listing docs/assumptions.md entries that need a
+# human. On PRs that touch the registry or this check, only runs the tests, which also
+# catch registry entries the parser can't read.
+on:
+  schedule:
+    - cron: '0 14 1 * *'  # Monthly: 1st of the month at 2pm UTC
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - docs/assumptions.md
+      - .github/workflows/assumptions-review.yaml
+      - .github/workflows/scripts/assumptions-review*.js
+
+permissions: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Test the registry parser
+        run: node --test .github/workflows/scripts/assumptions-review.test.js
+
+  review:
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Open or update the review issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const assumptionsReview = require('./.github/workflows/scripts/assumptions-review.js');
+            await assumptionsReview({ github, context, core });
