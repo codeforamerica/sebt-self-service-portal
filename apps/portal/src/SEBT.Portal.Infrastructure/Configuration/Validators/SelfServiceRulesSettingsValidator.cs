@@ -5,7 +5,8 @@ namespace SEBT.Portal.Infrastructure.Configuration.Validators;
 
 /// <summary>
 /// Validates SelfServiceRulesSettings at startup.
-/// Ensures that enabled actions have at least one issuance type rule defined.
+/// Ensures that enabled actions have at least one issuance type rule defined and that
+/// the card replacement cooldown is set and in range.
 /// </summary>
 public class SelfServiceRulesSettingsValidator : IValidateOptions<SelfServiceRulesSettings>
 {
@@ -16,6 +17,22 @@ public class SelfServiceRulesSettingsValidator : IValidateOptions<SelfServiceRul
 
         ValidateActionRule(options.AddressUpdate, "AddressUpdate", failures);
         ValidateActionRule(options.CardReplacement, "CardReplacement", failures);
+
+        // Cooldown applies to card replacement only, so these checks stay out of the shared helper.
+        if (options.CardReplacement.CooldownDays is null)
+        {
+            failures.Add("CardReplacement:CooldownDays is required.");
+        }
+        else if (options.CardReplacement.CooldownDays is < ActionRuleSettings.MinCooldownDays or > ActionRuleSettings.MaxCooldownDays)
+        {
+            failures.Add(
+                $"CardReplacement:CooldownDays must be between {ActionRuleSettings.MinCooldownDays} and {ActionRuleSettings.MaxCooldownDays}.");
+        }
+
+        if (options.AddressUpdate.CooldownDays is not null)
+        {
+            failures.Add("AddressUpdate:CooldownDays is not supported; cooldowns apply to CardReplacement only.");
+        }
 
         return failures.Count > 0
             ? ValidateOptionsResult.Fail(failures)

@@ -201,6 +201,9 @@ export const SummerEbtCaseSchema = z.object({
   // Cooldown timestamp persisted by the portal: when set, indicates a recent
   // replacement request and gates the timeline UI in ChildCard.
   cardRequestedAt: z.string().nullable().optional(),
+  // Evaluated by the API against its configured cooldown; the client never recomputes it.
+  // Absent means an older API: false keeps the link visible and the API's 400 stays the backstop.
+  inCardReplacementCooldown: z.boolean().optional().default(false),
   allowAddressChange: z.boolean().optional().default(true),
   allowCardReplacement: z.boolean().optional().default(true)
 })

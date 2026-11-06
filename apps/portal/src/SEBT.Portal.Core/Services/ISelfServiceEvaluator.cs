@@ -31,4 +31,16 @@ public interface ISelfServiceEvaluator
     /// </summary>
     /// <returns>The status, or null when neither applies or the case has no expiration date.</returns>
     BenefitExpirationStatus? GetBenefitExpirationStatus(SummerEbtCase summerEbtCase);
+
+    /// <summary>
+    /// The configured wait between card replacement requests for the same case.
+    /// </summary>
+    TimeSpan CardReplacementCooldownPeriod { get; }
+
+    /// <summary>
+    /// True while the case's last replacement request is more recent than now minus
+    /// <see cref="CardReplacementCooldownPeriod"/>. Mirrors the portal-DB check on the
+    /// request path so the UI and the API agree; a case with no request is never in cooldown.
+    /// </summary>
+    bool IsInCardReplacementCooldown(SummerEbtCase summerEbtCase);
 }

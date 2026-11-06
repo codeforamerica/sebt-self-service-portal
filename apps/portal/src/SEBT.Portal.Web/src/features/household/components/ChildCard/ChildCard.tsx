@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { isWithinCooldownPeriod } from '@/features/cards/utils/cooldown'
 import { useFeatureFlag } from '@/features/feature-flags'
 
 import type { IssuanceType, SummerEbtCase } from '../../api'
@@ -20,7 +19,8 @@ function getReplacementLink(
   summerEbtCase: SummerEbtCase,
   canRequestReplacementCard: boolean
 ): string | null {
-  const { summerEBTCaseID, issuanceType, cardRequestedAt, allowCardReplacement } = summerEbtCase
+  const { summerEBTCaseID, issuanceType, inCardReplacementCooldown, allowCardReplacement } =
+    summerEbtCase
   if (!summerEBTCaseID) return null
 
   // Co-loaded cases always link to the info page — they cannot be replaced in-portal,
@@ -29,7 +29,7 @@ function getReplacementLink(
 
   if (!canRequestReplacementCard) return null
   if (!allowCardReplacement) return null
-  if (isWithinCooldownPeriod(cardRequestedAt)) return null
+  if (inCardReplacementCooldown) return null
 
   return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
 }
@@ -78,7 +78,8 @@ export function ChildCard({
     ebtCardStatus,
     ebtCardIssueDate,
     issuanceType,
-    cardRequestedAt
+    cardRequestedAt,
+    inCardReplacementCooldown
   } = summerEbtCase
   const referenceIdShown =
     caseDisplayNumber !== undefined && caseDisplayNumber !== null && caseDisplayNumber !== ''
@@ -187,7 +188,7 @@ export function ChildCard({
                   </dd>
                 </>
               )}
-              {isWithinCooldownPeriod(cardRequestedAt) ? (
+              {inCardReplacementCooldown ? (
                 <CardStatusTimeline cardRequestedAt={cardRequestedAt} />
               ) : (
                 <CardStatusDisplay

@@ -56,6 +56,9 @@ public class RequestCardReplacementCommandHandlerTests
         _evaluator.Evaluate(Arg.Any<SummerEbtCase>())
             .Returns(new AllowedActions { CanUpdateAddress = true, CanRequestReplacementCard = true });
 
+        // Default: the configured cooldown is the production default
+        _evaluator.CardReplacementCooldownPeriod.Returns(TimeSpan.FromDays(14));
+
         // Default: connector reports success so existing happy-path tests reach the persist step
         _cardReplacementService
             .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
@@ -330,6 +333,38 @@ public class RequestCardReplacementCommandHandlerTests
         var result = await CreateHandler().Handle(command);
 
         Assert.IsType<ValidationFailedResult>(result);
+    }
+
+    [Fact]
+    public async Task Handle_PassesConfiguredCooldownPeriodToPortalDbCheck()
+    {
+        _evaluator.CardReplacementCooldownPeriod.Returns(TimeSpan.FromDays(21));
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+
+        await CreateHandler().Handle(command);
+
+        await _cardReplacementRepo.Received(1).HasRecentRequestAsync(
+            Arg.Any<string>(), Arg.Any<string>(), TimeSpan.FromDays(21), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_CooldownError_StatesConfiguredPeriod()
+    {
+        _evaluator.CardReplacementCooldownPeriod.Returns(TimeSpan.FromDays(21));
+        var command = CreateValidCommand();
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        _cardReplacementRepo.HasRecentRequestAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        var result = await CreateHandler().Handle(command);
+
+        var failed = Assert.IsType<ValidationFailedResult>(result);
+        var error = Assert.Single(failed.Errors);
+        Assert.Contains("21-day", error.Message);
     }
 
     [Fact]

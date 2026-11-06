@@ -204,6 +204,7 @@ public class HouseholdDataResponseMapperTests
     public void ToResponse_MapsSummerEbtCases()
     {
         var caseApplicationDate = new DateTime(2025, 11, 1, 0, 0, 0, DateTimeKind.Utc);
+        var cardRequestedAt = new DateTime(2026, 1, 10, 15, 30, 0, DateTimeKind.Utc);
         var domain = new HouseholdData
         {
             Email = "user@example.com",
@@ -221,7 +222,9 @@ public class HouseholdDataResponseMapperTests
                     EbtCardLastFour = "1234",
                     EbtCardBalance = 120.50m,
                     EbtCaseNumber = "CBMS-REF",
-                    CaseDisplayNumber = "APP-DISPLAY"
+                    CaseDisplayNumber = "APP-DISPLAY",
+                    CardRequestedAt = cardRequestedAt,
+                    InCardReplacementCooldown = true
                 }
             }
         };
@@ -231,6 +234,8 @@ public class HouseholdDataResponseMapperTests
         Assert.NotNull(response);
         Assert.Single(response.SummerEbtCases);
         var sec = response.SummerEbtCases[0];
+        Assert.Equal(cardRequestedAt, sec.CardRequestedAt);
+        Assert.True(sec.InCardReplacementCooldown);
         Assert.Equal("CASE-001", sec.SummerEBTCaseID);
         Assert.Equal("Maria", sec.ChildFirstName);
         Assert.Equal("Garcia", sec.ChildLastName);

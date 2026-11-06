@@ -35,8 +35,6 @@ public class RequestCardReplacementCommandHandler(
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
 {
-    private static readonly TimeSpan CooldownPeriod = TimeSpan.FromDays(14);
-
     public async Task<Result> Handle(
         RequestCardReplacementCommand command,
         CancellationToken cancellationToken = default)
@@ -149,6 +147,8 @@ public class RequestCardReplacementCommandHandler(
             $"CardReplacement:{userId.Value}", cancellationToken: cancellationToken))
         {
             // Check cooldown from portal DB — the authoritative source for request timestamps.
+            // Read the configured period once so every case in this request uses the same window.
+            var cooldownPeriod = selfServiceEvaluator.CardReplacementCooldownPeriod;
             var householdHash = identifierHasher.Hash(identifier.Value);
             var cooldownErrors = new List<ValidationError>();
 
@@ -158,12 +158,12 @@ public class RequestCardReplacementCommandHandler(
                 if (householdHash != null && caseHash != null)
                 {
                     var hasCooldown = await cardReplacementRepo.HasRecentRequestAsync(
-                        householdHash, caseHash, CooldownPeriod, cancellationToken);
+                        householdHash, caseHash, cooldownPeriod, cancellationToken);
                     if (hasCooldown)
                     {
                         cooldownErrors.Add(new ValidationError(
                             "CaseRefs",
-                            $"A card replacement was requested for this case within the last 14 days."));
+                            $"A card replacement was requested for this case within the configured {cooldownPeriod.Days}-day cooldown period."));
                     }
                 }
             }
@@ -272,7 +272,7 @@ public class RequestCardReplacementCommandHandler(
                     "Card replacement: connector reported success but cooldown persistence failed for household identifier kind {Kind}, {Count} case(s). Subsequent portal requests within {Days} days will not be cooldown-blocked; relying on DC-side dedup.",
                     identifierKind,
                     command.CaseRefs.Count,
-                    CooldownPeriod.TotalDays);
+                    cooldownPeriod.Days);
                 // The user-facing action did execute — return success rather than
                 // misleading the user with a failure for an action that happened.
                 return Result.Success();

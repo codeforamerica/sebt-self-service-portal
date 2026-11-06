@@ -20,6 +20,7 @@ const mockCase: SummerEbtCase = {
   householdType: 'OSSE',
   eligibilityType: 'NSLP',
   issuanceType: 'SummerEbt',
+  inCardReplacementCooldown: false,
   allowAddressChange: true,
   allowCardReplacement: true
 }
