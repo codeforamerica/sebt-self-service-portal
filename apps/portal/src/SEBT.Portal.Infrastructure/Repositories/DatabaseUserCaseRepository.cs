@@ -10,13 +10,29 @@ namespace SEBT.Portal.Infrastructure.Repositories;
 /// <summary>
 /// EF Core implementation of <see cref="IUserCaseRepository"/>.
 /// </summary>
-public class DatabaseUserCaseRepository(
-    PortalDbContext dbContext,
-    IIdentifierHasher identifierHasher,
-    IPiiSymmetricEncryption piiEncryption,
-    TimeProvider timeProvider) : IUserCaseRepository
+public class DatabaseUserCaseRepository : IUserCaseRepository
 {
     private static readonly TimeSpan LastSeenRefreshInterval = TimeSpan.FromHours(1);
+
+    private readonly PortalDbContext _dbContext;
+    private readonly IIdentifierHasher _identifierHasher;
+    private readonly IPiiSymmetricEncryption _piiEncryption;
+    private readonly TimeProvider _timeProvider;
+
+    /// <summary>
+    /// Creates a repository that stores displayed cases with encrypted identifiers and HMAC lookup hashes.
+    /// </summary>
+    public DatabaseUserCaseRepository(
+        PortalDbContext dbContext,
+        IIdentifierHasher identifierHasher,
+        IPiiSymmetricEncryption piiEncryption,
+        TimeProvider timeProvider)
+    {
+        _dbContext = dbContext;
+        _identifierHasher = identifierHasher;
+        _piiEncryption = piiEncryption;
+        _timeProvider = timeProvider;
+    }
 
     /// <inheritdoc />
     public async Task UpsertDisplayedCasesAsync(
@@ -47,7 +63,7 @@ public class DatabaseUserCaseRepository(
         var identities = new List<CaseIdentity>(cases.Count);
         foreach (var displayed in cases)
         {
-            var caseIdHash = identifierHasher.Hash(displayed.CaseId);
+            var caseIdHash = _identifierHasher.Hash(displayed.CaseId);
             if (caseIdHash is null)
             {
                 continue;
@@ -56,8 +72,8 @@ public class DatabaseUserCaseRepository(
             identities.Add(new CaseIdentity(
                 displayed,
                 caseIdHash,
-                identifierHasher.Hash(displayed.ApplicationId) ?? string.Empty,
-                identifierHasher.Hash(displayed.ApplicationStudentId) ?? string.Empty));
+                _identifierHasher.Hash(displayed.ApplicationId) ?? string.Empty,
+                _identifierHasher.Hash(displayed.ApplicationStudentId) ?? string.Empty));
         }
 
         return identities;
@@ -69,14 +85,14 @@ public class DatabaseUserCaseRepository(
         CancellationToken cancellationToken)
     {
         var caseIdHashes = identities.Select(i => i.CaseIdHash).Distinct().ToList();
-        var existing = await dbContext.UserCases
+        var existing = await _dbContext.UserCases
             .AsNoTracking()
             .Where(e => e.UserId == userId && caseIdHashes.Contains(e.CaseIdHash))
             .Select(e => new ExistingRow(
                 e.Id, e.CaseIdHash, e.ApplicationIdHash, e.ApplicationStudentIdHash, e.LastSeenAt))
             .ToListAsync(cancellationToken);
 
-        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var staleCutoff = now - LastSeenRefreshInterval;
         var staleRowIds = new List<Guid>();
         var newRows = new List<UserCaseEntity>();
@@ -106,7 +122,7 @@ public class DatabaseUserCaseRepository(
 
         if (staleRowIds.Count > 0)
         {
-            await dbContext.UserCases
+            await _dbContext.UserCases
                 .Where(e => staleRowIds.Contains(e.Id) && e.LastSeenAt < staleCutoff)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.LastSeenAt, now), cancellationToken);
         }
@@ -123,16 +139,16 @@ public class DatabaseUserCaseRepository(
         List<UserCaseEntity> newRows,
         CancellationToken cancellationToken)
     {
-        if (dbContext.ChangeTracker.HasChanges())
+        if (_dbContext.ChangeTracker.HasChanges())
         {
             throw new InvalidOperationException(
                 "Cannot record displayed cases while the database context has other unsaved changes.");
         }
 
-        dbContext.UserCases.AddRange(newRows);
+        _dbContext.UserCases.AddRange(newRows);
         try
         {
-            await dbContext.SaveChangesAsync(cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
         catch
         {
@@ -145,15 +161,16 @@ public class DatabaseUserCaseRepository(
     private UserCaseEntity ToNewEntity(Guid userId, CaseIdentity identity, DateTime now) => new()
     {
         UserId = userId,
-        CaseId = piiEncryption.Encrypt(identity.Source.CaseId)!,
+        CaseId = _piiEncryption.Encrypt(identity.Source.CaseId)
+            ?? throw new InvalidOperationException("Encrypting a case ID that hashed successfully returned null."),
         CaseIdHash = identity.CaseIdHash,
         ApplicationId = identity.ApplicationIdHash.Length == 0
             ? null
-            : piiEncryption.Encrypt(identity.Source.ApplicationId),
+            : _piiEncryption.Encrypt(identity.Source.ApplicationId),
         ApplicationIdHash = identity.ApplicationIdHash,
         ApplicationStudentId = identity.ApplicationStudentIdHash.Length == 0
             ? null
-            : piiEncryption.Encrypt(identity.Source.ApplicationStudentId),
+            : _piiEncryption.Encrypt(identity.Source.ApplicationStudentId),
         ApplicationStudentIdHash = identity.ApplicationStudentIdHash,
         CreatedAt = now,
         LastSeenAt = now
@@ -167,7 +184,7 @@ public class DatabaseUserCaseRepository(
     {
         foreach (var row in rows)
         {
-            dbContext.Entry(row).State = EntityState.Detached;
+            _dbContext.Entry(row).State = EntityState.Detached;
         }
     }
 

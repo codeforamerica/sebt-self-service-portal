@@ -25,13 +25,7 @@ public class RecordDisplayedCasesCommandHandler(
             return Result.Unauthorized("Unable to identify user from token.");
         }
 
-        var displayedCases = command.Cases
-            .Where(c => !string.IsNullOrWhiteSpace(c.SummerEBTCaseID))
-            .Select(c => new UserCaseIdentifiers(
-                c.SummerEBTCaseID!,
-                c.ApplicationId,
-                c.ApplicationStudentId))
-            .ToList();
+        var displayedCases = ToIdentifiersWithCaseId(command);
         if (displayedCases.Count == 0)
         {
             return Result.Success();
@@ -49,5 +43,25 @@ public class RecordDisplayedCasesCommandHandler(
                 DependencyFailedReason.ConnectionFailed,
                 "Unable to record displayed cases.");
         }
+    }
+
+    private static List<UserCaseIdentifiers> ToIdentifiersWithCaseId(RecordDisplayedCasesCommand command)
+    {
+        var identifiers = new List<UserCaseIdentifiers>();
+        foreach (var displayed in command.Cases)
+        {
+            var caseId = displayed.SummerEBTCaseID;
+            if (string.IsNullOrWhiteSpace(caseId))
+            {
+                continue;
+            }
+
+            identifiers.Add(new UserCaseIdentifiers(
+                caseId,
+                displayed.ApplicationId,
+                displayed.ApplicationStudentId));
+        }
+
+        return identifiers;
     }
 }
