@@ -243,7 +243,7 @@ jobs:
       # state connector (interfaces) is now in-repo at apps/connectors/state — no checkout needed.
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
 
@@ -422,7 +422,7 @@ jobs:
           curl -sf http://localhost:8180/realms/sebt/.well-known/openid-configuration > /dev/null || (echo "Keycloak failed to start" && docker logs sebt_keycloak | tail -50 && exit 1)
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
 
@@ -595,7 +595,7 @@ jobs:
       # state connector (interfaces) is now in-repo at apps/connectors/state — no checkout needed.
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
 
