@@ -15,16 +15,25 @@ namespace SEBT.Portal.Tests.Unit.Services;
 
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
-public class DataSeederTests : IClassFixture<SqlServerTestFixture>
+public class DataSeederTests : IAsyncLifetime
 {
     private readonly SqlServerTestFixture _fixture;
+    private string _connectionString = null!;
 
     public DataSeederTests(SqlServerTestFixture fixture)
     {
         _fixture = fixture;
     }
 
-    private PortalDbContext CreateContext() => _fixture.CreateContext();
+    // Isolated database: tests assert on whole-table state, and cleanup deletes every user.
+    public async Task InitializeAsync()
+    {
+        _connectionString = await _fixture.GetIsolatedDatabaseAsync(nameof(DataSeederTests));
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
+    private PortalDbContext CreateContext() => SqlServerTestFixture.CreateContext(_connectionString);
 
     private static DataSeeder CreateDataSeeder(PortalDbContext context)
     {

@@ -77,6 +77,13 @@ export interface DocSection {
 
 export const SECTIONS: DocSection[] = [
   { source: 'docs/adr', output: 'docs/docfx/adr', hasIndex: true },
+  {
+    source: 'docs/guides/accessibility',
+    output: 'docs/docfx/docs/accessibility',
+    hasIndex: false,
+    parent: 'docs/docfx/docs',
+    nav: ['Accessibility'],
+  },
 ];
 
 /** Sorts `files` so that any named in `order` come first, in that order. */
