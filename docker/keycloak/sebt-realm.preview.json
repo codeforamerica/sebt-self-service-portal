@@ -315,8 +315,8 @@
       "enabled": true,
       "email": "sebt.co+co-loaded@codeforamerica.org",
       "emailVerified": true,
-      "firstName": "Jamie",
-      "lastName": "CoLoaded",
+      "firstName": "Maria",
+      "lastName": "MartinezMOCK",
       "attributes": {
         "phone": [
           "8185558437"
@@ -348,6 +348,432 @@
       "lastName": "DoeMOCK",
       "attributes": {
         "phone": [
+          "4634368526"
+        ],
+        "phoneNumber": [
+          "4634368526"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "singlechild",
+      "enabled": true,
+      "email": "sebt.co+singlechild@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Amanda",
+      "lastName": "TaylorMOCK",
+      "attributes": {
+        "phone": [
+          "3756299823"
+        ],
+        "phoneNumber": [
+          "3756299823"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "largefamily",
+      "enabled": true,
+      "email": "sebt.co+largefamily@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Christopher",
+      "lastName": "BrownMOCK",
+      "attributes": {
+        "phone": [
+          "4009878510"
+        ],
+        "phoneNumber": [
+          "4009878510"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "expired",
+      "enabled": true,
+      "email": "sebt.co+expired@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Patricia",
+      "lastName": "GarciaMOCK",
+      "attributes": {
+        "phone": [
+          "7162787546"
+        ],
+        "phoneNumber": [
+          "7162787546"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2020-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "non-co-loaded",
+      "enabled": true,
+      "email": "sebt.co+non-co-loaded@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Carlos",
+      "lastName": "GarciaMOCK",
+      "attributes": {
+        "phone": [
+          "8185558439"
+        ],
+        "phoneNumber": [
+          "8185558439"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "id-proof-in-progress",
+      "enabled": true,
+      "email": "sebt.co+id-proof-in-progress@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Carlos",
+      "lastName": "GarciaMOCK",
+      "attributes": {
+        "phone": [
+          "5552223344"
+        ],
+        "phoneNumber": [
+          "5552223344"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "not-started",
+      "enabled": true,
+      "email": "sebt.co+not-started@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Jordan",
+      "lastName": "AndersonMOCK",
+      "attributes": {
+        "phone": [
+          "8185558440"
+        ],
+        "phoneNumber": [
+          "8185558440"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "pending",
+      "enabled": true,
+      "email": "sebt.co+pending@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Jane",
+      "lastName": "SmithMOCK",
+      "attributes": {
+        "phone": [
+          "5292254633"
+        ],
+        "phoneNumber": [
+          "5292254633"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "minimal",
+      "enabled": true,
+      "email": "sebt.co+minimal@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Alex",
+      "lastName": "JonesMOCK",
+      "attributes": {},
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "denied",
+      "enabled": true,
+      "email": "sebt.co+denied@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Robert",
+      "lastName": "JohnsonMOCK",
+      "attributes": {
+        "phone": [
+          "8153983537"
+        ],
+        "phoneNumber": [
+          "8153983537"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "review",
+      "enabled": true,
+      "email": "sebt.co+review@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Susan",
+      "lastName": "WilliamsMOCK",
+      "attributes": {
+        "phone": [
+          "7366360323"
+        ],
+        "phoneNumber": [
+          "7366360323"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "cancelled",
+      "enabled": true,
+      "email": "sebt.co+cancelled@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "David",
+      "lastName": "DavisMOCK",
+      "attributes": {
+        "phone": [
+          "2275083447"
+        ],
+        "phoneNumber": [
+          "2275083447"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "unknown",
+      "enabled": true,
+      "email": "sebt.co+unknown@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Unknown",
+      "lastName": "UserMOCK",
+      "attributes": {
+        "phone": [
+          "2158974592"
+        ],
+        "phoneNumber": [
+          "2158974592"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "co-undeliverable",
+      "enabled": true,
+      "email": "sebt.co+co-undeliverable@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Sandra",
+      "lastName": "TorresMOCK",
+      "attributes": {
+        "phone": [
+          "3035551005"
+        ],
+        "phoneNumber": [
+          "3035551005"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "co-frozen",
+      "enabled": true,
+      "email": "sebt.co+co-frozen@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Miguel",
+      "lastName": "RiveraMOCK",
+      "attributes": {
+        "phone": [
+          "3035551006"
+        ],
+        "phoneNumber": [
+          "3035551006"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "co-notactivated",
+      "enabled": true,
+      "email": "sebt.co+co-notactivated@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Teresa",
+      "lastName": "MoralesMOCK",
+      "attributes": {
+        "phone": [
+          "3035551007"
+        ],
+        "phoneNumber": [
+          "3035551007"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "co-deactivatedbystate",
+      "enabled": true,
+      "email": "sebt.co+co-deactivatedbystate@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Ana",
+      "lastName": "NavarroMOCK",
+      "attributes": {
+        "phone": [
+          "3035551008"
+        ],
+        "phoneNumber": [
+          "3035551008"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
+        ]
+      },
+      "credentials": [
+        {
+          "type": "password",
+          "value": "password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "co-active",
+      "enabled": true,
+      "email": "sebt.co+co-active@codeforamerica.org",
+      "emailVerified": true,
+      "firstName": "Lorena",
+      "lastName": "OrtizMOCK",
+      "attributes": {
+        "phone": [
           "3035551009"
         ],
         "phoneNumber": [
@@ -369,18 +795,24 @@
       ]
     },
     {
-      "username": "ial1-only",
+      "username": "name-casing",
       "enabled": true,
-      "email": "sebt.co+non-co-loaded@codeforamerica.org",
+      "email": "sebt.co+name-casing@codeforamerica.org",
       "emailVerified": true,
-      "firstName": "Alex",
-      "lastName": "IalOne",
+      "firstName": "DELLA",
+      "lastName": "ALDENMOCK",
       "attributes": {
         "phone": [
-          "3035551999"
+          "4282461649"
         ],
         "phoneNumber": [
-          "3035551999"
+          "4282461649"
+        ],
+        "socureIdVerificationLevel": [
+          "1.5"
+        ],
+        "socureIdVerificationDate": [
+          "2026-01-15T00:00:00.000Z"
         ]
       },
       "credentials": [

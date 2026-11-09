@@ -8,7 +8,7 @@ import { AddressForm } from '@/features/address/components/AddressForm'
 import { useHouseholdData } from '@/features/household'
 import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
 import { AnalyticsEvents } from '@sebt/analytics'
-import { getState, getStateConfig } from '@sebt/design-system'
+import { getState, getStateConfig, RequiredFieldsNote } from '@sebt/design-system'
 
 // TODO: Card-flow entry point — when accessed via /profile/address?from=cards,
 // the form should return the user to the card replacement flow on completion
@@ -49,7 +49,7 @@ export default function AddressFormPage() {
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
       <h1 className="font-sans-xl text-primary">{t('titleYour')}</h1>
-      <p className="usa-hint">{tCommon('requiredFields')}</p>
+      <RequiredFieldsNote text={tCommon('requiredFields')} />
       <AddressForm
         initialAddress={data?.addressOnFile ?? null}
         {...(!canRequestReplacementCard && { redirectPath: '/dashboard?addressUpdated=true' })}

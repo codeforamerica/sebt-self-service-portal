@@ -152,7 +152,7 @@ export function AddressAutocomplete({
         htmlFor={inputId}
       >
         {label}
-        {isRequired && <span className="text-secondary-dark"> *</span>}
+        {isRequired && <span className="text-error"> *</span>}
       </label>
       {hint && (
         <span
