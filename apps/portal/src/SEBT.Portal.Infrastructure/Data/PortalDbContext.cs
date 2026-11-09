@@ -43,6 +43,11 @@ public class PortalDbContext : DbContext
     /// </summary>
     public DbSet<CardReplacementRequestEntity> CardReplacementRequests { get; set; }
 
+    /// <summary>
+    /// Summer EBT cases displayed to authenticated portal users.
+    /// </summary>
+    public DbSet<UserCaseEntity> UserCases { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -279,6 +284,51 @@ public class PortalDbContext : DbContext
             // WHERE HouseholdIdentifierHash = @hash AND CaseIdHash = @hash AND RequestedAt > @cutoff
             entity.HasIndex(e => new { e.HouseholdIdentifierHash, e.CaseIdHash, e.RequestedAt })
                 .HasDatabaseName("IX_CardReplacementRequests_Household_Case_RequestedAt");
+        });
+
+        modelBuilder.Entity<UserCaseEntity>(entity =>
+        {
+            entity.ToTable("UserCases");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.Property(e => e.UserId).IsRequired();
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.CaseId)
+                .IsRequired()
+                .HasMaxLength(512);
+            entity.Property(e => e.CaseIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.ApplicationId)
+                .HasMaxLength(512);
+            entity.Property(e => e.ApplicationIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.ApplicationStudentId)
+                .HasMaxLength(512);
+            entity.Property(e => e.ApplicationStudentIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+            entity.Property(e => e.LastSeenAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+
+            entity.HasIndex(e => new { e.UserId, e.CaseIdHash, e.ApplicationIdHash, e.ApplicationStudentIdHash })
+                .IsUnique()
+                .HasDatabaseName("IX_UserCases_User_CaseIdentity");
         });
     }
 }

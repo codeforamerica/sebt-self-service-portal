@@ -657,6 +657,27 @@ public class PortalDbContextTests
     }
 
     [Fact]
+    public void UserCases_ShouldBeConfiguredWithTableNamePrimaryKeyAndUniqueIdentityIndex()
+    {
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var entityType = context.Model.FindEntityType(typeof(UserCaseEntity));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("UserCases", entityType!.GetTableName());
+        Assert.Equal("Id", entityType.FindPrimaryKey()!.Properties.Single().Name);
+
+        var identityIndex = entityType.GetIndexes().Single(i =>
+            i.Properties.Select(p => p.Name).SequenceEqual(
+                ["UserId", "CaseIdHash", "ApplicationIdHash", "ApplicationStudentIdHash"]));
+        Assert.True(identityIndex.IsUnique);
+        Assert.Equal("IX_UserCases_User_CaseIdentity", identityIndex.GetDatabaseName());
+    }
+
+    [Fact]
     public async Task SaveChangesAsync_WhenNewUserAdded_ShouldSetBothCreatedAtAndUpdatedAt()
     {
         // Arrange
