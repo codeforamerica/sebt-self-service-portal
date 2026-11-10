@@ -17,7 +17,7 @@ namespace SEBT.Portal.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.12")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -282,9 +282,15 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
-                    b.Property<string>("ExternalProviderId")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
+                    b.Property<string>("HouseholdIdentifierHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int?>("HouseholdIdentifierType")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("HouseholdIdentifierUpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("IalLevel")
                         .ValueGeneratedOnAdd()
@@ -308,10 +314,25 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<string>("IdentityProviderUserId")
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
                     b.Property<bool>("IsCoLoaded")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("LastLoginAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LastLoginMethod")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LoginCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("Phone")
                         .HasMaxLength(512)
@@ -345,13 +366,17 @@ namespace SEBT.Portal.Infrastructure.Migrations
                         .HasDatabaseName("IX_Users_EmailHash")
                         .HasFilter("[EmailHash] IS NOT NULL");
 
-                    b.HasIndex("ExternalProviderId")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Users_ExternalProviderId")
-                        .HasFilter("[ExternalProviderId] IS NOT NULL");
+                    b.HasIndex("HouseholdIdentifierHash")
+                        .HasDatabaseName("IX_Users_HouseholdIdentifierHash")
+                        .HasFilter("[HouseholdIdentifierHash] IS NOT NULL");
 
                     b.HasIndex("IdProofingSessionId")
                         .HasDatabaseName("IX_Users_IdProofingSessionId");
+
+                    b.HasIndex("IdentityProviderUserId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Users_IdentityProviderUserId")
+                        .HasFilter("[IdentityProviderUserId] IS NOT NULL");
 
                     b.ToTable("Users", (string)null);
                 });

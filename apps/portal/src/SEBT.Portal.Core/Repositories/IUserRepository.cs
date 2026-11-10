@@ -1,4 +1,5 @@
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
 
 namespace SEBT.Portal.Core.Repositories;
 
@@ -61,20 +62,40 @@ public interface IUserRepository
     /// Creates a minimal record (no email, no IAL) — those attributes come from IdP claims.
     ///
     /// When <paramref name="email"/> is provided and no user exists for the given
-    /// <paramref name="externalProviderId"/>, falls back to an email-based lookup and
-    /// adopts that record by setting its ExternalProviderId. This migrates pre-existing
+    /// <paramref name="identityProviderUserId"/>, falls back to an email-based lookup and
+    /// adopts that record by setting its IdentityProviderUserId. This migrates pre-existing
     /// email-only user records to the new sub-based identity model.
     /// TODO: Remove email fallback migration once all existing users have logged in
     /// under the new flow.
     /// </summary>
-    Task<(User user, bool isNewUser)> GetOrCreateUserByExternalIdAsync(
-        string externalProviderId,
+    Task<(User user, bool isNewUser)> GetOrCreateUserByIdentityProviderUserIdAsync(
+        string identityProviderUserId,
         string? email = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves a user by their external identity provider subject ID.
     /// </summary>
-    Task<User?> GetUserByExternalIdAsync(
-        string externalProviderId, CancellationToken cancellationToken = default);
+    Task<User?> GetUserByIdentityProviderUserIdAsync(
+        string identityProviderUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Records a successful login: increments the login count and stamps the time and method.
+    /// The increment runs in a single SQL statement so concurrent logins are not lost.
+    /// </summary>
+    Task RecordLoginAsync(Guid userId, LoginMethod method, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Stores the hashed identifier used to retrieve this user's household data.
+    /// Does nothing when the stored type and hash already match, so repeated lookups don't rewrite the row.
+    /// </summary>
+    /// <param name="userId">The portal user.</param>
+    /// <param name="identifierType">The kind of identifier used for the lookup.</param>
+    /// <param name="identifierHash">The <c>IIdentifierHasher.Hash</c> of the identifier value; never the plaintext.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    Task RecordHouseholdIdentifierAsync(
+        Guid userId,
+        PreferredHouseholdIdType identifierType,
+        string identifierHash,
+        CancellationToken cancellationToken = default);
 }

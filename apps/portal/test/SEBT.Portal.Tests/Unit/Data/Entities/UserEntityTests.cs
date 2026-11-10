@@ -13,7 +13,7 @@ public class UserEntityTests
 
         // Assert
         Assert.Null(entity.Email);
-        Assert.Null(entity.ExternalProviderId);
+        Assert.Null(entity.IdentityProviderUserId);
         Assert.Equal(0, entity.IalLevel); // UserIalLevel.None
         Assert.Null(entity.IdProofingSessionId);
         Assert.Null(entity.IdProofingCompletedAt);

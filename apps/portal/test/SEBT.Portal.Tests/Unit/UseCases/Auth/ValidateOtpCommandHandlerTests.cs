@@ -788,4 +788,84 @@ public class ValidateOtpCommandHandlerTests
         Assert.True(result.IsSuccess);
         await otpRepository.DidNotReceive().DeleteOtpCodeByEmailAsync(Arg.Any<string>());
     }
+
+    [Fact]
+    public async Task Handle_WhenOtpIsValid_RecordsOtpLogin()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand { Email = "jim@example.com", Otp = "123456" };
+        var user = new User { Email = command.Email, IalLevel = UserIalLevel.IAL1 };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        jwtTokenService.GenerateForLocalLogin(Arg.Any<User>()).Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.True(result.IsSuccess);
+        await userRepository.Received(1).RecordLoginAsync(user.Id, LoginMethod.Otp, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenRecordingLoginFails_StillReturnsToken()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand { Email = "jim@example.com", Otp = "123456" };
+        var user = new User { Email = command.Email, IalLevel = UserIalLevel.IAL1 };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns(new OtpCode(command.Otp, command.Email));
+        userRepository.GetOrCreateUserAsync(command.Email, Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        userRepository.RecordLoginAsync(Arg.Any<Guid>(), Arg.Any<LoginMethod>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("database unavailable")));
+        jwtTokenService.GenerateForLocalLogin(Arg.Any<User>()).Returns("test.jwt.token");
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        var successResult = Assert.IsType<SuccessResult<string>>(result);
+        Assert.Equal("test.jwt.token", successResult.Value);
+    }
+
+    [Fact]
+    public async Task Handle_WhenOtpIsInvalid_DoesNotRecordLogin()
+    {
+        // Arrange
+        var handler = new ValidateOtpCommandHandler(
+            otpRepository,
+            userRepository,
+            jwtTokenService,
+            validator,
+            logger);
+        var command = new ValidateOtpCommand { Email = "jim@example.com", Otp = "123456" };
+
+        otpRepository.GetOtpCodeByEmailAsync(command.Email)
+            .Returns(new OtpCode("654321", command.Email));
+
+        // Act
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        Assert.False(result.IsSuccess);
+        await userRepository.DidNotReceive().RecordLoginAsync(
+            Arg.Any<Guid>(), Arg.Any<LoginMethod>(), Arg.Any<CancellationToken>());
+    }
 }
