@@ -19,7 +19,7 @@ namespace SEBT.Portal.Tests.Unit.Services;
 /// </summary>
 [Collection("SqlServer")]
 [Trait("Category", "SqlServer")]
-public class DatabaseSeederExpiredScenarioTests : IClassFixture<SqlServerTestFixture>
+public class DatabaseSeederExpiredScenarioTests : IAsyncLifetime
 {
     private static readonly DateTimeOffset FixedSeedTime = new(2026, 1, 15, 12, 0, 0, TimeSpan.Zero);
 
@@ -27,18 +27,27 @@ public class DatabaseSeederExpiredScenarioTests : IClassFixture<SqlServerTestFix
         Options.Create(new IdentifierHasherSettings { SecretKey = "TestKeyMustBeAtLeast32CharactersLong!!" }));
 
     private readonly SqlServerTestFixture _fixture;
+    private string _connectionString = null!;
 
     public DatabaseSeederExpiredScenarioTests(SqlServerTestFixture fixture)
     {
         _fixture = fixture;
     }
 
+    // Isolated database: the seeder skips when any user exists, and cleanup deletes every user.
+    public async Task InitializeAsync()
+    {
+        _connectionString = await _fixture.GetIsolatedDatabaseAsync(nameof(DatabaseSeederExpiredScenarioTests));
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
+
     [Fact]
     public async Task SeedTestUsersAsync_WithMockHouseholdData_ExpiredUser_HasExpiredStatusNotCompleted()
     {
         const string scenarioEmail = "expired@example.com";
 
-        using var context = _fixture.CreateContext();
+        using var context = SqlServerTestFixture.CreateContext(_connectionString);
         await CleanupDatabaseAsync(context);
 
         var settings = new SeedingSettings { EmailPattern = "{0}@example.com", State = "dc" };

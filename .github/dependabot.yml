@@ -6,6 +6,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    labels:
+      - "dependencies"
+      - "javascript"
+      - "all states"
     groups:
       npm-minor-patch:
         patterns:
@@ -20,6 +24,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    labels:
+      - "dependencies"
+      - ".NET"
+      - "all states"
     groups:
       nuget-minor-patch:
         patterns:
@@ -34,6 +42,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    labels:
+      - "dependencies"
+      - "github_actions"
+      - "all states"
     groups:
       github-actions-minor-patch:
         patterns:
@@ -48,6 +60,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    labels:
+      - "dependencies"
+      - "python"
+      - "all states"
 
   - package-ecosystem: "pip"
     directory: "tofu/modules/sebt_ses/lambda"
@@ -55,6 +71,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    labels:
+      - "dependencies"
+      - "python"
+      - "all states"
 
   - package-ecosystem: "terraform"
     directories:
@@ -64,6 +84,10 @@ updates:
       interval: "weekly"
     cooldown:
       default-days: 7
+    labels:
+      - "dependencies"
+      - "terraform"
+      - "all states"
     groups:
       cfa-tofu-modules:
         patterns:
