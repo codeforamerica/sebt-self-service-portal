@@ -57,6 +57,11 @@ vi.mock('@/features/household', () => ({
   useHouseholdData: () => mockHouseholdData
 }))
 
+let mockAuthSession: { userId: string } | null = { userId: 'user-a' }
+vi.mock('@/features/auth', () => ({
+  useAuth: () => ({ session: mockAuthSession })
+}))
+
 const mockReplace = vi.fn()
 let mockSearchParams = new URLSearchParams()
 
@@ -76,6 +81,8 @@ describe('DashboardAlerts', () => {
     mockState = 'dc'
     stateConfigOverride = {}
     clearReplacementFlash()
+    sessionStorage.clear()
+    mockAuthSession = { userId: 'user-a' }
   })
 
   afterEach(() => {
@@ -313,6 +320,82 @@ describe('DashboardAlerts', () => {
 
       expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
       expect(screen.queryByText('123 Main St')).not.toBeInTheDocument()
+    })
+
+    it('shows the address above the instructions', () => {
+      mockHouseholdData = {
+        data: { addressOnFile: mockAddress },
+        isLoading: false,
+        isError: false
+      }
+      mockSearchParams = new URLSearchParams('addressVerification=true')
+      render(<DashboardAlerts />)
+
+      const address = screen.getByText('123 Main St')
+      const body = screen.getByText(/please check your preferred mailing address/i)
+      expect(address.compareDocumentPosition(body) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    describe('when a card is undeliverable', () => {
+      beforeEach(() => {
+        mockHouseholdData = {
+          data: {
+            addressOnFile: mockAddress,
+            summerEbtCases: [{ ebtCardStatus: 'Active' }, { ebtCardStatus: 'Undeliverable' }]
+          },
+          isLoading: false,
+          isError: false
+        }
+      })
+
+      it('shows the alert without a URL param and leaves the URL alone', () => {
+        render(<DashboardAlerts />)
+
+        expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
+        expect(screen.getByText('123 Main St')).toBeInTheDocument()
+        expect(mockReplace).not.toHaveBeenCalled()
+      })
+
+      it('keeps the alert dismissed for the rest of the session', () => {
+        const { unmount } = render(<DashboardAlerts />)
+        fireEvent.click(screen.getByText('Yes, this is my address'))
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+        unmount()
+        render(<DashboardAlerts />)
+
+        expect(screen.queryByText('Is your address correct?')).not.toBeInTheDocument()
+      })
+
+      it('shows the alert again for a different user in the same tab', () => {
+        const { unmount } = render(<DashboardAlerts />)
+        fireEvent.click(screen.getByText('Yes, this is my address'))
+        unmount()
+
+        mockAuthSession = { userId: 'user-b' }
+        render(<DashboardAlerts />)
+
+        expect(screen.getByText('Is your address correct?')).toBeInTheDocument()
+      })
+
+      it('shows only the success alert right after the address was updated', () => {
+        mockSearchParams = new URLSearchParams('addressUpdated=true')
+        render(<DashboardAlerts />)
+
+        expect(screen.getByText(enDcDashboard.alertAddressUpdated)).toBeInTheDocument()
+        expect(screen.queryByText('Is your address correct?')).not.toBeInTheDocument()
+      })
+    })
+
+    it('does not show the alert when no card is undeliverable', () => {
+      mockHouseholdData = {
+        data: { addressOnFile: mockAddress, summerEbtCases: [{ ebtCardStatus: 'Active' }] },
+        isLoading: false,
+        isError: false
+      }
+      render(<DashboardAlerts />)
+
+      expect(screen.queryByText('Is your address correct?')).not.toBeInTheDocument()
     })
   })
 })

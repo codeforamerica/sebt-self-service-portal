@@ -179,6 +179,29 @@ describe('HouseholdSummary', () => {
     expect(screen.getByText('Application cancelled')).toBeInTheDocument()
   })
 
+  it('shows the check-mailing-address status when any card is undeliverable', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [mockCase, { ...mockCase, ebtCardStatus: 'Undeliverable' }]
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Check mailing address')).toBeInTheDocument()
+    expect(screen.queryByText('Enrolled')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Your students are enrolled because we have enough information/)
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps the enrolled status when no card is undeliverable', () => {
+    mockReturnData = {
+      ...defaultMockData,
+      summerEbtCases: [{ ...mockCase, ebtCardStatus: 'Active' }]
+    }
+    render(<HouseholdSummary />)
+    expect(screen.getByText('Enrolled')).toBeInTheDocument()
+    expect(screen.queryByText('Check mailing address')).not.toBeInTheDocument()
+  })
+
   it('renders no status when the application status is unmapped', () => {
     const unknownApp: Application = { ...mockApplication, applicationStatus: 'Unknown' }
     mockReturnData = { ...defaultMockData, summerEbtCases: [], applications: [unknownApp] }
