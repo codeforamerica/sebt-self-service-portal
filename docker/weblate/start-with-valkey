@@ -1,0 +1,38 @@
+#!/bin/bash
+# Starts Valkey on loopback, waits for it to answer, then hands off to Weblate's own start script.
+# Weblate's startup checks reach the cache before supervisord exists, so Valkey can't be a supervisor service.
+set -euo pipefail
+
+VALKEY_DIR="${VALKEY_DIR:-/app/data/valkey}"
+VALKEY_PORT="${REDIS_PORT:-6379}"
+VALKEY_WAIT_SECONDS="${VALKEY_WAIT_SECONDS:-30}"
+
+log() { echo "cfa_start $*"; }
+
+if [ "${REDIS_HOST:-}" != "127.0.0.1" ]; then
+  log "valkey_skipped reason=redis_host_not_loopback redis_host=${REDIS_HOST:-unset}"
+  exec /app/bin/start "$@"
+fi
+
+mkdir -p "$VALKEY_DIR"
+log "valkey_starting bind=127.0.0.1 port=$VALKEY_PORT dir=$VALKEY_DIR version=$(valkey-server --version | awk '{print $3}')"
+valkey-server \
+  --bind 127.0.0.1 --port "$VALKEY_PORT" --protected-mode yes \
+  --dir "$VALKEY_DIR" --save 60 1 --appendonly no \
+  --loglevel warning --logfile "" &
+valkey_pid=$!
+
+for ((i = 1; i <= VALKEY_WAIT_SECONDS; i++)); do
+  if valkey-cli -h 127.0.0.1 -p "$VALKEY_PORT" ping 2>/dev/null | grep -q PONG; then
+    log "valkey_ready pid=$valkey_pid after_seconds=$i"
+    exec /app/bin/start "$@"
+  fi
+  if ! kill -0 "$valkey_pid" 2>/dev/null; then
+    log "valkey_exited pid=$valkey_pid after_seconds=$i"
+    exit 1
+  fi
+  sleep 1
+done
+
+log "valkey_not_ready pid=$valkey_pid waited_seconds=$VALKEY_WAIT_SECONDS"
+exit 1
