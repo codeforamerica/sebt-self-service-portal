@@ -10,6 +10,7 @@ export {
   UserProfileSchema,
   formatDate,
   formatUsPhone,
+  hasUndeliverableCard,
   interpolateDate,
   isReplacementEligible,
   toUiCardStatus,
