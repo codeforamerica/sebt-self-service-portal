@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useFeatureFlag } from '@/features/feature-flags'
 
 import type { Address, HouseholdData } from '../../api'
-import { formatUsPhone, useRequiredHouseholdData } from '../../api'
+import { formatUsPhone, hasUndeliverableCard, useRequiredHouseholdData } from '../../api'
 
 function formatAddress(address: Address): string {
   const parts = [
@@ -41,6 +41,10 @@ const APPLICATION_CANCELLED: StatusInfo = {
   labelKey: 'profileTableStatusCancelled',
   variant: 'info'
 }
+const CHECK_ADDRESS: StatusInfo = {
+  labelKey: 'profileTableStatusCheckAddress',
+  variant: 'warning'
+}
 
 /**
  * Every status label this component can render. Exported so statusLabelCoverage.test.ts can
@@ -51,7 +55,8 @@ export const PROFILE_STATUS_LABEL_KEYS = [
   APPLICATION_APPROVED,
   APPLICATION_DENIED,
   APPLICATION_IN_PROGRESS,
-  APPLICATION_CANCELLED
+  APPLICATION_CANCELLED,
+  CHECK_ADDRESS
 ].map((status) => status.labelKey)
 
 function getApplicationStatus(data: HouseholdData): StatusInfo | null {
@@ -68,6 +73,7 @@ function getApplicationStatus(data: HouseholdData): StatusInfo | null {
 }
 
 function getOverallStatus(data: HouseholdData): StatusInfo | null {
+  if (hasUndeliverableCard(data.summerEbtCases)) return CHECK_ADDRESS
   if (data.summerEbtCases.length > 0) return ENROLLED
   return getApplicationStatus(data)
 }
