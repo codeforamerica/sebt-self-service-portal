@@ -14,7 +14,6 @@ import type { Address } from '../../api'
 import { hasUndeliverableCard } from '../../api'
 import { fillReplacementHeading } from './replacementHeading'
 
-// Holds the userId that dismissed the alert; sign-out is a full page load, so storage outlives it.
 const ADDRESS_CHECK_DISMISSED_BY_KEY = 'dashboard_addressCheckDismissedBy'
 
 function readAddressCheckDismissedBy(): string | null {
@@ -86,8 +85,8 @@ export function DashboardAlerts() {
     clearReplacementFlash()
   }, [])
 
-  // No backend acknowledgment exists, so "Yes, this is my address" is remembered per user
-  // for the browser session.
+  // No backend acknowledgment exists, so the dismissal is stored with the user's id:
+  // sign-out is a full page load, which sessionStorage outlives.
   const currentUserId = session?.userId ?? ''
   const [dismissedBy, setDismissedBy] = useState(readAddressCheckDismissedBy)
   const dismissAddressVerify = () => {
