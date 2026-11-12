@@ -1,6 +1,5 @@
 """django-iam-dbauth's PostgreSQL backend, logging each IAM token it mints."""
 
-import hashlib
 import logging
 import os
 import sys
@@ -40,8 +39,7 @@ class DatabaseWrapper(base.DatabaseWrapper):
             )
             raise
         logger.info(
-            "iam_token_minted %s pid=%s process=%r token_sha256=%s",
+            "iam_token_minted %s pid=%s process=%r",
             where, os.getpid(), _process_name(),
-            hashlib.sha256(params["password"].encode("utf-8")).hexdigest()[:12],
         )
         return params

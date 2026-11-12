@@ -1,4 +1,3 @@
-import hashlib
 import os
 import unittest
 from unittest import mock
@@ -104,14 +103,14 @@ class LibraryBackendTest(unittest.TestCase):
 
 class LoggingTest(unittest.TestCase):
     @mock.patch.dict(os.environ, FAKE_CREDS, clear=True)
-    def test_logs_each_token_by_hash_and_never_the_token(self):
+    def test_logs_each_mint_and_never_the_token(self):
         with self.assertLogs("cfa_weblate.iam", level="INFO") as logs:
             token = connections["default"].get_connection_params()["password"]
         output = "\n".join(logs.output)
         self.assertIn("iam_token_minted", output)
         self.assertIn("host=db.example.test port=5432 user=weblate_web region=us-east-1", output)
-        self.assertIn(f"token_sha256={hashlib.sha256(token.encode()).hexdigest()[:12]}", output)
         self.assertIn("process=", output)
+        self.assertNotIn("token_sha256", output)
         self.assertNotIn(token, output)
         self.assertNotIn(token.rsplit("X-Amz-Signature=", 1)[1], output)
 
