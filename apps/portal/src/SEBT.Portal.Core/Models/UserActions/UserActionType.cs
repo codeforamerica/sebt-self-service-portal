@@ -5,9 +5,9 @@ namespace SEBT.Portal.Core.Models.UserActions;
 /// </summary>
 public enum UserActionType
 {
-    /// <summary>The user submitted an address update.</summary>
+    /// <summary>A new mailing address sent to the state, recorded for every case in the household.</summary>
     UpdateAddress = 1,
 
-    /// <summary>The user requested a card replacement.</summary>
+    /// <summary>A replacement card request sent to the state, recorded for each case the user selected.</summary>
     RequestCardReplacement = 2
 }

@@ -230,13 +230,11 @@ public class UpdateAddressCommandHandler(
 
         // Use the persisted address (normalized or user-entered when opted in) for the state connector call.
         // Every case, co-loaded included: per-case backends write the address to each enrollment row.
-        var casesSentToState = household.SummerEbtCases
-            .Where(c => !string.IsNullOrWhiteSpace(c.SummerEBTCaseID))
-            .ToList();
+        var casesSentToState = ToIdentifiersWithCaseId(household.SummerEbtCases);
         var updateRequest = new AddressUpdateRequest
         {
             HouseholdIdentifierValue = identifier.Value,
-            CaseIds = casesSentToState.Select(c => c.SummerEBTCaseID!).ToList(),
+            CaseIds = casesSentToState.Select(c => c.CaseId).ToList(),
             Address = persistAddress
         };
 
@@ -283,7 +281,7 @@ public class UpdateAddressCommandHandler(
     // Best-effort: never throws, so a recording failure can't turn a completed update into an error.
     private async Task RecordOutcomeAsync(
         ClaimsPrincipal user,
-        IReadOnlyList<SummerEbtCase> cases,
+        IReadOnlyList<UserCaseIdentifiers> cases,
         UserActionOutcome outcome,
         CancellationToken cancellationToken)
     {
@@ -298,13 +296,32 @@ public class UpdateAddressCommandHandler(
                 userId,
                 UserActionType.UpdateAddress,
                 outcome,
-                cases.Select(c => new UserCaseIdentifiers(c.SummerEBTCaseID!, c.ApplicationId, c.ApplicationStudentId))
-                    .ToList(),
+                cases,
                 cancellationToken);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to record address update outcome {Outcome}", outcome);
         }
+    }
+
+    private static List<UserCaseIdentifiers> ToIdentifiersWithCaseId(IEnumerable<SummerEbtCase> cases)
+    {
+        var identifiers = new List<UserCaseIdentifiers>();
+        foreach (var summerEbtCase in cases)
+        {
+            var caseId = summerEbtCase.SummerEBTCaseID;
+            if (string.IsNullOrWhiteSpace(caseId))
+            {
+                continue;
+            }
+
+            identifiers.Add(new UserCaseIdentifiers(
+                caseId,
+                summerEbtCase.ApplicationId,
+                summerEbtCase.ApplicationStudentId));
+        }
+
+        return identifiers;
     }
 }
