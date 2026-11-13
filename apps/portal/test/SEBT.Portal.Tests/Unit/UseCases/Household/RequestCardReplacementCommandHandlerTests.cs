@@ -1100,6 +1100,23 @@ public class RequestCardReplacementCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RecordsActionWithoutRequestCancellationToken()
+    {
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        using var requestAborted = new CancellationTokenSource();
+
+        await CreateHandler().Handle(CreateValidCommand(), requestAborted.Token);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserGuid,
+            UserActionType.RequestCardReplacement,
+            UserActionOutcome.Succeeded,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            CancellationToken.None);
+    }
+
+    [Fact]
     public async Task Handle_DoesNotRecordAction_WhenCooldownBlocks()
     {
         SetupResolverSuccess();

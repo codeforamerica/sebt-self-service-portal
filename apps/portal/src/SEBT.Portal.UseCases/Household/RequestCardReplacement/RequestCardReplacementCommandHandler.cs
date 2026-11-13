@@ -221,7 +221,7 @@ public class RequestCardReplacementCommandHandler(
                     "Card replacement plugin threw for household identifier kind {Kind}, {Count} case(s); cooldown NOT recorded, user may retry",
                     identifierKind,
                     command.CaseRefs.Count);
-                await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Failed, cancellationToken);
+                await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Failed);
                 return Result.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Card replacement service is temporarily unavailable.");
@@ -238,7 +238,7 @@ public class RequestCardReplacementCommandHandler(
                         "Card replacement policy rejection for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded",
                         identifierKind,
                         connectorResult.ErrorCode);
-                    await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Rejected, cancellationToken);
+                    await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Rejected);
                     return Result.PreconditionFailed(
                         PreconditionFailedReason.Conflict,
                         connectorResult.ErrorMessage);
@@ -248,7 +248,7 @@ public class RequestCardReplacementCommandHandler(
                     "Card replacement backend error for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded, user may retry",
                     identifierKind,
                     connectorResult.ErrorCode);
-                await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Failed, cancellationToken);
+                await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Failed);
                 return Result.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     connectorResult.ErrorMessage);
@@ -256,7 +256,7 @@ public class RequestCardReplacementCommandHandler(
 
             // Record before persisting cooldown: a failed cooldown save leaves its row tracked,
             // which would make the user action repository refuse to save.
-            await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Succeeded, cancellationToken);
+            await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Succeeded);
 
             // Connector reported success — persist replacement requests for cooldown
             // enforcement. If persistence fails after a successful dispatch, the SP
@@ -297,11 +297,11 @@ public class RequestCardReplacementCommandHandler(
     }
 
     // Best-effort: never throws, so a recording failure can't change the result of a dispatched request.
+    // Not cancellable: the state has already acted, so the row is kept even if the client disconnects.
     private async Task RecordOutcomeAsync(
         Guid userId,
         IReadOnlyList<CaseRefDto> caseRefs,
-        UserActionOutcome outcome,
-        CancellationToken cancellationToken)
+        UserActionOutcome outcome)
     {
         try
         {
@@ -311,7 +311,7 @@ public class RequestCardReplacementCommandHandler(
                 outcome,
                 caseRefs.Select(r => new UserCaseIdentifiers(r.SummerEbtCaseId, r.ApplicationId, r.ApplicationStudentId))
                     .ToList(),
-                cancellationToken);
+                CancellationToken.None);
         }
         catch (Exception ex)
         {

@@ -245,7 +245,7 @@ public class UpdateAddressCommandHandler(
             if (updateResult.IsSuccess)
             {
                 logger.LogInformation("Address update completed for household identifier kind {Kind}", identifierKind);
-                await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Succeeded, cancellationToken);
+                await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Succeeded);
                 return Result<AddressValidationResult>.Success(
                     AddressValidationResult.Valid(persistAddress));
             }
@@ -257,7 +257,7 @@ public class UpdateAddressCommandHandler(
                     identifierKind,
                     updateResult.ErrorCode,
                     updateResult.ErrorMessage);
-                await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Rejected, cancellationToken);
+                await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Rejected);
                 return Result<AddressValidationResult>.PreconditionFailed(PreconditionFailedReason.Conflict, updateResult.ErrorMessage);
             }
 
@@ -265,13 +265,13 @@ public class UpdateAddressCommandHandler(
                 "Address update backend error for household identifier kind {Kind}: {ErrorCode}",
                 identifierKind,
                 updateResult.ErrorCode);
-            await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Failed, cancellationToken);
+            await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Failed);
             return Result<AddressValidationResult>.DependencyFailed(DependencyFailedReason.ConnectionFailed, updateResult.ErrorMessage);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Address update plugin failed for household identifier kind {Kind}", identifierKind);
-            await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Failed, cancellationToken);
+            await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Failed);
             return Result<AddressValidationResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Address update service is temporarily unavailable.");
@@ -279,14 +279,15 @@ public class UpdateAddressCommandHandler(
     }
 
     // Best-effort: never throws, so a recording failure can't turn a completed update into an error.
+    // Not cancellable: the state has already acted, so the row is kept even if the client disconnects.
     private async Task RecordOutcomeAsync(
         ClaimsPrincipal user,
         IReadOnlyList<UserCaseIdentifiers> cases,
-        UserActionOutcome outcome,
-        CancellationToken cancellationToken)
+        UserActionOutcome outcome)
     {
         if (user.GetUserId() is not Guid userId)
         {
+            logger.LogWarning("Address update outcome {Outcome} not recorded: no user ID in claims", outcome);
             return;
         }
 
@@ -297,7 +298,7 @@ public class UpdateAddressCommandHandler(
                 UserActionType.UpdateAddress,
                 outcome,
                 cases,
-                cancellationToken);
+                CancellationToken.None);
         }
         catch (Exception ex)
         {

@@ -1261,6 +1261,46 @@ public class UpdateAddressCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_RecordsActionWithoutRequestCancellationToken()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        using var requestAborted = new CancellationTokenSource();
+
+        await handler.Handle(CreateValidCommand(), requestAborted.Token);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserId,
+            UserActionType.UpdateAddress,
+            UserActionOutcome.Succeeded,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Handle_LogsWarningAndSkipsRecording_WhenUserIdMissing()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        var userWithoutId = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Email, "user@example.com")], "Test"));
+
+        var result = await handler.Handle(CreateValidCommand(userWithoutId), CancellationToken.None);
+
+        Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        await _userActionRepository.DidNotReceiveWithAnyArgs().RecordAsync(
+            default, default, default, default!, default);
+        _logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("no user ID")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
     public async Task Handle_DoesNotRecordAction_WhenRequestStopsBeforeStateConnector()
     {
         var handler = CreateHandler();
