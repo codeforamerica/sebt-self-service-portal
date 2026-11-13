@@ -48,6 +48,13 @@ describe('MaintenancePageContent (DC portal)', () => {
     expect(screen.getByText('maintenancePortal:body1')).toBeInTheDocument()
   })
 
+  it('renders in the shared 480px page column', () => {
+    renderDc()
+    const column = screen.getByRole('heading', { level: 1 }).parentElement
+    expect(column).toHaveClass('maxw-mobile-lg', 'margin-x-auto')
+    expect(column?.parentElement).toHaveClass('grid-container')
+  })
+
   it('renders an outline state-site link and a filled contact link', () => {
     renderDc()
     const stateSite = screen.getByRole('link', { name: 'maintenancePortal:action1' })
@@ -109,8 +116,8 @@ describe('MaintenancePageContent (CO checker)', () => {
   })
 
   it('caps the outline button at content width on desktop viewports', () => {
-    // The S.11 mockups only spec the narrow layout; stretching width-full across
-    // a desktop grid-container produces a viewport-wide button.
+    // The S.11 mockups only spec the narrow layout; without the cap, width-full
+    // stretches the button across the whole page column at desktop widths.
     renderCo()
     const stateSite = screen.getByRole('link', { name: 'maintenanceEnrollmentChecker:action1' })
     expect(stateSite).toHaveClass('desktop:width-auto')

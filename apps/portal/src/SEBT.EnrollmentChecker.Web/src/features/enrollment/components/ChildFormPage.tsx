@@ -1,6 +1,7 @@
 'use client'
 
 import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
+import { PageColumn, RequiredFieldsNote } from '@sebt/design-system'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -10,7 +11,6 @@ import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
 import { useEnrollment, type Child } from '../context/EnrollmentContext'
 import type { ChildFormValues } from '../schemas/childSchema'
 import { ChildForm } from './ChildForm'
-import { RequiredFieldsNote } from '@sebt/design-system'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ChildFormPageProps {
@@ -83,28 +83,26 @@ export function ChildFormPage({
   }
 
   return (
-    <div className="usa-section">
-      <div className="grid-container">
-        {formCard && (
-          <Image
-            src={formCard}
-            alt=""
-            width={100}
-            height={75}
-            aria-hidden="true"
-          />
-        )}
-        <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t(titleKey)) : t(titleKey)}</h1>
-        <p className="usa-prose">{t(bodyKey)}</p>
-        <RequiredFieldsNote text={t('requiredFields', { ns: 'common' })} />
-        <ChildForm
-          {...(editingChild && { initialValues: editingChild })}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          showSchoolField={showSchoolField}
-          apiBaseUrl={apiBaseUrl}
+    <PageColumn>
+      {formCard && (
+        <Image
+          src={formCard}
+          alt=""
+          width={100}
+          height={75}
+          aria-hidden="true"
         />
-      </div>
-    </div>
+      )}
+      <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t(titleKey)) : t(titleKey)}</h1>
+      <p className="usa-prose">{t(bodyKey)}</p>
+      <RequiredFieldsNote text={t('requiredFields', { ns: 'common' })} />
+      <ChildForm
+        {...(editingChild && { initialValues: editingChild })}
+        onSubmit={handleSubmit}
+        onCancel={handleCancel}
+        showSchoolField={showSchoolField}
+        apiBaseUrl={apiBaseUrl}
+      />
+    </PageColumn>
   )
 }

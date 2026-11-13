@@ -39,7 +39,7 @@ describe('NotEnrolledSection', () => {
   it('renders the heading without literal asterisks', () => {
     render(<NotEnrolledSection results={notEnrolled} />)
 
-    const heading = screen.getByRole('heading', { level: 4 })
+    const heading = screen.getByRole('heading', { level: 2 })
     expect(heading.textContent).not.toContain('**')
     expect(heading).toHaveTextContent(
       'The following children are NOT enrolled in Summer EBT for 2026'

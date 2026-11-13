@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 import coResult from '@/content/locales/en/co/result.json'
@@ -364,6 +364,13 @@ describe('ResultsPage', () => {
       expect(noInfoBox).toHaveTextContent('Alex Lee')
     })
 
+    it('titles the not-enough-information box one level below the page heading', () => {
+      const noInfoBox = screen.getByTestId('no-info-summary-box')
+      expect(within(noInfoBox).getByRole('heading', { level: 2 })).toHaveTextContent(
+        "We don't have enough information for the following children."
+      )
+    })
+
     it('explains the no-info outcome and offers the 2027 application link', () => {
       expect(
         screen.getByText(/don't have enough information to determine their eligibility/)
@@ -446,6 +453,12 @@ describe('single-outcome results', () => {
     expect(alert).toHaveClass('usa-alert--success')
     expect(alert?.querySelector('.usa-alert__heading')).toBeInTheDocument()
     expect(alert?.contains(screen.getByTestId('portal-link'))).toBe(false)
+  })
+
+  // USWDS gives alert headings its tightest line height, under the font size; wrapped lines touch.
+  it('spaces the alert heading like the page headings', () => {
+    const { container } = renderResults('Match')
+    expect(container.querySelector('.usa-alert__heading')).toHaveClass('line-height-sans-2')
   })
 
   // role="alert" is an assertive live region; this is static page content.

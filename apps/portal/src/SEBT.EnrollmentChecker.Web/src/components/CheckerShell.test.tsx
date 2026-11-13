@@ -14,10 +14,14 @@ vi.mock('@/components/OutageGuard', () => ({
   OUTAGE_PATH: '/outage'
 }))
 
-// These tests cover which chrome the shell renders, not what either guard decides,
-// so both pass their children straight through.
+// These tests cover which chrome the shell renders, not what either guard decides.
+// The outage guard passes children straight through; the season gate is switchable
+// so the tests can show what waits on it.
+let mockSeasonResolving = false
+
 vi.mock('@/components/SeasonGate', () => ({
-  SeasonGate: ({ children }: { children: React.ReactNode }) => <>{children}</>
+  SeasonGate: ({ children }: { children: React.ReactNode }) =>
+    mockSeasonResolving ? null : <>{children}</>
 }))
 
 vi.mock('@/features/maintenance', () => ({
@@ -43,6 +47,40 @@ vi.mock('@sebt/design-system/src/components/layout/SkipNav', () => ({
 describe('CheckerShell', () => {
   beforeEach(() => {
     mockPathname.mockReturnValue('/')
+    mockSeasonResolving = false
+  })
+
+  // Anything painted below an empty main gets pushed down when the content lands,
+  // so the help section and footer wait on the same gate as the page content.
+  it('holds the page content, help section and footer together while the season resolves', () => {
+    mockSeasonResolving = true
+
+    render(
+      <CheckerShell state="co">
+        <div>Checker page</div>
+      </CheckerShell>
+    )
+
+    expect(screen.getByTestId('site-header')).toBeInTheDocument()
+    expect(screen.getByRole('main')).toBeInTheDocument()
+    expect(screen.queryByText('Checker page')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('help-section')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('site-footer')).not.toBeInTheDocument()
+  })
+
+  it('renders the help section and footer on the outage route without waiting on the season', () => {
+    mockSeasonResolving = true
+    mockPathname.mockReturnValue('/outage')
+
+    render(
+      <CheckerShell state="co">
+        <div>Outage page</div>
+      </CheckerShell>
+    )
+
+    expect(screen.getByText('Outage page')).toBeInTheDocument()
+    expect(screen.getByTestId('help-section')).toBeInTheDocument()
+    expect(screen.getByTestId('site-footer')).toBeInTheDocument()
   })
 
   it('renders checker chrome on normal routes', () => {
