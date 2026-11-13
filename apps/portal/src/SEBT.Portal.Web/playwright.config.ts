@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const isFullStack = process.env.E2E_FULL_STACK === '1'
-const integrationTestIgnore = '**/integration/**'
+const integrationTestIgnore = ['**/integration/**', '**/screen-reader/**']
 
 /**
  * Playwright E2E Testing Configuration

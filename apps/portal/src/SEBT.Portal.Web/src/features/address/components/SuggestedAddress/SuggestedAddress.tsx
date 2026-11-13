@@ -9,11 +9,12 @@ import { useDataLayer } from '@sebt/analytics'
 import {
   Alert,
   Button,
-  getState,
-  getStateConfig,
+  PageHeading,
   ProcessingFieldset,
   ProcessingIndicator,
-  RequiredFieldsNote
+  RequiredFieldsNote,
+  getState,
+  getStateConfig
 } from '@sebt/design-system'
 
 import { classifyAddressState, trackAddressUpdateSubmit } from '@/lib/analytics-helpers'
@@ -164,7 +165,7 @@ export function SuggestedAddress() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">{title}</h1>
+      <PageHeading className="font-sans-xl text-primary">{title}</PageHeading>
       <p>{body}</p>
       {bodyDetail && <p>{bodyDetail}</p>}
 

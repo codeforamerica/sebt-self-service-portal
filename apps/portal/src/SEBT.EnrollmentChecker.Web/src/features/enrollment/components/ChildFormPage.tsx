@@ -1,17 +1,18 @@
 'use client'
 
-import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
+import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
+import { AnalyticsEvents, useDataLayer } from '@sebt/analytics'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
 import { useEnrollment, type Child } from '../context/EnrollmentContext'
 import type { ChildFormValues } from '../schemas/childSchema'
 import { ChildForm } from './ChildForm'
 import { RequiredFieldsNote } from '@sebt/design-system'
-import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ChildFormPageProps {
   showSchoolField: boolean
@@ -39,7 +40,7 @@ export function ChildFormPage({
   }, [trackEvent])
 
   const editingChild = state.editingChildId
-    ? state.children.find(c => c.id === state.editingChildId)
+    ? state.children.find((c) => c.id === state.editingChildId)
     : undefined
 
   const isEditMode = !!editingChild
@@ -94,7 +95,9 @@ export function ChildFormPage({
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{isEditMode ? t('editHeading', t(titleKey)) : t(titleKey)}</h1>
+        <PageHeading className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>
+          {isEditMode ? t('editHeading', t(titleKey)) : t(titleKey)}
+        </PageHeading>
         <p className="usa-prose">{t(bodyKey)}</p>
         <RequiredFieldsNote text={t('requiredFields', { ns: 'common' })} />
         <ChildForm

@@ -1,12 +1,13 @@
 'use client'
 
-import { Button } from '@sebt/design-system'
-import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import { AdentifiPixels } from '@sebt/analytics'
 import { getClientConfig } from '@/lib/client-config'
 import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
+import { AdentifiPixels } from '@sebt/analytics'
+import { Button } from '@sebt/design-system'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
+import { useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 
 export function DisclaimerPage() {
   const { t } = useTranslation('disclaimer')
@@ -19,9 +20,9 @@ export function DisclaimerPage() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
+        <PageHeading className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
           {t('title')}
-        </h1>
+        </PageHeading>
         {/* Two paragraphs, each a lead sentence on its own line above the text
             it introduces — display-block breaks the line without adding a gap.
             The privacy lead (body3) reads the same in either season, so the
@@ -47,9 +48,7 @@ export function DisclaimerPage() {
         </div>
       </div>
 
-      {adentifiPixelApplyNow && (
-        <AdentifiPixels pixelId={adentifiPixelApplyNow} />
-      )}
+      {adentifiPixelApplyNow && <AdentifiPixels pixelId={adentifiPixelApplyNow} />}
     </div>
   )
 }

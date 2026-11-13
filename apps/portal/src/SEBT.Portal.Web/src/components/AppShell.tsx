@@ -2,7 +2,7 @@
 
 import { BetaBanner } from '@/components/BetaBanner'
 import { OUTAGE_PATH, OutageGuard } from '@/components/OutageGuard'
-import type { StateCode } from '@sebt/design-system'
+import { PageFocusProvider, type StateCode } from '@sebt/design-system'
 import { Footer, Header, HelpSection } from '@sebt/design-system/client'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
@@ -28,8 +28,11 @@ export function AppShell({ children, state }: AppShellProps) {
       <main
         id="main-content"
         className="flex-fill"
+        tabIndex={-1}
       >
-        <OutageGuard>{children}</OutageGuard>
+        <PageFocusProvider>
+          <OutageGuard>{children}</OutageGuard>
+        </PageFocusProvider>
       </main>
       <HelpSection state={state} />
       <Footer state={state} />

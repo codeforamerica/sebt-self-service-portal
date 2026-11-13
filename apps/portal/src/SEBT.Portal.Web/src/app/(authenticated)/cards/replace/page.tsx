@@ -8,7 +8,7 @@ import { ConfirmAddress } from '@/features/cards/components/ConfirmAddress'
 import { useHouseholdData } from '@/features/household'
 import { useFlowStartAnalytics } from '@/hooks/useFlowStartAnalytics'
 import { AnalyticsEvents } from '@sebt/analytics'
-import { Alert } from '@sebt/design-system'
+import { Alert, PageHeading } from '@sebt/design-system'
 
 export default function CardReplacePage() {
   const { t: tDev } = useTranslation('dev')
@@ -61,10 +61,10 @@ export default function CardReplacePage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">
+      <PageHeading className="font-sans-xl text-primary">
         {/* TODO: Use t('confirmAddressTitle') once key is available in CSV */}
         Do you want the new card mailed to this address?
-      </h1>
+      </PageHeading>
       <ConfirmAddress
         summerEbtCase={summerEbtCase}
         address={address}

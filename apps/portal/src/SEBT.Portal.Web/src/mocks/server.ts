@@ -1,4 +1,4 @@
-/** MSW server shared by the Vitest and Playwright suites. */
+/** MSW server for the Vitest suite (Playwright specs mock the API with `page.route`). */
 import { setupServer } from 'msw/node'
 import { handlers } from './handlers'
 

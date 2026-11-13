@@ -9,7 +9,7 @@ import { useAuth } from '@/features/auth'
 import { useHouseholdData } from '@/features/household'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
+import { Alert, Button, PageHeading, getState, getStateConfig } from '@sebt/design-system'
 
 export default function CoLoadedAddressInfoPage() {
   const { t: tDashboard } = useTranslation('dashboard')
@@ -69,7 +69,9 @@ export default function CoLoadedAddressInfoPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-ink">{tDashboard('coLoadedAddressUpdateTitle')}</h1>
+      <PageHeading className="font-sans-xl text-ink">
+        {tDashboard('coLoadedAddressUpdateTitle')}
+      </PageHeading>
 
       <p>{tDashboard('coLoadedAddressUpdateBody1')}</p>
 

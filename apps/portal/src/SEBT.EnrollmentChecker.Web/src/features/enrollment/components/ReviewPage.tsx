@@ -1,13 +1,14 @@
 'use client'
 
-import { Button } from '@sebt/design-system'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
+import { Button } from '@sebt/design-system'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
+import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useEnrollment } from '../context/EnrollmentContext'
 import { ChildReviewCard } from './ChildReviewCard'
-import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 
 interface ReviewPageProps {
   onSubmit: () => void
@@ -43,7 +44,9 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{t('title')}</h1>
+        <PageHeading className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>
+          {t('title')}
+        </PageHeading>
         <p className="usa-prose">{t('body')}</p>
 
         <div className="margin-top-3">

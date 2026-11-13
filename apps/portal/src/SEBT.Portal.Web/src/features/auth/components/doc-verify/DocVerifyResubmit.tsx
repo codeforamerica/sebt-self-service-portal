@@ -2,7 +2,7 @@
 
 import { useTranslation } from 'react-i18next'
 
-import { Alert, Button } from '@sebt/design-system'
+import { Alert, Button, PageHeading } from '@sebt/design-system'
 
 interface DocVerifyResubmitProps {
   onResubmit: () => void
@@ -34,12 +34,12 @@ export function DocVerifyResubmit({ onResubmit, isResubmitting, error }: DocVeri
         </Alert>
       )}
 
-      <h1
+      <PageHeading
         id="doc-verify-resubmit-title"
         className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
       >
         {t('resubmitHeading', "Let's try that again")}
-      </h1>
+      </PageHeading>
 
       <p className="font-sans-sm">
         {t(

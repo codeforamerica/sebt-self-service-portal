@@ -1,7 +1,7 @@
 'use client'
 
 import { IdProofingWithDi } from '@/features/auth/components/id-proofing/IdProofingWithDi'
-import { getState, getStateLinks, RequiredFieldsNote } from '@sebt/design-system'
+import { PageHeading, RequiredFieldsNote, getState, getStateLinks } from '@sebt/design-system'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -21,12 +21,12 @@ export default function IdProofingPage() {
     <div className="usa-section">
       <div className="grid-container maxw-tablet">
         <section aria-labelledby="id-proofing-title">
-          <h1
+          <PageHeading
             id="id-proofing-title"
             className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
           >
             {t('title')}
-          </h1>
+          </PageHeading>
 
           <p className="margin-top-0 font-sans-sm">{t('body')}</p>
 

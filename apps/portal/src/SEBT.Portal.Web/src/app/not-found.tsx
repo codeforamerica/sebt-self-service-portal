@@ -1,6 +1,6 @@
 'use client'
 
-import { getState, getStateConfig, getStateLinks } from '@sebt/design-system'
+import { PageHeading, getState, getStateConfig, getStateLinks } from '@sebt/design-system'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
@@ -13,7 +13,7 @@ export default function NotFound() {
   return (
     <div className="usa-section">
       <div className="grid-container">
-        <h1 className={`font-sans-xl ${pageTitleText}`}>{t('title')}</h1>
+        <PageHeading className={`font-sans-xl ${pageTitleText}`}>{t('title')}</PageHeading>
         <p>{t('body1')}</p>
         <div className="display-flex flex-wrap flex-align-center margin-top-4">
           <Link

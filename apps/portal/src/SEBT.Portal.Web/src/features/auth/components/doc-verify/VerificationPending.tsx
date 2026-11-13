@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { Button } from '@sebt/design-system'
+import { Button, PageHeading } from '@sebt/design-system'
 
 import { ApiError } from '@/api'
 import { useVerificationStatus } from '../../api'
@@ -69,7 +69,12 @@ export function VerificationPending({
     <section aria-label={tDev('alertVerification')}>
       {!showStillChecking ? (
         <div className="text-center padding-y-6">
-          <p className="font-sans-lg text-bold margin-bottom-2">{tDev('alertVerifyDocument')}</p>
+          <PageHeading
+            screenId="verification-pending"
+            className="font-sans-lg text-bold margin-bottom-2"
+          >
+            {tDev('alertVerifyDocument')}
+          </PageHeading>
           <p className="font-sans-sm text-base-dark">{tDev('alertKeepPageOpen')}</p>
           {/* USWDS loading indicator */}
           <div
@@ -82,7 +87,12 @@ export function VerificationPending({
         </div>
       ) : (
         <div className="text-center padding-y-6">
-          <p className="font-sans-lg text-bold margin-bottom-2">{tDev('alertStillChecking')}</p>
+          <PageHeading
+            screenId="verification-still-checking"
+            className="font-sans-lg text-bold margin-bottom-2"
+          >
+            {tDev('alertStillChecking')}
+          </PageHeading>
           <p className="font-sans-sm text-base-dark margin-bottom-3">
             {tDev('alertVerificationDelay')}
           </p>

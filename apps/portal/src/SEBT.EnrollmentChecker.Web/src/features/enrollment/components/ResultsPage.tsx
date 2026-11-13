@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { RichText } from '@sebt/design-system'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { mapApiStatus } from '../schemas/enrollmentSchema'
 import { ApplicationAvailable } from './ApplicationAvailable'
@@ -107,7 +108,9 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
   const apply2027NextStep = (
     <section data-testid="next-step-apply-2027">
-      <h2 className="usa-process-list__heading margin-top-4">{t('applyForSebtClosedActionApply')}</h2>
+      <h2 className="usa-process-list__heading margin-top-4">
+        {t('applyForSebtClosedActionApply')}
+      </h2>
       <p className="margin-top-05">{t('applyForSebtBody2')}</p>
       {apply2027Block()}
     </section>
@@ -148,9 +151,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
 
   // The outcome-to-artwork mapping is state-specific, so it lives in the asset
   // manifest rather than in filenames chosen here.
-  const isNotEnrolledOutcome = ['noneEnrolled', 'indeterminate'].includes(
-    householdEnrollmentResult
-  )
+  const isNotEnrolledOutcome = ['noneEnrolled', 'indeterminate'].includes(householdEnrollmentResult)
   const notEnrolledAsset = isClosed ? 'resultsNotEnrolledClosed' : 'resultsNotEnrolled'
   const icon = getCheckerAssetPath(isNotEnrolledOutcome ? notEnrolledAsset : 'resultsEnrolled')
 
@@ -166,9 +167,9 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
             aria-hidden="true"
           />
         )}
-        <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>
+        <PageHeading className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>
           {t(titleKey)}
-        </h1>
+        </PageHeading>
 
         {/* Only a household summary names the children it checked. */}
         {summarizesHousehold &&

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useAddressFlow } from '@/features/address'
 import { ReplacementCardPrompt } from '@/features/address/components/ReplacementCardPrompt'
+import { PageHeading } from '@sebt/design-system'
 
 export default function ReplacementCardsPage() {
   const { t } = useTranslation('confirmInfo')
@@ -25,7 +26,7 @@ export default function ReplacementCardsPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4 padding-bottom-4">
-      <h1 className="font-sans-xl text-primary">{t('replacementCardsTitle')}</h1>
+      <PageHeading className="font-sans-xl text-primary">{t('replacementCardsTitle')}</PageHeading>
       <ReplacementCardPrompt address={address} />
     </div>
   )

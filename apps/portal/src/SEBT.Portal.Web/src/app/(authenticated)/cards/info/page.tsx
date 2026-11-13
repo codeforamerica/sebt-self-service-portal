@@ -9,7 +9,7 @@ import { useAuth } from '@/features/auth'
 import { useHouseholdData } from '@/features/household'
 import { getColoadingStatus } from '@/lib/coloadingStatus'
 import { useDataLayer } from '@sebt/analytics'
-import { Alert, Button, getState, getStateConfig } from '@sebt/design-system'
+import { Alert, Button, PageHeading, getState, getStateConfig } from '@sebt/design-system'
 
 const FIS_PHONE_HREF = 'tel:+18883049167'
 
@@ -73,9 +73,9 @@ export default function CardInfoPage() {
 
   return (
     <div className="grid-container maxw-tablet padding-top-4">
-      <h1 className="font-sans-xl text-ink margin-bottom-4">
+      <PageHeading className="font-sans-xl text-ink margin-bottom-4">
         {tInfo('coLoadedInfoTitle', 'Getting a replacement SNAP or TANF EBT card')}
-      </h1>
+      </PageHeading>
 
       {replaceCardParagraphs.map((paragraph) => (
         <p

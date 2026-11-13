@@ -1,15 +1,16 @@
 'use client'
 
+import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
+import { getClientConfig } from '@/lib/client-config'
+import { getLandingActions, getLandingConfig } from '@/lib/landingConfig'
+import { AdentifiPixels } from '@sebt/analytics'
 import { Button, Details, RichText } from '@sebt/design-system'
+import { PageHeading } from '@sebt/design-system/src/components/ui/PageHeading'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AdentifiPixels } from '@sebt/analytics'
-import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
-import { getClientConfig } from '@/lib/client-config'
-import { getLandingActions, getLandingConfig } from '@/lib/landingConfig'
 import { useEnrollment } from '../context/EnrollmentContext'
 
 export function LandingPage() {
@@ -44,7 +45,9 @@ export function LandingPage() {
       {reaonsForAutoEnrollment.length > 0 && (
         <ul className="usa-list margin-top-2">
           {reaonsForAutoEnrollment.map((item, index) => (
-            <li key={index}><RichText>{item}</RichText></li>
+            <li key={index}>
+              <RichText>{item}</RichText>
+            </li>
           ))}
         </ul>
       )}
@@ -52,7 +55,9 @@ export function LandingPage() {
       {reasonsToApply.length > 0 && (
         <ul className="usa-list margin-top-2">
           {reasonsToApply.map((item, index) => (
-            <li key={index}><RichText>{item}</RichText></li>
+            <li key={index}>
+              <RichText>{item}</RichText>
+            </li>
           ))}
         </ul>
       )}
@@ -73,9 +78,9 @@ export function LandingPage() {
             priority
           />
         )}
-        <h1 className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
+        <PageHeading className={`font-family-sans font-sans-xl margin-bottom-4 ${pageTitleText}`}>
           {t('title')}
-        </h1>
+        </PageHeading>
         <div className="usa-prose">
           <RichText>{t('body')}</RichText>
         </div>
@@ -99,9 +104,7 @@ export function LandingPage() {
           </div>
         ))}
 
-        {adentifiPixelLanding && (
-          <AdentifiPixels pixelId={adentifiPixelLanding} />
-        )}
+        {adentifiPixelLanding && <AdentifiPixels pixelId={adentifiPixelLanding} />}
 
         {useAccordion ? (
           <Details

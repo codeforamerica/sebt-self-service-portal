@@ -1,6 +1,6 @@
 'use client'
 
-import { Alert, Button } from '@sebt/design-system'
+import { Alert, Button, PageHeading } from '@sebt/design-system'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -28,15 +28,16 @@ export default function AuthenticatedError({ error, reset }: ErrorProps) {
       aria-labelledby="error-heading"
     >
       <div className="grid-container">
-        <Alert
-          variant="error"
-          heading={
-            isAuthError
-              ? tDev('alertSession')
-              : // TODO update with correct string
-                t('errorSomethingWentWrong', 'Something went wrong')
-          }
+        <PageHeading
+          id="error-heading"
+          className="font-sans-xl text-bold line-height-sans-1 margin-bottom-3"
         >
+          {isAuthError
+            ? tDev('alertSession')
+            : // TODO update with correct string
+              t('errorSomethingWentWrong', 'Something went wrong')}
+        </PageHeading>
+        <Alert variant="error">
           <p>{isAuthError ? tDev('alertSessionClient') : tValidation('globalInternalError')}</p>
           {error.digest && (
             <p className="font-mono text-base-dark margin-top-1">
