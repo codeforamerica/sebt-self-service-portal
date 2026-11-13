@@ -1,0 +1,5 @@
+# Installed with --no-deps: Django and boto3 come from the Weblate base image.
+django-iam-dbauth==0.2.1 \
+    --hash=sha256:c3ea606ce62bf872930af948a59c792c26c6372db61911ad93b0e536009f033d
+dnspython==2.8.0 \
+    --hash=sha256:01d9bbc4a2d76bf0db7c1f729812ded6d912bd318d3b1cf81d30c0f845dbf3af
