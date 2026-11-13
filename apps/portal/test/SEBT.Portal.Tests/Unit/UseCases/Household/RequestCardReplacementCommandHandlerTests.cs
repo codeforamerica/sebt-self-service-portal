@@ -7,6 +7,7 @@ using NSubstitute.ExceptionExtensions;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Models.UserActions;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -41,6 +42,8 @@ public class RequestCardReplacementCommandHandlerTests
         Substitute.For<IIdentifierHasher>();
     private readonly IDistributedLockProvider _distributedLockProvider =
         Substitute.For<IDistributedLockProvider>();
+    private readonly IUserActionRepository _userActionRepository =
+        Substitute.For<IUserActionRepository>();
     private readonly NullLogger<RequestCardReplacementCommandHandler> _logger =
         NullLogger<RequestCardReplacementCommandHandler>.Instance;
 
@@ -80,7 +83,7 @@ public class RequestCardReplacementCommandHandlerTests
     private RequestCardReplacementCommandHandler CreateHandler() =>
         new(_validator, _resolver, _repository, _idProofingService, _evaluator,
             _cardReplacementService, _cardReplacementRepo, _identifierHasher,
-            _distributedLockProvider, _logger);
+            _distributedLockProvider, _userActionRepository, _logger);
 
     private static ClaimsPrincipal CreateUser(string email, string? ialClaim = null)
     {
@@ -967,5 +970,147 @@ public class RequestCardReplacementCommandHandlerTests
         var result = await CreateHandler().Handle(command);
 
         Assert.IsType<SuccessResult>(result);
+    }
+
+    // --- User action recording tests ---
+
+    [Fact]
+    public async Task Handle_RecordsSucceededActionForRequestedCasesOnly_WhenConnectorSucceeds()
+    {
+        var command = new RequestCardReplacementCommand
+        {
+            User = CreateUser("user@example.com"),
+            CaseRefs = [new CaseRefDto("SEBT-001", "APP-1", "STU-1")]
+        };
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001" },
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-002" }
+        ));
+
+        await CreateHandler().Handle(command);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserGuid,
+            UserActionType.RequestCardReplacement,
+            UserActionOutcome.Succeeded,
+            Arg.Is<IReadOnlyList<UserCaseIdentifiers>>(cases => cases.SequenceEqual(new[]
+            {
+                new UserCaseIdentifiers("SEBT-001", "APP-1", "STU-1")
+            })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsRejectedAction_WhenConnectorReturnsPolicyRejection()
+    {
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Returns(CardReplacementResult.PolicyRejected("INELIGIBLE", "Not allowed."));
+
+        await CreateHandler().Handle(CreateValidCommand());
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserGuid,
+            UserActionType.RequestCardReplacement,
+            UserActionOutcome.Rejected,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsFailedAction_WhenConnectorReturnsBackendError()
+    {
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Returns(CardReplacementResult.BackendError("UPSTREAM_500", "Downstream broke."));
+
+        await CreateHandler().Handle(CreateValidCommand());
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserGuid,
+            UserActionType.RequestCardReplacement,
+            UserActionOutcome.Failed,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsFailedAction_WhenConnectorThrows()
+    {
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        _cardReplacementService
+            .RequestCardReplacementAsync(Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("connector blew up"));
+
+        await CreateHandler().Handle(CreateValidCommand());
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserGuid,
+            UserActionType.RequestCardReplacement,
+            UserActionOutcome.Failed,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsSucceededActionBeforePersistingCooldown()
+    {
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        _cardReplacementRepo
+            .CreateAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("DB transient"));
+
+        await CreateHandler().Handle(CreateValidCommand());
+
+        Received.InOrder(() =>
+        {
+            _userActionRepository.RecordAsync(
+                TestUserGuid,
+                UserActionType.RequestCardReplacement,
+                UserActionOutcome.Succeeded,
+                Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+                Arg.Any<CancellationToken>());
+            _cardReplacementRepo.CreateAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        });
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccessAndPersistsCooldown_WhenRecordingTheActionFails()
+    {
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        _userActionRepository.RecordAsync(
+                Arg.Any<Guid>(), Arg.Any<UserActionType>(), Arg.Any<UserActionOutcome>(),
+                Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Database unavailable"));
+
+        var result = await CreateHandler().Handle(CreateValidCommand());
+
+        Assert.IsType<SuccessResult>(result);
+        await _cardReplacementRepo.Received(1).CreateAsync(
+            Arg.Any<string>(), Arg.Any<string>(), TestUserGuid, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotRecordAction_WhenCooldownBlocks()
+    {
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "SEBT-001" }));
+        _cardReplacementRepo.HasRecentRequestAsync(
+                Arg.Any<string>(), Arg.Any<string>(), Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await CreateHandler().Handle(CreateValidCommand());
+
+        await _userActionRepository.DidNotReceiveWithAnyArgs().RecordAsync(
+            default, default, default, default!, default);
     }
 }

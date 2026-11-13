@@ -2,6 +2,8 @@ using Medallion.Threading;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Models.UserActions;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.StateConnector;
@@ -32,6 +34,7 @@ public class RequestCardReplacementCommandHandler(
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
     IDistributedLockProvider distributedLockProvider,
+    IUserActionRepository userActionRepository,
     ILogger<RequestCardReplacementCommandHandler> logger)
     : ICommandHandler<RequestCardReplacementCommand>
 {
@@ -218,6 +221,7 @@ public class RequestCardReplacementCommandHandler(
                     "Card replacement plugin threw for household identifier kind {Kind}, {Count} case(s); cooldown NOT recorded, user may retry",
                     identifierKind,
                     command.CaseRefs.Count);
+                await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Failed, cancellationToken);
                 return Result.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "Card replacement service is temporarily unavailable.");
@@ -234,6 +238,7 @@ public class RequestCardReplacementCommandHandler(
                         "Card replacement policy rejection for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded",
                         identifierKind,
                         connectorResult.ErrorCode);
+                    await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Rejected, cancellationToken);
                     return Result.PreconditionFailed(
                         PreconditionFailedReason.Conflict,
                         connectorResult.ErrorMessage);
@@ -243,10 +248,15 @@ public class RequestCardReplacementCommandHandler(
                     "Card replacement backend error for household identifier kind {Kind}: {ErrorCode}; cooldown NOT recorded, user may retry",
                     identifierKind,
                     connectorResult.ErrorCode);
+                await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Failed, cancellationToken);
                 return Result.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     connectorResult.ErrorMessage);
             }
+
+            // Record before persisting cooldown: a failed cooldown save leaves its row tracked,
+            // which would make the user action repository refuse to save.
+            await RecordOutcomeAsync(userId.Value, command.CaseRefs, UserActionOutcome.Succeeded, cancellationToken);
 
             // Connector reported success — persist replacement requests for cooldown
             // enforcement. If persistence fails after a successful dispatch, the SP
@@ -283,6 +293,29 @@ public class RequestCardReplacementCommandHandler(
                 identifierKind,
                 command.CaseRefs.Count);
             return Result.Success();
+        }
+    }
+
+    // Best-effort: never throws, so a recording failure can't change the result of a dispatched request.
+    private async Task RecordOutcomeAsync(
+        Guid userId,
+        IReadOnlyList<CaseRefDto> caseRefs,
+        UserActionOutcome outcome,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await userActionRepository.RecordAsync(
+                userId,
+                UserActionType.RequestCardReplacement,
+                outcome,
+                caseRefs.Select(r => new UserCaseIdentifiers(r.SummerEbtCaseId, r.ApplicationId, r.ApplicationStudentId))
+                    .ToList(),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to record card replacement outcome {Outcome}", outcome);
         }
     }
 }
