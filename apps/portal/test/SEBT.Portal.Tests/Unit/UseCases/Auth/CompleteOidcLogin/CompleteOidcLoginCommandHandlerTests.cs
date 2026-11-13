@@ -125,7 +125,7 @@ public class CompleteOidcLoginCommandHandlerTests
     {
         SetupPreAuthSession();
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
-        _userRepository.GetOrCreateUserByExternalIdAsync(
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((new User(), false));
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
@@ -172,7 +172,7 @@ public class CompleteOidcLoginCommandHandlerTests
         _callbackFailureLogger.Received(1).Log(Arg.Is<OidcCallbackFailureLogEntry>(e =>
             e.Reason == "invalid_callback_token" && e.ApiError == "IDX10223: token expired"));
         await _userRepository.DidNotReceiveWithAnyArgs()
-            .GetOrCreateUserByExternalIdAsync(default!, default, default);
+            .GetOrCreateUserByIdentityProviderUserIdAsync(default!, default, default);
     }
 
     [Fact]
@@ -213,7 +213,7 @@ public class CompleteOidcLoginCommandHandlerTests
         SetupPreAuthSession();
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
         var user = new User { Email = "user@example.com" };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
@@ -227,16 +227,16 @@ public class CompleteOidcLoginCommandHandlerTests
     }
 
     /// <summary>
-    /// Uses the sub claim (ExternalProviderId) for user lookup and passes email as a
-    /// migration hint to GetOrCreateUserByExternalIdAsync.
+    /// Uses the sub claim (IdentityProviderUserId) for user lookup and passes email as a
+    /// migration hint to GetOrCreateUserByIdentityProviderUserIdAsync.
     /// </summary>
     [Fact]
-    public async Task Handle_LooksUpUserByExternalProviderId()
+    public async Task Handle_LooksUpUserByIdentityProviderUserId()
     {
         SetupPreAuthSession();
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", "oidc-sub-abc123"));
         var user = new User { Email = "user@example.com" };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
                 "oidc-sub-abc123", "user@example.com", Arg.Any<CancellationToken>())
             .Returns((user, false));
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
@@ -247,7 +247,7 @@ public class CompleteOidcLoginCommandHandlerTests
         Assert.True(result.IsSuccess);
 
         // Should have been called with the exact sub and email values
-        await _userRepository.Received(1).GetOrCreateUserByExternalIdAsync(
+        await _userRepository.Received(1).GetOrCreateUserByIdentityProviderUserIdAsync(
             "oidc-sub-abc123", "user@example.com", Arg.Any<CancellationToken>());
 
         // Should NOT use the old email-based lookup
@@ -267,7 +267,7 @@ public class CompleteOidcLoginCommandHandlerTests
         SetupPreAuthSession();
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
         var user = new User { Email = "user@example.com", IalLevel = UserIalLevel.IAL1 };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
@@ -289,7 +289,7 @@ public class CompleteOidcLoginCommandHandlerTests
         SetupPreAuthSession();
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
         var user = new User { Email = "user@example.com" };
-        _userRepository.GetOrCreateUserByExternalIdAsync(
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((user, false));
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
@@ -299,8 +299,84 @@ public class CompleteOidcLoginCommandHandlerTests
 
         _oidcTokenService.Received(1).GenerateForOidcLogin(user, Arg.Any<ClaimsPrincipal>(), false);
         // The non-step-up path uses get-or-create, never the existing-only lookup.
-        await _userRepository.DidNotReceive().GetUserByExternalIdAsync(
+        await _userRepository.DidNotReceive().GetUserByIdentityProviderUserIdAsync(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    // ── Login tracking ──
+
+    [Fact]
+    public async Task Handle_RecordsOidcLogin_WhenLoginSucceeds()
+    {
+        SetupPreAuthSession();
+        SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
+        var user = new User { Email = "user@example.com" };
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((user, false));
+        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
+            .Returns(Result<string>.Success("portal-jwt"));
+
+        await CreateHandler().Handle(CreateCommand());
+
+        await _userRepository.Received(1).RecordLoginAsync(user.Id, LoginMethod.Oidc, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenRecordingLoginFails_StillReturnsToken()
+    {
+        SetupPreAuthSession();
+        SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((new User(), false));
+        _userRepository.RecordLoginAsync(Arg.Any<Guid>(), Arg.Any<LoginMethod>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("database unavailable")));
+        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
+            .Returns(Result<string>.Success("portal-jwt"));
+
+        var result = await CreateHandler().Handle(CreateCommand());
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("portal-jwt", result.Value.Token);
+    }
+
+    /// <summary>
+    /// Step-up re-verifies a user who is already signed in, so it is not a new login.
+    /// </summary>
+    [Fact]
+    public async Task Handle_DoesNotRecordLogin_WhenStepUpSucceeds()
+    {
+        SetupPreAuthSession(isStepUp: true);
+        SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
+        _userRepository.GetUserByIdentityProviderUserIdAsync(TestSub, Arg.Any<CancellationToken>())
+            .Returns(new User { Email = "user@example.com" });
+        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
+            .Returns(Result<string>.Success("portal-jwt"));
+
+        var result = await CreateHandler().Handle(CreateCommand());
+
+        Assert.True(result.IsSuccess);
+        await _userRepository.DidNotReceive().RecordLoginAsync(
+            Arg.Any<Guid>(), Arg.Any<LoginMethod>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotRecordLogin_WhenTokenGenerationFails()
+    {
+        SetupPreAuthSession();
+        SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns((new User(), false));
+        _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
+            .Returns(Result<string>.DependencyFailed(DependencyFailedReason.BadRequest, "failed"));
+
+        var result = await CreateHandler().Handle(CreateCommand());
+
+        Assert.False(result.IsSuccess);
+        await _userRepository.DidNotReceive().RecordLoginAsync(
+            Arg.Any<Guid>(), Arg.Any<LoginMethod>(), Arg.Any<CancellationToken>());
     }
 
     // ── Step-up flows ──
@@ -314,7 +390,7 @@ public class CompleteOidcLoginCommandHandlerTests
     {
         SetupPreAuthSession(isStepUp: true);
         SetupValidToken(new Claim("email", "new-user@example.com"), new Claim("sub", TestSub));
-        _userRepository.GetUserByExternalIdAsync(TestSub, Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdentityProviderUserIdAsync(TestSub, Arg.Any<CancellationToken>())
             .Returns((User?)null);
 
         var result = await CreateHandler().Handle(CreateCommand());
@@ -325,7 +401,7 @@ public class CompleteOidcLoginCommandHandlerTests
         _callbackFailureLogger.Received(1).Log(Arg.Is<OidcCallbackFailureLogEntry>(e =>
             e.Reason == "step_up_user_not_found" && e.IsStepUp == true));
 
-        await _userRepository.DidNotReceive().GetOrCreateUserByExternalIdAsync(
+        await _userRepository.DidNotReceive().GetOrCreateUserByIdentityProviderUserIdAsync(
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _userRepository.DidNotReceive().UpdateUserAsync(Arg.Any<User>(), Arg.Any<CancellationToken>());
     }
@@ -336,7 +412,7 @@ public class CompleteOidcLoginCommandHandlerTests
         SetupPreAuthSession(isStepUp: true, returnUrl: "/profile/address?q=1");
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
         var user = new User { Email = "user@example.com" };
-        _userRepository.GetUserByExternalIdAsync(TestSub, Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdentityProviderUserIdAsync(TestSub, Arg.Any<CancellationToken>())
             .Returns(user);
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
             .Returns(Result<string>.Success("portal-jwt"));
@@ -357,7 +433,7 @@ public class CompleteOidcLoginCommandHandlerTests
     {
         SetupPreAuthSession(isStepUp: true, returnUrl: null);
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
-        _userRepository.GetUserByExternalIdAsync(TestSub, Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdentityProviderUserIdAsync(TestSub, Arg.Any<CancellationToken>())
             .Returns(new User { Email = "user@example.com" });
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
             .Returns(Result<string>.Success("portal-jwt"));
@@ -377,7 +453,7 @@ public class CompleteOidcLoginCommandHandlerTests
     {
         SetupPreAuthSession(isStepUp: true);
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
-        _userRepository.GetUserByExternalIdAsync(TestSub, Arg.Any<CancellationToken>())
+        _userRepository.GetUserByIdentityProviderUserIdAsync(TestSub, Arg.Any<CancellationToken>())
             .Returns(new User());
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), true)
             .Returns(Result<string>.DependencyFailed(
@@ -401,7 +477,7 @@ public class CompleteOidcLoginCommandHandlerTests
     {
         SetupPreAuthSession(isStepUp: false);
         SetupValidToken(new Claim("email", "user@example.com"), new Claim("sub", TestSub));
-        _userRepository.GetOrCreateUserByExternalIdAsync(
+        _userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns((new User { Email = "user@example.com" }, false));
         _oidcTokenService.GenerateForOidcLogin(Arg.Any<User>(), Arg.Any<ClaimsPrincipal>(), Arg.Any<bool>())
@@ -410,10 +486,10 @@ public class CompleteOidcLoginCommandHandlerTests
         var result = await CreateHandler().Handle(CreateCommand());
 
         Assert.True(result.IsSuccess);
-        // The non-step-up path calls GetOrCreateUserByExternalIdAsync, NOT GetUserByExternalIdAsync
-        await _userRepository.Received(1).GetOrCreateUserByExternalIdAsync(
+        // The non-step-up path calls GetOrCreateUserByIdentityProviderUserIdAsync, NOT GetUserByIdentityProviderUserIdAsync
+        await _userRepository.Received(1).GetOrCreateUserByIdentityProviderUserIdAsync(
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-        await _userRepository.DidNotReceive().GetUserByExternalIdAsync(
+        await _userRepository.DidNotReceive().GetUserByIdentityProviderUserIdAsync(
             Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 }

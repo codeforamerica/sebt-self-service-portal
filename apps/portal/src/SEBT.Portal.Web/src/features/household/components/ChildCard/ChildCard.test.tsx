@@ -1,8 +1,9 @@
 import { i18n } from '@sebt/design-system/client'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+import enCoDashboard from '@/content/locales/en/co/dashboard.json'
 import { FeatureFlagsContext, type FeatureFlagsContextValue } from '@/features/feature-flags'
 import { TEST_FEATURE_FLAGS } from '@/mocks/handlers'
 
@@ -385,6 +386,74 @@ describe('ChildCard', () => {
     )
 
     expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+  })
+
+  describe('undeliverable card', () => {
+    const undeliverableCase = createMockSummerEbtCase({
+      ...mockCase,
+      issuanceType: 'SummerEbt',
+      ebtCardStatus: 'Undeliverable',
+      cardRequestedAt: null
+    })
+
+    it('falls back to the replacement copy when the state has no update-address copy', () => {
+      renderWithFlags({ summerEbtCase: undeliverableCase })
+
+      const link = screen.getByRole('link', { name: 'Request a replacement card' })
+      expect(link).toHaveAttribute('href', '/profile/address')
+    })
+
+    describe('with Colorado copy', () => {
+      let originalBundle: Record<string, unknown>
+
+      beforeEach(() => {
+        originalBundle = structuredClone(i18n.getResourceBundle('en', 'dashboard'))
+        i18n.addResourceBundle('en', 'dashboard', structuredClone(enCoDashboard), true, true)
+      })
+
+      afterEach(() => {
+        i18n.removeResourceBundle('en', 'dashboard')
+        i18n.addResourceBundle('en', 'dashboard', originalBundle)
+      })
+
+      it('shows the warning status with a link to update the address', () => {
+        renderWithFlags({ summerEbtCase: undeliverableCase })
+
+        expect(screen.getByTestId('card-status-badge')).toHaveTextContent('Undeliverable')
+        expect(
+          screen.getByText('The card could not be delivered to the address on file.')
+        ).toBeInTheDocument()
+
+        const link = screen.getByRole('link', {
+          name: 'Update your address and order a replacement card'
+        })
+        expect(link).toHaveAttribute('href', '/profile/address')
+        expect(link).toHaveAttribute('data-analytics-cta', 'update_address_cta')
+        expect(screen.queryByText('Request a replacement card')).not.toBeInTheDocument()
+      })
+
+      it('keeps the replacement link for cards that are not undeliverable', () => {
+        renderWithFlags({ summerEbtCase: { ...undeliverableCase, ebtCardStatus: 'Active' } })
+
+        const link = screen.getByRole('link', { name: 'Request a replacement card' })
+        expect(link).toHaveAttribute('href', '/cards/replace?case=SEBT-001')
+      })
+
+      it('uses the replacement flow when the address cannot be changed', () => {
+        renderWithFlags({ summerEbtCase: { ...undeliverableCase, allowAddressChange: false } })
+
+        const link = screen.getByRole('link', { name: 'Request a replacement card' })
+        expect(link).toHaveAttribute('href', '/cards/replace?case=SEBT-001')
+      })
+
+      it('shows no link while a replacement is already on its way', () => {
+        renderWithFlags({
+          summerEbtCase: { ...undeliverableCase, cardRequestedAt: new Date().toISOString() }
+        })
+
+        expect(screen.queryByRole('link')).toBeNull()
+      })
+    })
   })
 
   it('exposes data-analytics-cta on the replacement card link for cta_click tracking', () => {

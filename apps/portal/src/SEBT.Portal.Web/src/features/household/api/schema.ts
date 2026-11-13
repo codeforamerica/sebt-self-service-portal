@@ -207,6 +207,13 @@ export const SummerEbtCaseSchema = z.object({
 
 export type SummerEbtCase = z.infer<typeof SummerEbtCaseSchema>
 
+/** True when any card was returned as undeliverable, so the guardian should check their mailing address. */
+export function hasUndeliverableCard(
+  cases: readonly Pick<SummerEbtCase, 'ebtCardStatus'>[]
+): boolean {
+  return cases.some((summerEbtCase) => summerEbtCase.ebtCardStatus === 'Undeliverable')
+}
+
 export const ApplicationSchema = z.object({
   applicationNumber: z.string().nullable().optional(),
   caseNumber: z.string().nullable().optional(),
