@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Options;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
 using SEBT.Portal.Infrastructure.Data.Entities;
@@ -880,12 +881,12 @@ public class DatabaseUserRepositoryTests
     }
 
     [Fact]
-    public async Task GetOrCreateUserByExternalIdAsync_WhenConcurrentUniqueViolation_ShouldReturnExistingUser()
+    public async Task GetOrCreateUserByIdentityProviderUserIdAsync_WhenConcurrentUniqueViolation_ShouldReturnExistingUser()
     {
-        var externalProviderId = $"oidc-{Guid.NewGuid()}";
+        var identityProviderUserId = $"oidc-{Guid.NewGuid()}";
         var interceptor = new InsertCompetingUserOnSaveInterceptor(
             _fixture.ConnectionString,
-            externalProviderId);
+            identityProviderUserId);
 
         var options = new DbContextOptionsBuilder<PortalDbContext>()
             .UseSqlServer(_fixture.ConnectionString)
@@ -894,14 +895,14 @@ public class DatabaseUserRepositoryTests
         using var context = new PortalDbContext(options);
         var repository = CreateRepository(context);
 
-        var (user, isNew) = await repository.GetOrCreateUserByExternalIdAsync(externalProviderId);
+        var (user, isNew) = await repository.GetOrCreateUserByIdentityProviderUserIdAsync(identityProviderUserId);
 
         Assert.False(isNew);
         Assert.Equal(interceptor.CompetingUserId, user.Id);
-        Assert.Equal(externalProviderId, user.ExternalProviderId);
+        Assert.Equal(identityProviderUserId, user.IdentityProviderUserId);
 
         using var verify = CreateContext();
-        Assert.Equal(1, await verify.Users.CountAsync(u => u.ExternalProviderId == externalProviderId));
+        Assert.Equal(1, await verify.Users.CountAsync(u => u.IdentityProviderUserId == identityProviderUserId));
     }
 
     [Fact]
@@ -928,6 +929,128 @@ public class DatabaseUserRepositoryTests
         using var verify = CreateContext();
         var hash = TestPortalCryptography.EmailLookupHasher.HashNormalized(email.ToLowerInvariant());
         Assert.Equal(1, await verify.Users.CountAsync(u => u.EmailHash == hash));
+    }
+
+    [Fact]
+    public async Task RecordLoginAsync_IncrementsCountAndStampsLastLogin()
+    {
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+        var (user, _) = await repository.GetOrCreateUserByIdentityProviderUserIdAsync($"oidc-{Guid.NewGuid()}");
+        var before = DateTime.UtcNow.AddSeconds(-1);
+
+        await repository.RecordLoginAsync(user.Id, LoginMethod.Oidc);
+        await repository.RecordLoginAsync(user.Id, LoginMethod.Otp);
+
+        using var verify = CreateContext();
+        var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        Assert.Equal(2, stored.LoginCount);
+        Assert.Equal((int)LoginMethod.Otp, stored.LastLoginMethod);
+        Assert.NotNull(stored.LastLoginAt);
+        Assert.True(stored.LastLoginAt >= before);
+    }
+
+    [Fact]
+    public async Task RecordLoginAsync_DoesNotLoseCountsUnderConcurrentLogins()
+    {
+        Guid userId;
+        using (var setup = CreateContext())
+        {
+            var (user, _) = await CreateRepository(setup)
+                .GetOrCreateUserByIdentityProviderUserIdAsync($"oidc-{Guid.NewGuid()}");
+            userId = user.Id;
+        }
+
+        await Task.WhenAll(Enumerable.Range(0, 5).Select(async _ =>
+        {
+            using var ctx = CreateContext();
+            await CreateRepository(ctx).RecordLoginAsync(userId, LoginMethod.Oidc);
+        }));
+
+        using var verify = CreateContext();
+        var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == userId);
+        Assert.Equal(5, stored.LoginCount);
+    }
+
+    [Fact]
+    public async Task UpdateUserAsync_DoesNotOverwriteLoginTracking()
+    {
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+        var (staleUser, _) = await repository.GetOrCreateUserByIdentityProviderUserIdAsync($"oidc-{Guid.NewGuid()}");
+
+        await repository.RecordLoginAsync(staleUser.Id, LoginMethod.Oidc);
+        staleUser.IalLevel = UserIalLevel.IAL1;
+        await repository.UpdateUserAsync(staleUser);
+
+        using var verify = CreateContext();
+        var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == staleUser.Id);
+        Assert.Equal(1, stored.LoginCount);
+        Assert.NotNull(stored.LastLoginAt);
+    }
+
+    [Fact]
+    public async Task RecordHouseholdIdentifierAsync_StoresTypeAndHash()
+    {
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+        var (user, _) = await repository.GetOrCreateUserByIdentityProviderUserIdAsync($"oidc-{Guid.NewGuid()}");
+
+        await repository.RecordHouseholdIdentifierAsync(user.Id, PreferredHouseholdIdType.Phone, "hashed-phone");
+
+        using var verify = CreateContext();
+        var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        Assert.Equal((int)PreferredHouseholdIdType.Phone, stored.HouseholdIdentifierType);
+        Assert.Equal("hashed-phone", stored.HouseholdIdentifierHash);
+        Assert.NotNull(stored.HouseholdIdentifierUpdatedAt);
+    }
+
+    [Fact]
+    public async Task RecordHouseholdIdentifierAsync_WhenUnchanged_KeepsOriginalTimestamp()
+    {
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+        var (user, _) = await repository.GetOrCreateUserByIdentityProviderUserIdAsync($"oidc-{Guid.NewGuid()}");
+        await repository.RecordHouseholdIdentifierAsync(user.Id, PreferredHouseholdIdType.Phone, "hashed-phone");
+
+        DateTime? firstRecordedAt;
+        using (var read = CreateContext())
+        {
+            firstRecordedAt = (await read.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id))
+                .HouseholdIdentifierUpdatedAt;
+        }
+
+        await Task.Delay(20);
+        await repository.RecordHouseholdIdentifierAsync(user.Id, PreferredHouseholdIdType.Phone, "hashed-phone");
+
+        using var verify = CreateContext();
+        var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        Assert.Equal(firstRecordedAt, stored.HouseholdIdentifierUpdatedAt);
+    }
+
+    [Fact]
+    public async Task RecordHouseholdIdentifierAsync_WhenChanged_ReplacesValueAndTimestamp()
+    {
+        using var context = CreateContext();
+        var repository = CreateRepository(context);
+        var (user, _) = await repository.GetOrCreateUserByIdentityProviderUserIdAsync($"oidc-{Guid.NewGuid()}");
+        await repository.RecordHouseholdIdentifierAsync(user.Id, PreferredHouseholdIdType.Phone, "hashed-phone");
+
+        DateTime? firstRecordedAt;
+        using (var read = CreateContext())
+        {
+            firstRecordedAt = (await read.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id))
+                .HouseholdIdentifierUpdatedAt;
+        }
+
+        await Task.Delay(20);
+        await repository.RecordHouseholdIdentifierAsync(user.Id, PreferredHouseholdIdType.Email, "hashed-email");
+
+        using var verify = CreateContext();
+        var stored = await verify.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id);
+        Assert.Equal((int)PreferredHouseholdIdType.Email, stored.HouseholdIdentifierType);
+        Assert.Equal("hashed-email", stored.HouseholdIdentifierHash);
+        Assert.True(stored.HouseholdIdentifierUpdatedAt > firstRecordedAt);
     }
 
     private static async Task<UserEntity?> FindStoredUserWithLegacyPlaintextFallbackAsync(
@@ -967,17 +1090,17 @@ public class DatabaseUserRepositoryTests
 
     /// <summary>
     /// InMemory has no unique indexes. Seed the competing row on SavingChanges so the insert
-    /// hits IX_Users_ExternalProviderId instead of relying on a timing-dependent race.
+    /// hits IX_Users_IdentityProviderUserId instead of relying on a timing-dependent race.
     /// </summary>
     private sealed class InsertCompetingUserOnSaveInterceptor : SaveChangesInterceptor
     {
         private readonly string _connectionString;
-        private readonly string _externalProviderId;
+        private readonly string _identityProviderUserId;
 
-        public InsertCompetingUserOnSaveInterceptor(string connectionString, string externalProviderId)
+        public InsertCompetingUserOnSaveInterceptor(string connectionString, string identityProviderUserId)
         {
             _connectionString = connectionString;
-            _externalProviderId = externalProviderId;
+            _identityProviderUserId = identityProviderUserId;
         }
 
         public Guid CompetingUserId { get; private set; }
@@ -998,7 +1121,7 @@ public class DatabaseUserRepositoryTests
             using var competing = new PortalDbContext(options);
             var entity = UserFactory.CreateUserEntity(e =>
             {
-                e.ExternalProviderId = _externalProviderId;
+                e.IdentityProviderUserId = _identityProviderUserId;
                 e.Email = null;
                 e.EmailHash = null;
             });
