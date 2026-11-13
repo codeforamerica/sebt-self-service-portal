@@ -38,6 +38,8 @@ Extract:
 - Lines added/removed per file
 - Total change volume
 
+Also read `docs/assumptions.md` if it exists. While identifying review units, flag any change that contradicts a `confirmed` entry or relies on a `proposed` or `disputed` one.
+
 ### 3. Identify Review Units
 
 For each changed file, identify discrete units requiring review:
@@ -117,6 +119,14 @@ Also generate an aggregate rating and, for medium or high risk, concisely explai
 **🟢 Low Priority (N items)**
 
 - Boilerplate, tests, config (can be skimmed)
+
+---
+
+### Assumptions
+
+- Changes that contradict a `confirmed` entry in `docs/assumptions.md` (🔴), or rely on a `proposed` or `disputed` one (🟡)
+- New broad assumptions this PR introduces. Suggest running `/capture-assumption <PR number>`.
+- Omit this section if there are none.
 
 ---
 
