@@ -46,7 +46,7 @@ public class DatabaseUserRepositoryUnitTests
     public async Task GetUserByIdAsync_whenUserExists_returnsUser()
     {
         using var context = CreateContext();
-        var entity = new UserEntity { ExternalProviderId = "sub-1" };
+        var entity = new UserEntity { IdentityProviderUserId = "sub-1" };
         context.Users.Add(entity);
         await context.SaveChangesAsync();
         var repo = CreateRepository(context);
@@ -55,7 +55,7 @@ public class DatabaseUserRepositoryUnitTests
 
         Assert.NotNull(result);
         Assert.Equal(entity.Id, result!.Id);
-        Assert.Equal("sub-1", result.ExternalProviderId);
+        Assert.Equal("sub-1", result.IdentityProviderUserId);
     }
 
     [Fact]
@@ -69,54 +69,54 @@ public class DatabaseUserRepositoryUnitTests
     }
 
     [Fact]
-    public async Task GetUserByExternalIdAsync_whenUserExists_returnsUser()
+    public async Task GetUserByIdentityProviderUserIdAsync_whenUserExists_returnsUser()
     {
         using var context = CreateContext();
-        var entity = new UserEntity { ExternalProviderId = "oidc-sub" };
+        var entity = new UserEntity { IdentityProviderUserId = "oidc-sub" };
         context.Users.Add(entity);
         await context.SaveChangesAsync();
         var repo = CreateRepository(context);
 
-        var result = await repo.GetUserByExternalIdAsync("oidc-sub");
+        var result = await repo.GetUserByIdentityProviderUserIdAsync("oidc-sub");
 
         Assert.NotNull(result);
         Assert.Equal(entity.Id, result!.Id);
     }
 
     [Fact]
-    public async Task GetUserByExternalIdAsync_whenMissingOrBlank_returnsNull()
+    public async Task GetUserByIdentityProviderUserIdAsync_whenMissingOrBlank_returnsNull()
     {
         using var context = CreateContext();
         var repo = CreateRepository(context);
 
-        Assert.Null(await repo.GetUserByExternalIdAsync("missing"));
-        Assert.Null(await repo.GetUserByExternalIdAsync("  "));
-        Assert.Null(await repo.GetUserByExternalIdAsync(null!));
+        Assert.Null(await repo.GetUserByIdentityProviderUserIdAsync("missing"));
+        Assert.Null(await repo.GetUserByIdentityProviderUserIdAsync("  "));
+        Assert.Null(await repo.GetUserByIdentityProviderUserIdAsync(null!));
     }
 
     [Fact]
-    public async Task GetOrCreateUserByExternalIdAsync_whenMissing_createsUser()
+    public async Task GetOrCreateUserByIdentityProviderUserIdAsync_whenMissing_createsUser()
     {
         using var context = CreateContext();
         var repo = CreateRepository(context);
 
-        var (user, isNew) = await repo.GetOrCreateUserByExternalIdAsync("new-sub");
+        var (user, isNew) = await repo.GetOrCreateUserByIdentityProviderUserIdAsync("new-sub");
 
         Assert.True(isNew);
-        Assert.Equal("new-sub", user.ExternalProviderId);
-        Assert.NotNull(await context.Users.SingleAsync(u => u.ExternalProviderId == "new-sub"));
+        Assert.Equal("new-sub", user.IdentityProviderUserId);
+        Assert.NotNull(await context.Users.SingleAsync(u => u.IdentityProviderUserId == "new-sub"));
     }
 
     [Fact]
-    public async Task GetOrCreateUserByExternalIdAsync_whenExists_returnsExisting()
+    public async Task GetOrCreateUserByIdentityProviderUserIdAsync_whenExists_returnsExisting()
     {
         using var context = CreateContext();
-        var entity = new UserEntity { ExternalProviderId = "existing-sub" };
+        var entity = new UserEntity { IdentityProviderUserId = "existing-sub" };
         context.Users.Add(entity);
         await context.SaveChangesAsync();
         var repo = CreateRepository(context);
 
-        var (user, isNew) = await repo.GetOrCreateUserByExternalIdAsync("existing-sub");
+        var (user, isNew) = await repo.GetOrCreateUserByIdentityProviderUserIdAsync("existing-sub");
 
         Assert.False(isNew);
         Assert.Equal(entity.Id, user.Id);
@@ -124,7 +124,7 @@ public class DatabaseUserRepositoryUnitTests
     }
 
     [Fact]
-    public async Task GetOrCreateUserByExternalIdAsync_whenLegacyEmailUser_adoptsRecord()
+    public async Task GetOrCreateUserByIdentityProviderUserIdAsync_whenLegacyEmailUser_adoptsRecord()
     {
         using var context = CreateContext();
         var email = "legacy@example.com";
@@ -132,24 +132,24 @@ public class DatabaseUserRepositoryUnitTests
         {
             Email = email,
             EmailHash = TestPortalCryptography.EmailLookupHasher.HashNormalized(email),
-            ExternalProviderId = null
+            IdentityProviderUserId = null
         };
         context.Users.Add(entity);
         await context.SaveChangesAsync();
         var repo = CreateRepository(context);
 
-        var (user, isNew) = await repo.GetOrCreateUserByExternalIdAsync("oidc-sub", email);
+        var (user, isNew) = await repo.GetOrCreateUserByIdentityProviderUserIdAsync("oidc-sub", email);
 
         Assert.False(isNew);
         Assert.Equal(entity.Id, user.Id);
         var stored = await context.Users.SingleAsync(u => u.Id == entity.Id);
-        Assert.Equal("oidc-sub", stored.ExternalProviderId);
+        Assert.Equal("oidc-sub", stored.IdentityProviderUserId);
         Assert.Null(stored.Email);
         Assert.Null(stored.EmailHash);
     }
 
     [Fact]
-    public async Task GetOrCreateUserByExternalIdAsync_whenLegacyAlreadyHasExternalId_createsNew()
+    public async Task GetOrCreateUserByIdentityProviderUserIdAsync_whenLegacyAlreadyHasIdentityProviderUserId_createsNew()
     {
         using var context = CreateContext();
         var email = "taken@example.com";
@@ -157,44 +157,44 @@ public class DatabaseUserRepositoryUnitTests
         {
             Email = email,
             EmailHash = TestPortalCryptography.EmailLookupHasher.HashNormalized(email),
-            ExternalProviderId = "already-bound"
+            IdentityProviderUserId = "already-bound"
         });
         await context.SaveChangesAsync();
         var repo = CreateRepository(context);
 
-        var (user, isNew) = await repo.GetOrCreateUserByExternalIdAsync("new-sub", email);
+        var (user, isNew) = await repo.GetOrCreateUserByIdentityProviderUserIdAsync("new-sub", email);
 
         Assert.True(isNew);
-        Assert.Equal("new-sub", user.ExternalProviderId);
+        Assert.Equal("new-sub", user.IdentityProviderUserId);
         Assert.Equal(2, await context.Users.CountAsync());
     }
 
     [Fact]
-    public async Task GetOrCreateUserByExternalIdAsync_whenExternalIdBlank_throws()
+    public async Task GetOrCreateUserByIdentityProviderUserIdAsync_whenIdentityProviderUserIdBlank_throws()
     {
         using var context = CreateContext();
         var repo = CreateRepository(context);
 
         await Assert.ThrowsAsync<ArgumentException>(
-            () => repo.GetOrCreateUserByExternalIdAsync("  "));
+            () => repo.GetOrCreateUserByIdentityProviderUserIdAsync("  "));
     }
 
     [Fact]
-    public async Task CreateUserAsync_whenOnlyExternalProviderId_persists()
+    public async Task CreateUserAsync_whenOnlyIdentityProviderUserId_persists()
     {
         using var context = CreateContext();
         var repo = CreateRepository(context);
-        var user = new User { ExternalProviderId = "oidc-only" };
+        var user = new User { IdentityProviderUserId = "oidc-only" };
 
         await repo.CreateUserAsync(user);
 
         var stored = await context.Users.SingleAsync(u => u.Id == user.Id);
-        Assert.Equal("oidc-only", stored.ExternalProviderId);
+        Assert.Equal("oidc-only", stored.IdentityProviderUserId);
         Assert.Null(stored.Email);
     }
 
     [Fact]
-    public async Task CreateUserAsync_whenEmailAndExternalIdMissing_throws()
+    public async Task CreateUserAsync_whenEmailAndIdentityProviderUserIdMissing_throws()
     {
         using var context = CreateContext();
         var repo = CreateRepository(context);
