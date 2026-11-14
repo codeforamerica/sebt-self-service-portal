@@ -6,6 +6,7 @@ using SEBT.Portal.Core.Models;
 using SEBT.Portal.Core.Models.AddressUpdate;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Models.UserActions;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -37,8 +38,11 @@ public class UpdateAddressCommandHandlerTests
         Substitute.For<IIdProofingService>();
     private readonly ISelfServiceEvaluator _selfServiceEvaluator =
         Substitute.For<ISelfServiceEvaluator>();
+    private readonly IUserActionRepository _userActionRepository =
+        Substitute.For<IUserActionRepository>();
     private readonly ILogger<UpdateAddressCommandHandler> _logger =
         Substitute.For<ILogger<UpdateAddressCommandHandler>>();
+    private static readonly Guid TestUserId = Guid.CreateVersion7();
 
     public UpdateAddressCommandHandlerTests()
     {
@@ -77,11 +81,12 @@ public class UpdateAddressCommandHandlerTests
 
     private UpdateAddressCommandHandler CreateHandler() =>
         new(_validator, _addressVerificationService, _addressValidationService, _resolver, _householdRepository,
-            _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _stateAddressUpdateService, _logger);
+            _piiVisibilityService, _idProofingService, _selfServiceEvaluator, _stateAddressUpdateService,
+            _userActionRepository, _logger);
 
     private static ClaimsPrincipal CreateUser(string email)
     {
-        var claims = new List<Claim> { new(ClaimTypes.Email, email) };
+        var claims = new List<Claim> { new(ClaimTypes.Email, email), new("sub", TestUserId.ToString()) };
         var identity = new ClaimsIdentity(claims, "Test");
         return new ClaimsPrincipal(identity);
     }
@@ -1148,5 +1153,165 @@ public class UpdateAddressCommandHandlerTests
         Assert.True(success.Value.IsValid);
         await _stateAddressUpdateService.Received(1)
             .UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsSucceededActionForEveryCaseSentToState_WhenStateConnectorSucceeds()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(
+            new SummerEbtCase
+            {
+                SummerEBTCaseID = "S1",
+                ApplicationId = "APP-1",
+                ApplicationStudentId = "STU-1",
+                ChildFirstName = "A",
+                ChildLastName = "B",
+                IsCoLoaded = true
+            },
+            new SummerEbtCase { SummerEBTCaseID = "S2", ChildFirstName = "C", ChildLastName = "D" },
+            new SummerEbtCase { SummerEBTCaseID = " ", ChildFirstName = "E", ChildLastName = "F" });
+
+        await handler.Handle(CreateValidCommand(), CancellationToken.None);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserId,
+            UserActionType.UpdateAddress,
+            UserActionOutcome.Succeeded,
+            Arg.Is<IReadOnlyList<UserCaseIdentifiers>>(cases => cases.SequenceEqual(new[]
+            {
+                new UserCaseIdentifiers("S1", "APP-1", "STU-1"),
+                new UserCaseIdentifiers("S2", null, null)
+            })),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsRejectedAction_WhenStateConnectorReturnsPolicyRejection()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressUpdateResult.PolicyRejected("HOUSEHOLD_NOT_ELIGIBLE", "Not eligible."));
+
+        await handler.Handle(CreateValidCommand(), CancellationToken.None);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserId,
+            UserActionType.UpdateAddress,
+            UserActionOutcome.Rejected,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsFailedAction_WhenStateConnectorReturnsBackendError()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Returns(AddressUpdateResult.BackendError("BACKEND_ERROR", "Something went wrong."));
+
+        await handler.Handle(CreateValidCommand(), CancellationToken.None);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserId,
+            UserActionType.UpdateAddress,
+            UserActionOutcome.Failed,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_RecordsFailedAction_WhenStateConnectorThrowsException()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        _stateAddressUpdateService.UpdateAddressAsync(Arg.Any<AddressUpdateRequest>(), Arg.Any<CancellationToken>())
+            .Throws(new InvalidOperationException("Connection failed"));
+
+        await handler.Handle(CreateValidCommand(), CancellationToken.None);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserId,
+            UserActionType.UpdateAddress,
+            UserActionOutcome.Failed,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenRecordingTheActionFails()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        _userActionRepository.RecordAsync(
+                Arg.Any<Guid>(), Arg.Any<UserActionType>(), Arg.Any<UserActionOutcome>(),
+                Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Database unavailable"));
+
+        var result = await handler.Handle(CreateValidCommand(), CancellationToken.None);
+
+        Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+    }
+
+    [Fact]
+    public async Task Handle_RecordsActionWithoutRequestCancellationToken()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        using var requestAborted = new CancellationTokenSource();
+
+        await handler.Handle(CreateValidCommand(), requestAborted.Token);
+
+        await _userActionRepository.Received(1).RecordAsync(
+            TestUserId,
+            UserActionType.UpdateAddress,
+            UserActionOutcome.Succeeded,
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(),
+            CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Handle_LogsWarningAndSkipsRecording_WhenUserIdMissing()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        var userWithoutId = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.Email, "user@example.com")], "Test"));
+
+        var result = await handler.Handle(CreateValidCommand(userWithoutId), CancellationToken.None);
+
+        Assert.IsType<SuccessResult<AddressValidationResult>>(result);
+        await _userActionRepository.DidNotReceiveWithAnyArgs().RecordAsync(
+            default, default, default, default!, default);
+        _logger.Received().Log(
+            LogLevel.Warning,
+            Arg.Any<EventId>(),
+            Arg.Is<object>(o => o.ToString()!.Contains("no user ID")),
+            Arg.Any<Exception?>(),
+            Arg.Any<Func<object, Exception?, string>>());
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotRecordAction_WhenRequestStopsBeforeStateConnector()
+    {
+        var handler = CreateHandler();
+        SetupResolverReturnsEmail();
+        SetupHouseholdWithCases(new SummerEbtCase { SummerEBTCaseID = "S1", ChildFirstName = "A", ChildLastName = "B" });
+        _selfServiceEvaluator.EvaluateHousehold(Arg.Any<IReadOnlyList<SummerEbtCase>>())
+            .Returns(new AllowedActions { CanUpdateAddress = false });
+
+        await handler.Handle(CreateValidCommand(), CancellationToken.None);
+
+        await _userActionRepository.DidNotReceiveWithAnyArgs().RecordAsync(
+            default, default, default, default!, default);
     }
 }

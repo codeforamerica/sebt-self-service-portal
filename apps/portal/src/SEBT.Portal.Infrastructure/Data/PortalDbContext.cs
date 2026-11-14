@@ -48,6 +48,11 @@ public class PortalDbContext : DbContext
     /// </summary>
     public DbSet<UserCaseEntity> UserCases { get; set; }
 
+    /// <summary>
+    /// Actions users sent to the state's system of record, one row per case, with their outcome.
+    /// </summary>
+    public DbSet<UserActionEntity> UserActions { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -329,6 +334,60 @@ public class PortalDbContext : DbContext
             entity.HasIndex(e => new { e.UserId, e.CaseIdHash, e.ApplicationIdHash, e.ApplicationStudentIdHash })
                 .IsUnique()
                 .HasDatabaseName("IX_UserCases_User_CaseIdentity");
+        });
+
+        modelBuilder.Entity<UserActionEntity>(entity =>
+        {
+            entity.ToTable("UserActions");
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedNever();
+
+            entity.Property(e => e.UserId).IsRequired();
+            entity.HasOne(e => e.User)
+                .WithMany()
+                .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.Property(e => e.Action)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+            entity.Property(e => e.Outcome)
+                .IsRequired()
+                .HasConversion<string>()
+                .HasMaxLength(32);
+
+            entity.Property(e => e.CaseId)
+                .IsRequired()
+                .HasMaxLength(512);
+            entity.Property(e => e.CaseIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.ApplicationId)
+                .HasMaxLength(512);
+            entity.Property(e => e.ApplicationIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.ApplicationStudentId)
+                .HasMaxLength(512);
+            entity.Property(e => e.ApplicationStudentIdHash)
+                .IsRequired()
+                .HasMaxLength(64);
+
+            entity.Property(e => e.SpanId)
+                .HasMaxLength(16);
+            entity.Property(e => e.TraceId)
+                .HasMaxLength(32);
+
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("GETUTCDATE()")
+                .ValueGeneratedOnAdd();
+
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt })
+                .HasDatabaseName("IX_UserActions_User_CreatedAt");
         });
     }
 }

@@ -707,4 +707,32 @@ public class PortalDbContextTests
         Assert.True(entity.UpdatedAt <= afterCreation);
     }
 
+    [Fact]
+    public void UserActions_ShouldBeConfiguredForPerUserTimeline()
+    {
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var entityType = context.Model.FindEntityType(typeof(UserActionEntity));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("UserActions", entityType!.GetTableName());
+        Assert.Equal("Id", entityType.FindPrimaryKey()!.Properties.Single().Name);
+
+        var timelineIndex = entityType.GetIndexes().Single(i =>
+            i.Properties.Select(p => p.Name).SequenceEqual(["UserId", "CreatedAt"]));
+        Assert.Equal("IX_UserActions_User_CreatedAt", timelineIndex.GetDatabaseName());
+
+        var userForeignKey = entityType.GetForeignKeys().Single();
+        Assert.Equal(typeof(UserEntity), userForeignKey.PrincipalEntityType.ClrType);
+        Assert.Equal(DeleteBehavior.Cascade, userForeignKey.DeleteBehavior);
+
+        Assert.Equal(typeof(string), entityType.FindProperty(nameof(UserActionEntity.Action))!.GetProviderClrType());
+        Assert.Equal(typeof(string), entityType.FindProperty(nameof(UserActionEntity.Outcome))!.GetProviderClrType());
+
+        Assert.Equal(16, entityType.FindProperty(nameof(UserActionEntity.SpanId))!.GetMaxLength());
+        Assert.Equal(32, entityType.FindProperty(nameof(UserActionEntity.TraceId))!.GetMaxLength());
+    }
 }

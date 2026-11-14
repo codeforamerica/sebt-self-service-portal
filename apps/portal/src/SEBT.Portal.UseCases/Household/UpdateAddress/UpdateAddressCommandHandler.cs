@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Microsoft.Extensions.Logging;
 using SEBT.Portal.Core.Models.AddressUpdate;
 using SEBT.Portal.Core.Models.Auth;
 using SEBT.Portal.Core.Models.Household;
+using SEBT.Portal.Core.Models.UserActions;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.StateConnector;
@@ -26,6 +28,7 @@ public class UpdateAddressCommandHandler(
     IIdProofingService idProofingService,
     ISelfServiceEvaluator selfServiceEvaluator,
     IStateAddressUpdateService stateAddressUpdateService,
+    IUserActionRepository userActionRepository,
     ILogger<UpdateAddressCommandHandler> logger)
     : ICommandHandler<UpdateAddressCommand, AddressValidationResult>
 {
@@ -227,14 +230,11 @@ public class UpdateAddressCommandHandler(
 
         // Use the persisted address (normalized or user-entered when opted in) for the state connector call.
         // Every case, co-loaded included: per-case backends write the address to each enrollment row.
+        var casesSentToState = ToIdentifiersWithCaseId(household.SummerEbtCases);
         var updateRequest = new AddressUpdateRequest
         {
             HouseholdIdentifierValue = identifier.Value,
-            CaseIds = household.SummerEbtCases
-                .Select(c => c.SummerEBTCaseID)
-                .OfType<string>()
-                .Where(id => !string.IsNullOrWhiteSpace(id))
-                .ToList(),
+            CaseIds = casesSentToState.Select(c => c.CaseId).ToList(),
             Address = persistAddress
         };
 
@@ -245,6 +245,7 @@ public class UpdateAddressCommandHandler(
             if (updateResult.IsSuccess)
             {
                 logger.LogInformation("Address update completed for household identifier kind {Kind}", identifierKind);
+                await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Succeeded);
                 return Result<AddressValidationResult>.Success(
                     AddressValidationResult.Valid(persistAddress));
             }
@@ -256,6 +257,7 @@ public class UpdateAddressCommandHandler(
                     identifierKind,
                     updateResult.ErrorCode,
                     updateResult.ErrorMessage);
+                await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Rejected);
                 return Result<AddressValidationResult>.PreconditionFailed(PreconditionFailedReason.Conflict, updateResult.ErrorMessage);
             }
 
@@ -263,14 +265,64 @@ public class UpdateAddressCommandHandler(
                 "Address update backend error for household identifier kind {Kind}: {ErrorCode}",
                 identifierKind,
                 updateResult.ErrorCode);
+            await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Failed);
             return Result<AddressValidationResult>.DependencyFailed(DependencyFailedReason.ConnectionFailed, updateResult.ErrorMessage);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Address update plugin failed for household identifier kind {Kind}", identifierKind);
+            await RecordOutcomeAsync(command.User, casesSentToState, UserActionOutcome.Failed);
             return Result<AddressValidationResult>.DependencyFailed(
                 DependencyFailedReason.ConnectionFailed,
                 "Address update service is temporarily unavailable.");
         }
+    }
+
+    // Best-effort: never throws, so a recording failure can't turn a completed update into an error.
+    // Not cancellable: the state has already acted, so the row is kept even if the client disconnects.
+    private async Task RecordOutcomeAsync(
+        ClaimsPrincipal user,
+        IReadOnlyList<UserCaseIdentifiers> cases,
+        UserActionOutcome outcome)
+    {
+        if (user.GetUserId() is not Guid userId)
+        {
+            logger.LogWarning("Address update outcome {Outcome} not recorded: no user ID in claims", outcome);
+            return;
+        }
+
+        try
+        {
+            await userActionRepository.RecordAsync(
+                userId,
+                UserActionType.UpdateAddress,
+                outcome,
+                cases,
+                CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to record address update outcome {Outcome}", outcome);
+        }
+    }
+
+    private static List<UserCaseIdentifiers> ToIdentifiersWithCaseId(IEnumerable<SummerEbtCase> cases)
+    {
+        var identifiers = new List<UserCaseIdentifiers>();
+        foreach (var summerEbtCase in cases)
+        {
+            var caseId = summerEbtCase.SummerEBTCaseID;
+            if (string.IsNullOrWhiteSpace(caseId))
+            {
+                continue;
+            }
+
+            identifiers.Add(new UserCaseIdentifiers(
+                caseId,
+                summerEbtCase.ApplicationId,
+                summerEbtCase.ApplicationStudentId));
+        }
+
+        return identifiers;
     }
 }
