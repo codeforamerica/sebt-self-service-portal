@@ -543,6 +543,71 @@ public class RequestCardReplacementCommandHandlerTests
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
+    [Theory]
+    [InlineData("APP-OTHER", "STU-1")]
+    [InlineData("APP-1", "STU-OTHER")]
+    [InlineData(null, "STU-1")]
+    [InlineData("APP-1", null)]
+    public async Task Handle_ReturnsConflict_WhenRequestedApplicationIdsDoNotMatchHouseholdCase(
+        string? applicationId,
+        string? applicationStudentId)
+    {
+        var command = new RequestCardReplacementCommand
+        {
+            User = CreateUser("user@example.com"),
+            CaseRefs = [new CaseRefDto("SEBT-001", applicationId, applicationStudentId)]
+        };
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ApplicationId = "APP-1", ApplicationStudentId = "STU-1" }
+        ));
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        var preconditionFailed = Assert.IsType<PreconditionFailedResult>(result);
+        Assert.Equal(PreconditionFailedReason.Conflict, preconditionFailed.Reason);
+    }
+
+    [Fact]
+    public async Task Handle_DoesNotCallConnectorOrRecordAction_WhenRequestedApplicationIdDoesNotMatchHouseholdCase()
+    {
+        var command = new RequestCardReplacementCommand
+        {
+            User = CreateUser("user@example.com"),
+            CaseRefs = [new CaseRefDto("SEBT-001", new string('A', 400), "STU-1")]
+        };
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ApplicationId = "APP-1", ApplicationStudentId = "STU-1" }
+        ));
+
+        await CreateHandler().Handle(command, CancellationToken.None);
+
+        await _cardReplacementService.DidNotReceive().RequestCardReplacementAsync(
+            Arg.Any<CardReplacementRequest>(), Arg.Any<CancellationToken>());
+        await _userActionRepository.DidNotReceive().RecordAsync(
+            Arg.Any<Guid>(), Arg.Any<UserActionType>(), Arg.Any<UserActionOutcome>(),
+            Arg.Any<IReadOnlyList<UserCaseIdentifiers>>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_ReturnsSuccess_WhenRequestedApplicationIdsMatchHouseholdCase()
+    {
+        var command = new RequestCardReplacementCommand
+        {
+            User = CreateUser("user@example.com"),
+            CaseRefs = [new CaseRefDto("SEBT-001", "APP-1", "STU-1")]
+        };
+        SetupResolverSuccess();
+        SetupRepositoryReturns(CreateHouseholdWithCases(
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ApplicationId = "APP-1", ApplicationStudentId = "STU-1" }
+        ));
+
+        var result = await CreateHandler().Handle(command, CancellationToken.None);
+
+        Assert.IsType<SuccessResult>(result);
+    }
+
     // --- Success tests ---
 
     [Fact]
@@ -984,7 +1049,7 @@ public class RequestCardReplacementCommandHandlerTests
         };
         SetupResolverSuccess();
         SetupRepositoryReturns(CreateHouseholdWithCases(
-            new SummerEbtCase { SummerEBTCaseID = "SEBT-001" },
+            new SummerEbtCase { SummerEBTCaseID = "SEBT-001", ApplicationId = "APP-1", ApplicationStudentId = "STU-1" },
             new SummerEbtCase { SummerEBTCaseID = "SEBT-002" }
         ));
 

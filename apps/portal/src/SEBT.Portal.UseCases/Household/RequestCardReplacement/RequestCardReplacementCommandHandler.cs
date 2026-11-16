@@ -93,11 +93,13 @@ public class RequestCardReplacementCommandHandler(
             .Select(r => r.SummerEbtCaseId)
             .ToHashSet(StringComparer.Ordinal);
 
-        var householdSummerEbtCaseIds = household.SummerEbtCases
-            .Select(c => c.SummerEBTCaseID)
-            .OfType<string>()
-            .ToHashSet(StringComparer.Ordinal);
-        if (!requestedSummerEbtCaseIds.IsSubsetOf(householdSummerEbtCaseIds))
+        // Application ids are matched too, so only state-sourced ids reach the connector and audit rows.
+        var householdCaseRefs = household.SummerEbtCases
+            .Select(c => (c.SummerEBTCaseID, c.ApplicationId, c.ApplicationStudentId))
+            .ToHashSet();
+        var allRequestedCasesOnHousehold = command.CaseRefs.All(r =>
+            householdCaseRefs.Contains((r.SummerEbtCaseId, r.ApplicationId, r.ApplicationStudentId)));
+        if (!allRequestedCasesOnHousehold)
         {
             logger.LogWarning(
                 "Card replacement rejected: request includes case(s) not found on the household");
