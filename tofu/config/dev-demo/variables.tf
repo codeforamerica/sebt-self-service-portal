@@ -19,7 +19,7 @@ variable "image_tag" {
 variable "keycloak_hostname" {
   type        = string
   description = "Base URL of the shared Keycloak IdP in dev-co-shared."
-  default     = "https://auth.co.sebt-portal.codeforamerica.app"
+  default     = "https://auth.dev.co.sebt-portal.codeforamerica.app"
 }
 
 variable "project" {
