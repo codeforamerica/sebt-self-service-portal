@@ -26,10 +26,26 @@ variable "apply_immediately" {
   default     = false
 }
 
-variable "db_ingress_cidrs" {
+variable "database" {
+  type = object({
+    host              = string
+    port              = number
+    admin_secret_arn  = string
+    security_group_id = string
+  })
+  description = "RDS SQL Server instance the API connects to. The module creates its own rotating app-user login on it, using the master credentials in admin_secret_arn."
+}
+
+variable "db_app_users" {
   type        = list(string)
-  description = "Extra CIDR blocks allowed to connect to the database on TCP 1433. Used to grant VPC-internal clients (e.g. the SSM bastion) access without plumbing security groups."
-  default     = []
+  description = "Pair of SQL Server logins that alternate as the API's credential. Must differ from every other deployment on the same RDS instance."
+  default     = ["appuser", "appuser_clone"]
+}
+
+variable "db_name" {
+  type        = string
+  description = "Name of the API's database on the RDS instance. Created on first credential rotation if missing."
+  default     = "SebtPortal"
 }
 
 variable "desired_containers" {
@@ -178,12 +194,6 @@ variable "ses_allowed_recipients" {
   type        = list(string)
   description = "Email addresses to verify as SES recipients for sandbox testing."
   default     = []
-}
-
-variable "skip_final_snapshot" {
-  type        = bool
-  description = "Skip final snapshot when destroying the database."
-  default     = false
 }
 
 variable "state" {

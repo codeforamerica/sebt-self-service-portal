@@ -64,9 +64,9 @@ module "api" {
     ASPNETCORE_ENVIRONMENT                       = var.environment
     LOG_FORMAT                                   = var.log_as_json ? "json" : "text"
     STATE                                        = var.state
-    DB_HOST                                      = module.database.endpoint
-    DB_NAME                                      = "SebtPortal"
-    DB_PORT                                      = "1433"
+    DB_HOST                                      = var.database.host
+    DB_NAME                                      = var.db_name
+    DB_PORT                                      = tostring(var.database.port)
     "Redis__Host"                                = module.redis.primary_endpoint
     "Redis__Port"                                = tostring(module.redis.port)
     "Redis__Ssl"                                 = "true"
@@ -90,8 +90,8 @@ module "api" {
   } : {}, var.state_api_environment_variables)
 
   environment_secrets = merge({
-    DB_USER                        = "${module.database.app_user_secret_arn}:username"
-    DB_PASSWORD                    = "${module.database.app_user_secret_arn}:password"
+    DB_USER                        = "${module.app_user.app_user_secret_arn}:username"
+    DB_PASSWORD                    = "${module.app_user.app_user_secret_arn}:password"
     "Redis__Password"              = "${module.redis.auth_token_secret_arn}:auth_token"
     "SmtpClientSettings__UserName" = "${module.ses.secret_arn}:username"
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
@@ -217,9 +217,9 @@ module "doppler" {
   doppler_workspace_id     = "08430c37e2a2889dc220"
 }
 
-# Create the RDS SQL Server database.
-module "database" {
-  source = "../sebt_database"
+# Create the API's rotating database login on the RDS instance in var.database.
+module "app_user" {
+  source = "../sebt_database_app_user"
 
   project         = "${var.project}-${var.state}"
   project_short   = var.project_short
@@ -228,16 +228,16 @@ module "database" {
   subnets         = var.private_subnets
   logging_key_arn = var.logging_key_id
 
-  ingress_security_groups = [module.api.security_group_id]
-  ingress_cidrs           = var.db_ingress_cidrs
+  host                       = var.database.host
+  port                       = var.database.port
+  admin_secret_arn           = var.database.admin_secret_arn
+  database_security_group_id = var.database.security_group_id
 
-  db_name             = "SebtPortal"
+  app_users           = var.db_app_users
+  db_name             = var.db_name
   additional_db_names = var.dc_source_db_name != "" ? [var.dc_source_db_name] : []
   ecs_cluster_name    = module.api.cluster_name
   ecs_service_name    = local.api_ecs_service_name
-
-  skip_final_snapshot = var.skip_final_snapshot
-  apply_immediately   = var.apply_immediately
 }
 
 # Create the ElastiCache (Valkey) replication group. Provides the shared

@@ -1,6 +1,6 @@
-// Posts (or updates) a single PR comment summarizing the dev-dc and dev-co tofu plans.
+// Posts (or updates) a single PR comment summarizing the tofu plans for every config.
 // Used by deploy-ecr.yaml's plan-comment job via actions/github-script's require()
-// support. Expects DC_PLAN/CO_PLAN env vars rather than direct `${{ }}` interpolation
+// support. Expects the plans in env vars (see PLANS) rather than direct `${{ }}` interpolation
 // into script source, since embedding large/arbitrary plan text directly into a JS
 // template literal is the same pattern GitHub's own security guidance warns against
 // (script injection via untrusted input) -- low risk here since the content is our own
@@ -19,6 +19,15 @@
 const COMMENT_LIMIT = 65536;
 const MARKDOWN_OVERHEAD_PER_SECTION = 60; // "## Plan output — dev-xx\n\n```\n" + "\n```\n\n"
 const TRUNCATION_NOTICE = "\n\n... (truncated — see the full output in the workflow run)";
+const PLAN_LINE = "Plan: (?:\\d+ to import, )?\\d+ to add, \\d+ to change, \\d+ to destroy(?:, \\d+ to forget)?\\.";
+
+// In apply order: dev-co-shared before the dev-co and dev-demo configs that use it.
+const PLANS = [
+  { label: "dev-dc", env: "DC_PLAN" },
+  { label: "dev-co-shared", env: "CO_SHARED_PLAN" },
+  { label: "dev-co", env: "CO_PLAN" },
+  { label: "dev-demo", env: "DEMO_PLAN" },
+];
 
 function extractPlanSummary(plan) {
   if (!plan) return plan;
@@ -37,21 +46,26 @@ function extractPlanSummary(plan) {
   // Couldn't find a known marker -- likely an error. Show it in full rather than hide it.
   let summary = startIndex === -1 ? plan : plan.slice(startIndex);
 
-  const planLine = summary.match(/Plan: \d+ to add, \d+ to change, \d+ to destroy\./);
+  const planLine = summary.match(new RegExp(PLAN_LINE));
   if (planLine) {
     summary = summary.slice(0, planLine.index + planLine[0].length);
   }
   return summary;
 }
 
-// Splits `budget` characters between two plans. A plan shorter than its even share just
-// uses what it needs; the unused portion goes to the other plan instead of being wasted
-// on a fixed 50/50 split.
-function splitBudget(a, b, budget) {
-  const half = Math.floor(budget / 2);
-  if (a.length <= half) return [a.length, Math.min(b.length, budget - a.length)];
-  if (b.length <= half) return [Math.min(a.length, budget - b.length), b.length];
-  return [half, budget - half];
+// Splits `budget` characters across plans. A plan shorter than its even share just
+// uses what it needs; the unused portion goes to the longer plans instead of being
+// wasted on a fixed even split.
+function splitBudget(lengths, budget) {
+  const limits = new Array(lengths.length);
+  const shortestFirst = lengths.map((length, index) => ({ length, index })).sort((a, b) => a.length - b.length);
+  let remaining = budget;
+  shortestFirst.forEach(({ length, index }, position) => {
+    const share = Math.floor(remaining / (shortestFirst.length - position));
+    limits[index] = Math.min(length, share);
+    remaining -= limits[index];
+  });
+  return limits;
 }
 
 function truncate(plan, limit) {
@@ -61,10 +75,23 @@ function truncate(plan, limit) {
   // line for a quick scan -- by cutting from the middle instead of the tail. Falls back
   // to a plain head-truncation when there's no summary line to preserve (e.g. the
   // no-changes case, which is short enough to never hit this path anyway, or an error).
-  const tailMatch = plan.match(/\n?Plan: \d+ to add, \d+ to change, \d+ to destroy\.\s*$/);
+  const tailMatch = plan.match(new RegExp(`\\n?${PLAN_LINE}\\s*$`));
   const tail = tailMatch ? tailMatch[0] : "";
   const headBudget = Math.max(0, limit - tail.length - TRUNCATION_NOTICE.length);
   return plan.slice(0, headBudget) + TRUNCATION_NOTICE + tail;
+}
+
+function buildCommentBody(plans) {
+  const sections = plans
+    .map(({ label, plan }) => ({ label, plan: extractPlanSummary(plan) || "" }))
+    .filter(({ plan }) => plan);
+
+  const budget = COMMENT_LIMIT - sections.length * MARKDOWN_OVERHEAD_PER_SECTION;
+  const limits = splitBudget(sections.map(({ plan }) => plan.length), budget);
+
+  return sections
+    .map(({ label, plan }, index) => `## Plan output — ${label}\n\n\`\`\`\n${truncate(plan, limits[index])}\n\`\`\``)
+    .join("\n\n");
 }
 
 module.exports = async ({ github, context }) => {
@@ -77,23 +104,7 @@ module.exports = async ({ github, context }) => {
     (comment) => comment.user.type === "Bot" && comment.body.includes("## Plan output")
   );
 
-  let dcPlan = extractPlanSummary(process.env.DC_PLAN) || "";
-  let coPlan = extractPlanSummary(process.env.CO_PLAN) || "";
-
-  const budget = COMMENT_LIMIT - 2 * MARKDOWN_OVERHEAD_PER_SECTION;
-  if (dcPlan.length + coPlan.length > budget) {
-    const [dcLimit, coLimit] = splitBudget(dcPlan, coPlan, budget);
-    dcPlan = truncate(dcPlan, dcLimit);
-    coPlan = truncate(coPlan, coLimit);
-  }
-
-  let output = "";
-  if (dcPlan) {
-    output += `## Plan output — dev-dc\n\n\`\`\`\n${dcPlan}\n\`\`\`\n\n`;
-  }
-  if (coPlan) {
-    output += `## Plan output — dev-co\n\n\`\`\`\n${coPlan}\n\`\`\``;
-  }
+  const output = buildCommentBody(PLANS.map(({ label, env }) => ({ label, plan: process.env[env] })));
 
   if (botComment) {
     await github.rest.issues.updateComment({
@@ -111,3 +122,8 @@ module.exports = async ({ github, context }) => {
     });
   }
 };
+
+module.exports.extractPlanSummary = extractPlanSummary;
+module.exports.splitBudget = splitBudget;
+module.exports.buildCommentBody = buildCommentBody;
+module.exports.COMMENT_LIMIT = COMMENT_LIMIT;

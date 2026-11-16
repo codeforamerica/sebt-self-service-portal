@@ -2,7 +2,7 @@
 
 Run with:
     pip install pytest pymssql==2.3.13
-    pytest tofu/modules/sebt_database/lambda/test_rotate_db_credentials.py -v
+    pytest tofu/modules/sebt_database_app_user/lambda/test_rotate_db_credentials.py -v
 """
 import json
 import os
@@ -79,6 +79,24 @@ def test_other_user_returns_primary_when_given_clone():
 def test_other_user_raises_on_unknown_username():
     with pytest.raises(ValueError, match="Unexpected username"):
         rot._other_user("someotheruser")
+
+
+@patch.dict(os.environ, {"APP_USERS": "demoappuser,demoappuser_clone"})
+def test_other_user_alternates_between_configured_app_users():
+    assert rot._other_user("demoappuser") == "demoappuser_clone"
+    assert rot._other_user("demoappuser_clone") == "demoappuser"
+
+
+@patch.dict(os.environ, {"APP_USERS": "demoappuser,demoappuser_clone"})
+def test_other_user_rejects_default_users_when_others_configured():
+    with pytest.raises(ValueError, match="Unexpected username"):
+        rot._other_user("appuser")
+
+
+@patch.dict(os.environ, {"APP_USERS": "onlyone"})
+def test_other_user_raises_when_app_users_does_not_name_two_logins():
+    with pytest.raises(ValueError, match="exactly two"):
+        rot._other_user("onlyone")
 
 
 # ---------------------------------------------------------------------------
@@ -180,6 +198,32 @@ def test_set_secret_provisions_db_user_in_additional_databases(mock_pymssql):
 
     called_dbs = [kwargs["database"] for _, kwargs in mock_pymssql.connect.call_args_list]
     assert called_dbs == ["master", "SebtPortal", "DcSource"]
+
+
+@patch.dict(os.environ, {"ADMIN_SECRET_ARN": "admin-arn", "DB_HOST": "db", "DB_PORT": "1433",
+                         "DB_NAME": "SebtPortalDemo", "ADDITIONAL_DB_NAMES": "DcSource",
+                         "ECS_CLUSTER": "cluster", "ECS_SERVICE": "svc"})
+@patch("rotate_db_credentials.pymssql")
+def test_set_secret_creates_only_the_primary_database_before_the_login(mock_pymssql):
+    mock_conn = MagicMock()
+    mock_pymssql.connect.return_value = mock_conn
+    cursor = mock_conn.cursor.return_value
+
+    client = MagicMock()
+    client.get_secret_value.side_effect = [
+        {"SecretString": json.dumps({"username": "appuser_clone", "password": "NewPw1!",
+                                     "host": "db", "port": "1433", "dbname": "SebtPortalDemo"})},
+        {"SecretString": json.dumps({"username": "admin", "password": "AdminPw1!"})},
+    ]
+
+    rot.set_secret(client, "secret-arn", "new-token")
+
+    statements = [args[0] for args, _ in cursor.execute.call_args_list]
+    create_db = [s for s in statements if "CREATE DATABASE" in s]
+    assert create_db == ["IF DB_ID(N'SebtPortalDemo') IS NULL CREATE DATABASE [SebtPortalDemo]"]
+    assert statements.index(create_db[0]) < next(i for i, s in enumerate(statements) if "CREATE LOGIN" in s)
+    # CREATE DATABASE is not allowed inside a transaction.
+    assert mock_conn.autocommit.call_args_list[:2] == [((True,),), ((False,),)]
 
 
 # ---------------------------------------------------------------------------
