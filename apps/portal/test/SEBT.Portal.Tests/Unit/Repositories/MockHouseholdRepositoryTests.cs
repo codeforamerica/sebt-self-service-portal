@@ -106,6 +106,41 @@ public class MockHouseholdRepositoryTests
         Assert.Equal("co-loaded@example.com", result.Email);
     }
 
+    // Phones carried by the fixture users in docker/keycloak/sebt-realm*.json; Keycloak-backed stacks
+    // resolve each login to its persona by this phone.
+    [Theory]
+    [InlineData("co-loaded", "8185558437")]
+    [InlineData("verified", "4634368526")]
+    [InlineData("singlechild", "3756299823")]
+    [InlineData("largefamily", "4009878510")]
+    [InlineData("expired", "7162787546")]
+    [InlineData("non-co-loaded", "8185558439")]
+    [InlineData("id-proof-in-progress", "5552223344")]
+    [InlineData("not-started", "8185558440")]
+    [InlineData("pending", "5292254633")]
+    [InlineData("denied", "8153983537")]
+    [InlineData("review", "7366360323")]
+    [InlineData("cancelled", "2275083447")]
+    [InlineData("unknown", "2158974592")]
+    [InlineData("co-undeliverable", "3035551005")]
+    [InlineData("co-frozen", "3035551006")]
+    [InlineData("co-notactivated", "3035551007")]
+    [InlineData("co-deactivatedbystate", "3035551008")]
+    [InlineData("co-active", "3035551009")]
+    [InlineData("name-casing", "4282461649")]
+    public async Task GetHouseholdByIdentifierAsync_WhenCoAndKeycloakFixturePhone_ReturnsThatPersona(
+        string scenarioName,
+        string phone)
+    {
+        var repo = CreateRepository("{0}@example.com", state: "co");
+
+        var result = await repo.GetHouseholdByIdentifierAsync(
+            HouseholdIdentifier.Phone(phone), FullPiiVisibility, UserIalLevel.IAL1plus);
+
+        Assert.NotNull(result);
+        Assert.Equal($"{scenarioName}@example.com", result.Email);
+    }
+
     [Fact]
     public async Task GetHouseholdByIdentifierAsync_WhenUnsupportedIdentifierType_ReturnsNull()
     {

@@ -12,8 +12,8 @@ internal static class FeatureGatedStateBackendExtensions
     /// <summary>
     /// Replaces the plugin-interface registrations with request-time gates so AppConfig can
     /// flip household lookup, writes, enrollment, and health onto <c>ConfigurableStateBackend</c>
-    /// without a restart. The MEF connector stays reachable via keyed DI
-    /// (<see cref="StatePluginKeys.Connector"/>).
+    /// without a restart, and serve address and card-replacement writes from mock data when mock
+    /// households are on. The MEF connector stays reachable via keyed DI (<see cref="StatePluginKeys.Connector"/>).
     /// </summary>
     public static IServiceCollection AddFeatureGatedStateBackendRouting(this IServiceCollection services)
     {
@@ -26,10 +26,14 @@ internal static class FeatureGatedStateBackendExtensions
                 sp.GetService<IHouseholdLookupBackend>()));
 
         services.AddSingleton<ICardReplacementService>(sp =>
-            new FeatureGatedCardReplacementService(
-                sp.GetRequiredService<IFeatureManager>(),
-                sp.GetRequiredKeyedService<ICardReplacementService>(StatePluginKeys.Connector),
-                sp.GetService<ICardReplacementBackend>()));
+            new FeatureGatedMockCardReplacementService(
+                sp.GetRequiredService<IConfiguration>(),
+                sp.GetRequiredService<IHostEnvironment>(),
+                sp.GetRequiredService<ILogger<FeatureGatedMockCardReplacementService>>(),
+                new FeatureGatedCardReplacementService(
+                    sp.GetRequiredService<IFeatureManager>(),
+                    sp.GetRequiredKeyedService<ICardReplacementService>(StatePluginKeys.Connector),
+                    sp.GetService<ICardReplacementBackend>())));
 
         services.AddSingleton<IEnrollmentCheckService>(sp =>
             new FeatureGatedEnrollmentCheckService(
