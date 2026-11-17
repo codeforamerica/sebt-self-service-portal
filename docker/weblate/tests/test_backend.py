@@ -108,11 +108,19 @@ class LoggingTest(unittest.TestCase):
             token = connections["default"].get_connection_params()["password"]
         output = "\n".join(logs.output)
         self.assertIn("iam_token_minted", output)
-        self.assertIn("host=db.example.test port=5432 user=weblate_web region=us-east-1", output)
+        self.assertIn("port=5432 region=us-east-1", output)
         self.assertIn("process=", output)
         self.assertNotIn("token_sha256", output)
         self.assertNotIn(token, output)
         self.assertNotIn(token.rsplit("X-Amz-Signature=", 1)[1], output)
+
+    @mock.patch.dict(os.environ, FAKE_CREDS, clear=True)
+    def test_keeps_the_database_host_and_user_out_of_the_mint_log(self):
+        with self.assertLogs("cfa_weblate.iam", level="INFO") as logs:
+            connections["default"].get_connection_params()
+        output = "\n".join(logs.output)
+        self.assertNotIn("db.example.test", output)
+        self.assertNotIn("weblate_web", output)
 
     def test_logs_a_failed_mint_and_reraises(self):
         session = mock.Mock()
@@ -125,6 +133,8 @@ class LoggingTest(unittest.TestCase):
             connections["default"].get_connection_params()
         self.assertIn("iam_token_mint_failed", logs.output[0])
         self.assertIn("error=NoCredentialsError", logs.output[0])
+        self.assertNotIn("db.example.test", logs.output[0])
+        self.assertNotIn("weblate_web", logs.output[0])
 
 
 if __name__ == "__main__":

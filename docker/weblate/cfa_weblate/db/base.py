@@ -24,10 +24,8 @@ class DatabaseWrapper(base.DatabaseWrapper):
                 "cfa_weblate.db doesn't support OPTIONS['pool']; IAM tokens "
                 "must be minted per connection."
             )
-        where = "host=%s port=%s user=%s region=%s" % (
-            self.settings_dict["HOST"],
+        where = "port=%s region=%s" % (
             self.settings_dict["PORT"],
-            self.settings_dict["USER"],
             options.get("region_name"),
         )
         try:
