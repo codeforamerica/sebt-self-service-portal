@@ -74,12 +74,24 @@ class SettingsTest(unittest.TestCase):
         self.assertIn("AWS_REGION", result.stderr)
 
     def test_passes_a_ca_bundle_through_when_one_is_vendored(self):
-        result = load({**PLATFORM_ENV, **TASK_ENV, "DATABASE_SSLMODE": "verify-full",
-                       "DATABASE_SSLROOTCERT": "/app/cfa/rds-ca-bundle.pem"})
+        result = load(
+            {
+                **PLATFORM_ENV,
+                **TASK_ENV,
+                "DATABASE_SSLMODE": "verify-full",
+                "DATABASE_SSLROOTCERT": "/app/cfa/rds-ca-bundle.pem",
+            }
+        )
         self.assertEqual(result.returncode, 0, result.stderr)
         options = json.loads(result.stdout)["db"]["default"]["OPTIONS"]
-        self.assertEqual(options, {**IAM_OPTIONS, "sslmode": "verify-full",
-                                   "sslrootcert": "/app/cfa/rds-ca-bundle.pem"})
+        self.assertEqual(
+            options,
+            {
+                **IAM_OPTIONS,
+                "sslmode": "verify-full",
+                "sslrootcert": "/app/cfa/rds-ca-bundle.pem",
+            },
+        )
 
     def test_disables_weblates_database_dump(self):
         # pg_dump is handed settings PASSWORD, which IAM auth leaves empty.
@@ -93,8 +105,17 @@ class SettingsTest(unittest.TestCase):
         self.assertIn("DATABASE_AUTH", result.stderr)
 
     def test_refuses_when_weblates_own_database_config_is_on(self):
-        result = load({**PLATFORM_ENV, **TASK_ENV, "WEBLATE_DATABASES": "true", "POSTGRES_USER": "x",
-                       "POSTGRES_PASSWORD": "x", "POSTGRES_HOST": "x", "POSTGRES_DB": "x"})
+        result = load(
+            {
+                **PLATFORM_ENV,
+                **TASK_ENV,
+                "WEBLATE_DATABASES": "true",
+                "POSTGRES_USER": "x",
+                "POSTGRES_PASSWORD": "x",
+                "POSTGRES_HOST": "x",
+                "POSTGRES_DB": "x",
+            }
+        )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("WEBLATE_DATABASES", result.stderr)
 

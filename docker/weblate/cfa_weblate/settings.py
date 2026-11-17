@@ -16,14 +16,16 @@ if get_env_bool("WEBLATE_DATABASES", True):
         "Set WEBLATE_DATABASES=false; DATABASES comes from the platform's DATABASE_* variables."
     )
 
-from weblate.settings_docker import *  # noqa: E402,F403
-from weblate.settings_docker import DEFAULT_LOG, DEFAULT_LOGLEVEL, LOGGING  # noqa: E402
+from weblate.settings_docker import *
+from weblate.settings_docker import DEFAULT_LOG, DEFAULT_LOGLEVEL, LOGGING
 
 
 def _require(name):
     value = os.environ.get(name, "")
     if not value:
-        raise ImproperlyConfigured(f"{name} is required; the hosting platform injects it.")
+        raise ImproperlyConfigured(
+            f"{name} is required; the hosting platform injects it."
+        )
     return value
 
 
@@ -32,6 +34,7 @@ if _require("DATABASE_AUTH") != "iam":
         f"DATABASE_AUTH={os.environ['DATABASE_AUTH']!r} isn't supported; this image "
         "only authenticates with IAM tokens."
     )
+
 
 def _region():
     for name in ("AWS_REGION", "AWS_DEFAULT_REGION"):

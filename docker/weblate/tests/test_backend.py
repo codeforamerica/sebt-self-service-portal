@@ -53,7 +53,9 @@ SESSION = "django_iam_dbauth.aws.database_wrapper.boto3.session.Session"
 
 def session_minting(*tokens):
     session = mock.Mock()
-    session.return_value.client.return_value.generate_db_auth_token.side_effect = list(tokens)
+    session.return_value.client.return_value.generate_db_auth_token.side_effect = list(
+        tokens
+    )
     return session
 
 
@@ -69,7 +71,9 @@ class LibraryBackendTest(unittest.TestCase):
             second = connections["default"].get_connection_params()
         self.assertEqual(first["password"], "token-1")
         self.assertEqual(second["password"], "token-2")
-        session.return_value.client.assert_called_with(service_name="rds", region_name="us-east-1")
+        session.return_value.client.assert_called_with(
+            service_name="rds", region_name="us-east-1"
+        )
         signed = session.return_value.client.return_value.generate_db_auth_token.call_args.kwargs
         # Django hands over PORT as the settings string; the signed endpoint is the same.
         self.assertEqual(
@@ -78,9 +82,12 @@ class LibraryBackendTest(unittest.TestCase):
         )
 
     def test_signs_for_the_host_as_given_without_dns_lookups(self):
-        with mock.patch(SESSION, session_minting("token")), mock.patch(
-            "django_iam_dbauth.aws.database_wrapper.resolve_cname"
-        ) as resolve:
+        with (
+            mock.patch(SESSION, session_minting("token")),
+            mock.patch(
+                "django_iam_dbauth.aws.database_wrapper.resolve_cname"
+            ) as resolve,
+        ):
             connections["default"].get_connection_params()
         resolve.assert_not_called()
 
@@ -127,9 +134,11 @@ class LoggingTest(unittest.TestCase):
         session.return_value.client.return_value.generate_db_auth_token.side_effect = (
             NoCredentialsError()
         )
-        with mock.patch(SESSION, session), self.assertLogs(
-            "cfa_weblate.iam", level="ERROR"
-        ) as logs, self.assertRaises(NoCredentialsError):
+        with (
+            mock.patch(SESSION, session),
+            self.assertLogs("cfa_weblate.iam", level="ERROR") as logs,
+            self.assertRaises(NoCredentialsError),
+        ):
             connections["default"].get_connection_params()
         self.assertIn("iam_token_mint_failed", logs.output[0])
         self.assertIn("error=NoCredentialsError", logs.output[0])

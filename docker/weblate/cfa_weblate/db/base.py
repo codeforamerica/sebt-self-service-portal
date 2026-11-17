@@ -24,20 +24,22 @@ class DatabaseWrapper(base.DatabaseWrapper):
                 "cfa_weblate.db doesn't support OPTIONS['pool']; IAM tokens "
                 "must be minted per connection."
             )
-        where = "port=%s region=%s" % (
-            self.settings_dict["PORT"],
-            options.get("region_name"),
-        )
+        where = f"port={self.settings_dict['PORT']} region={options.get('region_name')}"
         try:
             params = super().get_connection_params()
         except Exception as error:
             logger.error(
                 "iam_token_mint_failed %s pid=%s process=%r error=%s",
-                where, os.getpid(), _process_name(), type(error).__name__,
+                where,
+                os.getpid(),
+                _process_name(),
+                type(error).__name__,
             )
             raise
         logger.info(
             "iam_token_minted %s pid=%s process=%r",
-            where, os.getpid(), _process_name(),
+            where,
+            os.getpid(),
+            _process_name(),
         )
         return params
