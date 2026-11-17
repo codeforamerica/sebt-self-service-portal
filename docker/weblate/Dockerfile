@@ -4,8 +4,10 @@ FROM weblate/weblate@sha256:c74bf3c6f5cb52e4aa141e6f605c0f4fdefdcf1e89d1a9fbd011
 # The platform has no service-to-service networking yet, so Valkey (cache and Celery broker) runs in
 # this container on loopback. Only valid with one container per service.
 USER root
+# valkey-server needs valkey-tools at its own version; left unpinned, apt picks a newer one and the install fails.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends valkey-server=9.0.4-0ubuntu0.2 \
+    && apt-get install -y --no-install-recommends \
+        valkey-server=9.0.4-0ubuntu0.2 valkey-tools=9.0.4-0ubuntu0.2 \
     && rm -rf /var/lib/apt/lists/*
 
 # django-iam-dbauth signs an RDS IAM token for each new database connection.

@@ -5,6 +5,9 @@ set -euo pipefail
 
 VALKEY_DIR="${VALKEY_DIR:-/app/data/valkey}"
 VALKEY_PORT="${REDIS_PORT:-6379}"
+VALKEY_MAXMEMORY="${VALKEY_MAXMEMORY:-256mb}"
+# Cache entries, sessions and task results expire; Celery's queues don't, so only the first group is evicted.
+VALKEY_MAXMEMORY_POLICY=volatile-lru
 VALKEY_WAIT_SECONDS="${VALKEY_WAIT_SECONDS:-30}"
 VALKEY_WATCH_SECONDS="${VALKEY_WATCH_SECONDS:-10}"
 VALKEY_WATCH_MISSES="${VALKEY_WATCH_MISSES:-3}"
@@ -41,10 +44,11 @@ if [ "${REDIS_HOST:-}" != "127.0.0.1" ]; then
 fi
 
 mkdir -p "$VALKEY_DIR"
-log "valkey_starting bind=127.0.0.1 port=$VALKEY_PORT dir=$VALKEY_DIR version=$(valkey-server --version | awk '{print $3}')"
+log "valkey_starting bind=127.0.0.1 port=$VALKEY_PORT dir=$VALKEY_DIR maxmemory=$VALKEY_MAXMEMORY maxmemory_policy=$VALKEY_MAXMEMORY_POLICY version=$(valkey-server --version | awk '{print $3}')"
 valkey-server \
   --bind 127.0.0.1 --port "$VALKEY_PORT" --protected-mode yes \
   --dir "$VALKEY_DIR" --save 60 1 --appendonly no \
+  --maxmemory "$VALKEY_MAXMEMORY" --maxmemory-policy "$VALKEY_MAXMEMORY_POLICY" \
   --loglevel warning --logfile "" &
 valkey_pid=$!
 
