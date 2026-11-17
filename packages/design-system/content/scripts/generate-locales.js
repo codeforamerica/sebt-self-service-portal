@@ -10,14 +10,19 @@
  *   node packages/design-system/content/scripts/generate-locales.js --watch   # Watch mode (future)
  *   node packages/design-system/content/scripts/generate-locales.js --validate  # Check content only: writes nothing, exits 1 on a content error
  *
- * CSV Files:
- *   content/states/dc.csv  # DC-specific content (downloaded from DC tab)
- *   content/states/co.csv  # CO-specific content (downloaded from CO tab)
+ * CSV Files (one export per state, from that state's "Ready to publish" tab):
+ *   content/states/dc.csv  # DC-specific content
+ *   content/states/co.csv  # CO-specific content
  *   content/states/ny.csv  # NY-specific content (future)
  *
- * CSV Format:
- *   Variable Name/Key,🟢 CO English,⚪ SOURCE English,🟢 CO Español,⚪ SOURCE Español,Notes
- *   S1 - Landing Page - Action Español,Aplica ahora,¿Necesito aplicar?,Apply now,Do I need to apply?,
+ * CSV Format (columns are found by header text; any other column is ignored):
+ *   Variable Name/Key,🟢 CO English Current,🟢 CO Español Current
+ *   S1 - Landing Page - Action,Apply now,Aplica ahora
+ *
+ *   Required: "Variable Name/Key", "... English Current"
+ *   Optional: "... Español Current", "... Amharic Current"
+ *   A row whose English cell is "!N/A!" is left out, the same as a row deleted
+ *   from the sheet. "!N/A!" in another language leaves the key out of that language.
  *
  * Content Key Format (supports two formats):
  *   3-part: "{Section} - {Page} - {Key}"
@@ -324,34 +329,49 @@ function parseContentKey(contentKey) {
 }
 
 /**
+ * Find the columns the generator reads, by header text. An index is -1 when
+ * the header row has no such column.
+ */
+function findColumns(headerRow) {
+  const indexOfHeader = (...fragments) =>
+    headerRow.findIndex((header) => fragments.some((fragment) => header.toLowerCase().includes(fragment)));
+
+  return {
+    // Either header names the key column; an emoji prefix does not matter.
+    contentIdx: indexOfHeader('content', 'variable name'),
+    // "current" keeps a working export's "⚪ SOURCE English" column from being read as the copy.
+    englishIdx: indexOfHeader('english current'),
+    spanishIdx: indexOfHeader('español current'),
+    amharicIdx: indexOfHeader('amharic current'),
+  };
+}
+
+/** Explains which required column a state CSV's header row lacks, or null when it has both. */
+function headerProblem({ state, csvPath }) {
+  const [headerRow = []] = parseCSV(readFileSync(csvPath, 'utf8'));
+  const { contentIdx, englishIdx } = findColumns(headerRow);
+  const missing = [
+    contentIdx === -1 && '"Variable Name/Key"',
+    englishIdx === -1 && '"English Current"',
+  ].filter(Boolean);
+
+  if (missing.length === 0) return null;
+
+  return (
+    `${state}.csv has no ${missing.join(' or ')} column. ` +
+    'Required: "Variable Name/Key" and "... English Current". ' +
+    'Optional: "... Español Current" and "... Amharic Current". ' +
+    `Found: ${headerRow.join(' | ') || '(no header row)'}`
+  );
+}
+
+/**
  * Build locale data structure from CSV rows for a single state
  * Returns: { en: { common: { key: value }, landing: { key: value } }, es: { ... } }
  */
-function buildStateLocaleData(rows, state) {
+function buildStateLocaleData(rows) {
   const [headerRow, ...dataRows] = rows;
-
-  // Find column indices (handle emoji prefixes like "🟡 Content" and renamed headers like "Variable Name/Key")
-  const contentIdx = headerRow.findIndex((h) => {
-    const lower = h.toLowerCase()
-    return lower.includes('content') || lower.includes('variable name')
-  });
-
-    // Each state csv file has two columns for each language: (e.g., "🟡 DC English Current" and "⚪ SOURCE English").
-    // We only want to import the "current" columns. This is the copy we care about
-  const englishIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('english current')
-  );
-  const spanishIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('español current')
-  );
-
-  const amharicIdx = headerRow.findIndex((h) =>
-    h.toLowerCase().includes('amharic current')
-  );
-
-  if (contentIdx === -1 || englishIdx === -1) {
-    throw new Error(`CSV for ${state} must have "Content" and "English" columns`);
-  }
+  const { contentIdx, englishIdx, spanishIdx, amharicIdx } = findColumns(headerRow);
 
   // Initialize data structure for this state
   const data = {};
@@ -386,8 +406,9 @@ function buildStateLocaleData(rows, state) {
       data.en[namespace][key] = englishValue;
     }
 
-    // Spanish — same collision protection
-    if (spanishIdx !== -1) {
+    // Spanish has the same collision protection. A marked cell is skipped, so
+    // the key stays out of this language and falls back to English at runtime.
+    if (spanishIdx !== -1 && spanishValue !== ignoredStringIndicator) {
       if (!data.es[namespace]) {
         data.es[namespace] = {};
       }
@@ -396,8 +417,8 @@ function buildStateLocaleData(rows, state) {
       }
     }
 
-    // amharic — same collision protection
-    if (amharicIdx !== -1) {
+    // Amharic has the same collision protection and marker handling
+    if (amharicIdx !== -1 && amharicValue !== ignoredStringIndicator) {
       if (!data.am[namespace]) {
         data.am[namespace] = {};
       }
@@ -623,7 +644,7 @@ function filterStateDataForApp(stateData, app) {
  */
 function readStateContent({ state, csvPath }) {
   const rows = parseCSV(readFileSync(csvPath, 'utf8'));
-  const stateData = filterStateDataForApp(buildStateLocaleData(rows, state), appFilter);
+  const stateData = filterStateDataForApp(buildStateLocaleData(rows), appFilter);
   const { errors } = validateStateContent(stateData, state);
 
   return { entryCount: rows.length - 1, stateData, errors };
@@ -804,6 +825,13 @@ function generateResourceFile() {
 function main() {
   // Discover state CSV files
   const stateFiles = discoverStateCsvFiles();
+
+  // Checked first, so a CSV the generator cannot read fails before any output is deleted.
+  const headerProblems = stateFiles.map(headerProblem).filter(Boolean);
+  if (headerProblems.length > 0) {
+    headerProblems.forEach((problem) => console.error(`❌ ${problem}`));
+    process.exit(1);
+  }
 
   if (validateOnly) {
     if (stateFiles.length === 0) {
