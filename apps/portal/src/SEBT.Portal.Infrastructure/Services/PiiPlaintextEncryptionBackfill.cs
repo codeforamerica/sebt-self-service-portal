@@ -34,6 +34,7 @@ public sealed class PiiPlaintextEncryptionBackfill
     {
         await MigrateUsersLoopAsync(cancellationToken);
         await MigrateDocVerificationLoopAsync(cancellationToken);
+        await MigrateUserCasesLoopAsync(cancellationToken);
     }
 
     private async Task MigrateUsersLoopAsync(CancellationToken cancellationToken)
@@ -174,6 +175,48 @@ public sealed class PiiPlaintextEncryptionBackfill
             "PII ciphertext backfill: encrypted {Rows} DocVerificationChallenge row batch.",
             batch.Count);
 
+        return batch.Count;
+    }
+
+    private async Task MigrateUserCasesLoopAsync(CancellationToken cancellationToken)
+    {
+        int migrated;
+        do
+        {
+            migrated = await MigrateOneUserCasesBatchAsync(cancellationToken);
+        }
+        while (migrated > 0);
+    }
+
+    private async Task<int> MigrateOneUserCasesBatchAsync(CancellationToken cancellationToken)
+    {
+        var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+        var batch = await _dbContext.UserCases
+            .Where(row =>
+                row.CaseId != "" && !row.CaseId.StartsWith(prefix)
+                || row.ApplicationId != null && !row.ApplicationId.StartsWith(prefix)
+                || row.ApplicationStudentId != null && !row.ApplicationStudentId.StartsWith(prefix))
+            .OrderBy(row => row.Id)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
+        // LastSeenAt records when the user was shown the case, so encrypting doesn't touch it.
+        foreach (var userCase in batch)
+        {
+            BackfillScalar(prefix, () => userCase.CaseId, value => userCase.CaseId = value
+                ?? throw new InvalidOperationException($"UserCases row {userCase.Id} has a blank CaseId."));
+            BackfillScalar(prefix, () => userCase.ApplicationId, value => userCase.ApplicationId = value);
+            BackfillScalar(prefix, () => userCase.ApplicationStudentId, value => userCase.ApplicationStudentId = value);
+        }
+
+        if (batch.Count == 0)
+        {
+            return 0;
+        }
+
+        await SaveChangesAndDetachBatchAsync(cancellationToken);
+
+        _logger.LogInformation("PII ciphertext backfill: encrypted {Rows} UserCases row batch.", batch.Count);
         return batch.Count;
     }
 }

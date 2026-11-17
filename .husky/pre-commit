@@ -233,14 +233,13 @@ fi
 # Step 7: Backend tests (if backend changes)
 if [ "$BACKEND_CHANGES" = "true" ]; then
   STEP_NUM=$((STEP_NUM + 1))
-  log_info "Step $STEP_NUM/$TOTAL_STEPS: Running backend tests..."
+  log_info "Step $STEP_NUM/$TOTAL_STEPS: Running backend unit tests..."
   cd "$PROJECT_ROOT"
 
   if command -v dotnet &> /dev/null; then
-    # Exclude SqlServer tests (Testcontainers/SQL Server) from pre-commit.
-    # They run in CI but cause stack overflows locally when combined with
-    # the rest of the suite due to Docker resource pressure under parallelism.
-    dotnet test SEBT.slnx --configuration Debug --verbosity quiet --filter "Category!=SqlServer" || {
+    # Unit tests only (same filter as `pnpm api:test:unit`). Integration, Socure, and SqlServer
+    # tests need Docker or live services, so they run in CI and on demand instead.
+    dotnet test SEBT.slnx --configuration Debug --verbosity quiet --filter "Category!=SqlServer&Category!=Socure&Category!=Integration" || {
       log_error "Backend tests failed"
       exit 1
     }

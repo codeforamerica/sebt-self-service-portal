@@ -439,7 +439,7 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_ExternalProviderId_ShouldBeNullableWithMaxLength255()
+    public void Users_IdentityProviderUserId_ShouldBeNullableWithMaxLength255()
     {
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
@@ -450,7 +450,7 @@ public class PortalDbContextTests
 
         // Act
         var entityType = context.Model.FindEntityType(typeof(UserEntity));
-        var property = entityType!.FindProperty("ExternalProviderId");
+        var property = entityType!.FindProperty("IdentityProviderUserId");
 
         // Assert
         Assert.NotNull(property);
@@ -459,9 +459,45 @@ public class PortalDbContextTests
     }
 
     [Fact]
-    public void Users_ExternalProviderId_ShouldHaveFilteredUniqueIndex()
+    public void Users_LoginCount_ShouldBeRequiredWithDefaultZero()
     {
-        // Filtered index allows multiple null ExternalProviderIds (email-auth users)
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        using var context = new PortalDbContext(options);
+
+        var property = context.Model.FindEntityType(typeof(UserEntity))!.FindProperty("LoginCount");
+
+        Assert.NotNull(property);
+        Assert.False(property!.IsNullable);
+        Assert.Equal(0, property.GetDefaultValue());
+    }
+
+    [Fact]
+    public void Users_HouseholdIdentifierHash_ShouldHaveMaxLength64AndIndex()
+    {
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        using var context = new PortalDbContext(options);
+
+        var entityType = context.Model.FindEntityType(typeof(UserEntity))!;
+        var property = entityType.FindProperty("HouseholdIdentifierHash");
+        var index = entityType.GetIndexes()
+            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "HouseholdIdentifierHash");
+
+        Assert.NotNull(property);
+        Assert.True(property!.IsNullable);
+        Assert.Equal(64, property.GetMaxLength());
+        Assert.NotNull(index);
+        Assert.False(index!.IsUnique);
+        Assert.Equal("IX_Users_HouseholdIdentifierHash", index.GetDatabaseName());
+    }
+
+    [Fact]
+    public void Users_IdentityProviderUserId_ShouldHaveFilteredUniqueIndex()
+    {
+        // Filtered index allows multiple null IdentityProviderUserIds (email-auth users)
         // while enforcing uniqueness across OIDC users.
         // Arrange
         var options = new DbContextOptionsBuilder<PortalDbContext>()
@@ -473,13 +509,13 @@ public class PortalDbContextTests
         // Act
         var entityType = context.Model.FindEntityType(typeof(UserEntity));
         var index = entityType!.GetIndexes()
-            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "ExternalProviderId");
+            .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == "IdentityProviderUserId");
 
         // Assert
         Assert.NotNull(index);
         Assert.True(index!.IsUnique);
-        Assert.Equal("IX_Users_ExternalProviderId", index.GetDatabaseName());
-        Assert.Equal("[ExternalProviderId] IS NOT NULL", index.GetFilter());
+        Assert.Equal("IX_Users_IdentityProviderUserId", index.GetDatabaseName());
+        Assert.Equal("[IdentityProviderUserId] IS NOT NULL", index.GetFilter());
     }
 
     [Fact]
@@ -618,6 +654,27 @@ public class PortalDbContextTests
         // Assert
         Assert.NotNull(updatedAtProperty);
         Assert.False(updatedAtProperty!.IsNullable);
+    }
+
+    [Fact]
+    public void UserCases_ShouldBeConfiguredWithTableNamePrimaryKeyAndUniqueIdentityIndex()
+    {
+        var options = new DbContextOptionsBuilder<PortalDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+
+        using var context = new PortalDbContext(options);
+        var entityType = context.Model.FindEntityType(typeof(UserCaseEntity));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("UserCases", entityType!.GetTableName());
+        Assert.Equal("Id", entityType.FindPrimaryKey()!.Properties.Single().Name);
+
+        var identityIndex = entityType.GetIndexes().Single(i =>
+            i.Properties.Select(p => p.Name).SequenceEqual(
+                ["UserId", "CaseIdHash", "ApplicationIdHash", "ApplicationStudentIdHash"]));
+        Assert.True(identityIndex.IsUnique);
+        Assert.Equal("IX_UserCases_User_CaseIdentity", identityIndex.GetDatabaseName());
     }
 
     [Fact]

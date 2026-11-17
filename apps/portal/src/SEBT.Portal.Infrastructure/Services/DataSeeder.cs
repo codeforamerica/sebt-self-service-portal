@@ -85,7 +85,7 @@ public class DataSeeder : IDataSeeder
         var entity = new UserEntity
         {
             Id = user.Id,
-            ExternalProviderId = user.ExternalProviderId,
+            IdentityProviderUserId = user.IdentityProviderUserId,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,

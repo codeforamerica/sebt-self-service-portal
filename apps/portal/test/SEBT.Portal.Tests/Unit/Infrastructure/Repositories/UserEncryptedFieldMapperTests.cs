@@ -1,5 +1,6 @@
 using NSubstitute;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data.Entities;
 using SEBT.Portal.Infrastructure.Repositories;
@@ -33,7 +34,7 @@ public class UserEncryptedFieldMapperTests
             Id = id,
             Email = Crypto.Encrypt("person@example.com"),
             EmailHash = Lookup.NormalizeAndHash("person@example.com"),
-            ExternalProviderId = "oidc-sub",
+            IdentityProviderUserId = "oidc-sub",
             IdProofingStatus = (int)IdProofingStatus.Completed,
             IalLevel = (int)UserIalLevel.IAL1plus,
             IdProofingSessionId = "session-1",
@@ -54,7 +55,7 @@ public class UserEncryptedFieldMapperTests
 
         Assert.Equal(id, user.Id);
         Assert.Equal("person@example.com", user.Email);
-        Assert.Equal("oidc-sub", user.ExternalProviderId);
+        Assert.Equal("oidc-sub", user.IdentityProviderUserId);
         Assert.Equal(IdProofingStatus.Completed, user.IdProofingStatus);
         Assert.Equal(UserIalLevel.IAL1plus, user.IalLevel);
         Assert.Equal("session-1", user.IdProofingSessionId);
@@ -69,6 +70,44 @@ public class UserEncryptedFieldMapperTests
         Assert.Equal(2, user.IdProofingAttemptCount);
         Assert.Equal(createdAt, user.CreatedAt);
         Assert.Equal(updatedAt, user.UpdatedAt);
+    }
+
+    [Fact]
+    public void ToDomain_mapsLoginAndHouseholdIdentifierTracking()
+    {
+        var lastLoginAt = DateTime.UtcNow.AddHours(-1);
+        var identifierUpdatedAt = DateTime.UtcNow.AddHours(-2);
+        var entity = new UserEntity
+        {
+            LastLoginAt = lastLoginAt,
+            LoginCount = 4,
+            LastLoginMethod = (int)LoginMethod.Oidc,
+            HouseholdIdentifierType = (int)PreferredHouseholdIdType.Phone,
+            HouseholdIdentifierHash = "hashed-phone",
+            HouseholdIdentifierUpdatedAt = identifierUpdatedAt
+        };
+
+        var user = UserEncryptedFieldMapper.ToDomain(entity, Crypto);
+
+        Assert.Equal(lastLoginAt, user.LastLoginAt);
+        Assert.Equal(4, user.LoginCount);
+        Assert.Equal(LoginMethod.Oidc, user.LastLoginMethod);
+        Assert.Equal(PreferredHouseholdIdType.Phone, user.HouseholdIdentifierType);
+        Assert.Equal("hashed-phone", user.HouseholdIdentifierHash);
+        Assert.Equal(identifierUpdatedAt, user.HouseholdIdentifierUpdatedAt);
+    }
+
+    [Fact]
+    public void ToDomain_whenNeverLoggedIn_leavesTrackingFieldsEmpty()
+    {
+        var user = UserEncryptedFieldMapper.ToDomain(new UserEntity(), Crypto);
+
+        Assert.Null(user.LastLoginAt);
+        Assert.Equal(0, user.LoginCount);
+        Assert.Null(user.LastLoginMethod);
+        Assert.Null(user.HouseholdIdentifierType);
+        Assert.Null(user.HouseholdIdentifierHash);
+        Assert.Null(user.HouseholdIdentifierUpdatedAt);
     }
 
     [Fact]

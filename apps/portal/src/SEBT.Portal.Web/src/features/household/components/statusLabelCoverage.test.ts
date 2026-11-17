@@ -57,7 +57,7 @@ describe('dashboard status label coverage', () => {
   it('exercises every status label the dashboard can render', () => {
     // Sanity check on the fixture: if a component stops exporting its keys, the loops below
     // would silently pass over an empty list.
-    expect(STATUS_LABEL_KEYS.length).toBe(11)
+    expect(STATUS_LABEL_KEYS.length).toBe(12)
   })
 
   describe.each(STATES)('%s', (state) => {

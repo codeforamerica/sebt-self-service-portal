@@ -103,6 +103,12 @@ public class GetHouseholdDataQueryHandler(
             return Result<HouseholdData>.PreconditionFailed(PreconditionFailedReason.NotFound, "Household data not found.");
         }
 
+        var householdHash = identifierHasher.Hash(identifier.Value);
+        if (portalUserId != null && !string.IsNullOrEmpty(householdHash))
+        {
+            await TryRecordHouseholdIdentifierAsync(portalUserId.Value, identifier.Type, householdHash, cancellationToken);
+        }
+
         // SECURITY: Never return household case data when the user has not met
         // the IAL required by their cases. See docs/config/ial/README.md.
         var decision = idProofingService.Evaluate(
@@ -157,7 +163,6 @@ public class GetHouseholdDataQueryHandler(
 
         // Hydrate CardRequestedAt from portal DB — the authoritative source for
         // replacement request timestamps. The frontend uses this to enforce cooldown UI.
-        var householdHash = identifierHasher.Hash(identifier.Value);
         if (householdHash != null)
         {
             foreach (var summerEbtCase in householdData.SummerEbtCases)
@@ -191,4 +196,20 @@ public class GetHouseholdDataQueryHandler(
         return Result<HouseholdData>.Success(householdData);
     }
 
+    // Note: Since this is for tracking, we won't block login if there's a write failure
+    private async Task TryRecordHouseholdIdentifierAsync(
+        Guid userId,
+        PreferredHouseholdIdType identifierType,
+        string identifierHash,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await userRepository.RecordHouseholdIdentifierAsync(userId, identifierType, identifierHash, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to record household identifier for user {UserId}", userId);
+        }
+    }
 }

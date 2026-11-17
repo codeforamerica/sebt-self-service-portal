@@ -324,6 +324,89 @@ public class GetHouseholdDataQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenHouseholdFound_RecordsHashedHouseholdIdentifierOnUser()
+    {
+        var userId = Guid.Parse("d4444444-4444-4444-8444-444444444444");
+        var principal = CreateUserWithSub("user@example.com", UserIalLevel.IAL1plus, userId);
+        var identifier = HouseholdIdentifier.Phone("+13035550100");
+
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>()).Returns(identifier);
+        _identifierHasher.Hash("+13035550100").Returns("hashed-phone");
+        _repository.GetHouseholdByIdentifierAsync(
+                identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData());
+
+        var result = await CreateHandler().Handle(new GetHouseholdDataQuery { User = principal });
+
+        Assert.True(result.IsSuccess);
+        await _userRepository.Received(1).RecordHouseholdIdentifierAsync(
+            userId, PreferredHouseholdIdType.Phone, "hashed-phone", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenRecordingHouseholdIdentifierFails_StillReturnsHouseholdData()
+    {
+        var userId = Guid.Parse("f6666666-6666-4666-8666-666666666666");
+        var principal = CreateUserWithSub("user@example.com", UserIalLevel.IAL1plus, userId);
+        var identifier = HouseholdIdentifier.Phone("+13035550100");
+
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>()).Returns(identifier);
+        _identifierHasher.Hash("+13035550100").Returns("hashed-phone");
+        _repository.GetHouseholdByIdentifierAsync(
+                identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData());
+        _userRepository.RecordHouseholdIdentifierAsync(
+                Arg.Any<Guid>(), Arg.Any<PreferredHouseholdIdType>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(new InvalidOperationException("database unavailable")));
+
+        var result = await CreateHandler().Handle(new GetHouseholdDataQuery { User = principal });
+
+        Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task Handle_WhenHouseholdNotFound_DoesNotRecordHouseholdIdentifier()
+    {
+        var userId = Guid.Parse("e5555555-5555-4555-8555-555555555555");
+        var principal = CreateUserWithSub("user@example.com", UserIalLevel.IAL1plus, userId);
+        var identifier = HouseholdIdentifier.Phone("+13035550100");
+
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>()).Returns(identifier);
+        _identifierHasher.Hash("+13035550100").Returns("hashed-phone");
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Any<HouseholdIdentifier>(), Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        await CreateHandler().Handle(new GetHouseholdDataQuery { User = principal });
+
+        await _userRepository.DidNotReceive().RecordHouseholdIdentifierAsync(
+            Arg.Any<Guid>(), Arg.Any<PreferredHouseholdIdType>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenPrincipalHasNoPortalUserId_DoesNotRecordHouseholdIdentifier()
+    {
+        var principal = CreateUser("user@example.com", UserIalLevel.IAL1plus);
+        var identifier = HouseholdIdentifier.Email("user@example.com");
+
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>()).Returns(identifier);
+        _identifierHasher.Hash("user@example.com").Returns("hashed-email");
+        _repository.GetHouseholdByIdentifierAsync(
+                identifier, Arg.Any<PiiVisibility>(), Arg.Any<UserIalLevel>(), Arg.Any<Guid?>(),
+                Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(new HouseholdData());
+
+        var result = await CreateHandler().Handle(new GetHouseholdDataQuery { User = principal });
+
+        Assert.True(result.IsSuccess);
+        await _userRepository.DidNotReceive().RecordHouseholdIdentifierAsync(
+            Arg.Any<Guid>(), Arg.Any<PreferredHouseholdIdType>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Handle_WhenIdentifierResolvedAndHouseholdExistsAndIdVerified_ReturnsSuccessWithAddress()
     {
         // Arrange

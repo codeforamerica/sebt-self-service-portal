@@ -169,7 +169,7 @@ public class CompleteOidcLoginCommandHandler(
 
         if (session.IsStepUp)
         {
-            var existingEntity = await userRepository.GetUserByExternalIdAsync(subClaim, cancellationToken);
+            var existingEntity = await userRepository.GetUserByIdentityProviderUserIdAsync(subClaim, cancellationToken);
             if (existingEntity == null)
             {
                 var failure = Result<CompleteOidcLoginResponse>.PreconditionFailed(
@@ -194,7 +194,7 @@ public class CompleteOidcLoginCommandHandler(
             // this sub but one exists for this email, adopt that legacy record.
             // TODO: Remove email parameter once all existing users have been migrated.
             var emailHint = principal.FindFirst("email")?.Value;
-            var (createdUser, _) = await userRepository.GetOrCreateUserByExternalIdAsync(
+            var (createdUser, _) = await userRepository.GetOrCreateUserByIdentityProviderUserIdAsync(
                 subClaim, emailHint, cancellationToken);
             user = createdUser;
         }
@@ -219,6 +219,12 @@ public class CompleteOidcLoginCommandHandler(
             return failure;
         }
 
+        // Step-up re-verifies an already signed-in user, so it is not a new login.
+        if (!session.IsStepUp)
+        {
+            await TryRecordLoginAsync(user.Id, cancellationToken);
+        }
+
         logger.LogInformation(
             "OIDC {FlowType} complete: UserId {UserId}, Phone={MaskedPhone}, SessionId={SessionId}",
             session.IsStepUp ? "step-up" : "login", user.Id, maskedPhone, command.SessionId);
@@ -226,6 +232,19 @@ public class CompleteOidcLoginCommandHandler(
         var safeReturnUrl = session.IsStepUp ? session.ReturnUrl : null;
         return Result<CompleteOidcLoginResponse>.Success(
             new CompleteOidcLoginResponse(tokenResult.Value, safeReturnUrl));
+    }
+
+    // Tracking is for reporting only; a failed write must not block sign-in.
+    private async Task TryRecordLoginAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await userRepository.RecordLoginAsync(userId, LoginMethod.Oidc, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "Failed to record OIDC login for user {UserId}", userId);
+        }
     }
 
     /// <summary>

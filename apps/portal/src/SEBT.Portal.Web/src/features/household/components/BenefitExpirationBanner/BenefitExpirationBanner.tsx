@@ -23,6 +23,7 @@ export function BenefitExpirationBanner() {
   return (
     <Alert
       variant="warning"
+      className="margin-bottom-3"
       heading={t('alertTitleExpungement')}
       headingClassName="font-sans-md text-semibold line-height-sans-4"
       textClassName="font-sans-md line-height-sans-4"

@@ -9,10 +9,14 @@ namespace SEBT.Portal.Tests.Integration.StartupValidation;
 
 public abstract class StartupValidationTestBase : IDisposable
 {
-    private readonly HashSet<string> _touchedKeys = new(StringComparer.Ordinal);
-    private readonly string? _environmentName;
+    // Any name but Development, so the API's gitignored appsettings.Development.json and
+    // user secrets never load. STATE stays unset for the same reason (appsettings.{state}.json).
+    private const string TestingEnvironment = "Testing";
 
-    protected StartupValidationTestBase(string? environmentName = null)
+    private readonly HashSet<string> _touchedKeys = new(StringComparer.Ordinal);
+    private readonly string _environmentName;
+
+    protected StartupValidationTestBase(string environmentName = TestingEnvironment)
     {
         _environmentName = environmentName;
 
@@ -20,7 +24,6 @@ public abstract class StartupValidationTestBase : IDisposable
 
         SetEnv("PluginAssemblyPaths__0", "plugins-none");
         SetEnv("PluginAssemblyPaths__1", "plugins-none");
-        SetEnv("STATE", "co");
         SetEnv("JwtSettings__SecretKey", "integration-test-jwt-secret-key-at-least-32-chars!");
         SetEnv("Oidc__DiscoveryEndpoint", "https://auth.example.com/.well-known/openid-configuration");
         SetEnv("Oidc__ClientId", "test-client");
@@ -32,18 +35,13 @@ public abstract class StartupValidationTestBase : IDisposable
         SetEnv("MinimumIal__CoLoadedStreamlineCases", "IAL1");
         SetEnv("MinimumIal__NonCoLoadedStreamlineCases", "IAL1plus");
 
-        // Production has extra startup rules that these tests must neutralize so
-        // only the section under test can fail:
-        //  - Redis is required once OIDC is configured.
-        //  - appsettings.json sets the forbidden IdentifierHasher placeholder.
-        //  - WebApplicationFactory bootstraps as Development, so user secrets stay
-        //    in the config graph after UseEnvironment(Production). A local
-        //    Socure:UseStub=true would otherwise fail alongside the assertion.
-        SetEnv("ConnectionStrings__Redis", isProduction ? "localhost:6379" : "");
+        // Neutralize startup rules outside the section under test, so only that section can fail:
+        //  - Outside Development, Redis is required once OIDC is configured.
+        //  - In Production, appsettings.json's IdentifierHasher placeholder is forbidden.
+        SetEnv("ConnectionStrings__Redis", "localhost:6379");
         if (isProduction)
         {
             SetEnv("IdentifierHasher__SecretKey", "integration-test-identifier-hasher-key-32chars!");
-            SetEnv("Socure__Enabled", "false");
         }
     }
 
@@ -57,10 +55,7 @@ public abstract class StartupValidationTestBase : IDisposable
     protected WebApplicationFactory<Program> CreateFactory() =>
         new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
         {
-            if (_environmentName is not null)
-            {
-                builder.UseEnvironment(_environmentName);
-            }
+            builder.UseEnvironment(_environmentName);
 
             builder.ConfigureServices(services =>
             {

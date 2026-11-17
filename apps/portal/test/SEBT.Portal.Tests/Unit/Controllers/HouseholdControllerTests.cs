@@ -33,6 +33,8 @@ public class HouseholdControllerTests
     private readonly ICardReplacementRequestRepository _cardReplacementRepo;
     private readonly IIdentifierHasher _identifierHasher;
     private readonly IFeatureManager _featureManager;
+    private readonly ICommandHandler<RecordDisplayedCasesCommand> _recordDisplayedCasesHandler =
+        Substitute.For<ICommandHandler<RecordDisplayedCasesCommand>>();
     private readonly HouseholdController _controller;
 
     public HouseholdControllerTests()
@@ -172,7 +174,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -216,7 +218,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -247,7 +249,7 @@ public class HouseholdControllerTests
             .Returns((HouseholdData?)null);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -274,7 +276,7 @@ public class HouseholdControllerTests
         var repositoryMock = Substitute.For<IHouseholdRepository>();
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -309,7 +311,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -341,7 +343,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -382,7 +384,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -424,7 +426,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -448,7 +450,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -471,7 +473,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -501,7 +503,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -607,7 +609,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -660,7 +662,7 @@ public class HouseholdControllerTests
             .Returns(householdData);
 
         // Act
-        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+        var result = await _controller.GetHouseholdData(CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         // Assert
         Assert.NotNull(result);
@@ -722,7 +724,7 @@ public class HouseholdControllerTests
         _featureManager.IsEnabledAsync(FeatureFlags.EnableHouseholdAnalyticsIdentifiers).Returns(true);
 
         var result = await _controller.GetHouseholdData(
-            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, _featureManager);
+            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, _featureManager, _recordDisplayedCasesHandler);
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
@@ -764,7 +766,7 @@ public class HouseholdControllerTests
         _featureManager.IsEnabledAsync(FeatureFlags.EnableHouseholdAnalyticsIdentifiers).Returns(true);
 
         var result = await _controller.GetHouseholdData(
-            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, _featureManager);
+            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, _featureManager, _recordDisplayedCasesHandler);
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
@@ -797,7 +799,7 @@ public class HouseholdControllerTests
         _featureManager.IsEnabledAsync(FeatureFlags.EnableHouseholdAnalyticsIdentifiers).Returns(true);
 
         var result = await _controller.GetHouseholdData(
-            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, _featureManager);
+            CreateQueryHandler(resolverMock, repositoryMock), AnalyticsHasher, _featureManager, _recordDisplayedCasesHandler);
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
@@ -836,7 +838,7 @@ public class HouseholdControllerTests
         _featureManager.IsEnabledAsync(FeatureFlags.EnableHouseholdAnalyticsIdentifiers).Returns(false);
 
         var result = await _controller.GetHouseholdData(
-            CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager);
+            CreateQueryHandler(resolverMock, repositoryMock), _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
 
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<HouseholdDataResponse>(ok.Value);
@@ -844,5 +846,64 @@ public class HouseholdControllerTests
         Assert.Null(response.HashedAppIds);
         Assert.Null(response.HashedCaseIds);
         _identifierHasher.DidNotReceive().HashForAnalytics(Arg.Any<string?>());
+    }
+
+    [Fact]
+    public async Task GetHouseholdData_WhenHouseholdReturned_RecordsTheReturnedCases()
+    {
+        SetupAuthenticatedUser("user@example.com", UserIalLevel.IAL1plus);
+        var householdData = new HouseholdData
+        {
+            SummerEbtCases = [new() { SummerEBTCaseID = "SEBT-001" }]
+        };
+
+        var result = await _controller.GetHouseholdData(
+            QueryHandlerReturning(Result<HouseholdData>.Success(householdData)),
+            _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
+
+        Assert.IsType<OkObjectResult>(result);
+        await _recordDisplayedCasesHandler.Received(1).Handle(
+            Arg.Is<RecordDisplayedCasesCommand>(c =>
+                c.User == _controller.User && c.Cases.SequenceEqual(householdData.SummerEbtCases)),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task GetHouseholdData_WhenRecordingCasesFails_StillReturnsHousehold()
+    {
+        SetupAuthenticatedUser("user@example.com", UserIalLevel.IAL1plus);
+        _recordDisplayedCasesHandler.Handle(Arg.Any<RecordDisplayedCasesCommand>(), Arg.Any<CancellationToken>())
+            .Returns(Result.DependencyFailed(DependencyFailedReason.ConnectionFailed));
+        var householdData = new HouseholdData
+        {
+            SummerEbtCases = [new() { SummerEBTCaseID = "SEBT-001" }]
+        };
+
+        var result = await _controller.GetHouseholdData(
+            QueryHandlerReturning(Result<HouseholdData>.Success(householdData)),
+            _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
+
+        Assert.IsType<OkObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task GetHouseholdData_WhenAccessIsForbidden_DoesNotRecordCases()
+    {
+        SetupAuthenticatedUser("user@example.com", UserIalLevel.None);
+
+        var result = await _controller.GetHouseholdData(
+            QueryHandlerReturning(Result<HouseholdData>.Forbidden("IAL required")),
+            _identifierHasher, _featureManager, _recordDisplayedCasesHandler);
+
+        Assert.IsType<ObjectResult>(result);
+        await _recordDisplayedCasesHandler.DidNotReceiveWithAnyArgs().Handle(default!, default);
+    }
+
+    private static IQueryHandler<GetHouseholdDataQuery, HouseholdData> QueryHandlerReturning(
+        Result<HouseholdData> result)
+    {
+        var queryHandler = Substitute.For<IQueryHandler<GetHouseholdDataQuery, HouseholdData>>();
+        queryHandler.Handle(Arg.Any<GetHouseholdDataQuery>(), Arg.Any<CancellationToken>()).Returns(result);
+        return queryHandler;
     }
 }

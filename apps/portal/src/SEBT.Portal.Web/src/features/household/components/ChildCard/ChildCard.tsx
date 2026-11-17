@@ -16,22 +16,43 @@ function isCoLoadedIssuance(issuanceType: IssuanceType | null | undefined): bool
   return issuanceType === 'SnapEbtCard' || issuanceType === 'TanfEbtCard'
 }
 
-function getReplacementLink(
+interface CardAction {
+  href: string
+  labelKey: string
+  ctaId: string
+}
+
+function getCardAction(
   summerEbtCase: SummerEbtCase,
   canRequestReplacementCard: boolean
-): string | null {
+): CardAction | null {
   const { summerEBTCaseID, issuanceType, cardRequestedAt, allowCardReplacement } = summerEbtCase
   if (!summerEBTCaseID) return null
 
+  const replacementAction = (href: string): CardAction => ({
+    href,
+    labelKey: 'cardTableActionRequestReplacement',
+    ctaId: 'replacement_card_cta'
+  })
+
   // Co-loaded cases always link to the info page — they cannot be replaced in-portal,
   // and the household-level allow flag is irrelevant for the educational link.
-  if (isCoLoadedIssuance(issuanceType)) return '/cards/info'
+  if (isCoLoadedIssuance(issuanceType)) return replacementAction('/cards/info')
 
   if (!canRequestReplacementCard) return null
   if (!allowCardReplacement) return null
   if (isWithinCooldownPeriod(cardRequestedAt)) return null
 
-  return `/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`
+  // An undeliverable card needs a new address first; the address flow then offers replacements.
+  if (summerEbtCase.ebtCardStatus === 'Undeliverable' && summerEbtCase.allowAddressChange) {
+    return {
+      href: '/profile/address',
+      labelKey: 'cardTableActionUpdateRequest',
+      ctaId: 'update_address_cta'
+    }
+  }
+
+  return replacementAction(`/cards/replace?case=${encodeURIComponent(summerEBTCaseID)}`)
 }
 
 interface ChildCardProps {
@@ -85,7 +106,7 @@ export function ChildCard({
       ? caseDisplayNumber
       : ebtCaseNumber
   const cardTypeKey = issuanceType ? (CARD_TYPE_KEYS[issuanceType] ?? null) : null
-  const replacementLink = getReplacementLink(summerEbtCase, canRequestReplacementCard)
+  const cardAction = getCardAction(summerEbtCase, canRequestReplacementCard)
   const expirationCopy = benefitExpirationStatus
     ? t(benefitExpirationStatus === 'Expired' ? 'cardTableExpired' : 'cardTableExpiring', {
         defaultValue: ''
@@ -198,13 +219,14 @@ export function ChildCard({
             </>
           )}
         </dl>
-        {replacementLink && (
+        {cardAction && (
           <Link
-            href={replacementLink}
-            data-analytics-cta="replacement_card_cta"
-            className="usa-link display-inline-block margin-top-2"
+            href={cardAction.href}
+            data-analytics-cta={cardAction.ctaId}
+            className="usa-link display-inline-block margin-top-2 text-bold"
           >
-            {t('cardTableActionRequestReplacement')}
+            {/* DC has no update-address copy, so it falls back to the replacement label. */}
+            {t(cardAction.labelKey, { defaultValue: t('cardTableActionRequestReplacement') })}
           </Link>
         )}
       </div>

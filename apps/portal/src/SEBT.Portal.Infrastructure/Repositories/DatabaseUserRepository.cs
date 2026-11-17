@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SEBT.Portal.Core.Exceptions;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Repositories;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
@@ -49,10 +50,10 @@ public class DatabaseUserRepository(
             throw new ArgumentNullException(nameof(user));
         }
 
-        if (string.IsNullOrWhiteSpace(user.Email) && string.IsNullOrWhiteSpace(user.ExternalProviderId))
+        if (string.IsNullOrWhiteSpace(user.Email) && string.IsNullOrWhiteSpace(user.IdentityProviderUserId))
         {
             throw new ArgumentException(
-                "Either Email or ExternalProviderId must be provided.", nameof(user));
+                "Either Email or IdentityProviderUserId must be provided.", nameof(user));
         }
 
         var entity = NewTrackedEntityStructural(user);
@@ -229,33 +230,33 @@ public class DatabaseUserRepository(
         return entity == null ? null : UserEncryptedFieldMapper.ToDomain(entity, piiEncryption);
     }
 
-    public async Task<User?> GetUserByExternalIdAsync(string externalProviderId, CancellationToken cancellationToken = default)
+    public async Task<User?> GetUserByIdentityProviderUserIdAsync(string identityProviderUserId, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(externalProviderId))
+        if (string.IsNullOrWhiteSpace(identityProviderUserId))
         {
             return null;
         }
 
         var entity = await dbContext.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.ExternalProviderId == externalProviderId, cancellationToken);
+            .FirstOrDefaultAsync(u => u.IdentityProviderUserId == identityProviderUserId, cancellationToken);
 
         return entity == null ? null : UserEncryptedFieldMapper.ToDomain(entity, piiEncryption);
     }
 
-    public async Task<(User user, bool isNewUser)> GetOrCreateUserByExternalIdAsync(
-        string externalProviderId,
+    public async Task<(User user, bool isNewUser)> GetOrCreateUserByIdentityProviderUserIdAsync(
+        string identityProviderUserId,
         string? email = null,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(externalProviderId))
+        if (string.IsNullOrWhiteSpace(identityProviderUserId))
         {
             throw new ArgumentException(
-                "External provider ID cannot be null or empty.", nameof(externalProviderId));
+                "Identity provider user ID cannot be null or empty.", nameof(identityProviderUserId));
         }
 
         var entity = await dbContext.Users.FirstOrDefaultAsync(
-            u => u.ExternalProviderId == externalProviderId,
+            u => u.IdentityProviderUserId == identityProviderUserId,
             cancellationToken);
 
         if (entity != null)
@@ -275,14 +276,14 @@ public class DatabaseUserRepository(
                     lookupHash,
                     cancellationToken);
 
-                if (legacyEntity != null && legacyEntity.ExternalProviderId != null)
+                if (legacyEntity != null && legacyEntity.IdentityProviderUserId != null)
                 {
                     legacyEntity = null;
                 }
 
                 if (legacyEntity != null)
                 {
-                    legacyEntity.ExternalProviderId = externalProviderId;
+                    legacyEntity.IdentityProviderUserId = identityProviderUserId;
                     UserEncryptedFieldMapper.ClearEmailColumns(legacyEntity);
                     legacyEntity.UpdatedAt = DateTime.UtcNow;
                     await dbContext.SaveChangesAsync(cancellationToken);
@@ -293,7 +294,7 @@ public class DatabaseUserRepository(
 
         var draftOidcUser = new User
         {
-            ExternalProviderId = externalProviderId,
+            IdentityProviderUserId = identityProviderUserId,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -314,7 +315,7 @@ public class DatabaseUserRepository(
                 ex.InnerException?.Message.Contains("duplicate key") == true)
             {
                 entity = await dbContext.Users.FirstOrDefaultAsync(
-                    u => u.ExternalProviderId == externalProviderId, cancellationToken);
+                    u => u.IdentityProviderUserId == identityProviderUserId, cancellationToken);
 
                 if (entity != null)
                 {
@@ -326,6 +327,43 @@ public class DatabaseUserRepository(
         }
 
         return (UserEncryptedFieldMapper.ToDomain(newEntity, piiEncryption), true);
+    }
+
+    public async Task RecordLoginAsync(Guid userId, LoginMethod method, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        await dbContext.Users
+            .Where(u => u.Id == userId)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(u => u.LoginCount, u => u.LoginCount + 1)
+                    .SetProperty(u => u.LastLoginAt, now)
+                    .SetProperty(u => u.LastLoginMethod, (int)method),
+                cancellationToken);
+    }
+
+    public async Task RecordHouseholdIdentifierAsync(
+        Guid userId,
+        PreferredHouseholdIdType identifierType,
+        string identifierHash,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(identifierHash))
+        {
+            throw new ArgumentException("Identifier hash cannot be null or empty.", nameof(identifierHash));
+        }
+
+        var type = (int)identifierType;
+        var now = DateTime.UtcNow;
+        await dbContext.Users
+            .Where(u => u.Id == userId
+                && (u.HouseholdIdentifierType != type || u.HouseholdIdentifierHash != identifierHash))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(u => u.HouseholdIdentifierType, type)
+                    .SetProperty(u => u.HouseholdIdentifierHash, identifierHash)
+                    .SetProperty(u => u.HouseholdIdentifierUpdatedAt, now),
+                cancellationToken);
     }
 
     private static string? NormalizeEmail(string? email) => EmailNormalizer.NormalizeOrNull(email);
@@ -467,7 +505,7 @@ public class DatabaseUserRepository(
         return new UserEntity
         {
             Id = user.Id,
-            ExternalProviderId = user.ExternalProviderId,
+            IdentityProviderUserId = user.IdentityProviderUserId,
             IdProofingStatus = (int)user.IdProofingStatus,
             IalLevel = (int)user.IalLevel,
             IdProofingSessionId = user.IdProofingSessionId,

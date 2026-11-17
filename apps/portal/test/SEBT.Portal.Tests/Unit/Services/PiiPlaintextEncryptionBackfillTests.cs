@@ -65,17 +65,6 @@ public class PiiPlaintextEncryptionBackfillTests : IAsyncLifetime
         db.DocVerificationChallenges.Add(challenge);
         await db.SaveChangesAsync();
 
-        async Task ApplyBackfillOnFreshContextAsync()
-        {
-            using var fresh = CreateContext();
-            var backfill = new PiiPlaintextEncryptionBackfill(
-                fresh,
-                TestPortalCryptography.PiiSymmetricEncryption,
-                TestPortalCryptography.EmailLookupHasher,
-                NullLogger<PiiPlaintextEncryptionBackfill>.Instance);
-            await backfill.ApplyAsync();
-        }
-
         await ApplyBackfillOnFreshContextAsync();
 
         db.ChangeTracker.Clear();
@@ -117,6 +106,75 @@ public class PiiPlaintextEncryptionBackfillTests : IAsyncLifetime
         Assert.Equal(
             EmailNormalizer.Normalize(email),
             TestPortalCryptography.PiiSymmetricEncryption.DecryptOrPassThroughLegacy(storedUserAfter2.Email));
+    }
+
+    [Fact]
+    public async Task ApplyAsync_encrypts_plaintext_user_case_identifiers_idempotently()
+    {
+        using var db = CreateContext();
+        var user = UserFactory.CreateUserEntity();
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var lastSeenAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        var applicationCase = new UserCaseEntity
+        {
+            UserId = user.Id,
+            CaseId = "SEBT-CASE-001",
+            CaseIdHash = "case-hash-001",
+            ApplicationId = "APP-001",
+            ApplicationIdHash = "app-hash-001",
+            ApplicationStudentId = "STU-001",
+            ApplicationStudentIdHash = "stu-hash-001",
+            LastSeenAt = lastSeenAt
+        };
+        var autoIssuedCase = new UserCaseEntity
+        {
+            UserId = user.Id,
+            CaseId = "SEBT-CASE-002",
+            CaseIdHash = "case-hash-002",
+            LastSeenAt = lastSeenAt
+        };
+        db.UserCases.AddRange(applicationCase, autoIssuedCase);
+        await db.SaveChangesAsync();
+
+        await ApplyBackfillOnFreshContextAsync();
+
+        db.ChangeTracker.Clear();
+        var crypto = TestPortalCryptography.PiiSymmetricEncryption;
+        var storedApplicationCase = db.UserCases.Single(c => c.Id == applicationCase.Id);
+        Assert.StartsWith(PiiAesGcmSymmetricEncryption.EnvelopePrefix, storedApplicationCase.CaseId, StringComparison.Ordinal);
+        Assert.StartsWith(PiiAesGcmSymmetricEncryption.EnvelopePrefix, storedApplicationCase.ApplicationId!, StringComparison.Ordinal);
+        Assert.StartsWith(PiiAesGcmSymmetricEncryption.EnvelopePrefix, storedApplicationCase.ApplicationStudentId!, StringComparison.Ordinal);
+        Assert.Equal("SEBT-CASE-001", crypto.DecryptOrPassThroughLegacy(storedApplicationCase.CaseId));
+        Assert.Equal("APP-001", crypto.DecryptOrPassThroughLegacy(storedApplicationCase.ApplicationId));
+        Assert.Equal("STU-001", crypto.DecryptOrPassThroughLegacy(storedApplicationCase.ApplicationStudentId));
+        Assert.Equal("case-hash-001", storedApplicationCase.CaseIdHash);
+        Assert.Equal(lastSeenAt, storedApplicationCase.LastSeenAt);
+
+        var storedAutoIssuedCase = db.UserCases.Single(c => c.Id == autoIssuedCase.Id);
+        Assert.Equal("SEBT-CASE-002", crypto.DecryptOrPassThroughLegacy(storedAutoIssuedCase.CaseId));
+        Assert.Null(storedAutoIssuedCase.ApplicationId);
+        Assert.Null(storedAutoIssuedCase.ApplicationStudentId);
+
+        await ApplyBackfillOnFreshContextAsync();
+
+        db.ChangeTracker.Clear();
+        var storedApplicationCaseAfter2 = db.UserCases.Single(c => c.Id == applicationCase.Id);
+        Assert.Equal(storedApplicationCase.CaseId, storedApplicationCaseAfter2.CaseId);
+        Assert.Equal(storedApplicationCase.ApplicationId, storedApplicationCaseAfter2.ApplicationId);
+        Assert.Equal(storedApplicationCase.ApplicationStudentId, storedApplicationCaseAfter2.ApplicationStudentId);
+    }
+
+    private async Task ApplyBackfillOnFreshContextAsync()
+    {
+        using var fresh = CreateContext();
+        var backfill = new PiiPlaintextEncryptionBackfill(
+            fresh,
+            TestPortalCryptography.PiiSymmetricEncryption,
+            TestPortalCryptography.EmailLookupHasher,
+            NullLogger<PiiPlaintextEncryptionBackfill>.Instance);
+        await backfill.ApplyAsync();
     }
 
     [Fact]

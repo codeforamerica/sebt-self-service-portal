@@ -32,6 +32,7 @@ public static class Dependencies
         services.RegisterCommandHandler<CheckEnrollmentCommand, EnrollmentCheckResult, CheckEnrollmentCommandHandler>();
         services.RegisterCommandHandler<UpdateAddressCommand, Core.Services.AddressValidationResult, UpdateAddressCommandHandler>();
         services.RegisterCommandHandler<RequestCardReplacementCommand, RequestCardReplacementCommandHandler>();
+        services.RegisterCommandHandler<RecordDisplayedCasesCommand, RecordDisplayedCasesCommandHandler>();
         services.RegisterCommandHandler<TestErrorCommand, TestErrorCommandHandler>();
 
         // SessionLifetimePolicy is invoked by the JWT bearer middleware on every authenticated

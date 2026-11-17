@@ -28,6 +28,7 @@ public class HouseholdController : ControllerBase
     /// <param name="queryHandler">The use case handler for retrieving household data.</param>
     /// <param name="identifierHasher">Hashes household application and case IDs before returning them to the client.</param>
     /// <param name="featureManager">Decides whether the response carries hashed analytics identifiers.</param>
+    /// <param name="recordDisplayedCasesHandler">Records the returned cases against the user; failures don't affect the response.</param>
     /// <param name="includeCardDetails">When false, card-related fields are excluded from the response.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An OK result with household data if found, or an empty payload when no household exists; otherwise, Unauthorized or Forbidden.</returns>
@@ -43,6 +44,7 @@ public class HouseholdController : ControllerBase
         [FromServices] IQueryHandler<GetHouseholdDataQuery, Core.Models.Household.HouseholdData> queryHandler,
         [FromServices] IIdentifierHasher identifierHasher,
         [FromServices] IFeatureManager featureManager,
+        [FromServices] ICommandHandler<RecordDisplayedCasesCommand> recordDisplayedCasesHandler,
         [FromQuery] bool includeCardDetails = true,
         CancellationToken cancellationToken = default)
     {
@@ -52,6 +54,14 @@ public class HouseholdController : ControllerBase
             IncludeCardDetails = includeCardDetails
         };
         var result = await queryHandler.Handle(query, cancellationToken);
+        if (result is SuccessResult<Core.Models.Household.HouseholdData> success)
+        {
+            // Best-effort: the handler reports failures as a result, which is deliberately ignored here.
+            await recordDisplayedCasesHandler.Handle(
+                new RecordDisplayedCasesCommand { User = User, Cases = success.Value.SummerEbtCases },
+                cancellationToken);
+        }
+
         var includeAnalyticsIdentifiers = await featureManager.IsEnabledAsync(FeatureFlags.EnableHouseholdAnalyticsIdentifiers);
 
         return result.ToActionResult(
