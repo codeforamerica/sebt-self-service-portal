@@ -1,5 +1,6 @@
 using System.Globalization;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.Household;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data.Entities;
@@ -17,7 +18,7 @@ internal static class UserEncryptedFieldMapper
         {
             Id = entity.Id,
             Email = DecryptNormalizedEmail(entity, crypto),
-            ExternalProviderId = entity.ExternalProviderId,
+            IdentityProviderUserId = entity.IdentityProviderUserId,
             IdProofingStatus = (IdProofingStatus)entity.IdProofingStatus,
             IalLevel = (UserIalLevel)entity.IalLevel,
             IdProofingSessionId = entity.IdProofingSessionId,
@@ -30,6 +31,12 @@ internal static class UserEncryptedFieldMapper
             TanfId = crypto.DecryptOrPassThroughLegacy(entity.TanfId),
             Ssn = entity.Ssn,
             IdProofingAttemptCount = entity.IdProofingAttemptCount,
+            LastLoginAt = entity.LastLoginAt,
+            LoginCount = entity.LoginCount,
+            LastLoginMethod = (LoginMethod?)entity.LastLoginMethod,
+            HouseholdIdentifierType = (PreferredHouseholdIdType?)entity.HouseholdIdentifierType,
+            HouseholdIdentifierHash = entity.HouseholdIdentifierHash,
+            HouseholdIdentifierUpdatedAt = entity.HouseholdIdentifierUpdatedAt,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt
         };

@@ -82,7 +82,7 @@ export function CardStatusDisplay({ cardStatus, cardIssuedAt }: CardStatusDispla
           {statusLabel}
         </div>
         {statusDescription && (
-          <p className="margin-top-1 margin-bottom-0 text-base-dark font-body-xs">
+          <p className="margin-top-1 margin-bottom-0 text-ink">
             <RichText>{statusDescription}</RichText>
           </p>
         )}

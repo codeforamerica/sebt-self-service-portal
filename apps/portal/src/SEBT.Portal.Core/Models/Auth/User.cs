@@ -1,3 +1,5 @@
+using SEBT.Portal.Core.Models.Household;
+
 namespace SEBT.Portal.Core.Models.Auth;
 
 /// <summary>
@@ -19,7 +21,7 @@ public class User
     /// The subject identifier from the external identity provider (e.g., PingOne sub claim).
     /// Set for OIDC users; null for OTP-authenticated users.
     /// </summary>
-    public string? ExternalProviderId { get; set; }
+    public string? IdentityProviderUserId { get; set; }
 
     /// <summary>
     /// The user's date of birth (calendar date), when collected for household matching or verification.
@@ -92,4 +94,35 @@ public class User
     /// Used to enforce the retry cap (max 3 attempts).
     /// </summary>
     public int IdProofingAttemptCount { get; set; }
+
+    /// <summary>
+    /// UTC time of the user's most recent successful login. Null if no login has been recorded.
+    /// </summary>
+    public DateTime? LastLoginAt { get; init; }
+
+    /// <summary>
+    /// Number of successful logins recorded for this user. Step-up re-verification and token refresh do not count.
+    /// </summary>
+    public int LoginCount { get; init; }
+
+    /// <summary>
+    /// How the user authenticated on their most recent login.
+    /// </summary>
+    public LoginMethod? LastLoginMethod { get; init; }
+
+    /// <summary>
+    /// The kind of identifier last used to retrieve this user's household data.
+    /// </summary>
+    public PreferredHouseholdIdType? HouseholdIdentifierType { get; init; }
+
+    /// <summary>
+    /// HMAC hash (via <c>IIdentifierHasher</c>) of the identifier last used to retrieve this user's household data.
+    /// Matches <c>CardReplacementRequests.HouseholdIdentifierHash</c> for the same household.
+    /// </summary>
+    public string? HouseholdIdentifierHash { get; init; }
+
+    /// <summary>
+    /// UTC time the stored household identifier was last set or changed.
+    /// </summary>
+    public DateTime? HouseholdIdentifierUpdatedAt { get; init; }
 }

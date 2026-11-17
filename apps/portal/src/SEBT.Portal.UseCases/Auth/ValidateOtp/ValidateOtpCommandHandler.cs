@@ -78,6 +78,7 @@ namespace SEBT.Portal.UseCases.Auth
                 }
 
                 var token = jwtTokenService.GenerateForLocalLogin(user);
+                await TryRecordLoginAsync(user.Id, cancellationToken);
 
                 // Delete OTP after successful validation
                 if (!command.BypassOtp)
@@ -115,6 +116,19 @@ namespace SEBT.Portal.UseCases.Auth
                 return Result<string>.DependencyFailed(
                     DependencyFailedReason.ConnectionFailed,
                     "An error occurred while processing the authentication request.");
+            }
+        }
+
+        // Note: Since this is for tracking, we won't block login if there's a write failure
+        private async Task TryRecordLoginAsync(Guid userId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await userRepository.RecordLoginAsync(userId, Core.Models.Auth.LoginMethod.Otp, cancellationToken);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                logger.LogWarning(ex, "Failed to record OTP login for user {UserId}", userId);
             }
         }
     }

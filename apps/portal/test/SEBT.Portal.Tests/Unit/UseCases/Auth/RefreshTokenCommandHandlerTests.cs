@@ -312,7 +312,7 @@ public class RefreshTokenCommandHandlerTests
         var user = new User
         {
             Id = userId,
-            ExternalProviderId = "pingone-sub-12345",
+            IdentityProviderUserId = "pingone-sub-12345",
             IalLevel = UserIalLevel.None
         };
 

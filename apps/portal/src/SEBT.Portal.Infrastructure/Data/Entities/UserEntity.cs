@@ -22,7 +22,7 @@ public class UserEntity
     /// The subject identifier from the external identity provider (e.g., PingOne sub claim).
     /// Null for OTP-authenticated users.
     /// </summary>
-    public string? ExternalProviderId { get; set; }
+    public string? IdentityProviderUserId { get; set; }
 
     /// <summary>
     /// Encrypted <c>yyyy-MM-dd</c> payload (or transitional ISO plaintext during migration/backfill).
@@ -87,4 +87,28 @@ public class UserEntity
     /// Number of times this user has submitted ID proofing to Socure.
     /// </summary>
     public int IdProofingAttemptCount { get; set; }
+
+    /// <summary>UTC time of the most recent successful login.</summary>
+    public DateTime? LastLoginAt { get; set; }
+
+    /// <summary>Number of successful logins; incremented atomically in SQL.</summary>
+    public int LoginCount { get; set; }
+
+    /// <summary>
+    /// How the user authenticated on their most recent login. Stored as int for enum
+    /// valid values: 1 = Otp, 2 = Oidc
+    /// </summary>
+    public int? LastLoginMethod { get; set; }
+
+    /// <summary>
+    /// Kind of identifier last used for household lookup. Stored as int for enum
+    /// valid values: 0 = Email, 1 = Phone, 2 = SnapId, 3 = TanfId, 4 = Ssn
+    /// </summary>
+    public int? HouseholdIdentifierType { get; set; }
+
+    /// <summary>HMAC hash of the identifier last used for household lookup.</summary>
+    public string? HouseholdIdentifierHash { get; set; }
+
+    /// <summary>UTC time the household identifier was last set or changed.</summary>
+    public DateTime? HouseholdIdentifierUpdatedAt { get; set; }
 }
