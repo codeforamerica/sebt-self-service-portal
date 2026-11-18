@@ -37,27 +37,29 @@ The following AWS services are used to run the Summer EBT portal and enrollment 
 ## **Service dependency diagram**
 
 ```mermaid
-flowchart LR
-    user([Parent / guardian<br/>browser])
+flowchart TB
+    user(["Parent / guardian<br/>(browser)"])
 
     subgraph EDGE["Edge"]
         r53["Route 53 + ACM"]
-        cfPortal["CloudFront + WAF<br/>(portal)"]
-        cfChecker["CloudFront<br/>(enrollment checker)"]
+        cfPortal["CloudFront + WAF<br/>portal"]
+        cfChecker["CloudFront<br/>enrollment checker"]
         s3Checker[("S3<br/>checker static site")]
     end
 
     subgraph VPC["VPC (private subnets)"]
         albWeb["Web ALB"]
-        web["Web (Next.js)<br/>ECS Fargate"]
+        web["Web · Next.js<br/>ECS Fargate"]
         albApi["Internal API ALB"]
-        api["API (.NET)<br/>ECS Fargate<br/>+ ADOT + AppConfig agent"]
-        rds[("RDS<br/>SQL Server")]
-        valkey[("ElastiCache<br/>Valkey")]
+        api["API · .NET<br/>ECS Fargate"]
+        subgraph DATA["Data"]
+            rds[("RDS<br/>SQL Server")]
+            valkey[("ElastiCache<br/>Valkey")]
+        end
         bastion["SSM bastion"]
     end
 
-    subgraph AWSSVC["AWS regional services"]
+    subgraph PLATFORM["AWS platform services"]
         ses["SES"]
         appcfg["AppConfig"]
         secrets["Secrets Manager"]
@@ -65,54 +67,49 @@ flowchart LR
         lambda["Rotation Lambdas"]
     end
 
-    subgraph STATE["State systems"]
-        stateBenefits[("State benefits /<br/>case management system")]
+    subgraph INTEG["Integrations"]
+        stateBenefits[("State benefits /<br/>case management")]
+        stateIdp["State identity<br/>provider (OIDC)"]
+        keycloak["Keycloak<br/>sandbox OIDC"]
+        socure["Socure<br/>identity verification"]
+        smarty["Smarty<br/>address validation"]
     end
 
-    subgraph IDP["Identity"]
-        stateIdp["State identity provider<br/>(OIDC)"]
-        socure["Socure<br/>(identity verification)"]
-        keycloak["Keycloak + Postgres<br/>(sandbox OIDC)"]
-    end
-
-    subgraph EXT["Other external services"]
-        smarty["Smarty"]
+    subgraph OPS["Ops tooling"]
         datadog["Datadog"]
         doppler["Doppler"]
-        analytics["Analytics<br/>(Amplitude, Mixpanel, Siteimprove)"]
     end
 
+    analytics["Analytics<br/>Amplitude · Mixpanel · Siteimprove"]
+
     user --> r53
-    r53 --> cfPortal
-    r53 --> cfChecker
+    r53 --> cfPortal & cfChecker
     cfChecker --> s3Checker
-    cfPortal --> albWeb --> web
+    cfPortal --> albWeb --> web --> albApi --> api
     user -. "checker API calls" .-> cfPortal
-    web --> albApi --> api
 
-    api --> rds
-    api --> valkey
-    api --> ses
-    api --> appcfg
-    api --> secrets
-    api --> stateBenefits
-    api --> stateIdp
-    api --> socure
-    api --> keycloak
-    api --> smarty
+    api --> DATA
+    api --> PLATFORM
+    api --> INTEG
 
-    web --> cw
-    api --> cw
     cw --> datadog
-    api -- "traces / metrics" --> datadog
-    lambda --> secrets
-    lambda -. "restart" .-> api
     doppler --> secrets
+    lambda -. "rotate + restart" .-> api
     bastion --> rds
 
-    user -. "browser SDKs" .-> socure
-    user -. "browser SDKs" .-> smarty
-    user -. "browser SDKs" .-> analytics
+    user -. "browser SDKs" .-> socure & smarty & analytics
+
+    classDef person fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+    classDef aws fill:#FAEEDA,stroke:#854F0B,color:#412402
+    classDef app fill:#E6F1FB,stroke:#185FA5,color:#042C53
+    classDef ext fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef state fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+
+    class user person
+    class r53,cfPortal,cfChecker,s3Checker,albWeb,albApi,rds,valkey,bastion,ses,appcfg,secrets,cw,lambda aws
+    class web,api app
+    class socure,smarty,datadog,doppler,analytics,keycloak ext
+    class stateBenefits,stateIdp state
 ```
 
 ## **How these pieces work together**
