@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using SEBT.Portal.Core.Exceptions;
+using SEBT.Portal.Core.Models.UserActions;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Core.Utilities;
 using SEBT.Portal.Infrastructure.Data;
@@ -164,6 +165,68 @@ public class PiiPlaintextEncryptionBackfillTests : IAsyncLifetime
         Assert.Equal(storedApplicationCase.CaseId, storedApplicationCaseAfter2.CaseId);
         Assert.Equal(storedApplicationCase.ApplicationId, storedApplicationCaseAfter2.ApplicationId);
         Assert.Equal(storedApplicationCase.ApplicationStudentId, storedApplicationCaseAfter2.ApplicationStudentId);
+    }
+
+    [Fact]
+    public async Task ApplyAsync_encrypts_plaintext_user_action_identifiers_idempotently()
+    {
+        using var db = CreateContext();
+        var user = UserFactory.CreateUserEntity();
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
+        var createdAt = new DateTime(2026, 6, 1, 12, 0, 0, DateTimeKind.Utc);
+        var applicationAction = new UserActionEntity
+        {
+            UserId = user.Id,
+            Action = UserActionType.RequestCardReplacement,
+            Outcome = UserActionOutcome.Succeeded,
+            CaseId = "SEBT-CASE-001",
+            CaseIdHash = "case-hash-001",
+            ApplicationId = "APP-001",
+            ApplicationIdHash = "app-hash-001",
+            ApplicationStudentId = "STU-001",
+            ApplicationStudentIdHash = "stu-hash-001",
+            CreatedAt = createdAt
+        };
+        var autoIssuedAction = new UserActionEntity
+        {
+            UserId = user.Id,
+            Action = UserActionType.UpdateAddress,
+            Outcome = UserActionOutcome.Failed,
+            CaseId = "SEBT-CASE-002",
+            CaseIdHash = "case-hash-002",
+            CreatedAt = createdAt
+        };
+        db.UserActions.AddRange(applicationAction, autoIssuedAction);
+        await db.SaveChangesAsync();
+
+        await ApplyBackfillOnFreshContextAsync();
+
+        db.ChangeTracker.Clear();
+        var crypto = TestPortalCryptography.PiiSymmetricEncryption;
+        var storedApplicationAction = db.UserActions.Single(a => a.Id == applicationAction.Id);
+        Assert.StartsWith(PiiAesGcmSymmetricEncryption.EnvelopePrefix, storedApplicationAction.CaseId, StringComparison.Ordinal);
+        Assert.StartsWith(PiiAesGcmSymmetricEncryption.EnvelopePrefix, storedApplicationAction.ApplicationId!, StringComparison.Ordinal);
+        Assert.StartsWith(PiiAesGcmSymmetricEncryption.EnvelopePrefix, storedApplicationAction.ApplicationStudentId!, StringComparison.Ordinal);
+        Assert.Equal("SEBT-CASE-001", crypto.DecryptOrPassThroughLegacy(storedApplicationAction.CaseId));
+        Assert.Equal("APP-001", crypto.DecryptOrPassThroughLegacy(storedApplicationAction.ApplicationId));
+        Assert.Equal("STU-001", crypto.DecryptOrPassThroughLegacy(storedApplicationAction.ApplicationStudentId));
+        Assert.Equal("case-hash-001", storedApplicationAction.CaseIdHash);
+        Assert.Equal(createdAt, storedApplicationAction.CreatedAt);
+
+        var storedAutoIssuedAction = db.UserActions.Single(a => a.Id == autoIssuedAction.Id);
+        Assert.Equal("SEBT-CASE-002", crypto.DecryptOrPassThroughLegacy(storedAutoIssuedAction.CaseId));
+        Assert.Null(storedAutoIssuedAction.ApplicationId);
+        Assert.Null(storedAutoIssuedAction.ApplicationStudentId);
+
+        await ApplyBackfillOnFreshContextAsync();
+
+        db.ChangeTracker.Clear();
+        var storedApplicationActionAfter2 = db.UserActions.Single(a => a.Id == applicationAction.Id);
+        Assert.Equal(storedApplicationAction.CaseId, storedApplicationActionAfter2.CaseId);
+        Assert.Equal(storedApplicationAction.ApplicationId, storedApplicationActionAfter2.ApplicationId);
+        Assert.Equal(storedApplicationAction.ApplicationStudentId, storedApplicationActionAfter2.ApplicationStudentId);
     }
 
     private async Task ApplyBackfillOnFreshContextAsync()
