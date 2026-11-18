@@ -66,14 +66,13 @@ flowchart LR
     end
 
     subgraph STATE["State systems"]
-        cbms["CO: CBMS API"]
-        dcdata[("DC: case data")]
+        stateBenefits[("State benefits /<br/>case management system")]
     end
 
     subgraph IDP["Identity"]
-        mycolo["CO: MyColorado OIDC"]
-        socure["DC: Socure"]
-        keycloak["Dev: Keycloak<br/>+ Postgres"]
+        stateIdp["State identity provider<br/>(OIDC)"]
+        socure["Socure<br/>(identity verification)"]
+        keycloak["Keycloak + Postgres<br/>(sandbox OIDC)"]
     end
 
     subgraph EXT["Other external services"]
@@ -96,9 +95,8 @@ flowchart LR
     api --> ses
     api --> appcfg
     api --> secrets
-    api --> cbms
-    api --> dcdata
-    api --> mycolo
+    api --> stateBenefits
+    api --> stateIdp
     api --> socure
     api --> keycloak
     api --> smarty
