@@ -119,6 +119,53 @@ describe('a key-plus-Current-columns export', () => {
   })
 })
 
+describe('an export whose key column has no header', () => {
+  // A "Ready to publish" tab exports the key column under a blank header cell.
+  const blankKeyHeader = [' ', '🟡 DC English Current', '🟡 DC Español Current', '🟡 DC Amharic Current']
+
+  it('reads the first column as the key', () => {
+    expect(localesFrom([blankKeyHeader, ...CLEAN_ROWS])).toEqual(localesFrom([CLEAN_HEADER, ...CLEAN_ROWS]))
+  })
+
+  it('passes --validate', () => {
+    const { status, stderr } = generate([blankKeyHeader, ...CLEAN_ROWS], { args: ['--validate'] })
+
+    expect(status, stderr).toBe(0)
+  })
+
+  it('still reads a labelled key column that is not first', () => {
+    const keyLast = [[...blankKeyHeader.slice(1), 'Variable Name/Key'], ...CLEAN_ROWS.map(([key, ...copy]) => [...copy, key])]
+
+    expect(localesFrom(keyLast)).toEqual(localesFrom([CLEAN_HEADER, ...CLEAN_ROWS]))
+  })
+})
+
+describe('two pages that write to one namespace', () => {
+  const header = ['Variable Name/Key', '🟡 DC English Current']
+  const whoTitle = ['S5 - Bulk Order New Cards Who - Title', 'Which cards need to be replaced?']
+  const bulkConfirmTitle = ['S5 - Bulk Order New Cards Confirm - Title', 'A few things to know']
+  const confirmAction = ['S6 - Confirm Request Replacement Card - Action', 'Order card']
+  const fisAction = ['S6 - Request Replacement Card FIS - Action', 'Go to the dashboard']
+
+  it.each([
+    ['select page first', [whoTitle, bulkConfirmTitle]],
+    ['confirm page first', [bulkConfirmTitle, whoTitle]]
+  ])('keep the card selection and bulk confirm titles apart, %s', (_order, rows) => {
+    const optionalId = localesFrom([header, ...rows])['en/dc/optionalId.json']
+
+    expect(optionalId).toEqual({ title: 'Which cards need to be replaced?', confirmTitle: 'A few things to know' })
+  })
+
+  it.each([
+    ['confirm page first', [confirmAction, fisAction]],
+    ['card office page first', [fisAction, confirmAction]]
+  ])('keep the single-card order button its own key, %s', (_order, rows) => {
+    const result = localesFrom([header, ...rows])['en/dc/result.json']
+
+    expect(result.confirmAction).toBe('Order card')
+  })
+})
+
 describe('a row marked as not applying to the state', () => {
   const marked = ['S7 - Portal Dashboard - Case Number', MARKER, MARKER, MARKER]
 
@@ -227,7 +274,7 @@ describe('a CSV whose header lacks a required column', () => {
     const { status, stderr } = generate([['Key', '🟡 DC English Current'], ['S1 - Landing Page - Title', 'Get Summer EBT']])
 
     expect(status).toBe(1)
-    expectOneLineNaming(stderr, 'no "Variable Name/Key" column')
+    expectOneLineNaming(stderr, 'no "Variable Name/Key" column', 'first column with a blank header')
   })
 
   it('names both columns for an empty file', () => {

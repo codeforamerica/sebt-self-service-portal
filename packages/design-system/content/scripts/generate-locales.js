@@ -19,7 +19,8 @@
  *   Variable Name/Key,🟢 CO English Current,🟢 CO Español Current
  *   S1 - Landing Page - Action,Apply now,Aplica ahora
  *
- *   Required: "Variable Name/Key", "... English Current"
+ *   Required: the key column, "... English Current"
+ *   The key column is "Variable Name/Key", or the first column when its header is blank.
  *   Optional: "... Español Current", "... Amharic Current"
  *   A row whose English cell is "!N/A!" is left out, the same as a row deleted
  *   from the sheet. "!N/A!" in another language leaves the key out of that language.
@@ -184,6 +185,10 @@ const CONFIG = {
     'abbreviated address': 'abbreviated',
     'callback': 'callback',
     'bulk order new cards': 'replacementCards',
+    // Each confirm page shares a namespace with pages that also have a title,
+    // body, and action. Without the prefix, row order decides which page wins.
+    'bulk order new cards confirm': 'confirm',
+    'confirm request replacement card': 'confirm',
   },
 };
 
@@ -336,9 +341,11 @@ function findColumns(headerRow) {
   const indexOfHeader = (...fragments) =>
     headerRow.findIndex((header) => fragments.some((fragment) => header.toLowerCase().includes(fragment)));
 
+  const labelledKeyIdx = indexOfHeader('content', 'variable name');
+
   return {
-    // Either header names the key column; an emoji prefix does not matter.
-    contentIdx: indexOfHeader('content', 'variable name'),
+    // A "Ready to publish" export leaves the key column's header blank; there it is the first column.
+    contentIdx: labelledKeyIdx === -1 && headerRow[0] === '' ? 0 : labelledKeyIdx,
     // "current" keeps a working export's "⚪ SOURCE English" column from being read as the copy.
     englishIdx: indexOfHeader('english current'),
     spanishIdx: indexOfHeader('español current'),
@@ -359,7 +366,7 @@ function headerProblem({ state, csvPath }) {
 
   return (
     `${state}.csv has no ${missing.join(' or ')} column. ` +
-    'Required: "Variable Name/Key" and "... English Current". ' +
+    'Required: "Variable Name/Key" (or a first column with a blank header) and "... English Current". ' +
     'Optional: "... Español Current" and "... Amharic Current". ' +
     `Found: ${headerRow.join(' | ') || '(no header row)'}`
   );

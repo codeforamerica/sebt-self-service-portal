@@ -9,6 +9,8 @@
  *   node ../../packages/design-system/content/scripts/generate-backend-email.js \
  *     --out-dir ../SEBT.Portal.Infrastructure/Templates/Email
  *
+ *   --csv-dir <dir> reads the state CSVs from another directory.
+ *
  * Output:
  *   EmailContent.dc.json  (embedded in SEBT.Portal.Infrastructure assembly)
  *   EmailContent.co.json
@@ -23,7 +25,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'fs'
-import { dirname, join } from 'path'
+import { dirname, join, resolve } from 'path'
 import { fileURLToPath } from 'url'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -44,7 +46,8 @@ const outDir = outDirArg.startsWith('/')
   ? outDirArg
   : join(process.cwd(), outDirArg)
 
-const statesDir = join(__dirname, '..', 'states')
+const csvDirArg = getCliArg('--csv-dir')
+const statesDir = csvDirArg ? resolve(process.cwd(), csvDirArg) : join(__dirname, '..', 'states')
 
 const IGNORED = '!N/A!'
 
@@ -106,10 +109,12 @@ function parseCSV(content) {
 function buildEmailContent(rows) {
   const [headerRow, ...dataRows] = rows
 
-  const contentIdx = headerRow.findIndex((h) => {
+  const labelledKeyIdx = headerRow.findIndex((h) => {
     const lower = h.toLowerCase()
     return lower.includes('content') || lower.includes('variable name')
   })
+  // A "Ready to publish" export leaves the key column's header blank; there it is the first column.
+  const contentIdx = labelledKeyIdx === -1 && headerRow[0] === '' ? 0 : labelledKeyIdx
   const englishIdx = headerRow.findIndex((h) => h.toLowerCase().includes('english current'))
   const spanishIdx = headerRow.findIndex((h) => h.toLowerCase().includes('español current'))
   const amharicIdx = headerRow.findIndex((h) => h.toLowerCase().includes('amharic current'))

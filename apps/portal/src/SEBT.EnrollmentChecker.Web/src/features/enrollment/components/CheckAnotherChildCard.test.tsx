@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { CHECKER_STATES } from '@/lib/checkerAssetPath'
 import { allowsSequentialChecks } from '@/lib/flowConfig'
 import { EnrollmentProvider } from '../context/EnrollmentContext'
+import { CLOSED_CHECK_ANOTHER_BODY_KEY } from '../copy/closedSeasonKeys'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 
 const mockPush = vi.fn()
@@ -59,7 +60,7 @@ describe('CheckAnotherChildCard', () => {
       <EnrollmentProvider>
         <CheckAnotherChildCard
           copy="streamlinedEnrolledCard2"
-          bodyKey="applyForSebtClosedCard2Body"
+          bodyKey="bodyOverride"
         />
       </EnrollmentProvider>
     )
@@ -67,7 +68,7 @@ describe('CheckAnotherChildCard', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
       'streamlinedEnrolledCard2Title'
     )
-    expect(screen.getByText('applyForSebtClosedCard2Body')).toBeInTheDocument()
+    expect(screen.getByText('bodyOverride')).toBeInTheDocument()
     expect(screen.queryByText('streamlinedEnrolledCard2Body')).toBeNull()
   })
 })
@@ -108,8 +109,8 @@ describe('check-another copy', () => {
 
         // Both outcomes fall back to this one body once the season has closed.
         expect(
-          copy.applyForSebtClosedCard2Body,
-          `${lang}/${state} missing applyForSebtClosedCard2Body`
+          copy[CLOSED_CHECK_ANOTHER_BODY_KEY],
+          `${lang}/${state} missing ${CLOSED_CHECK_ANOTHER_BODY_KEY}`
         ).toBeTruthy()
       }
     })

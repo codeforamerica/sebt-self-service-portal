@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 
 import { RichText } from '@sebt/design-system'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
+import { CLOSED_CHECK_ANOTHER_BODY_KEY } from '../copy/closedSeasonKeys'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 
 interface ErrorResultPageProps {
@@ -94,7 +95,7 @@ export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
         {isClosed && allowsSequentialChecks() && (
           <CheckAnotherChildCard
             copy="streamlinedEnrolledCard2"
-            bodyKey="applyForSebtClosedCard2Body"
+            bodyKey={CLOSED_CHECK_ANOTHER_BODY_KEY}
           />
         )}
       </div>

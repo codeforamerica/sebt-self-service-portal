@@ -1,4 +1,4 @@
-Variable Name/Key,🟢 CO English Current,🟢 CO Español Current
+ ,🟢 CO English Current,🟢 CO Español Current
 S1 - Landing Page - Title,Get $120 in summer food benefits for your child,Recibe un pago único de $120 en beneficios de alimentos durante el verano para tu niño/a.
 S1 - Landing Page - Body,"Each eligible child can receive **one $120 payment** for summer groceries.
 
@@ -19,9 +19,7 @@ S1 - Landing Page - Body 2,Your child may **be automatically enrolled** if they 
 S1 - Landing Page - Body 3,"They receive SNAP or Colorado Works (TANF) benefits,
 Everyone in their household combined earns less than 185% of the federal poverty guideline. And, they either receive Health First Colorado (Medicaid) or have submitted an income form to their school,
 Are houseless, between homes, in foster care, or in the Migrant Education Program.","Recibe beneficios de SNAP o Colorado Works (TANF),
-
 todas las personas de su hogar, sumadas, ganan menos del 185% de las pautas federales de pobreza. Y, además, recibe Health First Colorado (Medicaid) o ha entregado un formulario de ingresos en su escuela,
-
 no tiene vivienda estable, está entre casas, vive en un hogar de acogida o participa en el Programa de Educación para Estudiantes Migrantes (estudiantes en familias de trabajadores agrícolas migrantes)."
 S1 - Landing Page - Body 4,"Children ages 6–17 who do not attend a school that offers NSLP but meet any of the above criteria may also **be automatically enrolled**.
 
@@ -33,17 +31,49 @@ Everyone in their household combined earns less than 185% of the federal poverty
 
 todas las personas de su hogar, sumadas, ganan menos del 185% de las pautas federales de pobreza."
 S1 - Landing Page - Body 6,"Tap ""Apply now"" to see if you should apply for your child.",Toca “Aplicar ahora” para ver si deberías aplicar para tu niño/a.
+S1 - Landing Page - Closed - Title,Find out if your child got $120 in summer food benefits,Verifica si tu hijo o hija recibió $120 en beneficios para comprar alimentos durante el verano.
+S1 - Landing Page - Closed - Subtitle,Enrollment in Summer EBT for 2026 is now closed.,La inscripción en Summer EBT para 2026 ya cerró. 
+S1 - Landing Page - Closed - Body,"Each eligible child received **one $120 payment** for summer groceries. Most eligible children got their payment automatically. Some needed to submit an application. The application for 2026 benefits closed August 25, 2026.
+
+**Benefits expire 122 days after they were issued.**
+
+Tap ""Check enrollment"" and enter your child's information to see if they were enrolled. ","Cada niño o niña que cumplía los requisitos recibió **un pago único de $120** para comprar alimentos durante el verano. La mayoría recibió el pago automáticamente. Algunas familias tuvieron que enviar una solicitud. La fecha límite para solicitar los beneficios de 2026 fue el 25 de agosto de 2026.
+
+**Los beneficios vencen 122 días después de la fecha de emisión.**
+
+Toca “Verificar inscripción” e ingresa la información de tu hijo o hija para saber si recibió los beneficios."
+S1 - Landing Page - Closed - Action,Check enrollment,Verificar inscripción
+S1 - Landing Page - Closed - Action Español,Verificar inscripción,Check enrollment
+S1 - Landing Page - Closed - Action Amharic,!N/A!,!N/A!
+S1 - Landing Page - Closed - Accordion Title,How do I know if my child got Summer EBT?,¿Cómo sé si mi hijo o hija recibió Summer EBT?
+S1 - Landing Page - Closed - Body 2,Your child may have been automatically enrolled if they went to a school that offers the National School Breakfast or Lunch Program (NSLP) **and** one of these is true:,Es posible que tu hijo o hija haya sido inscrito automáticamente si asistía a una escuela que ofrece el Programa Nacional de Desayunos o Almuerzos Escolares (NSLP) **y** se encontraba en alguna de estas situaciones:
+S1 - Landing Page - Closed - Body 3,"They received SNAP or Colorado Works (TANF) benefits, 
+Everyone in their household combined earned less than 185% of the federal poverty guideline. 
+And, they either received Health First Colorado (Medicaid) or submitted an income form to their school, 
+Were houseless, between homes, in foster care, or in the Migrant Education Program.","Recibía beneficios de SNAP o Colorado Works (TANF).
+Entre todas las personas de su hogar, ganaban menos del 185 % del nivel federal de pobreza y recibía Health First Colorado (Medicaid) o su familia había presentado un formulario de ingresos en la escuela.
+Eran personas sin hogar, vivían en un hogar de acogida o participaba en el Programa de Estudiantes en Familias de Trabajadores Agrícolas Migrantes."
+S1 - Landing Page - Closed - Body 4,Children ages 6–17 who did not attend a school that offers NSLP but met any of the above criteria may also have been automatically enrolled.  Other children were enrolled after they submitted an application.,"Los niños y niñas de 6 a 17 años que no asistían a una escuela que ofrece el NSLP, pero cumplían alguno de los requisitos anteriores, también pudieron haber sido inscritos automáticamente. Otros fueron inscritos después de que sus familias enviaron una aplicación. "
+S1 - Landing Page - Closed - Body 6,"Tap ""Check enrollment"" to see if your child was enrolled.",Toca “Verificar inscripción” para saber si tu hijo o hija fue inscrito.
 S1 - Disclaimer - Title,What to know before we begin,Lo que debes saber antes de comenzar
 S1 - Disclaimer - Body 1,"First, we'll check if your child is already enrolled.","Primero, verificaremos si tu niño/a ya está inscrito."
 S1 - Disclaimer - Body 2,"If they are, we can tell you how we will issue the benefit to them. If they aren't, we'll share the application form with you to fill out.","Si ya lo está, podemos decirte cómo le enviaremos el beneficio. Si no lo está, compartiremos contigo el formulario de aplicación para que lo llenes."
 S1 - Disclaimer - Body 3,The information you provide will be kept private and secure.,La información que nos proporciones se mantendrá privada y segura.
 S1 - Disclaimer - Body 4,Using this tool will not affect your potential Summer EBT benefits or other benefits you get.,Usar esta herramienta no afectará tus posibles beneficios de Summer EBT ni otros beneficios que recibes.
+S1 - Disclaimer - Closed - Body 1,"First, we'll check if your child was enrolled.","Primero, vamos a verificar si tu hijo o hija estuvo inscrito."
+S1 - Disclaimer - Closed - Body 2,"If they are, we can tell you how we issued the benefit to them.","Si fue inscrito, te diremos cómo recibió los beneficios."
+S1 - Disclaimer - Closed - Body 4,Using this tool will not affect your potential Summer EBT benefits or other benefits you get.,Usar esta herramienta no afectará los beneficios de Summer EBT que podrías recibir ni ningún otro beneficio que recibas.
 S1 - Personal Information - Title,Check if your child is already enrolled in Summer EBT,Comprueba si tu niño/a necesita aplicar para recibir los beneficios de Summer EBT
 S1 - Personal Information - Body,Please provide your child's information in the required fields below. This tool will check if your child is automatically enrolled to receive benefits.,Por favor ingresa la información de tu niño/a en los campos obligatorios que aparecen abajo. Esta herramienta verificará si tu niño/a está inscrito/a automáticamente para recibir beneficios.
+S1 - Personal Information - Label First Name,Child’s first name,Primer nombre del niño o niña
+S1 - Personal Information - Label Middle Name,Child’s middle name,Segundo nombre del niño o niña
+S1 - Personal Information - Label Last Name,Child’s last name,Primer apellido del niño o niña
 S1 - Personal Information - Label Birthdate,Child's birthdate,Fecha de nacimiento del niño o niña
 S1 - Personal Information - Label Month,Month,Mes
 S1 - Personal Information - Label Day,Day,Día
 S1 - Personal Information - Label Year,Year,Año
+S1 - Personal Information - Closed - Title,Check if your child was enrolled in Summer EBT for 2026,Verifica si tu hijo o hija fue inscrito en Summer EBT para 2026
+S1 - Personal Information - Closed - Body,Please provide your child's information in the required fields below.,"Por favor, ingresa la información de tu hijo o hija en los campos obligatorios a continuación."
 S1 - Confirm Personal Information - Title,Here's the information we have so far,Aquí está la información que tenemos hasta ahora.
 S1 - Confirm Personal Information - Body,"Review your child(ren)'s information below. You may add another child to see if they need to apply, too. Tap ""Submit"" if you've finished adding children.","Revisa la información de tu(s) niño/a(s) a continuación. Puedes agregar otro niño/a para ver si también debe aplicar. Toqua ""Enviar"" si ya terminaste de agregar a tus niños."
 S1 - Confirm Personal Information - Table Name Heading,Name,Nombre
@@ -52,6 +82,7 @@ S1 - Confirm Personal Information - Table Birthdate Heading,Birthdate,Fecha de n
 S1 - Confirm Personal Information - Table Birthdate Value,"[Month], [Day] [Year]",[día] de [mes] de [año]
 S1 - Confirm Personal Information - Table Action,Update this child's information,Actualizar la información de este niño/a
 S1 - Confirm Personal Information - Action Add,Add another child,Agreguar otro niño/a
+S1 - Confirm Personal Information - Closed - Body,"Review your child(ren)'s information below. You may add another child to see if they need to apply, too. Tap ""Submit"" if you've finished adding children.","Revisa la información de tu(s) hijo(s) a continuación. Puedes agregar a otro niño o niña para saber si también necesita enviar una solicitud. Cuando termines de agregar a tus hijos, toca “Enviar”."
 S1 - Optional ID Information - Title,We checked our records and need more information to see if [First name] [M.] [Last name] is enrolled,Revisamos nuestros registros y necesitamos más información para saber si [First name] [M.] [Last name] está inscrito(a).
 S1 - Optional ID Information - Body,"We suggest providing any of the child's State Assigned Student ID (SASID), SNAP, Colorado Works (TANF), or Medicaid number if you have them. We can give you a better answer about whether they are pre-approved.","Te sugerimos que proporciones, si los tienes, cualquiera de estos números de tu niño/a: su número de identificación de estudiante asignado por el estado (SASID), número de SNAP, Colorado Works (TANF), o Medicaid. Así podremos darte una mejor respuesta sobre si esta preaprobado."
 S1 - Optional ID Information - Label Which ID,Which ID number can you provide? *,¿Qué número de identificación puedes proporcionar? *
@@ -96,6 +127,13 @@ S1 - Result - Apply for SEBT - Card 2 Body,!N/A!,!N/A!
 S1 - Result - Apply for SEBT - Card 2 Action,!N/A!,!N/A!
 S1 - Result - Apply for SEBT - Notify Title,!N/A!,!N/A!
 S1 - Result - Apply for SEBT - Notify Label Email,!N/A!,!N/A!
+S1 - Result - Apply for SEBT - Closed - Title,!N/A!,
+S1 - Result - Apply for SEBT - Closed - Card 2 Body,!N/A!,
+S1 - Result - Apply for SEBT - Closed - Body 1,The following children **were NOT enrolled** in Summer EBT for 2026,Los siguientes niños **NO fueron inscritos** en Summer EBT para 2026
+S1 - Result - Apply for SEBT - Closed - Body 2,Enrollment in Summer EBT for 2026 is now closed.,La inscripción en Summer EBT para 2026 ya cerró.
+S1 - Result - Apply for SEBT - Closed - Body 3,Tap here to submit an application if you want your child to be considered for benefits for summer 2027.,Toca aquí para enviar una aplicación si quieres que tu hijo o hija sea considerado para recibir beneficios en el verano de 2027.
+S1 - Result - Apply for SEBT - Closed - Body 4,**After you submit you will hear back about your application in summer 2027.**,"**Después de enviar la aplicación, recibirás una respuesta durante el verano de 2027.**"
+S1 - Result - Apply for SEBT - Closed - Action Apply,Submit a 2027 Summer EBT application for children who aren't enrolled.,Envía una solicitud de Summer EBT para 2027 por cada niño que no esté inscrito.
 S1 - Result - Streamlined Enrolled - Title,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Body,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Body 1,The following children are already enrolled in Summer EBT for 2026.,Los siguientes niños ya están inscritos en Summer EBT para 2026.
@@ -105,6 +143,7 @@ S1 - Result - Streamlined Enrolled - Alert Body,"If they received the food benef
 If your child is new to Summer EBT or their previous card needs to be replaced, we will mail a new card to the address we have on file.","Si recibieron el beneficio de alimentos en un verano anterior, enviaremos su pago único de $120 a la misma tarjeta de Summer EBT.
 
 Si tu niño/a es nuevo en Summer EBT o su tarjeta anterior ha sido desactivada, te enviaremos una nueva tarjeta por correo a la dirección que tenemos registrada."
+S1 - Result - Streamlined Enrolled - Alert Body Co-loaded,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Alert Action,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Body 2,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Body 3,!N/A!,!N/A!
@@ -115,8 +154,25 @@ S1 - Result - Streamlined Enrolled - Card 2 Title,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Card 2 Body,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Card 2 Action,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Steps Heading,Next steps,próximos pasos
+S1 - Result - Streamlined Enrolled - Closed - Title,!N/A!,
+S1 - Result - Streamlined Enrolled - Closed - Body 1,The following children were enrolled in Summer EBT for 2026,Los siguientes niños fueron inscritos en Summer EBT para 2026
+S1 - Result - Streamlined Enrolled - Closed - Body 2,The following children **were NOT enrolled** in Summer EBT for 2026,Los siguientes niños **NO fueron inscritos** en Summer EBT para 2026.
+S1 - Result - Streamlined Enrolled - Closed - Body,!N/A!,
+S1 - Result - Streamlined Enrolled - Closed - Alert Title,Check the Summer EBT Portal to see where your enrolled children received their benefits and when they expire.,Revisa el portal de Summer EBT para saber dónde recibieron los beneficios tus hijos inscritos y cuándo vencen.
+S1 - Result - Streamlined Enrolled - Closed - Alert Body,"If they received the food benefit for a previous summer, we may have issued their one-time $120 payment to the same Summer EBT card.
+
+If your child was new to Summer EBT, we mailed a new card to the address we had on file.
+
+Summer EBT benefits expire 122 days after they are issued.","Si recibieron beneficios para alimentos durante un verano anterior, es posible que hayamos depositado el pago único de $120 en la misma tarjeta de Summer EBT.
+
+Si tu hijo o hija recibió Summer EBT por primera vez, enviamos una tarjeta nueva a la dirección postal que teníamos registrada.
+
+Los beneficios de Summer EBT vencen 122 días después de la fecha de emisión."
+S1 - Result - Streamlined Enrolled - Closed - Alert Body Co-loaded,!N/A!,!N/A!
+S1 - Result - Streamlined Enrolled - Closed - Alert Action,!N/A!,
 S1 - Result - None - Body 1,We don't have enough information for the following children.,No tenemos suficiente información para los siguientes niños
 S1 - Result - None - Body 2,!N/A!,!N/A!
+S1 - Result - No Results - Closed - Body 4,Children may not have been enrolled because we didn’t have enough information to determine their eligibility.,Es posible que algunos niños no hayan sido inscritos porque no teníamos suficiente información para determinar si calificaban.
 S1 - Result - Error - Title,Something went wrong on our end,Algo salió mal de nuestro lado
 S1 - Result - Error - Body,We aren’t able to able to share enrollment information for your children. You may try to check again later or continue with these next steps.,No podemos compartir información de inscripción de tus niños en este momento. Puedes intentar revisar de nuevo más tarde o continuar con estos siguientes pasos.
 S2 - Log In Disclaimer - Title,Access the Summer EBT portal,Accede a tu cuenta de Summer EBT
@@ -150,6 +206,8 @@ S2 - Portal Dashboard - Alert Check Address Title,Is your address correct?,Revis
 S2 - Portal Dashboard - Alert Check Address Body,Please check your preferred mailing address to make sure you can receive Summer EBT cards and other mail from us.,"Por favor, revisa tu dirección postal preferida para asegurarte de que puedas recibir las tarjetas Summer EBT y otros envíos por correo de nuestra parte."
 S2 - Portal Dashboard - Alert Check Address Link 1,"Yes, this is my address","Si, esta es mi dirección postal"
 S2 - Portal Dashboard - Alert Check Address Link 2,"No, change my mailing address","No, cambiar mi dirección postal"
+S2 - Portal Dashboard - Alert Title Expungement,2026 Summer EBT benefits were issued beginning in June 2026 and expire 122 days after issuance,Los beneficios de Summer EBT de 2026 se emitieron a partir de junio de 2026 y vencen 122 días después de la fecha de emisión.
+S2 - Portal Dashboard - Alert Body Expungement,Check each enrolled child here to see when their benefits expire.,Revisa aquí a cada niño inscrito para ver cuándo vencen sus beneficios.
 S2 - Portal Dashboard - Logout,Sign out,Cerrar sesión
 S2 - Portal Dashboard - Action Navigation - Lead,I want to,Quiero
 S2 - Portal Dashboard - Action Navigation - Check Existing Cards,Check existing cards,Revisar mis tarjetas existentes
@@ -160,11 +218,14 @@ S2 - Portal Dashboard - Action Navigation - Change my contact information,Change
 S2 - Portal Dashboard - Action Navigation - Check existing applications,Check existing applications,Revisar solicitudes pendientes
 S2 - Portal Dashboard - Action Navigation - Activate Card,Activate a card,Activar una tarjeta
 S2 - Portal Dashboard - Action Navigation - Apply,Apply for Summer EBT,Enviar una solicitud para la Summer EBT
+S2 - Portal Dashboard - Profile Table - Parent Name,!N/A!,!N/A!
 S2 - Portal Dashboard - Profile Table - Heading Status,Status,Estado
+S2 - Portal Dashboard - Profile Table - Statuses,!N/A!,!N/A!
 S2 - Portal Dashboard - Profile Table - Status Enrolled,Enrolled,Inscrito
 S2 - Portal Dashboard - Profile Table - Status Application In-Progress,Application in-process,Solicitud en proceso
 S2 - Portal Dashboard - Profile Table - Status Application Denied,Application denied,Solicitud rechazada
 S2 - Portal Dashboard - Profile Table - Status Enrolled Description,Your children are enrolled because we have enough information to confirm their eligibility.,Tus niños están inscritos porque tenemos suficiente información para confirmar que califican.
+S2 - Portal Dashboard - Profile Table - Expired - Status Enrolled Description,Your child(ren) were enrolled for summer 2026. Benefits for one or more of your children have expired.,Tus hijos fueron inscritos para el verano de 2026. Los beneficios de uno o más de tus hijos ya vencieron.
 S2 - Portal Dashboard - Profile Table - Status Check Address,Check mailing address,Revisar dirección postal
 S2 - Portal Dashboard - Profile Table - Heading Contact,Your preferred contact,Tu método de contacto preferido
 S2 - Portal Dashboard - Profile Table - Contact Emails On,Getting emails at [email]@[domain].,Recibiendo avisos por correo electrónico a [email]@[domain]
@@ -180,9 +241,12 @@ S2 - Portal Dashboard - Profile Table - Action Change Contact,Change my contact 
 S2 - Portal Dashboard - Section - Cards Heading,Summer EBT Cards,Tarjetas Summer EBT
 S2 - Portal Dashboard - Section - Cards Body,!N/A!,!N/A!
 S2 - Portal Dashboard - Section - Cards Alert Body,!N/A!,!N/A!
+S2 - Portal Dashboard - Card Table - Child Name,!N/A!,!N/A!
 S2 - Portal Dashboard - Card Table - Heading SEBT ID,Summer EBT ID,ID Summer EBT
 S2 - Portal Dashboard - Card Table - Heading Issued,Benefit issue date,Beneficios asignados
+S2 - Portal Dashboard - Card Table - Issue Date Format,!N/A!,!N/A!
 S2 - Portal Dashboard - Card Table - Heading Exp Date,Benefit expiration date,Fecha de vencimiento del beneficio
+S2 - Portal Dashboard - Card Table - Exp Date Format,!N/A!,!N/A!
 S2 - Portal Dashboard - Card Table - Expiring,Benefits expire [MM/DD/YYYY]. Make sure to use them before they expire.,Los beneficios vencen el [DD/MM/YYYY]. Asegúrate de usarlos antes de que venzan.
 S2 - Portal Dashboard - Card Table - Expired,This child’s benefits expired [MM/DD/YYYY].,Los beneficios de este niño vencieron el [MM/DD/AAAA].
 S2 - Portal Dashboard - Card Table - Heading Card Type,Benefit issued to,Beneficios asignados a
@@ -242,12 +306,14 @@ S2 - Portal Dashboard - Section - Enrolled Children Heading,Enrolled Children,Ni
 S2 - Portal Dashboard - Section - Enrolled Children Body 1,"The following children are enrolled in Summer EBT. If you would like to submit an application for a child who isn't enrolled, you may","Los siguientes niños han sido inscritos automáticamente en Summer EBT. Si quieres, puedes aplicar para un niño que no está inscrito."
 S2 - Portal Dashboard - Section - Enrolled Children Body 2,!N/A!,!N/A!
 S2 - Portal Dashboard - Section - Enrolled Children Action,submit a Summer EBT application.,Aplicar para Summer EBT.
+S2 - Portal Dashboard - Closed - Section - Enrolled Children Body 1,The following children are enrolled in Summer EBT.,Los siguientes niños están inscritos en Summer EBT.
 S2 - Portal Dashboard - Section - Applications Heading,Summer EBT Applications,Solicitudes de Summer EBT
 S2 - Portal Dashboard - Section - Applications Body,Here are your Summer EBT applications for children who haven't been automatically enrolled.,Aquí están tus solicitudes de Summer EBT para los niños que no se han inscrito automáticamente.
 S2 - Portal Dashboard - Applications Table - Heading Number,SEBT Application Tracking ID,Número de seguimiento de la solicitud de SEBT
 S2 - Portal Dashboard - Applications Table - Heading Date Submitted,!N/A!,!N/A!
 S2 - Portal Dashboard - Applications Table - Heading Children Included,Children included in application,Niños incluídos en la aplicación
 S2 - Portal Dashboard - Applications Table - Heading Status,Status,Estado
+S2 - Portal Dashboard - Applications Table - Statuses,!N/A!,!N/A!
 S2 - Portal Dashboard - Applications Table - Status Approved,Approved,Aprobada
 S2 - Portal Dashboard - Applications Table - Status Pending,In-process,Pendiente 
 S2 - Portal Dashboard - Applications Table - Status Denied,Denied,Rechazao
@@ -309,6 +375,10 @@ S5 - Bulk Order New Cards - Body 1,We can send replacement cards if,Podemos envi
 S5 - Bulk Order New Cards - Body 2,"You haven't received them in the mail after two weeks
 Or you no longer have them","No las has recibido por correo después de dos semanas
 o ya no las tienes"
+S5 - Bulk Order New Cards Who - Title,Which cards need to be replaced?,¿Cuáles tarjetas necesitan ser reemplazadas?
+S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want to replace,Selecciona las tarjetas que deseas reemplazar
+S5 - Bulk Order New Cards Who - Who's Card,[First name] [M.] [Last name]'s card,Tarjeta de [First name] [M.] [Last name]
+S5 - Bulk Order New Cards Who - Card Number,Card number: [9999] (last 4 digits),Número de tarjeta: [9999] (últimos 4 dígitos)
 S5 - Bulk Order New Cards Confirm - Title,A few things to know before replacing Summer EBT cards,Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de Summer EBT
 S5 - Bulk Order New Cards Confirm - Body,"Once replacement cards are created, the previous cards will be permanently deactivated
 Cards will arrive by mail in around 7-10 business days
@@ -318,12 +388,17 @@ Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente
 S5 - Bulk Order New Cards Confirm - Summary Title,Card order summary,Resumen del pedido de la tarjeta
 S5 - Bulk Order New Cards Confirm - Summary Address,New cards will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:
 S5 - Bulk Order New Cards Confirm - Action,Order cards,Pedir tarjetas
-S5 - Bulk Order New Cards Who - Title,Which cards need to be replaced?,¿Cuáles tarjetas necesitan ser reemplazadas?
-S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want to replace,Selecciona las tarjetas que deseas reemplazar
-S5 - Bulk Order New Cards Who - Who's Card,[First name] [M.] [Last name]'s card,Tarjeta de [First name] [M.] [Last name]
-S5 - Bulk Order New Cards Who - Card Number,Card number: [9999] (last 4 digits),Número de tarjeta: [9999] (últimos 4 dígitos)
 S6 - Replacement Card - Pre-title,Replace card ending in [9999],Reemplazar la tarjeta que termina en [9999]
 S6 - Replacement Card Address - Title,Do you want the new card mailed to this address?,¿Deseas que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?
+S6 - Confirm Request Replacement Card - Title,A few things to know before replacing Summer EBT cards,Ingresa tu correo electrónico y te enviaremos un código para entrar a tu cuenta de DC SUN Bucks
+S6 - Confirm Request Replacement Card - Body,"Once a replacement card is created, the previous card will be permanently deactivated
+Cards will arrive by mail in around 7-10 business days
+Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán de forma permanente 
+Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles
+Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo."
+S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Resumen del pedido de tarjetas
+S6 - Confirm Request Replacement Card - Summary Address,A new card will be mailed to the following address:,Una nueva tarjeta se enviará por correo a la siguiente dirección:
+S6 - Confirm Request Replacement Card - Action,Order card,Pedir tarjeta
 S6 - Request Replacement Card FIS - Title,!N/A!,!N/A!
 S6 - Request Replacement Card FIS - Replace Card Body 1,!N/A!,!N/A!
 S6 - Request Replacement Card FIS - Replace Card Body 2,!N/A!,!N/A!
@@ -334,15 +409,6 @@ S6 - Request Replacement Card FIS - Action,!N/A!,!N/A!
 S6 - Request Replacement Card FIS - Keep Card,!N/A!,!N/A!
 S6 - Request Replacement Card FIS - Tap to Call,!N/A!,!N/A!
 S6 - Request Replacement Card FIS - Subtle Link,!N/A!,!N/A!
-S6 - Confirm Request Replacement Card - Title,A few things to know before replacing Summer EBT cards,Ingresa tu correo electrónico y te enviaremos un código para entrar a tu cuenta de DC SUN Bucks
-S6 - Confirm Request Replacement Card - Body,"Once a replacement card is created, the previous card will be permanently deactivated
-Cards will arrive by mail in around 7-10 business days
-Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán de forma permanente 
-Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles
-Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo."
-S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Resumen del pedido de tarjetas
-S6 - Confirm Request Replacement Card - Summary Address,A new card will be mailed to the following address:,Una nueva tarjeta se enviará por correo a la siguiente dirección:
-S6 - Confirm Request Replacement Card - Action,Order card,Pedir tarjeta
 S7 - Pin Card - Title,Activate a card,Activar una tarjeta
 S7 - Pin Card - Body,"Your child's card is active when it's mailed to you. To make purchases, you will need to set the card's PIN number. You may call EBT Customer Service at (888) 328-2656 and follow the instructions to set the PIN number.
 
@@ -419,10 +485,12 @@ S8 - Off-boarding - Details ID Body,!N/A!,!N/A!
 S8 - Off-boarding - Action,!N/A!,!N/A!
 S8 - Co-loaded Off-boarding - Title,"We're sorry, we aren't able to show your Summer EBT information ","Lo sentimos, no podemos mostrar tu información de Summer EBT"
 S8 - Co-loaded Off-boarding - Body 1,You can contact us if you need more help.,Puedes contactarnos si necesitas más ayuda.
+S8 - Co-loaded Off-boarding - Body Help,!N/A!,!N/A!
 S8 - Co-loaded Off-boarding - Action 1,Contact us,Contáctanos
 S8 - Co-loaded Off-boarding - Body 2,"If you’re not sure what to do, or you want to apply for Summer EBT, we can help you find out if you need to apply for your child. Tap “Apply now” and enter your child’s information.","Si no estás seguro de qué hacer, o si quieres aplicar para Summer EBT, te podemos ayudar a saber si necesitas aplicar para tu niño/a. Toca “Aplica ahora” y escribe la información de tu niño/a."
 S8 - Co-loaded Off-boarding - Action 2,Apply now,Aplica ahora
 S8 - Authentication Failure - Alert,"We were unable to finish signing you into your myColorado® account. Please, try again.","No pudimos terminar de iniciar tu sesión en tu cuenta de myColorado®. Por favor, inténtalo de nuevo."
+S9 - Communication Preferences - Profile Name,!N/A!,!N/A!
 S9 - Opt-in - Title,Would you like to get Summer EBT communication through email or SMS text?,¿Te gustaría recibir los avisos de Summer EBT por correo electrónico o por mensaje de texto (SMS)?
 S9 - Opt-in - Body,"If you choose email or text, we’ll continue to also mail notices to your physical address.","Si eliges correo electrónico o mensajes de texto, también vamos a seguir enviando avisos por correo postal a tu dirección física."
 S9 - Opt-in - Text Description,Select this option if you want to be messaged at ([999]) [999]-[9999]. This phone number needs to be able to receive text messages and can’t be changed.,"Selecciona esta opción si quieres que te mandemos mensajes al ([999]) [999]-[9999]. Este número de teléfono tiene que poder recibir mensajes de texto y no se puede cambiar.
@@ -649,63 +717,3 @@ DEV - Alert Verification Delay,Verification is taking longer than expected. You 
 DEV - Alert Still Checking,We're still checking your document,Todavía estamos revisando tu documento.
 DEV - Alert Verification Retry,Unable to start document verification. Please try again.,"No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo."
 DEV - Enrollment Checker Error Response,"We’re sorry, we can’t check if you need to apply right now. Try again later.","Lo sentimos, por ahora no podemos revisar si necesitas aplicar. Vuelve a intentarlo más tarde."
-S1 - Landing Page - Closed - Title,Find out if your child got $120 in summer food benefits,Verifica si tu hijo o hija recibió $120 en beneficios para comprar alimentos durante el verano.
-S1 - Landing Page - Closed - Subtitle,Enrollment in Summer EBT for 2026 is now closed.,La inscripción en Summer EBT para 2026 ya cerró. 
-S1 - Landing Page - Closed - Body,"Each eligible child received **one $120 payment** for summer groceries. Most eligible children got their payment automatically. Some needed to submit an application. The application for 2026 benefits closed August 25, 2026.
-
-**Benefits expire 122 days after they were issued.**
-
-Tap ""Check enrollment"" and enter your child's information to see if they were enrolled. ","Cada niño o niña que cumplía los requisitos recibió **un pago único de $120** para comprar alimentos durante el verano. La mayoría recibió el pago automáticamente. Algunas familias tuvieron que enviar una solicitud. La fecha límite para solicitar los beneficios de 2026 fue el 25 de agosto de 2026.
-
-**Los beneficios vencen 122 días después de la fecha de emisión.**
-
-Toca “Verificar inscripción” e ingresa la información de tu hijo o hija para saber si recibió los beneficios."
-S1 - Landing Page - Closed - Action,Check enrollment,Verificar inscripción
-S1 - Landing Page - Closed - Action Español,Verificar inscripción,Check enrollment
-S1 - Landing Page - Closed - Action Amharic,!N/A!,!N/A!
-S1 - Landing Page - Closed - Accordion Title,How do I know if my child got Summer EBT?,¿Cómo sé si mi hijo o hija recibió Summer EBT?
-S1 - Landing Page - Closed - Body 2,Your child may have been automatically enrolled if they went to a school that offers the National School Breakfast or Lunch Program (NSLP) **and** one of these is true:,Es posible que tu hijo o hija haya sido inscrito automáticamente si asistía a una escuela que ofrece el Programa Nacional de Desayunos o Almuerzos Escolares (NSLP) **y** se encontraba en alguna de estas situaciones:
-S1 - Landing Page - Closed - Body 3,"They received SNAP or Colorado Works (TANF) benefits, 
-Everyone in their household combined earned less than 185% of the federal poverty guideline. 
-And, they either received Health First Colorado (Medicaid) or submitted an income form to their school, 
-Were houseless, between homes, in foster care, or in the Migrant Education Program.","Recibía beneficios de SNAP o Colorado Works (TANF).
-Entre todas las personas de su hogar, ganaban menos del 185 % del nivel federal de pobreza y recibía Health First Colorado (Medicaid) o su familia había presentado un formulario de ingresos en la escuela.
-Eran personas sin hogar, vivían en un hogar de acogida o participaba en el Programa de Estudiantes en Familias de Trabajadores Agrícolas Migrantes."
-S1 - Landing Page - Closed - Body 4,Children ages 6–17 who did not attend a school that offers NSLP but met any of the above criteria may also have been automatically enrolled.  Other children were enrolled after they submitted an application.,"Los niños y niñas de 6 a 17 años que no asistían a una escuela que ofrece el NSLP, pero cumplían alguno de los requisitos anteriores, también pudieron haber sido inscritos automáticamente. Otros fueron inscritos después de que sus familias enviaron una aplicación. "
-S1 - Landing Page - Closed - Body 6,"Tap ""Check enrollment"" to see if your child was enrolled.",Toca “Verificar inscripción” para saber si tu hijo o hija fue inscrito.
-S1 - Disclaimer - Closed - Body 1,"First, we'll check if your child was enrolled.","Primero, vamos a verificar si tu hijo o hija estuvo inscrito."
-S1 - Disclaimer - Closed - Body 2,"If they are, we can tell you how we issued the benefit to them.","Si fue inscrito, te diremos cómo recibió los beneficios."
-S1 - Disclaimer - Closed - Body 4,Using this tool will not affect your potential Summer EBT benefits or other benefits you get.,Usar esta herramienta no afectará los beneficios de Summer EBT que podrías recibir ni ningún otro beneficio que recibas.
-S1 - Personal Information - Closed - Title,Check if your child was enrolled in Summer EBT for 2026,Verifica si tu hijo o hija fue inscrito en Summer EBT para 2026
-S1 - Personal Information - Closed - Body,Please provide your child's information in the required fields below.,"Por favor, ingresa la información de tu hijo o hija en los campos obligatorios a continuación."
-S1 - Personal Information - Label First Name,Child’s first name,Primer nombre del niño o niña
-S1 - Personal Information - Label Middle Name,Child’s middle name,Segundo nombre del niño o niña
-S1 - Personal Information - Label Last Name,Child’s last name,Primer apellido del niño o niña
-S1 - Confirm Personal Information - Closed - Body,"Review your child(ren)'s information below. You may add another child to see if they need to apply, too. Tap ""Submit"" if you've finished adding children.","Revisa la información de tu(s) hijo(s) a continuación. Puedes agregar a otro niño o niña para saber si también necesita enviar una solicitud. Cuando termines de agregar a tus hijos, toca “Enviar”."
-S1 - Result - Apply for SEBT - Closed - Title,!N/A!,
-S1 - Result - Apply for SEBT - Closed - Card 2 Body,!N/A!,
-S1 - Result - Streamlined Enrolled - Closed - Title,!N/A!,
-S1 - Result - Streamlined Enrolled - Closed - Body,!N/A!,
-S1 - Result - Streamlined Enrolled - Closed - Alert Title,Check the Summer EBT Portal to see where your enrolled children received their benefits and when they expire.,Revisa el portal de Summer EBT para saber dónde recibieron los beneficios tus hijos inscritos y cuándo vencen.
-S1 - Result - Streamlined Enrolled - Closed - Alert Body,"If they received the food benefit for a previous summer, we may have issued their one-time $120 payment to the same Summer EBT card.
-
-If your child was new to Summer EBT, we mailed a new card to the address we had on file.
-
-Summer EBT benefits expire 122 days after they are issued.","Si recibieron beneficios para alimentos durante un verano anterior, es posible que hayamos depositado el pago único de $120 en la misma tarjeta de Summer EBT.
-
-Si tu hijo o hija recibió Summer EBT por primera vez, enviamos una tarjeta nueva a la dirección postal que teníamos registrada.
-
-Los beneficios de Summer EBT vencen 122 días después de la fecha de emisión."
-S1 - Result - Streamlined Enrolled - Closed - Alert Action,!N/A!,
-S1 - Result - Apply for SEBT - Closed - Body 1,The following children **were NOT enrolled** in Summer EBT for 2026,Los siguientes niños **NO fueron inscritos** en Summer EBT para 2026
-S1 - Result - Apply for SEBT - Closed - Body 2,Enrollment in Summer EBT for 2026 is now closed.,La inscripción en Summer EBT para 2026 ya cerró.
-S1 - Result - Apply for SEBT - Closed - Body 3,Tap here to submit an application if you want your child to be considered for benefits for summer 2027.,Toca aquí para enviar una aplicación si quieres que tu hijo o hija sea considerado para recibir beneficios en el verano de 2027.
-S1 - Result - Apply for SEBT - Closed - Body 4,**After you submit you will hear back about your application in summer 2027.**,"**Después de enviar la aplicación, recibirás una respuesta durante el verano de 2027.**"
-S1 - Result - No Results - Closed - Body 4,Children may not have been enrolled because we didn’t have enough information to determine their eligibility.,Es posible que algunos niños no hayan sido inscritos porque no teníamos suficiente información para determinar si calificaban.
-S1 - Result - Streamlined Enrolled - Closed - Body 1,The following children were enrolled in Summer EBT for 2026,Los siguientes niños fueron inscritos en Summer EBT para 2026
-S1 - Result - Streamlined Enrolled - Closed - Body 2,The following children **were NOT enrolled** in Summer EBT for 2026,Los siguientes niños **NO fueron inscritos** en Summer EBT para 2026.
-S1 - Result - Apply for SEBT - Closed - Action Apply,Submit a 2027 Summer EBT application for children who aren't enrolled.,Envía una solicitud de Summer EBT para 2027 por cada niño que no esté inscrito.
-S2 - Portal Dashboard - Alert Title Expungement,2026 Summer EBT benefits were issued beginning in June 2026 and expire 122 days after issuance,Los beneficios de Summer EBT de 2026 se emitieron a partir de junio de 2026 y vencen 122 días después de la fecha de emisión.
-S2 - Portal Dashboard - Alert Body Expungement,Check each enrolled child here to see when their benefits expire.,Revisa aquí a cada niño inscrito para ver cuándo vencen sus beneficios.
-S2 - Portal Dashboard - Closed - Section - Enrolled Children Body 1,The following children are enrolled in Summer EBT.,Los siguientes niños están inscritos en Summer EBT.
-S2 - Portal Dashboard - Profile Table - Expired - Status Enrolled Description,Your child(ren) were enrolled for summer 2026. Benefits for one or more of your children have expired.,Tus hijos fueron inscritos para el verano de 2026. Los beneficios de uno o más de tus hijos ya vencieron.
