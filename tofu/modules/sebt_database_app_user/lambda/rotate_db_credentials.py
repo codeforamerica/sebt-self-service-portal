@@ -1,17 +1,21 @@
 """Alternating users rotation Lambda for RDS SQL Server.
 
 Implements the Secrets Manager four-step rotation protocol. Two SQL Server
-logins — 'appuser' and 'appuser_clone' — alternate as the active credential
-each cycle. The inactive user's password is updated while the active user's
-credentials remain valid throughout the ECS rolling restart, closing the
-credential staleness window entirely.
+logins (APP_USERS) alternate as the active credential each cycle. The inactive
+user's password is updated while the active user's credentials remain valid
+throughout the ECS rolling restart, closing the credential staleness window
+entirely.
 
 Environment variables (set by OpenTofu):
     ADMIN_SECRET_ARN     — ARN of the Secrets Manager secret holding RDS admin
                            credentials (the RDS-managed master-user secret).
+    APP_USERS            — Comma-separated pair of logins that alternate
+                           (default: "appuser,appuser_clone"). Deployments sharing
+                           an RDS instance each use their own pair.
     DB_HOST              — RDS SQL Server hostname.
     DB_PORT              — SQL Server port (default: "1433").
     DB_NAME              — Target database name for user creation and connection tests.
+                           Created if missing, so a new deployment bootstraps itself.
     ADDITIONAL_DB_NAMES  — Comma-separated list of extra databases on the same RDS
                            instance where the app user also needs a database-level
                            user provisioned (e.g. DC's DcSource database). Empty/unset
@@ -31,8 +35,6 @@ import pymssql
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
-
-_USERS = ("appuser", "appuser_clone")
 
 
 def handler(event, context):
@@ -121,6 +123,10 @@ def set_secret(client, secret_arn, token):
     )
     try:
         cursor = master_conn.cursor()
+        # CREATE DATABASE is not allowed inside a transaction.
+        master_conn.autocommit(True)
+        _ensure_database_exists(cursor, pending["dbname"])
+        master_conn.autocommit(False)
         _ensure_login_exists(cursor, pending["username"], pending["password"])
         master_conn.commit()
         _alter_login_password(cursor, pending["username"], pending["password"])
@@ -211,9 +217,19 @@ def _target_db_names(primary_dbname):
 
 def _other_user(username):
     """Return the inactive app user (the one not currently active)."""
-    if username not in _USERS:
-        raise ValueError(f"Unexpected username '{username}': must be one of {_USERS}")
-    return _USERS[1] if username == _USERS[0] else _USERS[0]
+    users = _app_users()
+    if username not in users:
+        raise ValueError(f"Unexpected username '{username}': must be one of {users}")
+    return users[1] if username == users[0] else users[0]
+
+
+def _app_users():
+    """Return the pair of logins that alternate as the active credential."""
+    configured = os.environ.get("APP_USERS", "appuser,appuser_clone")
+    users = tuple(name.strip() for name in configured.split(",") if name.strip())
+    if len(users) != 2:
+        raise ValueError(f"APP_USERS must name exactly two logins, got {users}")
+    return users
 
 
 def _generate_password(length=32):
@@ -249,6 +265,12 @@ def _get_secret_dict(client, secret_arn, stage, version_id=None):
 
 def _get_admin_credentials(client):
     return _get_secret_dict(client, os.environ["ADMIN_SECRET_ARN"], stage="AWSCURRENT")
+
+
+def _ensure_database_exists(cursor, dbname):
+    """Create the database if it does not already exist."""
+    escaped_name = _escape_sql_str(dbname)
+    cursor.execute(f"IF DB_ID(N'{escaped_name}') IS NULL CREATE DATABASE [{dbname}]")
 
 
 def _ensure_login_exists(cursor, username, password):

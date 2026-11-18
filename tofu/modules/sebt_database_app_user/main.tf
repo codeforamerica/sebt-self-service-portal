@@ -1,6 +1,6 @@
 # ─── App user secret ─────────────────────────────────────────────────────────
 #
-# Holds the active DB credentials (either appuser or appuser_clone) that
+# Holds the active DB credentials (either login in var.app_users) that
 # the API should use. The rotation Lambda alternates between the two SQL Server
 # logins each cycle so that the inactive user's password can be changed while
 # the active user's credentials remain valid during the ECS rolling restart.
@@ -23,10 +23,10 @@ resource "aws_secretsmanager_secret_version" "app_user_initial" {
   secret_id = aws_secretsmanager_secret.app_user.id
 
   secret_string = jsonencode({
-    username = "appuser"
+    username = var.app_users[0]
     password = random_password.app_user_initial.result
-    host     = aws_db_instance.main.address
-    port     = tostring(local.port)
+    host     = var.host
+    port     = tostring(var.port)
     dbname   = var.db_name
   })
 
@@ -81,9 +81,9 @@ resource "aws_security_group" "rotation_lambda" {
 resource "aws_security_group_rule" "rotation_lambda_egress_db" {
   type                     = "egress"
   protocol                 = "tcp"
-  from_port                = local.port
-  to_port                  = local.port
-  source_security_group_id = aws_security_group.database.id
+  from_port                = var.port
+  to_port                  = var.port
+  source_security_group_id = var.database_security_group_id
   security_group_id        = aws_security_group.rotation_lambda.id
 }
 
@@ -101,10 +101,10 @@ resource "aws_security_group_rule" "rotation_lambda_egress_https" {
 resource "aws_security_group_rule" "db_ingress_rotation_lambda" {
   type                     = "ingress"
   protocol                 = "tcp"
-  from_port                = local.port
-  to_port                  = local.port
+  from_port                = var.port
+  to_port                  = var.port
   source_security_group_id = aws_security_group.rotation_lambda.id
-  security_group_id        = aws_security_group.database.id
+  security_group_id        = var.database_security_group_id
 }
 
 # ─── IAM ─────────────────────────────────────────────────────────────────────
@@ -159,12 +159,12 @@ resource "aws_iam_role_policy" "rotation_lambda" {
         Sid      = "ReadAdminSecret"
         Effect   = "Allow"
         Action   = "secretsmanager:GetSecretValue"
-        Resource = aws_db_instance.main.master_user_secret[0].secret_arn
+        Resource = var.admin_secret_arn
       },
       {
-        Sid    = "RedeployEcsService"
-        Effect = "Allow"
-        Action = "ecs:UpdateService"
+        Sid      = "RedeployEcsService"
+        Effect   = "Allow"
+        Action   = "ecs:UpdateService"
         Resource = "arn:${data.aws_partition.current.partition}:ecs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:service/${var.ecs_cluster_name}/${var.ecs_service_name}"
       },
       {
@@ -212,9 +212,10 @@ resource "aws_lambda_function" "rotation" {
 
   environment {
     variables = {
-      ADMIN_SECRET_ARN    = aws_db_instance.main.master_user_secret[0].secret_arn
-      DB_HOST             = aws_db_instance.main.address
-      DB_PORT             = tostring(local.port)
+      ADMIN_SECRET_ARN    = var.admin_secret_arn
+      APP_USERS           = join(",", var.app_users)
+      DB_HOST             = var.host
+      DB_PORT             = tostring(var.port)
       DB_NAME             = var.db_name
       ADDITIONAL_DB_NAMES = join(",", var.additional_db_names)
       ECS_CLUSTER         = var.ecs_cluster_name

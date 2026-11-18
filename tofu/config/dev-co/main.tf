@@ -58,10 +58,6 @@ data "aws_ecr_repository" "web" {
   name = "${var.project}-${var.state}-${var.environment}-web"
 }
 
-data "aws_ecr_repository" "keycloak" {
-  name = "${var.project}-${var.state}-${var.environment}-keycloak"
-}
-
 # Look up the hosted zone for DNS records.
 data "aws_route53_zone" "main" {
   name = "co.sebt-portal.codeforamerica.app"
@@ -143,6 +139,17 @@ data "aws_route53_zone" "enrollment_checker" {
   name = "co.sebt-enrollment.codeforamerica.app"
 }
 
+# Look up the RDS instance owned by dev-co-shared. module.app creates the API's
+# login on it.
+data "aws_db_instance" "shared" {
+  db_instance_identifier = "${var.project}-${var.state}-${var.environment}-db"
+}
+
+data "aws_security_group" "database" {
+  vpc_id = module.vpc.vpc_id
+  tags   = { Name = "${var.project}-${var.state}-${var.environment}-database" }
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source    = "../../modules/sebt_application"
@@ -162,14 +169,19 @@ module "app" {
   private_subnets            = module.vpc.private_subnets
   public_subnets             = module.vpc.public_subnets
   vpc_id                     = module.vpc.vpc_id
-  db_ingress_cidrs           = [var.vpc_cidr]
   project                    = var.project
   sender_email               = var.sender_email
-  skip_final_snapshot        = true
   state                      = var.state
   waf_log_group              = module.logging.log_groups["waf"]
   passive_waf                = true
   log_as_json                = true
+
+  database = {
+    host              = data.aws_db_instance.shared.address
+    port              = data.aws_db_instance.shared.port
+    admin_secret_arn  = data.aws_db_instance.shared.master_user_secret[0].secret_arn
+    security_group_id = data.aws_security_group.database.id
+  }
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn
@@ -264,27 +276,4 @@ module "enrollment_checker" {
   logging_bucket_domain_name = module.logging.bucket_domain_name
   logging_bucket_name        = module.logging.bucket
   force_delete               = true
-}
-
-# Shared Keycloak IdP.
-# Push an image before the first apply: ./scripts/preview/build-keycloak.sh
-module "preview_keycloak" {
-  count  = var.enable_preview_keycloak ? 1 : 0
-  source = "../../modules/sebt_keycloak"
-
-  project         = var.project
-  state           = var.state
-  environment     = var.environment
-  domain          = var.domain
-  hosted_zone_id  = data.aws_route53_zone.main.zone_id
-  vpc_id          = module.vpc.vpc_id
-  private_subnets = module.vpc.private_subnets
-  public_subnets  = module.vpc.public_subnets
-  logging_key_id  = module.logging.kms_key_arn
-  image_url       = data.aws_ecr_repository.keycloak.repository_url
-  repository_arn  = data.aws_ecr_repository.keycloak.arn
-  image_tag       = var.keycloak_image_tag
-  force_delete    = true
-  skip_final_snapshot = true
-  admin_ingress_cidrs = var.keycloak_admin_ingress_cidrs
 }

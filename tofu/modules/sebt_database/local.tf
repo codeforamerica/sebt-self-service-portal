@@ -4,6 +4,19 @@ locals {
   short_prefix  = "${local.project_short}-${var.environment}"
   port          = 1433
 
+  # Find the Datadog Forwarder Lambda by its CloudFormation naming convention.
+  datadog_lambda = [
+    for lambda in data.aws_lambda_functions.all.function_names :
+    lambda if length(regexall("^DatadogIntegration-ForwarderStack-", lambda)) > 0
+  ]
+
+  # The Datadog AWS integration auto-subscribes ECS and Lambda log groups, but
+  # not RDS instance logs.
+  datadog_log_groups = {
+    database-error = aws_cloudwatch_log_group.error.name
+    database-agent = aws_cloudwatch_log_group.agent.name
+  }
+
   security_group_rules = merge(
     length(var.ingress_cidrs) == 0 ? {} : {
       ingress_cidrs = {

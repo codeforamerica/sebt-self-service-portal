@@ -11,6 +11,9 @@ using SEBT.Portal.Infrastructure.Repositories;
 using SEBT.Portal.StatesPlugins.Interfaces;
 using PluginAddress = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.Address;
 using PluginAddressUpdateRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.AddressUpdateRequest;
+using PluginCardReplacementReason = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementReason;
+using PluginCardReplacementRequest = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CardReplacementRequest;
+using PluginCaseRef = SEBT.Portal.StatesPlugins.Interfaces.Models.Household.CaseRef;
 
 namespace SEBT.Portal.Tests.Unit.Api.Composition;
 
@@ -22,17 +25,24 @@ public class MockHouseholdRoutingTests
         var configuration = new ConfigurationManager();
         configuration[$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = "true";
         var liveAddress = Substitute.For<IAddressUpdateService>();
-        await using var provider = BuildProvider(configuration, liveAddress);
+        var liveCardReplacement = Substitute.For<ICardReplacementService>();
+        await using var provider = BuildProvider(configuration, liveAddress, liveCardReplacement);
 
         Assert.IsType<MockHouseholdRepository>(provider.GetRequiredService<IHouseholdRepository>());
         await provider.GetRequiredService<IAddressUpdateService>().UpdateAddressAsync(Request());
         await liveAddress.DidNotReceive().UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+        await provider.GetRequiredService<ICardReplacementService>().RequestCardReplacementAsync(CardReplacementRequest());
+        await liveCardReplacement.DidNotReceive().RequestCardReplacementAsync(
+            Arg.Any<PluginCardReplacementRequest>(), Arg.Any<CancellationToken>());
 
         configuration[$"FeatureManagement:{FeatureFlags.UseMockHouseholdData}"] = "false";
 
         Assert.IsType<HouseholdRepository>(provider.GetRequiredService<IHouseholdRepository>());
         await provider.GetRequiredService<IAddressUpdateService>().UpdateAddressAsync(Request());
         await liveAddress.Received(1).UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+        await provider.GetRequiredService<ICardReplacementService>().RequestCardReplacementAsync(CardReplacementRequest());
+        await liveCardReplacement.Received(1).RequestCardReplacementAsync(
+            Arg.Any<PluginCardReplacementRequest>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -43,18 +53,23 @@ public class MockHouseholdRoutingTests
         configuration[$"{flag}:EnabledFor:0:Name"] = "Microsoft.Percentage";
         configuration[$"{flag}:EnabledFor:0:Parameters:Value"] = "100";
         var liveAddress = Substitute.For<IAddressUpdateService>();
-        await using var provider = BuildProvider(configuration, liveAddress, percentageFilter: true);
+        var liveCardReplacement = Substitute.For<ICardReplacementService>();
+        await using var provider = BuildProvider(configuration, liveAddress, liveCardReplacement, percentageFilter: true);
 
         Assert.True(await provider.GetRequiredService<IFeatureManager>()
             .IsEnabledAsync(FeatureFlags.UseMockHouseholdData));
         Assert.IsType<HouseholdRepository>(provider.GetRequiredService<IHouseholdRepository>());
         await provider.GetRequiredService<IAddressUpdateService>().UpdateAddressAsync(Request());
         await liveAddress.Received(1).UpdateAddressAsync(Arg.Any<PluginAddressUpdateRequest>(), Arg.Any<CancellationToken>());
+        await provider.GetRequiredService<ICardReplacementService>().RequestCardReplacementAsync(CardReplacementRequest());
+        await liveCardReplacement.Received(1).RequestCardReplacementAsync(
+            Arg.Any<PluginCardReplacementRequest>(), Arg.Any<CancellationToken>());
     }
 
     private static ServiceProvider BuildProvider(
         ConfigurationManager configuration,
         IAddressUpdateService liveAddress,
+        ICardReplacementService liveCardReplacement,
         bool percentageFilter = false)
     {
         var environment = Substitute.For<IHostEnvironment>();
@@ -71,6 +86,7 @@ public class MockHouseholdRoutingTests
         }
 
         services.AddKeyedSingleton<IAddressUpdateService>(StatePluginKeys.Connector, liveAddress);
+        services.AddKeyedSingleton(StatePluginKeys.Connector, liveCardReplacement);
         services.AddKeyedSingleton<ISummerEbtCaseService>(
             StatePluginKeys.Connector,
             Substitute.For<ISummerEbtCaseService>());
@@ -90,5 +106,13 @@ public class MockHouseholdRoutingTests
                 State = "CO",
                 PostalCode = "80202",
             },
+        };
+
+    private static PluginCardReplacementRequest CardReplacementRequest() =>
+        new()
+        {
+            HouseholdIdentifierValue = "household-1",
+            CaseRefs = [new PluginCaseRef { SummerEbtCaseId = "case-1" }],
+            Reason = PluginCardReplacementReason.Lost,
         };
 }

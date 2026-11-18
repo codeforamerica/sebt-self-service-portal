@@ -389,6 +389,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         verified.Email = verifiedEmail;
+        verified.Phone = "4634368526"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         verified.UserProfile = new UserProfile { FirstName = "John", MiddleName = "Robert", LastName = "DoeMOCK" };
         _households[verifiedEmail] = verified;
         IndexByPhone(verified);
@@ -421,6 +422,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         pending.Email = pendingEmail;
+        pending.Phone = "5292254633"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         pending.UserProfile = new UserProfile { FirstName = "Jane", MiddleName = "Marie", LastName = "SmithMOCK" };
         _households[pendingEmail] = pending;
         IndexByPhone(pending);
@@ -437,6 +439,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         denied.Email = deniedEmail;
+        denied.Phone = "8153983537"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         denied.UserProfile = new UserProfile { FirstName = "Robert", MiddleName = null, LastName = "JohnsonMOCK" };
         _households[deniedEmail] = denied;
         IndexByPhone(denied);
@@ -470,6 +473,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         review.Email = reviewEmail;
+        review.Phone = "7366360323"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         review.UserProfile = new UserProfile { FirstName = "Susan", MiddleName = "Lee", LastName = "WilliamsMOCK" };
         _households[reviewEmail] = review;
         IndexByPhone(review);
@@ -556,6 +560,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         cancelled.Email = cancelledEmail;
+        cancelled.Phone = "2275083447"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         cancelled.UserProfile = new UserProfile { FirstName = "David", MiddleName = "James", LastName = "DavisMOCK" };
         _households[cancelledEmail] = cancelled;
         IndexByPhone(cancelled);
@@ -595,6 +600,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         singleChild.Email = singleChildEmail;
+        singleChild.Phone = "3756299823"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         singleChild.UserProfile = new UserProfile { FirstName = "Amanda", MiddleName = "Rose", LastName = "TaylorMOCK" };
         _households[singleChildEmail] = singleChild;
         IndexByPhone(singleChild);
@@ -636,6 +642,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         largeFamily.Email = largeFamilyEmail;
+        largeFamily.Phone = "4009878510"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         largeFamily.UserProfile = new UserProfile { FirstName = "Christopher", MiddleName = "Michael", LastName = "BrownMOCK" };
         _households[largeFamilyEmail] = largeFamily;
         IndexByPhone(largeFamily);
@@ -685,6 +692,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         expired.Email = expiredEmail;
+        expired.Phone = "7162787546"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         expired.UserProfile = new UserProfile { FirstName = "Patricia", MiddleName = "Ann", LastName = "GarciaMOCK" };
         _households[expiredEmail] = expired;
         IndexByPhone(expired);
@@ -701,6 +709,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             }
         });
         unknown.Email = unknownEmail;
+        unknown.Phone = "2158974592"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         unknown.UserProfile = new UserProfile { FirstName = "Unknown", MiddleName = null, LastName = "UserMOCK" };
         _households[unknownEmail] = unknown;
         IndexByPhone(unknown);
@@ -1014,6 +1023,7 @@ public class MockHouseholdRepository : IHouseholdRepository
             };
         });
         nameCasing.Email = nameCasingEmail;
+        nameCasing.Phone = "4282461649"; // Matches the Keycloak fixture user so OIDC phone lookup routes here
         // All-caps guardian, since the dashboard headline is where mis-casing is most visible.
         nameCasing.UserProfile = new UserProfile { FirstName = "DELLA", MiddleName = "MAE", LastName = "ALDENMOCK" };
         _households[nameCasingEmail] = nameCasing;

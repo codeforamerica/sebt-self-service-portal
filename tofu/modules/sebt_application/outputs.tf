@@ -23,16 +23,6 @@ output "api_security_group_id" {
   value       = module.api.security_group_id
 }
 
-output "database_endpoint" {
-  description = "RDS SQL Server endpoint."
-  value       = module.database.endpoint
-}
-
-output "database_secret_arn" {
-  description = "ARN of the Secrets Manager secret containing database credentials."
-  value       = module.database.secret_arn
-}
-
 output "ses_secret_arn" {
   description = "ARN of the Secrets Manager secret containing SES SMTP credentials."
   value       = module.ses.secret_arn

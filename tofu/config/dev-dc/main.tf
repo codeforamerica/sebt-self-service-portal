@@ -127,6 +127,26 @@ module "state_secrets_doppler" {
   doppler_workspace_id     = "08430c37e2a2889dc220"
 }
 
+# Create the RDS SQL Server instance. module.app creates the API's login on it.
+module "database" {
+  source = "../../modules/sebt_database"
+
+  project = "${var.project}-${var.state}"
+  # sebt_application's default; the existing security group's name is built from it.
+  project_short   = "sebt"
+  environment     = var.environment
+  vpc_id          = module.vpc.vpc_id
+  subnets         = module.vpc.private_subnets
+  logging_key_arn = module.logging.kms_key_arn
+
+  ingress_security_groups = [module.app.api_security_group_id]
+  # VPC-internal clients such as the SSM bastion.
+  ingress_cidrs = [var.vpc_cidr]
+
+  skip_final_snapshot = true
+  apply_immediately   = true
+}
+
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source    = "../../modules/sebt_application"
@@ -142,15 +162,20 @@ module "app" {
   private_subnets            = module.vpc.private_subnets
   public_subnets             = module.vpc.public_subnets
   vpc_id                     = module.vpc.vpc_id
-  db_ingress_cidrs           = [var.vpc_cidr]
   project                    = var.project
   sender_email               = var.sender_email
-  skip_final_snapshot        = true
   state                      = var.state
   waf_log_group              = module.logging.log_groups["waf"]
   passive_waf                = true
   enable_appconfig           = true
   log_as_json                = true
+
+  database = {
+    host              = module.database.endpoint
+    port              = module.database.port
+    admin_secret_arn  = module.database.secret_arn
+    security_group_id = module.database.security_group_id
+  }
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn
@@ -223,8 +248,8 @@ module "dc_source_seed" {
   cluster_name      = module.app.api_cluster_name
   subnet_ids        = module.vpc.private_subnets
   security_group_id = module.app.api_security_group_id
-  db_endpoint       = module.app.database_endpoint
-  db_secret_arn     = module.app.database_secret_arn
+  db_endpoint       = module.database.endpoint
+  db_secret_arn     = module.database.secret_arn
   logging_key_arn   = module.logging.kms_key_arn
 }
 

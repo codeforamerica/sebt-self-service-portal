@@ -51,6 +51,15 @@ jobs:
       image_tag: ${{ github.sha }}
     secrets: inherit
   
+  plan-co-shared:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-co
+      config: dev-co-shared
+    secrets: inherit
+
   plan-co:
     needs: check-infra-changes
     if: needs.check-infra-changes.outputs.changed == 'true'
@@ -61,9 +70,21 @@ jobs:
       image_tag: ${{ github.sha }}
     secrets: inherit
 
+  # Off until the repository variable DEMO_ENABLED is 'true': the dev-demo
+  # GitHub environment, Doppler config and DNS zone are set up by hand first.
+  plan-demo:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true' && vars.DEMO_ENABLED == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-demo
+      config: dev-demo
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
   plan-comment:
-    needs: [plan-dc, plan-co]
-    if: always() && (needs.plan-dc.outputs.plan || needs.plan-co.outputs.plan)
+    needs: [plan-dc, plan-co-shared, plan-co, plan-demo]
+    if: always() && (needs.plan-dc.outputs.plan || needs.plan-co-shared.outputs.plan || needs.plan-co.outputs.plan || needs.plan-demo.outputs.plan)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -73,7 +94,9 @@ jobs:
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
           DC_PLAN: ${{ needs.plan-dc.outputs.plan }}
+          CO_SHARED_PLAN: ${{ needs.plan-co-shared.outputs.plan }}
           CO_PLAN: ${{ needs.plan-co.outputs.plan }}
+          DEMO_PLAN: ${{ needs.plan-demo.outputs.plan }}
         with:
           script: |
             const postPlanComment = require('./.github/workflows/scripts/post-plan-comment.js');
@@ -359,9 +382,47 @@ jobs:
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
           echo "Deployment URL: $WEB_URL"
 
+  # The RDS instance and Keycloak shared by the deployments in the CO account.
+  # Applies before the configs that look them up.
+  deploy-co-shared:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: dev-co
+    env:
+      AWS_REGION: us-east-1
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: "1.10.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-co-shared
+        run: tofu init -upgrade
+
+      - name: OpenTofu Plan
+        working-directory: tofu/config/dev-co-shared
+        run: tofu plan -input=false -out=tfplan
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-co-shared
+        run: tofu apply tfplan
+
   deploy-co:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, deploy-co-shared]
     runs-on: ubuntu-latest
     environment: dev-co
     outputs:
@@ -480,6 +541,84 @@ jobs:
           WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
           echo "Deployment URL: $WEB_URL"
+
+  # The unbranded demo. Deploys the images deploy-co pushed to the CO account's
+  # ECR repositories, so it runs after it.
+  deploy-demo:
+    if: github.event_name != 'pull_request' && vars.DEMO_ENABLED == 'true'
+    needs: [build, deploy-co-shared, deploy-co]
+    runs-on: ubuntu-latest
+    environment: dev-demo
+    env:
+      AWS_REGION: us-east-1
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
+      IMAGE_TAG: ${{ needs.build.outputs.image_tag }}
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DB rotation Lambda dependencies
+        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: "1.10.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-demo
+        run: tofu init -upgrade
+
+      # Doppler OIDC tokens are single-use, so plan and apply each fetch one.
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> "$GITHUB_ENV"
+
+      - name: OpenTofu Plan
+        working-directory: tofu/config/dev-demo
+        run: tofu plan -input=false -out=tfplan -var="image_tag=${IMAGE_TAG}"
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> "$GITHUB_ENV"
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-demo
+        run: tofu apply tfplan
+
+      # The shared realm's clients need each host as a valid redirect URI.
+      # Idempotent, so it runs on every deploy.
+      - name: Register the demo host with Keycloak
+        env:
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID }}
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET: ${{ secrets.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET }}
+          PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID }}
+          PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID }}
+        run: |
+          KEYCLOAK_HOSTNAME="$(tofu -chdir=tofu/config/dev-demo output -raw keycloak_hostname)"
+          source scripts/preview/common.sh
+          source scripts/preview/keycloak.sh
+          ensure_keycloak_preview_host_redirects \
+            "${KEYCLOAK_HOSTNAME}" "${TF_VAR_domain}" sebt-portal sebt-portal-stepup
 
   create-deployment-record:
     needs: [deploy-dc, deploy-co]

@@ -12,9 +12,10 @@ on:
         required: true
         type: string
       image_tag:
-        description: 'Image tag variable for the plan'
-        required: true
+        description: 'Image tag variable for the plan. Omit for a config that deploys no images.'
+        required: false
         type: string
+        default: ''
     outputs:
       plan:
         description: "The plan output"
@@ -81,7 +82,7 @@ jobs:
             echo "::error::Invalid config: $CONFIG"
             exit 1
           fi
-          if [[ ! "$IMAGE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+          if [[ -n "$IMAGE_TAG" && ! "$IMAGE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
             echo "::error::Invalid image_tag: $IMAGE_TAG"
             exit 1
           fi
@@ -102,4 +103,4 @@ jobs:
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
         working-directory: tofu/config/${{ inputs.config }}
-        run: tofu plan -lock=false -concise -no-color -input=false -var="image_tag=${IMAGE_TAG}"
+        run: tofu plan -lock=false -concise -no-color -input=false ${IMAGE_TAG:+"-var=image_tag=${IMAGE_TAG}"}
