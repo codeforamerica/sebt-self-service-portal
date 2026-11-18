@@ -18,6 +18,7 @@ internal static class Dependencies
         services.AddTransient<IDocVerificationChallengeRepository, DatabaseDocVerificationChallengeRepository>();
         services.AddScoped<ICardReplacementRequestRepository, CardReplacementRequestRepository>();
         services.AddScoped<IUserCaseRepository, DatabaseUserCaseRepository>();
+        services.AddScoped<IUserActionRepository, DatabaseUserActionRepository>();
 
         // For deterministic time in seeding/mock data
         services.AddSingleton(TimeProvider.System);
