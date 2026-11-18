@@ -1,6 +1,6 @@
 'use client'
 
-import { Button } from '@sebt/design-system'
+import { Button, PageColumn } from '@sebt/design-system'
 import { getCheckerAssetPath } from '@/lib/checkerAssetPath'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -32,59 +32,57 @@ export function ReviewPage({ onSubmit }: ReviewPageProps) {
   }
 
   return (
-    <div className="usa-section">
-      <div className="grid-container">
-        {reviewCard && (
-          <Image
-            src={reviewCard}
-            alt=""
-            width={100}
-            height={75}
-            aria-hidden="true"
+    <PageColumn>
+      {reviewCard && (
+        <Image
+          src={reviewCard}
+          alt=""
+          width={100}
+          height={75}
+          aria-hidden="true"
+        />
+      )}
+      <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{t('title')}</h1>
+      <p className="usa-prose">{t('body')}</p>
+
+      <div className="margin-top-3">
+        {state.children.map((child) => (
+          <ChildReviewCard
+            key={child.id}
+            child={child}
+            onEdit={handleEdit}
+            onRemove={removeChild}
           />
-        )}
-        <h1 className={`font-family-sans font-sans-xl margin-top-1 ${pageTitleText}`}>{t('title')}</h1>
-        <p className="usa-prose">{t('body')}</p>
-
-        <div className="margin-top-3">
-          {state.children.map((child) => (
-            <ChildReviewCard
-              key={child.id}
-              child={child}
-              onEdit={handleEdit}
-              onRemove={removeChild}
-            />
-          ))}
-        </div>
-
-        <div className="display-flex flex-row flex-align-center margin-top-4">
-          <Button
-            variant="outline"
-            className="margin-right-1"
-            onClick={() => router.push('/check')}
-          >
-            {tCommon('back')}
-          </Button>
-          <Button
-            onClick={onSubmit}
-            disabled={state.children.length === 0}
-          >
-            {tCommon('submit')}
-          </Button>
-        </div>
-        <div className="margin-top-2">
-          <button
-            type="button"
-            className="usa-link usa-button--unstyled"
-            onClick={() => {
-              setEditingChildId(null)
-              router.push('/check')
-            }}
-          >
-            {t('actionAdd')}
-          </button>
-        </div>
+        ))}
       </div>
-    </div>
+
+      <div className="display-flex flex-row flex-align-center margin-top-4">
+        <Button
+          variant="outline"
+          className="margin-right-1"
+          onClick={() => router.push('/check')}
+        >
+          {tCommon('back')}
+        </Button>
+        <Button
+          onClick={onSubmit}
+          disabled={state.children.length === 0}
+        >
+          {tCommon('submit')}
+        </Button>
+      </div>
+      <div className="margin-top-2">
+        <button
+          type="button"
+          className="usa-link usa-button--unstyled"
+          onClick={() => {
+            setEditingChildId(null)
+            router.push('/check')
+          }}
+        >
+          {t('actionAdd')}
+        </button>
+      </div>
+    </PageColumn>
   )
 }

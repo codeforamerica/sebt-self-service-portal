@@ -15,9 +15,9 @@ export function NotEnrolledSection({ results }: NotEnrolledSectionProps) {
 
   return (
     <section data-testid="not-enrolled-summary-box">
-      <h4 className="usa-summary-box__heading">
+      <h2 className="usa-summary-box__heading">
         <RichText inline>{t('applyForSebtBody1')}</RichText>
-      </h4>
+      </h2>
       <div className="usa-summary-box__text">
         <ul>
           {results.map((child) => (

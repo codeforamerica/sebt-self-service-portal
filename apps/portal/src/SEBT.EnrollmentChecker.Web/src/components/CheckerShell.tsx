@@ -21,10 +21,20 @@ interface CheckerShellProps {
  * footer) on every route, including the outage page. The maintenance banner is
  * withheld on the outage route; announcing upcoming maintenance is redundant on
  * the maintenance page itself.
+ *
+ * The help section and footer wait on the season together with the page content:
+ * painted under an empty main, they would be pushed down when the content arrives.
  */
 export function CheckerShell({ children, state }: CheckerShellProps) {
   const pathname = usePathname()
   const isOutagePage = pathname === OUTAGE_PATH
+
+  const belowContent = (
+    <>
+      <HelpSection state={state} />
+      <Footer state={state} />
+    </>
+  )
 
   return (
     <>
@@ -36,8 +46,7 @@ export function CheckerShell({ children, state }: CheckerShellProps) {
             holding for a features poll that has nothing to tell it. */}
         <OutageGuard>{isOutagePage ? children : <SeasonGate>{children}</SeasonGate>}</OutageGuard>
       </main>
-      <HelpSection state={state} />
-      <Footer state={state} />
+      {isOutagePage ? belowContent : <SeasonGate>{belowContent}</SeasonGate>}
     </>
   )
 }

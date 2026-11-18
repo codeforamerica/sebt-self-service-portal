@@ -48,4 +48,13 @@ describe('Header', () => {
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
+
+  it('keeps the logo and language links inside the 1024px page frame', () => {
+    render(<Header state="dc" />)
+
+    const row = screen.getByTestId('language-selector').parentElement
+    expect(row).toHaveClass('grid-container', 'display-flex', 'flex-justify', 'flex-align-center')
+    expect(row).not.toHaveClass('width-full')
+    expect(row).not.toHaveClass('padding-x-2')
+  })
 })
