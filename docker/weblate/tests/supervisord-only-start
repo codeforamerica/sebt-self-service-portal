@@ -1,0 +1,4 @@
+#!/bin/bash
+# Stands in for /app/bin/start, which waits for a database. Runs supervisord, the image's
+# real main process, with no services.
+exec /app/venv/bin/supervisord --logfile=/dev/null --configuration=/etc/supervisor/supervisord.conf

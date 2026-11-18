@@ -8,6 +8,11 @@ rules:
   # Dependabot and Aikido own dependency advisories.
   security/vulnerable-dependency: "off"
 
+imports:
+  provided:
+    # The Weblate base image supplies this; docker/weblate/requirements.txt lists only what it adds.
+    - weblate
+
 overrides:
   # Primary constructors take their DI dependencies as parameters.
   - files: ["**/*CommandHandler.cs", "**/Controllers/**/*.cs"]
