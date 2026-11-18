@@ -35,6 +35,7 @@ public sealed class PiiPlaintextEncryptionBackfill
         await MigrateUsersLoopAsync(cancellationToken);
         await MigrateDocVerificationLoopAsync(cancellationToken);
         await MigrateUserCasesLoopAsync(cancellationToken);
+        await MigrateUserActionsLoopAsync(cancellationToken);
     }
 
     private async Task MigrateUsersLoopAsync(CancellationToken cancellationToken)
@@ -217,6 +218,47 @@ public sealed class PiiPlaintextEncryptionBackfill
         await SaveChangesAndDetachBatchAsync(cancellationToken);
 
         _logger.LogInformation("PII ciphertext backfill: encrypted {Rows} UserCases row batch.", batch.Count);
+        return batch.Count;
+    }
+
+    private async Task MigrateUserActionsLoopAsync(CancellationToken cancellationToken)
+    {
+        int migrated;
+        do
+        {
+            migrated = await MigrateOneUserActionsBatchAsync(cancellationToken);
+        }
+        while (migrated > 0);
+    }
+
+    private async Task<int> MigrateOneUserActionsBatchAsync(CancellationToken cancellationToken)
+    {
+        var prefix = PiiAesGcmSymmetricEncryption.EnvelopePrefix;
+        var batch = await _dbContext.UserActions
+            .Where(row =>
+                row.CaseId != "" && !row.CaseId.StartsWith(prefix)
+                || row.ApplicationId != null && !row.ApplicationId.StartsWith(prefix)
+                || row.ApplicationStudentId != null && !row.ApplicationStudentId.StartsWith(prefix))
+            .OrderBy(row => row.Id)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
+        foreach (var userAction in batch)
+        {
+            BackfillScalar(prefix, () => userAction.CaseId, value => userAction.CaseId = value
+                ?? throw new InvalidOperationException($"UserActions row {userAction.Id} has a blank CaseId."));
+            BackfillScalar(prefix, () => userAction.ApplicationId, value => userAction.ApplicationId = value);
+            BackfillScalar(prefix, () => userAction.ApplicationStudentId, value => userAction.ApplicationStudentId = value);
+        }
+
+        if (batch.Count == 0)
+        {
+            return 0;
+        }
+
+        await SaveChangesAndDetachBatchAsync(cancellationToken);
+
+        _logger.LogInformation("PII ciphertext backfill: encrypted {Rows} UserActions row batch.", batch.Count);
         return batch.Count;
     }
 }
