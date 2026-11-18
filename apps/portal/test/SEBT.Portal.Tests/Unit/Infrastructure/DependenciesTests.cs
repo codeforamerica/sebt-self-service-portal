@@ -391,6 +391,35 @@ public class DependenciesTests
     }
 
     // ---------------------------------------------------------------------------
+    // AddAppSettings — settings injected directly into handlers
+    // ---------------------------------------------------------------------------
+
+    [Fact]
+    public void ResolveCoLoadedHouseholdLookupSettings_FromScope_BindsConfiguredValue()
+    {
+        var services = new ServiceCollection();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [$"{CoLoadedHouseholdLookupSettings.SectionName}:FallbackToBenefitIdAndDob"] = "true",
+            })
+            .Build();
+
+        services.AddSingleton<IConfiguration>(config);
+        services.AddAppSettings(config);
+
+        var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true
+        });
+
+        using var scope = provider.CreateScope();
+        var settings = scope.ServiceProvider.GetRequiredService<CoLoadedHouseholdLookupSettings>();
+
+        Assert.True(settings.FallbackToBenefitIdAndDob);
+    }
+
+    // ---------------------------------------------------------------------------
     // IBlockedAddressDataSource — selected by AddressValidationData:BlockedAddressFile
     // ---------------------------------------------------------------------------
 

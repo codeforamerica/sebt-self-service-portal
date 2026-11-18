@@ -85,6 +85,7 @@ public class HouseholdControllerTests
             _cardReplacementRepo,
             _identifierHasher,
             new CoLoadedCohortFilterSettings(),
+            new CoLoadedHouseholdLookupSettings(),
             featureManager,
             logger);
     }
