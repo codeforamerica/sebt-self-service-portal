@@ -34,6 +34,89 @@ The following AWS services are used to run the Summer EBT portal and enrollment 
 | State backend | **S3 + DynamoDB + KMS** | OpenTofu state bucket, lock table, and encryption key. | Keeps a record of the infrastructure that has been built, so changes are applied safely and one at a time. |
 | External (not AWS) | — | Doppler (secrets management), the state's identity provider (CO: MyColorado), Socure (DC: identity and document verification), the state's benefits system (CO: CBMS), Smarty (address validation), Datadog (logs, traces, monitoring), and analytics providers (e.g., Amplitude, Mixpanel, Siteimprove). | Outside services the apps connect to for secrets, user login, identity verification, benefits data, address checks, monitoring, and analytics. |
 
+## **Service dependency diagram**
+
+```mermaid
+flowchart LR
+    user([Parent / guardian<br/>browser])
+
+    subgraph EDGE["Edge"]
+        r53["Route 53 + ACM"]
+        cfPortal["CloudFront + WAF<br/>(portal)"]
+        cfChecker["CloudFront<br/>(enrollment checker)"]
+        s3Checker[("S3<br/>checker static site")]
+    end
+
+    subgraph VPC["VPC (private subnets)"]
+        albWeb["Web ALB"]
+        web["Web (Next.js)<br/>ECS Fargate"]
+        albApi["Internal API ALB"]
+        api["API (.NET)<br/>ECS Fargate<br/>+ ADOT + AppConfig agent"]
+        rds[("RDS<br/>SQL Server")]
+        valkey[("ElastiCache<br/>Valkey")]
+        bastion["SSM bastion"]
+    end
+
+    subgraph AWSSVC["AWS regional services"]
+        ses["SES"]
+        appcfg["AppConfig"]
+        secrets["Secrets Manager"]
+        cw["CloudWatch Logs"]
+        lambda["Rotation Lambdas"]
+    end
+
+    subgraph STATE["State systems"]
+        cbms["CO: CBMS API"]
+        dcdata[("DC: case data")]
+    end
+
+    subgraph IDP["Identity"]
+        mycolo["CO: MyColorado OIDC"]
+        socure["DC: Socure"]
+        keycloak["Dev: Keycloak<br/>+ Postgres"]
+    end
+
+    subgraph EXT["Other external services"]
+        smarty["Smarty"]
+        datadog["Datadog"]
+        doppler["Doppler"]
+        analytics["Analytics<br/>(Amplitude, Mixpanel, Siteimprove)"]
+    end
+
+    user --> r53
+    r53 --> cfPortal
+    r53 --> cfChecker
+    cfChecker --> s3Checker
+    cfPortal --> albWeb --> web
+    user -. "checker API calls" .-> cfPortal
+    web --> albApi --> api
+
+    api --> rds
+    api --> valkey
+    api --> ses
+    api --> appcfg
+    api --> secrets
+    api --> cbms
+    api --> dcdata
+    api --> mycolo
+    api --> socure
+    api --> keycloak
+    api --> smarty
+
+    web --> cw
+    api --> cw
+    cw --> datadog
+    api -- "traces / metrics" --> datadog
+    lambda --> secrets
+    lambda -. "restart" .-> api
+    doppler --> secrets
+    bastion --> rds
+
+    user -. "browser SDKs" .-> socure
+    user -. "browser SDKs" .-> smarty
+    user -. "browser SDKs" .-> analytics
+```
+
 ## **How these pieces work together**
 
 ### **Portal**
