@@ -65,9 +65,9 @@
     "aspire:dev": "pnpm --dir aspire-apphost run aspire:dev"
   },
   "devDependencies": {
-    "concurrently": "^10.0.6",
+    "concurrently": "^10.0.7",
     "husky": "^9.1.7",
-    "knip": "^6.42.1",
+    "knip": "^6.45.1",
     "lint-staged": "^17.6.0",
     "rapidoc": "9.3.8",
     "tsx": "^4.23.15",
