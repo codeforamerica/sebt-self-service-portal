@@ -169,7 +169,7 @@ export function startOtel(options: ResolveOtelConfigOptions): NodeSDK | undefine
     sdkConfig.spanProcessors = spanProcessors
   }
   if (metricReader) {
-    sdkConfig.metricReader = metricReader
+    sdkConfig.metricReaders = [metricReader]
   }
   if (logRecordProcessors.length > 0) {
     sdkConfig.logRecordProcessors = logRecordProcessors
