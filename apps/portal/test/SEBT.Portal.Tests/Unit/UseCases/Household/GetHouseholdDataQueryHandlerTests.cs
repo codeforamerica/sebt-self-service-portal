@@ -29,7 +29,9 @@ public class GetHouseholdDataQueryHandlerTests
     private readonly IFeatureManager _featureManager = Substitute.For<IFeatureManager>();
     private readonly NullLogger<GetHouseholdDataQueryHandler> _logger = NullLogger<GetHouseholdDataQueryHandler>.Instance;
 
-    private GetHouseholdDataQueryHandler CreateHandler(CoLoadedCohortFilterSettings? coLoadedCohortFilter = null) =>
+    private GetHouseholdDataQueryHandler CreateHandler(
+        CoLoadedCohortFilterSettings? coLoadedCohortFilter = null,
+        CoLoadedHouseholdLookupSettings? coLoadedHouseholdLookup = null) =>
         new(
             _resolver,
             _repository,
@@ -41,6 +43,7 @@ public class GetHouseholdDataQueryHandlerTests
             _cardReplacementRepo,
             _identifierHasher,
             coLoadedCohortFilter ?? new CoLoadedCohortFilterSettings(),
+            coLoadedHouseholdLookup ?? new CoLoadedHouseholdLookupSettings(),
             _featureManager,
             _logger);
 
@@ -181,7 +184,7 @@ public class GetHouseholdDataQueryHandlerTests
 
         _identifierHasher.Hash(normalizedEmail).Returns((string?)null);
 
-        var handler = CreateHandler();
+        var handler = CreateHandler(coLoadedHouseholdLookup: new() { FallbackToBenefitIdAndDob = true });
         var result = await handler.Handle(new GetHouseholdDataQuery { User = principal });
 
         Assert.True(result.IsSuccess);
@@ -237,7 +240,7 @@ public class GetHouseholdDataQueryHandlerTests
             .GetLatestSocureReferenceIdByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(socureReferenceId);
 
-        var handler = CreateHandler();
+        var handler = CreateHandler(coLoadedHouseholdLookup: new() { FallbackToBenefitIdAndDob = true });
         await handler.Handle(new GetHouseholdDataQuery { User = principal });
 
         await _repository.Received(1).GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
@@ -276,7 +279,7 @@ public class GetHouseholdDataQueryHandlerTests
         _userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new User { Id = userId, Email = email, IsCoLoaded = false, SnapId = "IC000001", DateOfBirth = new DateOnly(1980, 1, 1) });
 
-        var handler = CreateHandler();
+        var handler = CreateHandler(coLoadedHouseholdLookup: new() { FallbackToBenefitIdAndDob = true });
         var result = await handler.Handle(new GetHouseholdDataQuery { User = principal });
 
         Assert.False(result.IsSuccess);
@@ -289,6 +292,48 @@ public class GetHouseholdDataQueryHandlerTests
             Arg.Any<Guid>(),
             Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_WhenFallbackDisabled_AndCoLoadedUserHasBenefitIc_DoesNotInvokeIcDobFallback()
+    {
+        var email = "guardian@example.com";
+        var normalizedEmail = EmailNormalizer.Normalize(email);
+        var userId = Guid.Parse("a1111111-1111-4111-8111-111111111111");
+        var dob = new DateOnly(1984, 3, 5);
+        var principal = CreateUserWithSub(email, UserIalLevel.IAL1plus, userId);
+
+        _resolver.ResolveAsync(principal, Arg.Any<CancellationToken>())
+            .Returns(new HouseholdIdentifier(PreferredHouseholdIdType.Email, normalizedEmail));
+
+        _repository.GetHouseholdByIdentifierAsync(
+                Arg.Is<HouseholdIdentifier>(i =>
+                    i.Type == PreferredHouseholdIdType.Email && i.Value == normalizedEmail),
+                Arg.Any<PiiVisibility>(),
+                UserIalLevel.IAL1plus,
+                Arg.Any<Guid?>(),
+                Arg.Any<bool>(),
+                Arg.Any<CancellationToken>())
+            .Returns((HouseholdData?)null);
+
+        _userRepository.GetUserByIdAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new User
+            {
+                Id = userId,
+                Email = email,
+                IsCoLoaded = true,
+                DateOfBirth = dob,
+                SnapId = "IC000001"
+            });
+
+        var handler = CreateHandler(coLoadedHouseholdLookup: new() { FallbackToBenefitIdAndDob = false });
+        var result = await handler.Handle(new GetHouseholdDataQuery { User = principal });
+
+        Assert.False(result.IsSuccess);
+        await _userRepository.DidNotReceive().GetUserByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().GetHouseholdByBenefitIdentifierAndGuardianDobAsync(
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<DateOnly>(), Arg.Any<PiiVisibility>(),
+            Arg.Any<UserIalLevel>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
