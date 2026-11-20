@@ -94,21 +94,20 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
   // differ in copy ("Order card" vs "Order cards", singular vs plural body and
   // address line). The bulk strings are generated into the optionalId
   // namespace, the single-card ones into result; both expose the same key
-  // names. The H1 always comes from result — the bulk title is identical per
-  // state and its generated key is shadowed by the card-selection screen's.
+  // names. The page heading always comes from result.
   const isMultiCardOrder = cases.length > 1
   const tOrder = isMultiCardOrder ? tOptional : t
 
   const singleCase = isMultiCardOrder ? undefined : cases[0]
   const preTitle = singleCase ? fillCardPlaceholders(t('pre-title'), singleCase) : null
 
-  // tOrder('body') is \n-delimited list items — split and filter empties
-  const replacingCards = tOrder('body').split('\n').filter(Boolean)
+  // tOrder('confirmBody') is \n-delimited list items; split and filter empties
+  const replacingCards = tOrder('confirmBody').split('\n').filter(Boolean)
 
   return (
     <div>
       {preTitle && <p className="margin-bottom-0">{preTitle}</p>}
-      <h1 className="font-sans-xl text-primary margin-bottom-4">{t('title')}</h1>
+      <h1 className="font-sans-xl text-primary margin-bottom-4">{t('confirmTitle')}</h1>
 
       <div className="margin-top-05">
         <ul className="usa-list margin-top-2">
@@ -130,7 +129,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
             className="usa-summary-box__heading"
             id={summaryHeadingId}
           >
-            {tOrder('summaryTitle')}
+            {tOrder('confirmSummaryTitle')}
           </h2>
           <div className="usa-summary-box__text">
             <ul className="usa-list">
@@ -146,7 +145,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
               ))}
             </ul>
 
-            <p>{tOrder('summaryAddress')}</p>
+            <p>{tOrder('confirmSummaryAddress')}</p>
 
             <address>
               {address.streetAddress1 && (
@@ -188,7 +187,7 @@ export function ConfirmRequest({ cases, address, onBack }: ConfirmRequestProps) 
           onClick={handleSubmit}
           isLoading={mutation.isPending}
         >
-          {tOrder('action')}
+          {tOrder('confirmAction')}
         </Button>
         <ProcessingIndicator
           isProcessing={mutation.isPending}

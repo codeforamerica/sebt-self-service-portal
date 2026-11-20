@@ -1,4 +1,4 @@
-Variable Name/Key,🟡 DC English Current,🟡 DC Español Current,🟡 DC Amharic Current
+ ,🟡 DC English Current,🟡 DC Español Current,🟡 DC Amharic Current
 S1 - Landing Page - Title,Get a one-time payment of $120 in summer food benefits for your student,Recibe un pago único de $120 en beneficios de alimentos durante el verano para tu estudiante.,ለተማሪዎ የበጋ የምግብ ጥቅማጥቅሞች የ$120 የአንድ ጊዜ ክፍያ ያግኙ
 S1 - Landing Page - Body,"Each eligible student can receive a *one-time payment of $120*. Families may use the benefit to pay for groceries during the summer months. 
 
@@ -33,17 +33,49 @@ Everyone in their household combined earns less than 185% of the federal poverty
 todas las personas de su hogar, sumadas, ganan menos del 185% de las pautas federales de pobreza.","በ2025-2026 የትምህርት ዘመን ብሔራዊ የትምህርት ቤት ቁርስ ወይም ምሳ ፕሮግራም (NSLP) የሚያቀርብ ትምህርት ቤት ተምረዋል፣ **እና**
 በቤተሰባቸው ውስጥ ያለ እያንዳንዱ ሰው በአጠቃላይ ከፌዴራል የድህነት መመሪያ 185% ያነሰ ገቢ ያገኛል።"
 S1 - Landing Page - Body 6,"Tap ""Do I need to apply?"" to see if you should apply for your student.",Toca “¿Necesito aplicar?” para ver si deberías aplicar para tu estudiante.,"ለተማሪዎ ማመልከት እንዳለብዎት ለማየት ""ማመልከት አለብኝ?"" የሚለውን ይጫኑ።"
+S1 - Landing Page - Closed - Title,Enrollment for 2026 is now closed,La inscripción de 2026 ya cerró.,የ2026 ምዝገባ አሁን ተዘግቷል
+S1 - Landing Page - Closed - Subtitle,We can tell you if your student received DC SUN Bucks for Summer 2026.,Podemos decirte si tu estudiante recibió DC SUN Bucks durante el verano de 2026.,ተማሪዎ ለ2026 የበጋ ወቅት DC SUN Bucks’ን ተቀብለው ከሆነ ልንነግርዎት እንችላለን።
+S1 - Landing Page - Closed - Body,"Enrolled students received **one $120 payment** or summer groceries. Most eligible families got their payment automatically, and some needed to submit an application.
+
+**Benefits expire 122 days (4 months) after they are issued**.  If your student received benefits, make sure to use them before they expire.
+
+Tap ""Check enrollment"" and enter your student’s information to see if they were enrolled.","Los estudiantes inscritos recibieron **un pago único de $120** o comprar alimentos para el verano. La mayoría de las familias que califican recibieron su pago automáticamente y algunas tuvieron que aplicar.
+
+**Los beneficios vencen 122 días (4 meses) después de la fecha de emisión.** Si tu estudiante recibió beneficios, asegúrate de usarlos antes de que venzan.
+
+Toca “Verificar inscripción” e ingresa la información de tu estudiante para saber si fue inscrito.","በፕሮግራሙ የተመዘገቡ ተማሪዎች **$120 የሚሆን አንድ ክፍያ** ወይም ለበጋ ወቅት የሚሆን የግሮሰሪ አገልግሎት ተቀብለዋል። አብዛኛዎቹ ብቁ የሆኑ ቤተሰቦች ክፍያቸውን በራስ-ሰር ያገኛሉ፣ሲሆን፣ አንዳንዶቹ ደግሞ ማመልከቻ ማስገባት ነበረባቸው።
+
+**ጥቅማ-ጥቅሞቹ ከተሰጡበት ቀን ጀምሮ ከወጡ በኋላ ከ122 ቀናት (4 ወራት) በኋላ ጊዜያቸው ያልፋል**። ተማሪዎ ጥቅማ-ጥቅሞችን ተቀብለው ከሆነ፣ ጊዜያቸው ከማለፉ በፊት መጠቀምዎን ያረጋግጡ።
+
+ተመዝግበው እንደሆነ ለማየት፣መመዝገቡን/መመዝገቧን   ለማረጋገጥ ""Check enrollment"" የሚለውን ይጫኑ  እና የተማሪዎን መረጃ ያስገቡ።
+"
+S1 - Landing Page - Closed - Action,Check enrollment,Verificar inscripción,ምዝገባን ያረጋግጡ
+S1 - Landing Page - Closed - Action Español,Verificar inscripción,Check enrollment,Verificar inscripción
+S1 - Landing Page - Closed - Action Amharic,ምዝገባን ያረጋግጡ,ምዝገባን ያረጋግጡ,Check enrollment
+S1 - Landing Page - Closed - Accordion Title,!N/A!,!N/A!,!N/A!
+S1 - Landing Page - Closed - Body 2,"**The application for 2026 benefits closed August 23, 2026.**",**La aplicación para los beneficios de 2026 cerró el 23 de agosto de 2026.**,**የ2026 ጥቅማ-ጥቅሞች ማመልከቻ ኦገስት 23፣ 2026 ተዘግቷል።**
+S1 - Landing Page - Closed - Body 3,Families of automatically enrolled students and approved applicants were contacted by mail or email.,Las familias de estudiantes inscritos automáticamente y las personas cuyas aplicaciones fueron aprobadas recibieron un aviso por correo postal o electrónico.,በራስ-ሰር የተመዘገቡ ተማሪዎች ቤተሰቦች እና በመደበኛ ሂደት የተፈቀደላቸው አመልካቾች በፖስታ ወይም በኢሜይል ተነግሯቸዋል።
+S1 - Landing Page - Closed - Body 4,!N/A!,!N/A!,!N/A!
+S1 - Landing Page - Closed - Body 6,!N/A!,!N/A!,!N/A!
 S1 - Disclaimer - Title,What to know before we begin,Lo que debes saber antes de comenzar,ከመጀመራችን በፊት ማወቅ ያለብን ነገር
 S1 - Disclaimer - Body 1,This is not an application for DC SUN Bucks.,Esto NO es una aplicación para DC SUN Bucks,ይህ ለ DC SUN Bucks የቀረበ ማመልከቻ አይደለም።
 S1 - Disclaimer - Body 2,This tool will help you learn if you need to apply to DC SUN Bucks for your students.,Esta herramienta te ayudará a saber si necesitas aplicar a DC SUN Bucks para tus estudiantes.,ይህ መሳሪያ ለተማሪዎችዎ በDC SUN Bucks ማመልከት ከፈለጉ ለማወቅ ይረዳዎታል።
 S1 - Disclaimer - Body 3,The information you provide will be kept private and secure.,La información que nos proporciones se mantendrá privada y segura.,የሚሰጡት መረጃ ሚስጥራዊ እና ደህንነቱ የተጠበቀ ይሆናል።
 S1 - Disclaimer - Body 4,Using this tool will not affect your potential DC SUN Bucks benefits or other benefits you get.,Usar esta herramienta no afectará tus posibles beneficios de DC SUN Bucks ni otros beneficios que recibes.,ይህንን መሳሪያ መጠቀም የDC SUN Bucks ጥቅማ ጥቅሞችዎን ወይም የሚያገኟቸውን ሌሎች ጥቅማ ጥቅሞች ላይ ተጽዕኖ አያሳድርም።
+S1 - Disclaimer - Closed - Body 1,This is not an application for DC SUN Bucks.,Esta no es una aplicación para DC SUN Bucks.,ይህ ለDC SUN Bucks ለመመዝገብ የቀረበ ማመልከቻ አይደለም።
+S1 - Disclaimer - Closed - Body 2,Enrollment in DC SUN Bucks is closed for Summer 2026. This tool will help you learn if your student was enrolled in DC SUN Bucks for Summer 2026.,La inscripción en DC SUN Bucks para el verano de 2026 ya cerró. Esta herramienta te ayudará a saber si tu estudiante fue inscrito en DC SUN Bucks para el verano de 2026.,በDC SUN Bucks የ2026 ለበጋ ወቅት የመመዝገብ ሂደትን ተዘግቷል። ይህ መሳሪያ ተማሪዎ በ2026 የበጋ ወቅት በDC SUN Bucks ተመዝግበው እንደነበር ለማወቅ ይረዳዎታል።
+S1 - Disclaimer - Closed - Body 4,Using this tool will not affect enrollment in DC SUN Bucks or any other public benefits program. ,Usar esta herramienta no afectará la inscripción en DC SUN Bucks ni en ningún otro programa de beneficios públicos.,ይህንን መሳሪያ መጠቀም በDC SUN Bucks ወይም በሌላ የህዝብ   የእገዛ ጥቅማ-ጥቅሞች የመመዝገብ ሂደትን ላይ ተጽዕኖ አያሳድርም።
 S1 - Personal Information - Title,Check if your student needs to apply for DC SUN Bucks,Comprueba si tu estudiante necesita aplicar para recibir los beneficios de DC SUN Bucks,ተማሪዎ ለDC SUN Bucks ማመልከት ይኖርበት እንደሆነ ያረጋግጡ።
 S1 - Personal Information - Body,Please provide your student's information in the required fields below. This tool will check if they're automatically enrolled to receive benefits.,Proporciona la información de tu estudiante en los campos obligatorios a continuación. Esta herramienta comprobará si tu estudiante queda inscrito de forma automática para recibir beneficios.,እባክዎን የተማሪዎን መረጃ ከታች ባሉት አስፈላጊ መስኮች ያቅርቡ። ይህ መሳሪያ ጥቅማ ጥቅሞችን ለመቀበል በራስ-ሰር የተመዘገቡ መሆናቸውን ያረጋግጣል።
+S1 - Personal Information - Label First Name,Student’s first name,Primer nombre del estudiante,የተማሪው የመጀመሪያ ስም
+S1 - Personal Information - Label Middle Name,Student’s middle name,Segundo nombre del estudiante,የተማሪው የአባት ስም
+S1 - Personal Information - Label Last Name,Student’s last name,Primer apellido del estudiante,የተማሪው የአያት ስም
 S1 - Personal Information - Label Birthdate,Student’s birthdate,Fecha de nacimiento del estudiante,የተማሪው የልደት ቀን
 S1 - Personal Information - Label Month,Month,Mes,ወር
 S1 - Personal Information - Label Day,Day,Día,ቀን
 S1 - Personal Information - Label Year,Year,Año,አመት
+S1 - Personal Information - Closed - Title,Check if your student was enrolled in DC SUN Bucks for Summer 2026,Verifica si tu estudiante estuvo inscrito en DC SUN Bucks para el verano de 2026,ተማሪዎ ለ2026 የበጋ ወቅት በDC SUN Bucks ተመዝግበው እንደሆነ ያረጋግጡ።
+S1 - Personal Information - Closed - Body,Please provide your student's information in the required fields below.,"Por favor, ingresa la información de tu estudiante en los campos obligatorios a continuación.",እባክዎን የተማሪዎን መረጃ በሚከተሉት የተፈለጉ ቦታዎች ያስገቡ።
 S1 - Confirm Personal Information - Title,Here's the information we have so far,Aquí está la información que tenemos hasta ahora.,እስካሁን ያገኘነው መረጃ ይኸውና
 S1 - Confirm Personal Information - Body,"Review your student's information below. You may add another student to see if they need to apply, too. Tap ""Submit"" if you've finished adding students.",,"የተማሪዎን መረጃ ከዚህ በታች ይገምግሙ። ማመልከት ያስፈልጋቸው እንደሆነ ለማየት ሌላ ተማሪ ማከል ይችላሉ። ተማሪዎችን ማከል ከጨረሱ ""አስገባ"" የሚለውን ይጫኑ።"
 S1 - Confirm Personal Information - Table Name Heading,Name,Nombre,ስም
@@ -52,6 +84,7 @@ S1 - Confirm Personal Information - Table Birthdate Heading,Birthdate,Fecha de n
 S1 - Confirm Personal Information - Table Birthdate Value,"[Month], [Day] [Year]",[día] de [mes] de [año],[ወር]፣ [ቀን] [ዓመት]
 S1 - Confirm Personal Information - Table Action,Update this student's information,,የዚህን ተማሪ መረጃ አዘምን
 S1 - Confirm Personal Information - Action Add,Add another student,,ሌላ ተማሪ ያክሉ
+S1 - Confirm Personal Information - Closed - Body,!N/A!,!N/A!,!N/A!
 S1 - Optional ID Information - Title,We checked our records and need more information to see if this student can get DC SUN Bucks,Revisamos nuestros registros y necesitamos más información para ver si este estudiante puede recibir DC SUN Bucks,መዝገቦቻችንን አጣርተናል እና ይህ ተማሪ DC SUN Bucks ማግኘት ይችል እንደሆነ ለማየት ተጨማሪ መረጃ እንፈልጋለን።
 S1 - Optional ID Information - Body,"We suggest providing any of the student's Student ID, SNAP, or TANF numbers if you have them. We can give you a better answer about whether they are pre-approved.","Sugerimos que proporciones el número de identificación estudiantil, número de SNAP, o TANF del estudiante, si los tienes. Así podemos darte una mejor respuesta sobre si ya está preaprobado(a).",የተማሪውን የተማሪ መታወቂያ፣ የSNAP ወይም የTANF ቁጥሮች ካሉዎት እንዲያቀርቡ እንመክራለን። አስቀድመው ተቀባይነት አግኝተዋል ወይ የሚለውን በተመለከተ የተሻለ መልስ ልንሰጥዎ እንችላለን።
 S1 - Optional ID Information - Label Which ID,Which ID number can you provide? *,¿Qué número de identificación puedes proporcionar? *,የትኛውን የመታወቂያ ቁጥር መስጠት ይችላሉ? *
@@ -92,6 +125,13 @@ S1 - Result - Apply for SEBT - Card 2 Body,"To check if you need to submit a DC 
 S1 - Result - Apply for SEBT - Card 2 Action,Check another student,Revisar otro estudiante,ሌላ ተማሪን ያረጋግጡ
 S1 - Result - Apply for SEBT - Notify Title,Online applications open June 8 — sign up to be notified when you can apply:,Las solicitudes en línea se abrirán el 8 de junio — regístrate para recibir una notificación cuando puedas aplicar:,የመስመር ላይ ማመልከቻዎች ጁን(June) 8 ይከፈታሉ - ማመልከት የሚችሉበትን ጊዜ በተመለከተ ማሳወቂያ እንዲደርስዎት ይመዝገቡ፦
 S1 - Result - Apply for SEBT - Notify Label Email,!N/A!,!N/A!,!N/A!
+S1 - Result - Apply for SEBT - Closed - Title,!N/A!,!N/A!,!N/A!
+S1 - Result - Apply for SEBT - Closed - Card 2 Body,!N/A!,!N/A!,!N/A!
+S1 - Result - Apply for SEBT - Closed - Body 1,!N/A!,!N/A!,!N/A!
+S1 - Result - Apply for SEBT - Closed - Body 2,!N/A!,!N/A!,!N/A!
+S1 - Result - Apply for SEBT - Closed - Body 3,Your student was NOT enrolled in DC SUN Bucks for Summer 2026,Tu estudiante NO fue inscrito en DC SUN Bucks para el verano de 2026,የእርስዎ ተማሪ ለ2026 የበጋ ወቅት በDC SUN Bucks ውስጥ  አልተመዘገቡም::
+S1 - Result - Apply for SEBT - Closed - Body 4,To see if another student was enrolled tap “Check another student” and provide their information.,"Para verificar la inscripción de otro estudiante, toca “Verificar otro estudiante” e ingresa su información.",ሌላ ተማሪ ተመዝግበው እንደሆነ ለማየት  ለማረጋገጥ፣ “ሌላ ተማሪን ተመልከት” የሚለውን በመጫን  መረጃቸውን ያቅርቡ።
+S1 - Result - Apply for SEBT - Closed - Action Apply,!N/A!,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Title,"Looks like your student is eligible, and you DO NOT need to submit an application for them",Parece que tu estudiante es elegible y NO es necesario que aplique.,ተማሪዎ ብቁ የሆነ ይመስላል፣ እና ለእነሱ ማመልከቻ ማስገባት አያስፈልግዎትም
 S1 - Result - Streamlined Enrolled - Body,"Based on our records, we already have all the information we need to determine your student's DC Sun Bucks eligibility for 2026.
 
@@ -109,6 +149,7 @@ If your student is new to DC SUN Bucks, or their previous DC SUN Bucks card need
 Si tu estudiante es nuevo en DC SUN Bucks o si su tarjeta anterior de DC SUN Bucks necesita ser reemplazada, enviaremos una tarjeta nueva por correo a la dirección que tenemos registrada.","ባለፈው ክረምት የDC SUN Bucks ካርድ ከተቀበሉ ወይም ቤተሰብዎ በSNAP ወይም TANF ውስጥ ከተሳተፈ፣ የአንድ ጊዜ $120 ክፍያቸውን ለተመሳሳይ የEBT ካርድ ልንሰጥ እንችላለን።
 
 ተማሪዎ ለDC SUN Bucks አዲስ ከሆነ ወይም የቀድሞ የDC SUN Bucks ካርዳቸውን መተካት ከፈለገ፣ በፋይላችን ውስጥ ወዳለው አድራሻ አዲስ ካርድ በፖስታ እንልካለን።"
+S1 - Result - Streamlined Enrolled - Alert Body Co-loaded,!N/A!,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Alert Action,"To check the mailing address we have on file, log in to the DC SUN Bucks Portal","Para verificar la dirección de envío que tenemos registrada, inicia sesión en el portal de DC SUN Bucks.",በፋይላችን ላይ ያለንን የፖስታ አድራሻ ለማረጋገጥ፣ ወደ DC SUN Bucks ፖርታል ይግቡ
 S1 - Result - Streamlined Enrolled - Body 2,!N/A!,!N/A!,!N/A!
 S1 - Result - Streamlined Enrolled - Body 3,!N/A!,!N/A!,!N/A!
@@ -119,8 +160,29 @@ S1 - Result - Streamlined Enrolled - Card 2 Title,Do you have other students in 
 S1 - Result - Streamlined Enrolled - Card 2 Body,"To check if you need to submit a DC SUN Bucks application for any other students in your household, please provide their information by clicking on the button below.","Para verificar si necesitas aplicar para DC SUN Bucks para algún otro estudiante en tu hogar, proporciona su información haciendo clic en el botón a continuación.",በቤተሰብዎ ውስጥ ላሉ ሌሎች ተማሪዎች የDC SUN Bucks ማመልከቻ ማስገባት እንዳለብዎት ለማረጋገጥ፣ እባክዎን ከታች ያለውን አዝራር ጠቅ በማድረግ መረጃቸውን ያቅርቡ።
 S1 - Result - Streamlined Enrolled - Card 2 Action,Check another student,Revisar otro estudiante,ሌላ ተማሪን ያረጋግጡ
 S1 - Result - Streamlined Enrolled - Steps Heading,!N/A!,!N/A!,!N/A!
+S1 - Result - Streamlined Enrolled - Closed - Title,Looks like your student was enrolled in DC SUN Bucks for Summer 2026,Parece que tu estudiante fue inscrito en DC SUN Bucks para el verano de 2026,ተማሪዎ ለ2026 የበጋ ወቅት በDC SUN Bucks የተመዘገቡ ይመስላል
+S1 - Result - Streamlined Enrolled - Closed - Body 1,!N/A!,!N/A!,!N/A!
+S1 - Result - Streamlined Enrolled - Closed - Body 2,!N/A!,!N/A!,!N/A!
+S1 - Result - Streamlined Enrolled - Closed - Body,"Most students received their Summer 2026 DC SUN Bucks in June 2026. If you were approved for benefits later in the summer, your benefits arrived later. Benefits expire 122 days after issuance.","La mayoría de los estudiantes recibieron sus beneficios de DC SUN Bucks para el verano de 2026 en junio de 2026. Si se aprobaron tus beneficios más adelante durante el verano, también los recibiste más tarde. Los beneficios vencen 122 días después de la fecha de emisión",የሚበዙ ተማሪዎች የበጋ ወቅት የ2026 የDC SUN Bucks  ጥቅማጥቅሞች በሰኔ 2026 አግኝተዋል። ከበጋው ወቅት ከኃላ ጥቅማጥቅሞች ለማግኘት የተፈቀደላቹ ከሆነ ጥቅማጥቅሞቹ በኃላ ደርሰዋል።  ። ጥቅማ-ጥቅሞች ከተሰጠበት ቀን ጀምሮ  በ122 ቀናት ውስጥ ጊዜያቸው ያልፋል።
+S1 - Result - Streamlined Enrolled - Closed - Alert Title,Check the DC SUN Bucks Portal to see where your student’s summer food benefits were sent and when they expire.,Revisa el portal de DC SUN Bucks para ver a dónde se enviaron los beneficios de alimentos de verano de tu estudiante y cuándo vencen.,የተማሪዎ የበጋ የምግብ ጥቅማ-ጥቅሞች የት እንደተላኩ እና መቼ የአገልግሎት ጊዜያቸው እንደሚያልፍ ለመመርመር እባክዎ፣ የDC SUN Bucks ፖርታልን ይመልከቱ።
+S1 - Result - Streamlined Enrolled - Closed - Alert Body,"If they received a DC SUN Bucks card for a previous summer or your family participates in SNAP or TANF, we may have issued their one-time $120 payment to the same EBT card.
+
+If your student was new to DC SUN Bucks, or their previous DC SUN Bucks card needed to be replaced, we mailed a new card to the address we had on file. 
+
+To check the mailing address we had on file, log in to the DC SUN Bucks Portal","Si tu estudiante recibió una tarjeta de DC SUN Bucks durante un verano anterior o tu familia participa en SNAP o TANF, es posible que hayamos depositado el pago único de $120 en la misma tarjeta EBT.
+
+Si tu estudiante recibió DC SUN Bucks por primera vez o necesitaba reemplazar su tarjeta anterior, enviamos una tarjeta nueva a la dirección postal que teníamos registrada.
+
+Para revisar la dirección postal que teníamos registrada, entra al portal de DC SUN Bucks","በቀድሞ የበጋ  ወቅት የDC SUN Bucks ካርድ ከተቀበሉ ወይም ቤተሰቦቻችሁ በSNAP ወይም TANF ፕሮግራም ውስጥ ከተሳተፈ፣ አንድ ጊዜ የሚሰጠውን $120ዶላር  ክፍያቸውን በተመሳሳይ የEBT ካርድ ላይ ሰጥተን ይሆናል ።
+
+ተማሪዎ ለDC SUN Bucks አዲስ ከሆኑ፣ ወይም የቀድሞ የDC SUN Bucks ካርዳቸውን መተካት ካስፈለገ፣ በፋይላችን ውስጥ ወዳለው የፖስታ የመላኪያ አድራሻ አዲስ ካርድ በፖስታ እንልካለን።
+
+በፋይላችን ላይ ያለንን የፖስታ የመላኪያ አድራሻ ለማረጋገጥ፣  እባክዎ  ወደ DC SUN Bucks ፖርታል ይግቡ"
+S1 - Result - Streamlined Enrolled - Closed - Alert Body Co-loaded,!N/A!,!N/A!,!N/A!
+S1 - Result - Streamlined Enrolled - Closed - Alert Action,"To check the mailing address we had on file, log in to the DC SUN Bucks Portal","Para revisar la dirección postal que teníamos registrada, entra al portal de DC SUN Bucks",በፋይላችን ላይ ያለንን የፖስታ የመላኪያ አድራሻ ለማረጋገጥ፣  እባክዎ  ወደ DC SUN Bucks ፖርታል ይግቡ
 S1 - Result - None - Body 1,!N/A!,!N/A!,!N/A!
 S1 - Result - None - Body 2,!N/A!,!N/A!,!N/A!
+S1 - Result - No Results - Closed - Body 4,!N/A!,!N/A!,!N/A!
 S1 - Result - Error - Title,Something went wrong on our end,Algo salió mal de nuestro lado,በእኛ በኩል የሆነ ስህተት ተፈጥሯል
 S1 - Result - Error - Body,We can't check if your students are signed up right now.,En este momento no podemos verificar si tus estudiantes están inscritos.,ተማሪዎችዎ አሁን ተመዝግበው እንደሆነ ማረጋገጥ አንችልም።
 S2 - Log In Disclaimer - Title,!N/A!,!N/A!,!N/A!
@@ -161,6 +223,8 @@ S2 - Portal Dashboard - Alert Check Address Title,Is your address correct?,¿Est
 S2 - Portal Dashboard - Alert Check Address Body,Please check your preferred mailing address to make sure you can receive DC SUN Bucks cards and other mail from us.,"Por favor, revisa tu dirección postal preferida para asegurarte de que puedas recibir las tarjetas DC SUN Bucks y otros envíos por correo de nuestra parte.",የDC SUN Bucks ካርዶችን እና ሌሎች ደብዳቤዎችን ከእኛ መቀበልዎን ለማረጋገጥ እባክዎን የመረጡትን የፖስታ አድራሻ ያረጋግጡ።
 S2 - Portal Dashboard - Alert Check Address Link 1,"Yes, this is my address","Si, esta es mi dirección postal",አዎ፣ ይህ የእኔ አድራሻ ነው
 S2 - Portal Dashboard - Alert Check Address Link 2,"No, change my mailing address","No, cambiar mi dirección postal",አይ፣ የፖስታ አድራሻዬን ቀይር
+S2 - Portal Dashboard - Alert Title Expungement,Summer 2026 DC SUN Bucks were issued beginning in June 2026 and expire 122 days after issuance,Los beneficios de DC SUN Bucks del verano de 2026 se emitieron a partir de junio de 2026 y vencen 122 días después de la fecha de emisión.,የ2026 የSUN Bucks ጥቅማ-ጥቅሞች የተሰጡት ከጁን 2026 ጀምሮ ሲሆን ከተሰጡ በኋላ በ122 ቀናት ውስጥ ጊዜያቸው ያልፋል
+S2 - Portal Dashboard - Alert Body Expungement,Check each enrolled student here to see when their benefits expire.,Revisa aquí a cada estudiante inscrito para saber cuándo vencen sus beneficios.,የእያንዳንዱ የተመዘገበ ልጅ ጥቅማጥቅሞች ጊዜያቸው መቼ እንደሚያልፍ ለማየት እዚህ ይመልከቱ።
 S2 - Portal Dashboard - Logout,Logout,Cerrar sesión,ውጣ
 S2 - Portal Dashboard - Action Navigation - Lead,I want to,Quiero,የሚከተለውን ማድረግ እፈልጋለሁ
 S2 - Portal Dashboard - Action Navigation - Check Existing Cards,Check existing cards,Revisar mis tarjetas existentes,አሁን ያሉትን ካርዶች ማረጋገጥ
@@ -168,14 +232,19 @@ S2 - Portal Dashboard - Action Navigation - Check Benefit Expiration,!N/A!,!N/A!
 S2 - Portal Dashboard - Action Navigation - Order replacement cards,Request new cards,Pedir tarjetas de reemplazo,አዳዲስ ካርዶችን መጠየቅ
 S2 - Portal Dashboard - Action Navigation - Change my mailing address,Change my mailing address,Cambiar mi dirección de correspondencia,የፖስታ አድራሻዬን መቀየር
 S2 - Portal Dashboard - Action Navigation - Change my contact information,Change my contact information,Cambiar mi información de contacto,የመገኛ መረጃዬን መቀየር
+S2 - Portal Dashboard - Action Navigation - Pre-Step Up - Change my mailing address,!N/A!,!N/A!,!N/A!
+S2 - Portal Dashboard - Action Navigation - Pre-Step Up - Change my contact information,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Action Navigation - Check existing applications,Check existing applications,Revisar aplicaciones pendientes,አሁን ያሉ ማመልከቻዎች ማረጋገጥ
 S2 - Portal Dashboard - Action Navigation - Activate Card,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Action Navigation - Apply,Apply for DC SUN Bucks,Aplicar para DC SUN Bucks,ለDC SUN Bucks ያመልክቱ
+S2 - Portal Dashboard - Profile Table - Parent Name,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Profile Table - Heading Status,Status,Estado,ሁኔታ
+S2 - Portal Dashboard - Profile Table - Statuses,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Profile Table - Status Enrolled,Enrolled,Inscrito  ,ተመዝግቧል
 S2 - Portal Dashboard - Profile Table - Status Application In-Progress,Application pending,Aplicación en proceso,ማመልከቻ በመጠባበቅ ላይ
 S2 - Portal Dashboard - Profile Table - Status Application Denied,Application denied,Aplicación rechazada,ማመልከቻው ውድቅ ተደርጓል
 S2 - Portal Dashboard - Profile Table - Status Enrolled Description,Your students are enrolled because we have enough information to confirm their eligibility automatically.,Tus estudiantes están inscritos porque tenemos suficiente información para confirmar que califican.,ተማሪዎችዎ የተመዘገቡት ብቁነታቸውን በራስ-ሰር ለማረጋገጥ የሚያስችል በቂ መረጃ ስላለን ነው።
+S2 - Portal Dashboard - Profile Table - Expired - Status Enrolled Description,Your students got 2026 DC SUN Bucks. The benefits may have expired for some students.,Tus estudiantes recibieron DC SUN Bucks en 2026. Es posible que los beneficios de algunos de ellos ya hayan vencido.,የእርስዎ ተማሪዎች የ2026 የDC SUN Bucks ጥቅማጥቅሞችን አግኝተዋል። ጥቅማጥቅሞቹ ለአንዳንድ ተማሪዎች ጊዜ አልፎባቸው ሊሆን ይችላል።
 S2 - Portal Dashboard - Profile Table - Status Check Address,Check mailing address,Revisar dirección postal,የፖስታ አድራሻውን ያረጋግጡ
 S2 - Portal Dashboard - Profile Table - Heading Contact,Your preferred contact,Tu método de contacto preferido,የእርስዎ ተመራጭ መገኛ አድራሻ
 S2 - Portal Dashboard - Profile Table - Contact Emails On,Getting emailed notices at [email]@[domain].,Recibiendo avisos por correo electrónico a [email]@[domain],በኢሜል የሚላኩ ማስታወቂያዎችን በ [email]@[domain] ላይ ማግኘት።
@@ -191,9 +260,12 @@ S2 - Portal Dashboard - Profile Table - Action Change Contact,Change my contact 
 S2 - Portal Dashboard - Section - Cards Heading,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Section - Cards Body,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Section - Cards Alert Body,!N/A!,!N/A!,!N/A!
+S2 - Portal Dashboard - Card Table - Child Name,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Card Table - Heading SEBT ID,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Card Table - Heading Issued,Benefit issue date,Beneficios asignados,ጥቅማጥቅም የተሰጠበት ቀን
+S2 - Portal Dashboard - Card Table - Issue Date Format,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Card Table - Heading Exp Date,Benefit expiration date,Fecha de vencimiento del beneficio,የጥቅማጥቅም ጊዜው የሚያበቃበት ቀን
+S2 - Portal Dashboard - Card Table - Exp Date Format,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Card Table - Expiring,Use your DC SUN Bucks by [MM/DD/YYYY].,Usa tus DC SUN Bucks antes de que venzan el [DD/MM/YYYY].,የእርስዎን DC SUN Bucks እስከ [MM/DD/YYYY] ይጠቀሙ።
 S2 - Portal Dashboard - Card Table - Expired,This student's DC SUN Bucks expired on [MM/DD/YYYY]. You can't use them now.,Los beneficios de DC SUN Bucks de este estudiante vencieron el [DD/MM/YYYY]. Ya no puedes usarlos.,የዚህ ተማሪ የDC SUN Bucks በ [MM/DD/YYYY] ጊዜው አልፏል። አሁን ሊጠቀሙባቸው አይችሉም።
 S2 - Portal Dashboard - Card Table - Heading Card Type,Benefit issued to,Beneficios asignados a,ጥቅማጥቅም የተሰጠው ለ
@@ -249,12 +321,14 @@ S2 - Portal Dashboard - Section - Enrolled Children Heading,Enrolled Students,Es
 S2 - Portal Dashboard - Section - Enrolled Children Body 1,"The following students are enrolled in DC SUN Bucks. If you would like to submit an application for a student who isn't enrolled, you may","Los siguientes estudiantes han sido inscritos en el DC SUN Bucks. Si quieres, puedes enviar una solicitud de un estudiante que no está inscrito.",የሚከተሉት ተማሪዎች በDC SUN Bucks ተመዝግበዋል። ላልተመዘገበ ተማሪ ማመልከቻ ማስገባት ከፈለጉ፣
 S2 - Portal Dashboard - Section - Enrolled Children Body 2,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Section - Enrolled Children Action,submit a DC SUN Bucks application.,Entregar una solicitud para DC SUN Bucks.,የDC SUN Bucks ማመልከቻ ያስገቡ።
+S2 - Portal Dashboard - Closed - Section - Enrolled Children Body 1,The following students are enrolled in DC SUN Bucks.,Los siguientes estudiantes están inscritos en DC SUN Bucks.,የሚከተሉት ተማሪዎች በDC SUN Bucks ተመዝግበዋል።
 S2 - Portal Dashboard - Section - Applications Heading,DC SUN Bucks Applications,Solicitudes de DC SUN Bucks,የDC SUN Bucks ማመልከቻዎች
 S2 - Portal Dashboard - Section - Applications Body,Here are your DC SUN Bucks applications for students who haven't been automatically enrolled.,Aquí están tus solicitudes de DC SUN Bucks para los estudiantes que no se han inscrito automáticamente.,በራስ-ሰር ላልተመዘገቡ ተማሪዎች የDC SUN Bucks ማመልከቻዎችዎን እነሆ።
 S2 - Portal Dashboard - Applications Table - Heading Number,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Applications Table - Heading Date Submitted,Date submitted,Fecha de entrega ,የገባበት ቀን
 S2 - Portal Dashboard - Applications Table - Heading Children Included,Students included in application,Estudiantes incluídos en la solicitud,በማመልከቻው ውስጥ የተካተቱ ተማሪዎች
 S2 - Portal Dashboard - Applications Table - Heading Status,Status,Estado,ሁኔታ
+S2 - Portal Dashboard - Applications Table - Statuses,!N/A!,!N/A!,!N/A!
 S2 - Portal Dashboard - Applications Table - Status Approved,Approved,Aprobada,ጸድቋል
 S2 - Portal Dashboard - Applications Table - Status Pending,Pending,Pendiente,በመጠባበቅ ላይ
 S2 - Portal Dashboard - Applications Table - Status Denied,Denied,Rechazado,ውድቅ ተደርጓል
@@ -323,6 +397,10 @@ S5 - Bulk Order New Cards - Body 2,"You haven't received them in the mail after 
 Or you no longer have them","No las has recibido por correo después de dos semanas
 o ya no las tienes","ከሁለት ሳምንታት በኋላ በፖስታ አልደረሰዎትም
 ወይም ከእንግዲህ የሉዎትም"
+S5 - Bulk Order New Cards Who - Title,Which cards need to be replaced?,¿Cuáles tarjetas necesitan ser reemplazadas?,የትኞቹ ካርዶች መተካት አለባቸው?
+S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want to replace,Selecciona las tarjetas que deseas reemplazar,የትኞቹን ካርዶች መተካት እንደሚፈልጉ ይምረጡ
+S5 - Bulk Order New Cards Who - Who's Card,[First name] [M.] [Last name]'s card,Tarjeta de [First name] [M.] [Last name],የ[First name] [M.] [Last name] ካርድ
+S5 - Bulk Order New Cards Who - Card Number,!N/A!,!N/A!,!N/A!
 S5 - Bulk Order New Cards Confirm - Title,A few things to know before replacing DC SUN Bucks cards,Algunas cosas a tener en cuenta antes de reemplazar las tarjetas de DC SUN Bucks,የ DC SUN Bucks ካርዶችን ከመተካትዎ በፊት ማወቅ ያለብዎት ጥቂት ነገሮች
 S5 - Bulk Order New Cards Confirm - Body,"Once replacement cards are created, the previous cards will be permanently deactivated
 Cards will arrive by mail in around 7–10 business days
@@ -334,13 +412,19 @@ Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente
 S5 - Bulk Order New Cards Confirm - Summary Title,Card order summary,Resumen del pedido de la tarjeta,የካርድ ትዕዛዝ ማጠቃለያ
 S5 - Bulk Order New Cards Confirm - Summary Address,New cards will be mailed to the following address:,Las nuevas tarjetas se enviarán por correo a la siguiente dirección:,አዳዲስ ካርዶች ወደሚከተለው አድራሻ በፖስታ ይላካሉ፦
 S5 - Bulk Order New Cards Confirm - Action,Order cards,Pedir tarjetas,የትዕዛዝ ካርዶች
-S5 - Bulk Order New Cards Who - Title,Which cards need to be replaced?,¿Cuáles tarjetas necesitan ser reemplazadas?,የትኞቹ ካርዶች መተካት አለባቸው?
-S5 - Bulk Order New Cards Who - Label Select Cards,Select which cards you want to replace,Selecciona las tarjetas que deseas reemplazar,የትኞቹን ካርዶች መተካት እንደሚፈልጉ ይምረጡ
-S5 - Bulk Order New Cards Who - Who's Card,[First name] [M.] [Last name]'s card,Tarjeta de [First name] [M.] [Last name],የ[First name] [M.] [Last name] ካርድ
-S5 - Bulk Order New Cards Who - Card Number,!N/A!,!N/A!,!N/A!
 S6 - Replacement Card - Pre-title,Replace [First name] [M.] [Last name]'s card,Reemplazar la tarjeta de [First name] [M.] [Last name],የ [First name] [M.] [Last name] ካርድን ይተኩ።
 S6 - Replacement Card Address - Title,Do you want the new card mailed to this address?,¿Deseas que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?,አዲሱ ካርድ ወደዚህ አድራሻ በፖስታ እንዲላክልዎት ይፈልጋሉ?
-S6 - Request Replacement Card FIS - Title,Getting a replacement SNAP or TANF EBT card,Cosas que saber antes de solicitar una tarjeta de reemplazo,ምትክ የSNAP ወይም የTANF EBT ካርድ ማግኘት
+S6 - Confirm Request Replacement Card - Title,A few things to know before replacing DC SUN Bucks cards,Algunas cosas que debes saber antes de reemplazar las tarjetas de DC SUN Bucks,የ DC SUN Bucks ካርዶችን ከመተካትዎ በፊት ማወቅ ያለብዎት ጥቂት ነገሮች
+S6 - Confirm Request Replacement Card - Body,"Once a replacement card is created, the previous card will be permanently deactivated
+Cards will arrive by mail in around 7-10 business days
+Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se cree una tarjeta de reemplazo, la tarjeta anterior quedará desactivada permanentemente.
+Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
+Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.","ምትክ ካርድ አንዴ ከተፈጠረ፣ ቀዳሚው ካርድ በቋሚነት እንዳይሰራ ይደረጋል
+ካርዶቹ በፖስታ ከ7-10 ባሉት የስራ ቀናት ውስጥ ይደርሳሉ
+በቀድሞው ካርድ ላይ የቀረው ማንኛውም ቀሪ ሂሳብ በራስ-ሰር ወደ ምትክ ካርድ ይተላለፋል"
+S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Resumen del pedido de tarjetas,የካርድ ትዕዛዝ ማጠቃለያ
+S6 - Confirm Request Replacement Card - Summary Address,Your new card will be mailed to the following address:,Tu nueva tarjeta se enviará por correo a la siguiente dirección:,አዲሱ ካርድዎ ወደሚከተለው አድራሻ በፖስታ ይላካል፦
+S6 - Confirm Request Replacement Card - Action,Order card,Pedir tarjeta,የትዕዛዝ ካርድ
 S6 - Request Replacement Card FIS - Replace Card Body 1,"You can get a replacement SNAP or TANF EBT card at a DHS EBT Card Office. 
 
 Your DC SUN Bucks benefits will be added to your regular SNAP or TANF benefits. 
@@ -365,17 +449,6 @@ S6 - Request Replacement Card FIS - Action,Go to the dashboard,Ir al panel del p
 S6 - Request Replacement Card FIS - Keep Card,!N/A!,!N/A!,!N/A!
 S6 - Request Replacement Card FIS - Tap to Call,!N/A!,!N/A!,!N/A!
 S6 - Request Replacement Card FIS - Subtle Link,!N/A!,!N/A!,!N/A!
-S6 - Confirm Request Replacement Card - Title,A few things to know before replacing DC SUN Bucks cards,Algunas cosas que debes saber antes de reemplazar las tarjetas de DC SUN Bucks,የ DC SUN Bucks ካርዶችን ከመተካትዎ በፊት ማወቅ ያለብዎት ጥቂት ነገሮች
-S6 - Confirm Request Replacement Card - Body,"Once a replacement card is created, the previous card will be permanently deactivated
-Cards will arrive by mail in around 7-10 business days
-Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se cree una tarjeta de reemplazo, la tarjeta anterior quedará desactivada permanentemente.
-Las tarjetas llegarán por correo en aproximadamente 7 a 10 días hábiles.
-Cualquier saldo restante en la tarjeta anterior se transferirá automáticamente a la tarjeta de reemplazo.","ምትክ ካርድ አንዴ ከተፈጠረ፣ ቀዳሚው ካርድ በቋሚነት እንዳይሰራ ይደረጋል
-ካርዶቹ በፖስታ ከ7-10 ባሉት የስራ ቀናት ውስጥ ይደርሳሉ
-በቀድሞው ካርድ ላይ የቀረው ማንኛውም ቀሪ ሂሳብ በራስ-ሰር ወደ ምትክ ካርድ ይተላለፋል"
-S6 - Confirm Request Replacement Card - Summary Title,Card order summary,Resumen del pedido de tarjetas,የካርድ ትዕዛዝ ማጠቃለያ
-S6 - Confirm Request Replacement Card - Summary Address,Your new card will be mailed to the following address:,Tu nueva tarjeta se enviará por correo a la siguiente dirección:,አዲሱ ካርድዎ ወደሚከተለው አድራሻ በፖስታ ይላካል፦
-S6 - Confirm Request Replacement Card - Action,Order card,Pedir tarjeta,የትዕዛዝ ካርድ
 S7 - Pin Card - Title,Activate a card,Activar una tarjeta,ካርድ ያግብሩ
 S7 - Pin Card - Body,"Once you receive your student's card, call EBT Customer Service at (888) 328-2656. Follow the instructions to set the PIN number to activate the card.
 
@@ -479,10 +552,12 @@ Solo hacemos esta verificación una vez y no guardamos el número de identificac
 S8 - Off-boarding - Action,Enter an ID number,Ingresa un número de identificación ,የመታወቂያ ቁጥር ያስገቡ
 S8 - Co-loaded Off-boarding - Title,"We're sorry, we aren't able to show your DC SUN Bucks information ","Lo sentimos, no podemos mostrar tu información de DC SUN Bucks",ይቅርታ፣ የDC SUN Bucks መረጃዎን ማሳየት አልቻልንም።
 S8 - Co-loaded Off-boarding - Body 1,"You can go back to enter an ID number, or contact us if you need more help.",Puedes volver e ingresar un número de identificación adicional o contactarnos si necesitas más ayuda,የመታወቂያ ቁጥር ለማስገባት መመለስ ይችላሉ ወይም ተጨማሪ እርዳታ ከፈለጉ እኛን ያነጋግሩን።
+S8 - Co-loaded Off-boarding - Body Help,!N/A!,!N/A!,!N/A!
 S8 - Co-loaded Off-boarding - Action 1,Contact us,Contáctanos,ያግኙን
 S8 - Co-loaded Off-boarding - Body 2,"If you’re not sure what to do, or you want to apply for DC SUN Bucks, we can help you find out if you need to apply for your student. Tap “Apply now” and enter their information.","Si no estás seguro de qué hacer, o si quieres enviar una solicitud para DC SUN Bucks, te podemos ayudar a saber si necesitas aplicar para tu estudiante. Toca “Aplica ahora” y escribe la información de tu estudiante.","ምን ማድረግ እንዳለብዎት እርግጠኛ ካልሆኑ ወይም ለDC SUN Bucks ማመልከት ከፈለጉ፣ ለተማሪዎ ማመልከት ያስፈልግዎት እንደሆነ እንዲያውቁ ልንረዳዎ እንችላለን። ""አሁን አመልክት"" የሚለውን ጠቅ ያድርጉ እና መረጃቸውን ያስገቡ።"
 S8 - Co-loaded Off-boarding - Action 2,Apply now,Aplica ahora,አሁኑኑ ያመልክቱ
-S8 - Authentication Failure - Alert,!N/A!,!N/A!,
+S8 - Authentication Failure - Alert,!N/A!,!N/A!,!N/A!
+S9 - Communication Preferences - Profile Name,!N/A!,!N/A!,!N/A!
 S9 - Opt-in - Title,!N/A!,!N/A!,!N/A!
 S9 - Opt-in - Body,!N/A!,!N/A!,!N/A!
 S9 - Opt-in - Text Description,!N/A!,!N/A!,!N/A!
@@ -738,66 +813,3 @@ DEV - Alert Verification Delay,Verification is taking longer than expected. You 
 DEV - Alert Still Checking,We're still checking your document,Todavía estamos revisando tu documento,ሰነድዎን አሁንም እያጣራን ነው
 DEV - Alert Verification Retry,Unable to start document verification. Please try again.,"No se pudo iniciar la verificación del documento. Por favor, inténtalo de nuevo.",የሰነድ ማረጋገጫ መጀመር አልተቻለም። እባክዎ እንደገና ይሞክሩ።
 DEV - Enrollment Checker Error Response,"We’re sorry, we can’t check if you need to apply right now. Try again later","Lo sentimos, por ahora no podemos revisar si necesitas aplicar. Vuelve a intentarlo más tarde",ይቅርታ እንጠይቃለን፣ አሁኑኑ ማመልከት ያስፈልግዎት እንደሆነ ማረጋገጥ አንችልም። በኋላ እንደገና ይሞክሩ
-S1 - Landing Page - Closed - Title,Enrollment for 2026 is now closed,La inscripción de 2026 ya cerró.,የ2026 ምዝገባ አሁን ተዘግቷል
-S1 - Landing Page - Closed - Subtitle,We can tell you if your student received DC SUN Bucks for Summer 2026.,Podemos decirte si tu estudiante recibió DC SUN Bucks durante el verano de 2026.,ተማሪዎ ለ2026 የበጋ ወቅት DC SUN Bucks’ን ተቀብለው ከሆነ ልንነግርዎት እንችላለን።
-S1 - Landing Page - Closed - Body,"Enrolled students received **one $120 payment** or summer groceries. Most eligible families got their payment automatically, and some needed to submit an application.
-
-**Benefits expire 122 days (4 months) after they are issued**.  If your student received benefits, make sure to use them before they expire.
-
-Tap ""Check enrollment"" and enter your student’s information to see if they were enrolled.","Los estudiantes inscritos recibieron **un pago único de $120** o comprar alimentos para el verano. La mayoría de las familias que califican recibieron su pago automáticamente y algunas tuvieron que aplicar.
-
-**Los beneficios vencen 122 días (4 meses) después de la fecha de emisión.** Si tu estudiante recibió beneficios, asegúrate de usarlos antes de que venzan.
-
-Toca “Verificar inscripción” e ingresa la información de tu estudiante para saber si fue inscrito.","በፕሮግራሙ የተመዘገቡ ተማሪዎች **$120 የሚሆን አንድ ክፍያ** ወይም ለበጋ ወቅት የሚሆን የግሮሰሪ አገልግሎት ተቀብለዋል። አብዛኛዎቹ ብቁ የሆኑ ቤተሰቦች ክፍያቸውን በራስ-ሰር ያገኛሉ፣ሲሆን፣ አንዳንዶቹ ደግሞ ማመልከቻ ማስገባት ነበረባቸው።
-
-**ጥቅማ-ጥቅሞቹ ከተሰጡበት ቀን ጀምሮ ከወጡ በኋላ ከ122 ቀናት (4 ወራት) በኋላ ጊዜያቸው ያልፋል**። ተማሪዎ ጥቅማ-ጥቅሞችን ተቀብለው ከሆነ፣ ጊዜያቸው ከማለፉ በፊት መጠቀምዎን ያረጋግጡ።
-
-ተመዝግበው እንደሆነ ለማየት፣መመዝገቡን/መመዝገቧን   ለማረጋገጥ ""Check enrollment"" የሚለውን ይጫኑ  እና የተማሪዎን መረጃ ያስገቡ።
-"
-S1 - Landing Page - Closed - Action,Check enrollment,Verificar inscripción,ምዝገባን ያረጋግጡ
-S1 - Landing Page - Closed - Action Español,Verificar inscripción,Check enrollment,Verificar inscripción
-S1 - Landing Page - Closed - Action Amharic,ምዝገባን ያረጋግጡ,ምዝገባን ያረጋግጡ,Check enrollment
-S1 - Landing Page - Closed - Accordion Title,!N/A!,!N/A!,!N/A!
-S1 - Landing Page - Closed - Body 2,"**The application for 2026 benefits closed August 23, 2026.**",**La aplicación para los beneficios de 2026 cerró el 23 de agosto de 2026.**,**የ2026 ጥቅማ-ጥቅሞች ማመልከቻ ኦገስት 23፣ 2026 ተዘግቷል።**
-S1 - Landing Page - Closed - Body 3,Families of automatically enrolled students and approved applicants were contacted by mail or email.,Las familias de estudiantes inscritos automáticamente y las personas cuyas aplicaciones fueron aprobadas recibieron un aviso por correo postal o electrónico.,በራስ-ሰር የተመዘገቡ ተማሪዎች ቤተሰቦች እና በመደበኛ ሂደት የተፈቀደላቸው አመልካቾች በፖስታ ወይም በኢሜይል ተነግሯቸዋል።
-S1 - Landing Page - Closed - Body 4,!N/A!,!N/A!,!N/A!
-S1 - Landing Page - Closed - Body 6,!N/A!,!N/A!,!N/A!
-S1 - Disclaimer - Closed - Body 1,This is not an application for DC SUN Bucks.,Esta no es una aplicación para DC SUN Bucks.,ይህ ለDC SUN Bucks ለመመዝገብ የቀረበ ማመልከቻ አይደለም።
-S1 - Disclaimer - Closed - Body 2,Enrollment in DC SUN Bucks is closed for Summer 2026. This tool will help you learn if your student was enrolled in DC SUN Bucks for Summer 2026.,La inscripción en DC SUN Bucks para el verano de 2026 ya cerró. Esta herramienta te ayudará a saber si tu estudiante fue inscrito en DC SUN Bucks para el verano de 2026.,በDC SUN Bucks የ2026 ለበጋ ወቅት የመመዝገብ ሂደትን ተዘግቷል። ይህ መሳሪያ ተማሪዎ በ2026 የበጋ ወቅት በDC SUN Bucks ተመዝግበው እንደነበር ለማወቅ ይረዳዎታል።
-S1 - Disclaimer - Closed - Body 4,Using this tool will not affect enrollment in DC SUN Bucks or any other public benefits program. ,Usar esta herramienta no afectará la inscripción en DC SUN Bucks ni en ningún otro programa de beneficios públicos.,ይህንን መሳሪያ መጠቀም በDC SUN Bucks ወይም በሌላ የህዝብ   የእገዛ ጥቅማ-ጥቅሞች የመመዝገብ ሂደትን ላይ ተጽዕኖ አያሳድርም።
-S1 - Personal Information - Closed - Title,Check if your student was enrolled in DC SUN Bucks for Summer 2026,Verifica si tu estudiante estuvo inscrito en DC SUN Bucks para el verano de 2026,ተማሪዎ ለ2026 የበጋ ወቅት በDC SUN Bucks ተመዝግበው እንደሆነ ያረጋግጡ።
-S1 - Personal Information - Closed - Body,Please provide your student's information in the required fields below.,"Por favor, ingresa la información de tu estudiante en los campos obligatorios a continuación.",እባክዎን የተማሪዎን መረጃ በሚከተሉት የተፈለጉ ቦታዎች ያስገቡ።
-S1 - Personal Information - Label First Name,Student’s first name,Primer nombre del estudiante,የተማሪው የመጀመሪያ ስም
-S1 - Personal Information - Label Middle Name,Student’s middle name,Segundo nombre del estudiante,የተማሪው የአባት ስም
-S1 - Personal Information - Label Last Name,Student’s last name,Primer apellido del estudiante,የተማሪው የአያት ስም
-S1 - Confirm Personal Information - Closed - Body,!N/A!,!N/A!,!N/A!
-S1 - Result - Apply for SEBT - Closed - Title,Your student was NOT enrolled in DC SUN Bucks for Summer 2026,Tu estudiante NO fue inscrito en DC SUN Bucks para el verano de 2026,የእርስዎ ተማሪ ለ2026 የበጋ ወቅት በDC SUN Bucks ውስጥ  አልተመዘገቡም::
-S1 - Result - Apply for SEBT - Closed - Card 2 Body,To see if another student was enrolled tap “Check another student” and provide their information.,"Para verificar la inscripción de otro estudiante, toca “Verificar otro estudiante” e ingresa su información.",ሌላ ተማሪ ተመዝግበው እንደሆነ ለማየት  ለማረጋገጥ፣ “ሌላ ተማሪን ተመልከት” የሚለውን በመጫን  መረጃቸውን ያቅርቡ።
-S1 - Result - Streamlined Enrolled - Closed - Title,Looks like your student was enrolled in DC SUN Bucks for Summer 2026,Parece que tu estudiante fue inscrito en DC SUN Bucks para el verano de 2026,ተማሪዎ ለ2026 የበጋ ወቅት በDC SUN Bucks የተመዘገቡ ይመስላል
-S1 - Result - Streamlined Enrolled - Closed - Body,"Most students received their Summer 2026 DC SUN Bucks in June 2026. If you were approved for benefits later in the summer, your benefits arrived later. Benefits expire 122 days after issuance.","La mayoría de los estudiantes recibieron sus beneficios de DC SUN Bucks para el verano de 2026 en junio de 2026. Si se aprobaron tus beneficios más adelante durante el verano, también los recibiste más tarde. Los beneficios vencen 122 días después de la fecha de emisión",የሚበዙ ተማሪዎች የበጋ ወቅት የ2026 የDC SUN Bucks  ጥቅማጥቅሞች በሰኔ 2026 አግኝተዋል። ከበጋው ወቅት ከኃላ ጥቅማጥቅሞች ለማግኘት የተፈቀደላቹ ከሆነ ጥቅማጥቅሞቹ በኃላ ደርሰዋል።  ። ጥቅማ-ጥቅሞች ከተሰጠበት ቀን ጀምሮ  በ122 ቀናት ውስጥ ጊዜያቸው ያልፋል።
-S1 - Result - Streamlined Enrolled - Closed - Alert Title,Check the DC SUN Bucks Portal to see where your student’s summer food benefits were sent and when they expire.,Revisa el portal de DC SUN Bucks para ver a dónde se enviaron los beneficios de alimentos de verano de tu estudiante y cuándo vencen.,የተማሪዎ የበጋ የምግብ ጥቅማ-ጥቅሞች የት እንደተላኩ እና መቼ የአገልግሎት ጊዜያቸው እንደሚያልፍ ለመመርመር እባክዎ፣ የDC SUN Bucks ፖርታልን ይመልከቱ።
-S1 - Result - Streamlined Enrolled - Closed - Alert Body,"If they received a DC SUN Bucks card for a previous summer or your family participates in SNAP or TANF, we may have issued their one-time $120 payment to the same EBT card.
-
-If your student was new to DC SUN Bucks, or their previous DC SUN Bucks card needed to be replaced, we mailed a new card to the address we had on file. 
-
-To check the mailing address we had on file, log in to the DC SUN Bucks Portal","Si tu estudiante recibió una tarjeta de DC SUN Bucks durante un verano anterior o tu familia participa en SNAP o TANF, es posible que hayamos depositado el pago único de $120 en la misma tarjeta EBT.
-
-Si tu estudiante recibió DC SUN Bucks por primera vez o necesitaba reemplazar su tarjeta anterior, enviamos una tarjeta nueva a la dirección postal que teníamos registrada.
-
-Para revisar la dirección postal que teníamos registrada, entra al portal de DC SUN Bucks","በቀድሞ የበጋ  ወቅት የDC SUN Bucks ካርድ ከተቀበሉ ወይም ቤተሰቦቻችሁ በSNAP ወይም TANF ፕሮግራም ውስጥ ከተሳተፈ፣ አንድ ጊዜ የሚሰጠውን $120ዶላር  ክፍያቸውን በተመሳሳይ የEBT ካርድ ላይ ሰጥተን ይሆናል ።
-
-ተማሪዎ ለDC SUN Bucks አዲስ ከሆኑ፣ ወይም የቀድሞ የDC SUN Bucks ካርዳቸውን መተካት ካስፈለገ፣ በፋይላችን ውስጥ ወዳለው የፖስታ የመላኪያ አድራሻ አዲስ ካርድ በፖስታ እንልካለን።
-
-በፋይላችን ላይ ያለንን የፖስታ የመላኪያ አድራሻ ለማረጋገጥ፣  እባክዎ  ወደ DC SUN Bucks ፖርታል ይግቡ"
-S1 - Result - Streamlined Enrolled - Closed - Alert Action,"To check the mailing address we had on file, log in to the DC SUN Bucks Portal","Para revisar la dirección postal que teníamos registrada, entra al portal de DC SUN Bucks",በፋይላችን ላይ ያለንን የፖስታ የመላኪያ አድራሻ ለማረጋገጥ፣  እባክዎ  ወደ DC SUN Bucks ፖርታል ይግቡ
-S1 - Result - Apply for SEBT - Closed - Body 1,!N/A!,!N/A!,!N/A!
-S1 - Result - Apply for SEBT - Closed - Body 3,!N/A!,!N/A!,!N/A!
-S1 - Result - Apply for SEBT - Closed - Body 4,!N/A!,!N/A!,!N/A!
-S1 - Result - No Results - Closed - Body 4,!N/A!,!N/A!,!N/A!
-S1 - Result - Streamlined Enrolled - Closed - Body 1,!N/A!,!N/A!,!N/A!
-S1 - Result - Streamlined Enrolled - Closed - Body 2,!N/A!,!N/A!,!N/A!
-S1 - Result - Apply for SEBT - Closed - Action Apply,!N/A!,!N/A!,!N/A!
-S2 - Portal Dashboard - Alert Title Expungement,Summer 2026 DC SUN Bucks were issued beginning in June 2026 and expire 122 days after issuance,Los beneficios de DC SUN Bucks del verano de 2026 se emitieron a partir de junio de 2026 y vencen 122 días después de la fecha de emisión.,የ2026 የSUN Bucks ጥቅማ-ጥቅሞች የተሰጡት ከጁን 2026 ጀምሮ ሲሆን ከተሰጡ በኋላ በ122 ቀናት ውስጥ ጊዜያቸው ያልፋል
-S2 - Portal Dashboard - Alert Body Expungement,Check each enrolled student here to see when their benefits expire.,Revisa aquí a cada estudiante inscrito para saber cuándo vencen sus beneficios.,የእያንዳንዱ የተመዘገበ ልጅ ጥቅማጥቅሞች ጊዜያቸው መቼ እንደሚያልፍ ለማየት እዚህ ይመልከቱ።
-S2 - Portal Dashboard - Closed - Section - Enrolled Children Body 1,The following students are enrolled in DC SUN Bucks.,Los siguientes estudiantes están inscritos en DC SUN Bucks.,የሚከተሉት ተማሪዎች በDC SUN Bucks ተመዝግበዋል።
-S2 - Portal Dashboard - Profile Table - Expired - Status Enrolled Description,Your students got 2026 DC SUN Bucks. The benefits may have expired for some students.,Tus estudiantes recibieron DC SUN Bucks en 2026. Es posible que los beneficios de algunos de ellos ya hayan vencido.,የእርስዎ ተማሪዎች የ2026 የDC SUN Bucks ጥቅማጥቅሞችን አግኝተዋል። ጥቅማጥቅሞቹ ለአንዳንድ ተማሪዎች ጊዜ አልፎባቸው ሊሆን ይችላል።
