@@ -13,6 +13,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
 export type SupportedState = "dc" | "co";
+export type CoSignIn = "keycloak" | "mycolorado";
 
 export const supportedStates: readonly SupportedState[] = ["dc", "co"];
 
@@ -49,6 +50,8 @@ export interface AppHostConfig {
   dashboardOtlpEndpoint: string | undefined;
   /** Whether to load secrets from Doppler when this repo is set up for it. USE_DOPPLER=false turns it off. */
   useDoppler: boolean;
+  /** The OIDC provider for CO sign-in: the local Keycloak realm, or the MyColorado dev environment. CO_SIGN_IN selects it. */
+  coSignIn: CoSignIn;
 }
 
 /** Reads USE_DOPPLER: unset or empty uses Doppler when it is set up, and `false` or `0` turns it off. */
@@ -64,6 +67,22 @@ export function parseUseDoppler(raw: string | undefined): boolean {
 
   throw new Error(
     `USE_DOPPLER must be false or 0 to turn Doppler off, or unset to use Doppler when it is set up, but was '${raw}'.`,
+  );
+}
+
+/** Reads CO_SIGN_IN: unset, empty, or `keycloak` selects Keycloak, and `mycolorado` selects the MyColorado dev environment. */
+export function parseCoSignIn(raw: string | undefined): CoSignIn {
+  const value = (raw ?? "").trim().toLowerCase();
+
+  if (value === "" || value === "keycloak") {
+    return "keycloak";
+  }
+  if (value === "mycolorado") {
+    return "mycolorado";
+  }
+
+  throw new Error(
+    `CO_SIGN_IN must be 'keycloak' or 'mycolorado', but was '${raw}'.`,
   );
 }
 
@@ -107,5 +126,6 @@ export function loadConfig(): AppHostConfig {
     dcConnectorPath: resolveDcConnectorPath(state),
     dashboardOtlpEndpoint: process.env.ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL,
     useDoppler: parseUseDoppler(process.env.USE_DOPPLER),
+    coSignIn: parseCoSignIn(process.env.CO_SIGN_IN),
   };
 }
