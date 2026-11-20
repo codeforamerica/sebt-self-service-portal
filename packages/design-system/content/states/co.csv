@@ -390,7 +390,7 @@ S5 - Bulk Order New Cards Confirm - Summary Address,New cards will be mailed to 
 S5 - Bulk Order New Cards Confirm - Action,Order cards,Pedir tarjetas
 S6 - Replacement Card - Pre-title,Replace card ending in [9999],Reemplazar la tarjeta que termina en [9999]
 S6 - Replacement Card Address - Title,Do you want the new card mailed to this address?,¿Deseas que el reemplazo de la tarjeta que termina en [9999] se envíe por correo a esta dirección?
-S6 - Confirm Request Replacement Card - Title,A few things to know before replacing Summer EBT cards,Ingresa tu correo electrónico y te enviaremos un código para entrar a tu cuenta de DC SUN Bucks
+S6 - Confirm Request Replacement Card - Title,A few things to know before replacing Summer EBT cards,Algunas cosas que debes saber antes de reemplazar las tarjetas de Summer EBT
 S6 - Confirm Request Replacement Card - Body,"Once a replacement card is created, the previous card will be permanently deactivated
 Cards will arrive by mail in around 7-10 business days
 Any remaining balance on the previous card will automatically be rolled over to the replacement card","Una vez que se creen las tarjetas de reemplazo, las tarjetas anteriores se desactivarán de forma permanente 
