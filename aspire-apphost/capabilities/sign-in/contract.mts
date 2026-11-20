@@ -17,8 +17,9 @@ import type {
   DistributedApplicationBuilder,
   NextJsAppResource,
 } from "../../.aspire/modules/aspire.mjs";
-import type { AppHostConfig, SupportedState } from "../../config.mjs";
+import type { AppHostConfig, CoSignIn, SupportedState } from "../../config.mjs";
 import type { Preflight, Requirements } from "../requirements.mjs";
+import { coMyColoradoOidc } from "./co-mycolorado.mjs";
 import { coKeycloakOidc } from "./co.mjs";
 import { dcEmailOtp } from "./dc.mjs";
 
@@ -64,11 +65,18 @@ export interface SignInProvider {
 // The map has a key for each state, and the AppHost does not use a switch. Thus a new
 // state in SupportedState is an error of compilation here, until that state has a
 // sign-in flow.
-const providers: Record<SupportedState, SignInProvider> = {
-  dc: dcEmailOtp,
-  co: coKeycloakOidc,
+// CO has 2 providers, and CO_SIGN_IN picks one. The map has a key for each choice, so a
+// new choice is also an error of compilation until it has a provider.
+const coProviders: Record<CoSignIn, SignInProvider> = {
+  keycloak: coKeycloakOidc,
+  mycolorado: coMyColoradoOidc,
 };
 
-export function signInProviderFor(state: SupportedState): SignInProvider {
-  return providers[state];
+const providers: Record<SupportedState, (config: AppHostConfig) => SignInProvider> = {
+  dc: () => dcEmailOtp,
+  co: (config) => coProviders[config.coSignIn],
+};
+
+export function signInProviderFor(config: AppHostConfig): SignInProvider {
+  return providers[config.state](config);
 }

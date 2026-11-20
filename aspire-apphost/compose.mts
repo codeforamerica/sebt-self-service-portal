@@ -32,7 +32,7 @@ import { signInProviderFor } from "./capabilities/sign-in/contract.mjs";
 import type { SignInProvider } from "./capabilities/sign-in/contract.mjs";
 import { telemetryProviderFor } from "./capabilities/telemetry/contract.mjs";
 import type { TelemetryProvider } from "./capabilities/telemetry/contract.mjs";
-import type { AppHostConfig, SupportedState } from "./config.mjs";
+import type { AppHostConfig } from "./config.mjs";
 import { addApi, addWebApps } from "./shared/apps.mjs";
 import { addPortalDatabase } from "./shared/database.mjs";
 
@@ -45,12 +45,13 @@ export interface StateCapabilities {
   telemetry: TelemetryProvider;
 }
 
-export function capabilitiesFor(state: SupportedState): StateCapabilities {
+export function capabilitiesFor(config: AppHostConfig): StateCapabilities {
+  const { state } = config;
   return {
     cache: cacheProviderFor(state),
     connectorBuild: connectorBuildProviderFor(state),
     householdSource: householdSourceProviderFor(state),
-    signIn: signInProviderFor(state),
+    signIn: signInProviderFor(config),
     telemetry: telemetryProviderFor(state),
   };
 }
@@ -58,7 +59,7 @@ export function capabilitiesFor(state: SupportedState): StateCapabilities {
 /** Prints how this state answers each capability, and what a developer does with it. */
 export function announceCapabilities(config: AppHostConfig): void {
   const { cache, connectorBuild, householdSource, signIn, telemetry } =
-    capabilitiesFor(config.state);
+    capabilitiesFor(config);
   console.log(`[cache] ${cache.name}. ${cache.cacheHint}`);
   console.log(`[connector-build] ${connectorBuild.name}. ${connectorBuild.buildHint}`);
   console.log(`[household-source] ${householdSource.name}. ${householdSource.dataHint}`);
@@ -76,7 +77,7 @@ export async function runCapabilityPreflight(
   config: AppHostConfig,
 ): Promise<void> {
   const { cache, connectorBuild, householdSource, signIn, telemetry } =
-    capabilitiesFor(config.state);
+    capabilitiesFor(config);
   await runPreflight("cache", cache.preflight(config));
   await runPreflight("connector-build", connectorBuild.preflight(config));
   await runPreflight("household-source", householdSource.preflight(config));
@@ -95,7 +96,7 @@ export async function composeGraph(
   developerSecrets: DeveloperSecrets,
 ): Promise<void> {
   const { cache, connectorBuild, householdSource, signIn, telemetry } =
-    capabilitiesFor(config.state);
+    capabilitiesFor(config);
 
   // Each key a capability sets, so the Doppler secrets can be checked against them.
   const capabilityKeys: string[] = [];
