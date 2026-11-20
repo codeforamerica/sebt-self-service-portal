@@ -73,6 +73,7 @@ export async function addWebApps(
   builder: DistributedApplicationBuilder,
   config: AppHostConfig,
   api: ProjectResource,
+  options: { portalPort: number | undefined },
 ): Promise<WebApps> {
   const apiEndpoint = await api.getEndpoint("http");
 
@@ -100,6 +101,11 @@ export async function addWebApps(
     .withEnvironment("BACKEND_URL", apiEndpoint)
     .waitForCompletion(workspaceInstall)
     .waitFor(api);
+
+  // This updates the `http` endpoint that addNextJsApp made, and does not add a second one.
+  if (options.portalPort !== undefined) {
+    await web.withHttpEndpoint({ port: options.portalPort });
+  }
 
   // deploy-enrollment-checker.yaml builds and sends a static export for DC and for CO.
   // Thus the checker belongs to the graph of each state, and not to the CO graph alone.

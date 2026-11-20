@@ -2,6 +2,7 @@
 // the IdP is remote, so this provider makes no resource and gives only settings.
 // `pnpm aspire:co:myco` selects it. Read docs/adr/0008-oidc-mycolorado-authentication-and-state-auth-context.md.
 
+import { portAvailable } from "../port-available.mjs";
 import type { Requirements } from "../requirements.mjs";
 import type { SignInCapability, SignInProvider } from "./contract.mjs";
 
@@ -62,6 +63,12 @@ function bindPortal(): Promise<Requirements> {
 export const coMyColoradoOidc: SignInProvider = {
   name: "OIDC via the MyColorado dev environment",
   signInHint: `Sign in with a MyColorado dev test account. The portal runs at http://localhost:${portalPort}, the port that the dev client registers.`,
-  preflight: () => [],
+  preflight: () => [
+    portAvailable(
+      portalPort,
+      "Stop the process that holds it, often a `pnpm dev:co` or another AppHost, or run `pnpm aspire:co` for Keycloak.",
+    ),
+  ],
+  portalPort,
   provision,
 };

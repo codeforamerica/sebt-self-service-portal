@@ -146,7 +146,9 @@ export async function composeGraph(
   const signInCapability = await signIn.provision({ builder, config });
   await apply({ api }, "sign-in", signInCapability.requirements);
 
-  const apps = await addWebApps(builder, config, api);
+  const apps = await addWebApps(builder, config, api, {
+    portalPort: signIn.portalPort,
+  });
 
   // Telemetry comes after the applications, because all 3 of them export.
   const telemetryCapability = await telemetry.provision({

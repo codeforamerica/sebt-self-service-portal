@@ -59,6 +59,11 @@ export interface SignInProvider {
    * shape.
    */
   readonly preflight: (config: AppHostConfig) => readonly Preflight[];
+  /**
+   * The fixed host port of the portal, for an IdP that accepts registered redirect URIs
+   * only. Without it, Aspire allocates the port.
+   */
+  readonly portalPort?: number;
   provision(context: SignInContext): Promise<SignInCapability>;
 }
 
