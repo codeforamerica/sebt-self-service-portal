@@ -30,6 +30,7 @@ jobs:
       enrollment: ${{ steps.decide.outputs.enrollment }}
       local_root_image: ${{ steps.decide.outputs.local_root_image }}
       keycloak_image: ${{ steps.decide.outputs.keycloak_image }}
+      weblate_image: ${{ steps.decide.outputs.weblate_image }}
     steps:
       - name: Filter changed paths (PRs only)
         id: filter
@@ -81,6 +82,9 @@ jobs:
             keycloak-image:
               - 'docker/keycloak/**'
               - '.github/workflows/state-ci.yaml'
+            weblate-image:
+              - 'docker/weblate/**'
+              - '.github/workflows/state-ci.yaml'
 
       - name: Decide which areas run
         id: decide
@@ -92,6 +96,7 @@ jobs:
           ENROLLMENT: ${{ steps.filter.outputs.enrollment }}
           LOCAL_ROOT_IMAGE: ${{ steps.filter.outputs.local-root-image }}
           KEYCLOAK_IMAGE: ${{ steps.filter.outputs.keycloak-image }}
+          WEBLATE_IMAGE: ${{ steps.filter.outputs.weblate-image }}
         run: |
           if [ "$EVENT_NAME" != "pull_request" ] || [ "$INFRA" = "true" ]; then
             echo "backend=true" >> "$GITHUB_OUTPUT"
@@ -105,9 +110,11 @@ jobs:
           if [ "$EVENT_NAME" != "pull_request" ]; then
             echo "local_root_image=true" >> "$GITHUB_OUTPUT"
             echo "keycloak_image=true" >> "$GITHUB_OUTPUT"
+            echo "weblate_image=true" >> "$GITHUB_OUTPUT"
           else
             echo "local_root_image=${LOCAL_ROOT_IMAGE:-false}" >> "$GITHUB_OUTPUT"
             echo "keycloak_image=${KEYCLOAK_IMAGE:-false}" >> "$GITHUB_OUTPUT"
+            echo "weblate_image=${WEBLATE_IMAGE:-false}" >> "$GITHUB_OUTPUT"
           fi
 
   build-and-test:
@@ -446,6 +453,25 @@ jobs:
             echo "::warning title=Local dev image::docker/keycloak/Dockerfile failed to build."
             exit 1
           fi
+
+  # No workflow in this repo deploys the Weblate image yet, so this job is its only build.
+  # Runs when the image's own inputs change. Not a required check: a skipped job never posts.
+  weblate-image:
+    name: Weblate image
+    needs: [changes]
+    if: needs.changes.outputs.weblate_image == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Build Weblate image
+        run: docker build --platform linux/amd64 -t cfa-weblate:ci docker/weblate
+
+      # The Python suite imports Weblate, which only the built image has.
+      - name: Test Weblate image
+        run: ./docker/weblate/tests/test-image.sh cfa-weblate:ci
 
   # The enrollment checker is built only by deploy-enrollment-checker.yaml, which
   # triggers on pushes to main. Without this job, pull requests never lint, build,
