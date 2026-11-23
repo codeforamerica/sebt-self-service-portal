@@ -15,6 +15,7 @@ import type { HouseholdSourceProvider } from "./capabilities/household-source/co
 import type { DeveloperSecrets } from "./capabilities/developer-secrets/doppler.mjs";
 import {
   assertNoCapabilityOverlap,
+  assertSignInSecrets,
   jwtSecretKey,
   routeSecrets,
 } from "./capabilities/developer-secrets/routing.mjs";
@@ -111,7 +112,8 @@ export async function composeGraph(
     await applyRequirements(targets, capability, requirements);
   };
 
-  const routed = routeDeveloperSecrets(developerSecrets);
+  const routed = routeDeveloperSecrets(developerSecrets, config);
+  assertSignInSecrets(routed, config);
   const secretSettings = await developerSecretSettings(builder, routed);
 
   const database = await addPortalDatabase(builder, config);
@@ -181,12 +183,15 @@ export async function composeGraph(
   }
 }
 
-function routeDeveloperSecrets(developerSecrets: DeveloperSecrets): RoutedSecrets {
+function routeDeveloperSecrets(
+  developerSecrets: DeveloperSecrets,
+  config: AppHostConfig,
+): RoutedSecrets {
   if (developerSecrets.source !== "doppler") {
     return { api: [], web: [], notForwarded: [] };
   }
 
-  const routed = routeSecrets(developerSecrets.values);
+  const routed = routeSecrets(developerSecrets.values, config);
   if (routed.notForwarded.length > 0) {
     console.log(
       `[secrets] Doppler keys not forwarded (add them to capabilities/developer-secrets/routing.mts to use them): ${routed.notForwarded.join(", ")}`,
