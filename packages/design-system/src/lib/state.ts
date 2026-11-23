@@ -3,12 +3,12 @@
  *
  * Centralized state resolution and configuration for multi-state deployment.
  * All state-specific metadata lives here — add a new state by adding an entry
- * to `stateConfigs`. No inline conditionals needed in components.
+ * to `stateOverrides`. No inline conditionals needed in components.
  */
 
 /**
  * Supported state codes — add new states here. The single list: the apps' env schemas
- * and the design-token scripts import it, and `stateConfigs` must cover every entry.
+ * and the design-token scripts import it, and `stateOverrides` must cover every entry.
  */
 export const STATE_CODES = ['dc', 'co'] as const
 
@@ -49,6 +49,28 @@ interface AddressSettings {
   autocompletePreferStates: string
 }
 
+/** An image the portal renders: where it lives and the size it is laid out at. */
+interface ImageAsset {
+  src: string
+  width: number
+  height: number
+}
+
+interface StateAssets {
+  /** Header logo; dimensions match the SVG viewBox so it renders at its natural aspect ratio */
+  logo: ImageAsset
+  /** Footer seal */
+  seal: ImageAsset
+  icons: {
+    /** Language selector glyph */
+    translate: string
+    /** FAQs tile in the help section */
+    faqs: string
+    /** Contact tile in the help section */
+    contact: string
+  }
+}
+
 export interface StateConfig {
   /** Full display name (e.g., 'District of Columbia') */
   name: string
@@ -83,13 +105,38 @@ export interface StateConfig {
   actionButtonText: string
   /** USWDS text color utility class for the `h1` that titles a page */
   pageTitleText: string
+  assets: StateAssets
 }
 
 /**
- * State configuration registry — add new states here.
- * Components use getStateConfig() to access state-specific values.
+ * What a state must declare itself: everything without a state-agnostic default, so a new state
+ * that omits identity or behavior values fails to compile. Shared values are optional to override.
  */
-const stateConfigs: Record<StateCode, StateConfig> = {
+interface StateOverride extends Omit<StateConfig, 'assets'> {
+  assets: Pick<StateAssets, 'logo' | 'seal'> & {
+    icons?: Partial<StateAssets['icons']>
+  }
+}
+
+/**
+ * Icons every state shares unless it overrides them. A value belongs here only when all states
+ * have the same one; anything that differs, and every identity value, lives in `stateOverrides`.
+ */
+const sharedIcons: StateAssets['icons'] = {
+  translate: '/images/shared/icons/translate_Rounded.svg',
+  faqs: '/images/shared/icons/faqs-icon.svg',
+  contact: '/images/shared/icons/contact-icon.svg'
+}
+
+/** Public URL of a file in a state's own image folder. */
+export function getStateAssetPath(state: StateCode, assetPath: string): string {
+  return `/images/states/${state}/${assetPath}`
+}
+
+/**
+ * Per-state registry — add new states here. The record type makes a missing state a compile error.
+ */
+const stateOverrides: Record<StateCode, StateOverride> = {
   dc: {
     name: 'District of Columbia',
     programName: 'DC SUN Bucks',
@@ -112,7 +159,19 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     showLoadingInterstitial: false,
     actionButtonBg: 'bg-secondary',
     actionButtonText: 'text-ink',
-    pageTitleText: 'text-ink'
+    pageTitleText: 'text-ink',
+    assets: {
+      logo: {
+        src: getStateAssetPath('dc', 'logo.svg'),
+        width: 122,
+        height: 52
+      },
+      seal: {
+        src: getStateAssetPath('dc', 'seal.svg'),
+        width: 121,
+        height: 51
+      }
+    }
   },
   co: {
     name: 'Colorado',
@@ -137,9 +196,38 @@ const stateConfigs: Record<StateCode, StateConfig> = {
     languageSubmenuClass: 'bg-primary-dark',
     actionButtonBg: 'bg-primary',
     actionButtonText: 'text-white',
-    pageTitleText: 'text-primary'
+    pageTitleText: 'text-primary',
+    assets: {
+      logo: {
+        src: getStateAssetPath('co', 'logo.svg'),
+        width: 192,
+        height: 28
+      },
+      seal: {
+        src: getStateAssetPath('co', 'seal.svg'),
+        width: 136,
+        height: 28
+      },
+      icons: {
+        translate: getStateAssetPath('co', 'icons/translate_Rounded.svg')
+      }
+    }
   }
 }
+
+/** Each state's overrides over the shared values. Components read it via getStateConfig(). */
+const stateConfigs = Object.fromEntries(
+  Object.entries(stateOverrides).map(([code, override]) => [
+    code,
+    {
+      ...override,
+      assets: {
+        ...override.assets,
+        icons: { ...sharedIcons, ...override.assets.icons }
+      }
+    }
+  ])
+) as Record<StateCode, StateConfig>
 
 function isKnownStateCode(value: string): value is StateCode {
   return Object.prototype.hasOwnProperty.call(stateConfigs, value)
@@ -213,11 +301,4 @@ export function getSiteDisplayName(state: StateCode): string {
  */
 export function getPortalMetadataDescription(state: StateCode): string {
   return getStateConfig(state).portalMetadataDescription
-}
-
-/**
- * Get state-specific asset path
- */
-export function getStateAssetPath(state: StateCode, assetPath: string): string {
-  return `/images/states/${state}/${assetPath}`
 }

@@ -64,7 +64,7 @@ describe('LanguageSelector', () => {
 
   describe('Rendering', () => {
     it('should render both desktop and mobile selectors', () => {
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       // Desktop selector (nav with list)
       expect(screen.getByRole('navigation', { name: 'Language selector' })).toBeInTheDocument()
@@ -73,15 +73,15 @@ describe('LanguageSelector', () => {
       expect(screen.getByRole('button', { name: /translate/i })).toBeInTheDocument()
     })
 
-    it('should render with default state prop for icon path', () => {
-      render(<LanguageSelector />)
+    it('should use the shared translate icon when the state has no override', () => {
+      render(<LanguageSelector state="dc" />)
 
       // Icon has aria-hidden so we query by selector
       const icon = document.querySelector('img[src*="translate_Rounded"]')
-      expect(icon).toHaveAttribute('src', '/images/states/dc/icons/translate_Rounded.svg')
+      expect(icon).toHaveAttribute('src', '/images/shared/icons/translate_Rounded.svg')
     })
 
-    it('should render with custom state prop', () => {
+    it('should use the state-specific translate icon when it overrides the shared one', () => {
       render(<LanguageSelector state="co" />)
 
       const icon = document.querySelector('img[src*="translate_Rounded"]')
@@ -89,7 +89,7 @@ describe('LanguageSelector', () => {
     })
 
     it('should render mobile menu as hidden by default', () => {
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const menu = screen.getByRole('menu', { hidden: true })
       expect(menu).toHaveAttribute('hidden')
@@ -99,7 +99,7 @@ describe('LanguageSelector', () => {
 
   describe('Desktop Language Switching', () => {
     it('should render all language buttons in desktop nav', () => {
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const nav = screen.getByRole('navigation', { name: 'Language selector' })
       const buttons = nav.querySelectorAll('button')
@@ -111,7 +111,7 @@ describe('LanguageSelector', () => {
 
     it('should call changeLanguage when clicking a desktop language button', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const nav = screen.getByRole('navigation', { name: 'Language selector' })
       const spanishButton = nav.querySelector('button[lang="es"]')
@@ -123,7 +123,7 @@ describe('LanguageSelector', () => {
     })
 
     it('should mark current language with aria-current in desktop', () => {
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const nav = screen.getByRole('navigation', { name: 'Language selector' })
       const englishButton = nav.querySelector('button[lang="en"]')
@@ -137,7 +137,7 @@ describe('LanguageSelector', () => {
   describe('Mobile Accordion Behavior', () => {
     it('should open menu when clicking translate button', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const translateButton = screen.getByRole('button', { name: /translate/i })
       await user.click(translateButton)
@@ -149,7 +149,7 @@ describe('LanguageSelector', () => {
 
     it('should toggle aria-expanded on translate button', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const translateButton = screen.getByRole('button', { name: /translate/i })
       expect(translateButton).toHaveAttribute('aria-expanded', 'false')
@@ -162,7 +162,7 @@ describe('LanguageSelector', () => {
     })
 
     it('should display available languages in mobile button', () => {
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       // The mobile button shows language names - use getAllByText since they appear in both views
       expect(screen.getAllByText('English').length).toBeGreaterThan(0)
@@ -173,7 +173,7 @@ describe('LanguageSelector', () => {
   describe('Mobile Language Selection', () => {
     it('should call changeLanguage when selecting from mobile menu', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       // Open menu
       await user.click(screen.getByRole('button', { name: /translate/i }))
@@ -187,7 +187,7 @@ describe('LanguageSelector', () => {
 
     it('should close menu after selecting a language', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       // Open menu
       await user.click(screen.getByRole('button', { name: /translate/i }))
@@ -202,7 +202,7 @@ describe('LanguageSelector', () => {
 
     it('should mark current language with aria-current in mobile menu', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       await user.click(screen.getByRole('button', { name: /translate/i }))
 
@@ -217,7 +217,7 @@ describe('LanguageSelector', () => {
   describe('Keyboard Navigation', () => {
     it('should close mobile menu when pressing Escape', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const translateButton = screen.getByRole('button', { name: /translate/i })
 
@@ -234,7 +234,7 @@ describe('LanguageSelector', () => {
 
     it('should return focus to translate button after Escape', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const translateButton = screen.getByRole('button', { name: /translate/i })
 
@@ -246,7 +246,7 @@ describe('LanguageSelector', () => {
 
     it('should return focus to translate button after selecting a language', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const translateButton = screen.getByRole('button', { name: /translate/i })
 
@@ -258,7 +258,7 @@ describe('LanguageSelector', () => {
 
     it('should be keyboard accessible in desktop view', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       // Tab to first desktop button and press Enter
       await user.tab()
@@ -275,7 +275,7 @@ describe('LanguageSelector', () => {
       render(
         <div>
           <button data-testid="outside">Outside</button>
-          <LanguageSelector />
+          <LanguageSelector state="dc" />
         </div>
       )
 
@@ -293,7 +293,7 @@ describe('LanguageSelector', () => {
 
   describe('Custom Languages Prop', () => {
     it('should render only provided languages in desktop nav', () => {
-      render(<LanguageSelector languages={['en'] as const} />)
+      render(<LanguageSelector state="dc" languages={['en'] as const} />)
 
       const nav = screen.getByRole('navigation', { name: 'Language selector' })
       const buttons = nav.querySelectorAll('button')
@@ -304,7 +304,7 @@ describe('LanguageSelector', () => {
 
     it('should handle three languages', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector languages={['en', 'es', 'am'] as const} />)
+      render(<LanguageSelector state="dc" languages={['en', 'es', 'am'] as const} />)
 
       // Desktop should have 3 buttons
       const nav = screen.getByRole('navigation', { name: 'Language selector' })
@@ -319,7 +319,7 @@ describe('LanguageSelector', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA attributes for mobile accordion', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const translateButton = screen.getByRole('button', { name: /translate/i })
       expect(translateButton).toHaveAttribute('aria-expanded', 'false')
@@ -331,7 +331,7 @@ describe('LanguageSelector', () => {
 
     it('should use menu and menuitem roles in mobile view', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       await user.click(screen.getByRole('button', { name: /translate/i }))
 
@@ -341,7 +341,7 @@ describe('LanguageSelector', () => {
 
     it('should set lang attribute on all language buttons', async () => {
       const user = userEvent.setup()
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       // Desktop buttons
       const nav = screen.getByRole('navigation', { name: 'Language selector' })
@@ -355,7 +355,7 @@ describe('LanguageSelector', () => {
     })
 
     it('should use button type="button" to prevent form submission', () => {
-      render(<LanguageSelector />)
+      render(<LanguageSelector state="dc" />)
 
       const allButtons = screen.getAllByRole('button')
       allButtons.forEach((button) => {

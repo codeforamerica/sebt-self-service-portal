@@ -5,12 +5,13 @@
  * Each state can have its own set of URLs for footer, help section, and other links.
  */
 
-import { assertKnownStateCode, type StateCode } from './state'
+import { assertKnownStateCode, getStateConfig, type StateCode } from './state'
 
 export interface LinkItem {
   key: string
   href: string
   translationKey: string
+  /** Public URL of the link's icon */
   icon?: string
 }
 
@@ -131,15 +132,16 @@ export function getFooterLinks(state: StateCode): LinkItem[] {
 /**
  * Help section links with icons for iteration
  */
-export function getHelpLinks(state: StateCode): LinkItem[] {
+export function getHelpLinks(state: StateCode): Array<LinkItem & { icon: string }> {
   const links = getStateLinks(state)
+  const { icons } = getStateConfig(state).assets
   return [
-    { key: 'faqs', href: links.help.faqs, translationKey: 'linkFaqs', icon: 'faqs-icon.svg' },
+    { key: 'faqs', href: links.help.faqs, translationKey: 'linkFaqs', icon: icons.faqs },
     {
       key: 'contactUs',
       href: links.help.contactUs,
       translationKey: 'linkContactUs',
-      icon: 'contact-icon.svg'
+      icon: icons.contact
     }
   ]
 }

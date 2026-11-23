@@ -15,13 +15,14 @@ const footerOverrides: Partial<Record<StateCode, React.ComponentType<FooterProps
   co: COFooter
 }
 
-export function Footer({ state = 'dc' }: FooterProps) {
-  const { t } = useTranslation('common')
-
+export function Footer({ state }: FooterProps) {
   // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  const Override = state ? footerOverrides[state] : undefined
-  if (Override) return <Override state={state} />
+  const Layout = footerOverrides[state] ?? DefaultFooter
+  return <Layout state={state} />
+}
 
+function DefaultFooter({ state }: FooterProps) {
+  const { t } = useTranslation('common')
   const config = getStateConfig(state)
   const links = getStateLinks(state)
   const footerLinks = getFooterLinks(state)
@@ -34,10 +35,10 @@ export function Footer({ state = 'dc' }: FooterProps) {
       <div className="usa-footer__primary-section padding-top-4">
         <div className="grid-container display-flex flex-justify-center">
           <Image
-            src={`/images/states/${state}/seal.svg`}
+            src={config.assets.seal.src}
             alt={config.sealAlt}
-            width={121}
-            height={51}
+            width={config.assets.seal.width}
+            height={config.assets.seal.height}
             className="footer-logo"
           />
         </div>
@@ -89,7 +90,7 @@ export function Footer({ state = 'dc' }: FooterProps) {
   )
 }
 
-function COFooter({ state = 'co' }: FooterProps) {
+function COFooter({ state }: FooterProps) {
   const { t } = useTranslation('common')
   const config = getStateConfig(state)
   const links = getStateLinks(state)
@@ -144,10 +145,10 @@ function COFooter({ state = 'co' }: FooterProps) {
       <div className="usa-footer__secondary-section padding-y-4">
         <div className="grid-container display-flex flex-justify-center">
           <Image
-            src={`/images/states/${state}/seal.svg`}
+            src={config.assets.seal.src}
             alt={config.sealAlt}
-            width={136}
-            height={28}
+            width={config.assets.seal.width}
+            height={config.assets.seal.height}
             className="footer-logo"
           />
         </div>

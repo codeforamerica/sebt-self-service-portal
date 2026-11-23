@@ -14,13 +14,14 @@ const helpSectionOverrides: Partial<Record<StateCode, React.ComponentType<HelpSe
   co: COHelpSection
 }
 
-export function HelpSection({ state = 'dc' }: HelpSectionProps) {
-  const { t } = useTranslation('common')
-
+export function HelpSection({ state }: HelpSectionProps) {
   // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  const Override = state ? helpSectionOverrides[state] : undefined
-  if (Override) return <Override state={state} />
+  const Layout = helpSectionOverrides[state] ?? DefaultHelpSection
+  return <Layout state={state} />
+}
 
+function DefaultHelpSection({ state }: HelpSectionProps) {
+  const { t } = useTranslation('common')
   const helpLinks = getHelpLinks(state)
 
   return (
@@ -48,7 +49,7 @@ export function HelpSection({ state = 'dc' }: HelpSectionProps) {
           >
             <div>
               <Image
-                src={`/images/states/${state}/icons/${link.icon}`}
+                src={link.icon}
                 alt=""
                 width={109}
                 height={109}
@@ -65,7 +66,7 @@ export function HelpSection({ state = 'dc' }: HelpSectionProps) {
   )
 }
 
-function COHelpSection({ state = 'co' }: HelpSectionProps) {
+function COHelpSection({ state }: HelpSectionProps) {
   const links = getStateLinks(state)
   const { t } = useTranslation('common')
 
