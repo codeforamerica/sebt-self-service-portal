@@ -5,7 +5,7 @@
  * Run: node packages/design-system/content/scripts/generate-locales.test.js
  */
 import { strict as assert } from 'assert'
-import { execFileSync } from 'child_process'
+import { execFileSync, spawnSync } from 'child_process'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { join } from 'path'
 import { fileURLToPath } from 'url'
@@ -30,8 +30,14 @@ function setup() {
   writeFileSync(join(tmpDir, 'states', 'co.csv'), csv)
 }
 
+// Fixtures only carry co.csv, so default to that state rather than every registered one
 function run(args) {
-  execFileSync('node', [script, ...args], { stdio: 'inherit' })
+  const statesArgs = args.includes('--states') ? [] : ['--states', 'co']
+  execFileSync('node', [script, ...args, ...statesArgs], { stdio: 'inherit' })
+}
+
+function tryRun(args) {
+  return spawnSync('node', [script, ...args], { encoding: 'utf8' })
 }
 
 function teardown() {
@@ -181,6 +187,89 @@ assert.equal(
   'Updated Landing',
   'second out-dir must pick up the CSV change even though the first out-dir already regenerated'
 )
+
+// Shared content base: fixtures write tmpDir/shared.csv beside tmpDir/states
+const sharedCsv = [
+  'Content,Shared English Current,Shared Español Current',
+  'GLOBAL - Button Continue,Shared Continue,Continuar compartido',
+  'GLOBAL - Button Back,Shared Back,Atrás compartido',
+  'S1 - Landing Page - Title,Shared Title,Título compartido',
+  'S1 - Landing Page - Subtitle,Shared Subtitle,Subtítulo compartido',
+  'S1 - Landing Page - Only Shared,Only shared,Solo compartido',
+  'S1 - Landing Page - Help Text,Shared help,Ayuda compartida',
+].join('\n')
+const stateOverrideCsv = [
+  'Content,🟢 CO English Current,🟢 CO Español Current,🟢 CO Amharic Current',
+  'GLOBAL - Button Continue,CO Continue,CO Continuar,CO ቀጥል',
+  'S1 - Landing Page - Title,,,',
+  'S1 - Landing Page - Subtitle,!N/A!,!N/A!,!N/A!',
+  'S1 - landing page - help text,,,',
+].join('\n')
+const sharedArgs = (states) => [
+  '--csv-dir', join(tmpDir, 'states'),
+  '--out-dir', join(tmpDir, 'locales'),
+  '--ts-out',  join(tmpDir, 'ts-out', 'shared-resources.ts'),
+  '--app',     'portal',
+  '--states',  states,
+]
+const readLocale = (lang, state, ns) =>
+  JSON.parse(readFileSync(join(tmpDir, 'locales', lang, state, `${ns}.json`), 'utf8'))
+
+setup()
+writeFileSync(join(tmpDir, 'shared.csv'), sharedCsv)
+writeFileSync(join(tmpDir, 'states', 'co.csv'), stateOverrideCsv)
+run(sharedArgs('co,demo'))
+
+// Test: a shared-only key is inherited by a state that has a CSV
+assert.equal(readLocale('en', 'co', 'landing').onlyShared, 'Only shared', 'shared-only key must be inherited')
+assert.equal(readLocale('es', 'co', 'common').buttonBack, 'Atrás compartido', 'shared-only key must be inherited in Spanish')
+
+// Test: a state row replaces the shared row in every language, including ones shared lacks
+assert.equal(readLocale('en', 'co', 'common').buttonContinue, 'CO Continue', 'state row must override shared English')
+assert.equal(readLocale('es', 'co', 'common').buttonContinue, 'CO Continuar', 'state row must override shared Spanish')
+assert.equal(readLocale('am', 'co', 'common').buttonContinue, 'CO ቀጥል', 'state row must supply Amharic')
+
+// Test: an empty state value wins over the shared value, in every language
+assert.equal(readLocale('en', 'co', 'landing').title, '', 'empty state English must win over shared')
+assert.equal(readLocale('es', 'co', 'landing').title, '', 'empty state Spanish must win over shared')
+
+// Test: a state row overrides a shared row whose key is spelled differently but parses the same
+assert.equal(readLocale('en', 'co', 'landing').helpText, '', 'state row must win over a differently-cased shared key')
+
+// Test: a state !N/A! removes a shared key
+assert.ok(!('subtitle' in readLocale('en', 'co', 'landing')), 'state !N/A! must remove the shared key (en)')
+assert.ok(!('subtitle' in readLocale('es', 'co', 'landing')), 'state !N/A! must remove the shared key (es)')
+
+// Test: a state with no CSV gets shared content only
+assert.deepEqual(
+  readLocale('en', 'demo', 'landing'),
+  { title: 'Shared Title', subtitle: 'Shared Subtitle', onlyShared: 'Only shared', helpText: 'Shared help' },
+  'a state without a CSV must get exactly the shared content'
+)
+assert.equal(readLocale('en', 'demo', 'common').buttonContinue, 'Shared Continue', 'state without a CSV must not see another state overrides')
+assert.ok(!existsSync(join(tmpDir, 'locales', 'am', 'demo')), 'shared content without an Amharic column must emit no Amharic files')
+
+// Test: shared.csv change forces regeneration of an otherwise unchanged state set
+writeFileSync(
+  join(tmpDir, 'shared.csv'),
+  sharedCsv.replace('Only shared,Solo compartido', 'Only shared v2,Solo compartido v2')
+)
+run(sharedArgs('co,demo'))
+assert.equal(readLocale('en', 'demo', 'landing').onlyShared, 'Only shared v2', 'shared.csv change must regenerate')
+assert.equal(readLocale('en', 'co', 'landing').onlyShared, 'Only shared v2', 'shared.csv change must reach states with their own CSV')
+
+// Test: a state with neither a CSV nor shared content fails with a clear error
+setup()
+writeFileSync(join(tmpDir, 'states', 'co.csv'), stateOverrideCsv)
+const missing = tryRun(sharedArgs('co,demo'))
+assert.notEqual(missing.status, 0, 'a state with no CSV and no shared.csv must fail')
+assert.ok(missing.stderr.includes('demo'), 'the error must name the state')
+
+// Test: without shared.csv a state keeps only its own rows (behaviour before shared content existed)
+setup()
+writeFileSync(join(tmpDir, 'states', 'co.csv'), stateOverrideCsv)
+run(sharedArgs('co'))
+assert.deepEqual(readLocale('en', 'co', 'landing'), { title: '', helpText: '' }, 'without shared.csv only the state rows apply')
 
 console.log('✅ All generate-locales CLI arg tests passed')
 teardown()

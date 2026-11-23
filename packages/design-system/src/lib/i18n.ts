@@ -29,7 +29,7 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-import { getState, getStateConfig, type SupportedLanguage } from './state'
+import { getState, getStateConfig, type StateCode, type SupportedLanguage } from './state'
 
 export type { SupportedLanguage }
 
@@ -58,13 +58,11 @@ export function initI18n(
   namespaces: readonly string[],
   state: string
 ): void {
-  const stateNames: Record<string, string> = {
-    dc: 'District of Columbia',
-    co: 'Colorado'
-  }
-
   // eslint-disable-next-line security/detect-object-injection -- state is validated at build time
-  const resources = stateResources[state] ?? stateResources['dc'] ?? {}
+  const resources = stateResources[state]
+  if (!resources) {
+    throw new Error(`No locale resources generated for state "${state}"`)
+  }
 
   i18n.use(initReactI18next).init({
     resources,
@@ -76,8 +74,7 @@ export function initI18n(
       escapeValue: false,
       defaultVariables: {
         state: state.toUpperCase(),
-        // eslint-disable-next-line security/detect-object-injection -- state is validated at build time
-        stateName: stateNames[state] ?? stateNames['dc'],
+        stateName: getStateConfig(state as StateCode).name,
         year: new Date().getFullYear().toString()
       }
     },

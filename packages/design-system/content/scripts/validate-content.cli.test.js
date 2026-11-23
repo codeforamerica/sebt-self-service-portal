@@ -38,6 +38,7 @@ function run(extraArgs = []) {
       '--out-dir', join(dir, 'locales'),
       '--ts-out', join(dir, 'resources.ts'),
       '--app', 'portal',
+      '--states', 'dc',
       ...extraArgs
     ],
     { encoding: 'utf8' }
