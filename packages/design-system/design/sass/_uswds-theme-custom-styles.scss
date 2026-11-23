@@ -65,33 +65,8 @@ body,
 // teal carry an explicit `text-primary` utility class; section headings keep
 // the USWDS default ink, matching the per-component utility-class pattern.
 
-// CO footer region (help section + slim footer) uses Trebuchet MS per Figma.
-// Trebuchet MS is a proprietary system font that cannot be self-hosted, so it is
-// applied as a scoped system-font stack here rather than through the design-token
-// font pipeline. !important + the [data-state='co'] container specificity beats the
-// global body (--font-primary) and heading (--font-heading) overrides above.
-$font-trebuchet: 'Trebuchet MS', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-
-[data-state='co'] .co-help-section,
-[data-state='co'] .usa-footer--co {
-  &,
-  :is(h1, h2, h3, h4, h5, h6),
-  p,
-  a,
-  span,
-  li {
-    font-family: $font-trebuchet !important;
-  }
-}
-
-// Help-section labels are pure black per Figma, not the default heading ink.
-// color('black') is the USWDS #000000 token (color('ink') is #1b1b1b, not pure black).
-[data-state='co'] .co-help-section :is(h1, h2, h3, h4, h5, h6) {
-  color: color('black');
-}
-
 // Identity-provider sign-in buttons take the state's own button theme unless a
-// [data-state] override below restyles them; the logo is hidden until a state supplies an image.
+// state partial restyles them; the logo is hidden until a state supplies an image.
 .usa-button--idp .usa-button__idp-logo {
   display: none;
   background-color: currentColor;
@@ -106,44 +81,6 @@ $font-trebuchet: 'Trebuchet MS', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   @media (forced-colors: active) {
     forced-color-adjust: none;
     background-color: ButtonText;
-  }
-}
-
-// myColorado brand for Colorado's provider buttons. Outside the USWDS palette, so a scoped
-// override rather than a theme token (Figma token: myColorado/Primary/primary).
-$co-idp-primary: #007d30;
-
-[data-state='co'] .usa-button--idp {
-  background-color: $co-idp-primary;
-  border-color: $co-idp-primary;
-  color: white;
-
-  &:hover,
-  &:active {
-    background-color: darken($co-idp-primary, 8%);
-    border-color: darken($co-idp-primary, 8%);
-    color: white;
-  }
-
-  &.usa-button--outline {
-    background-color: transparent;
-    color: $co-idp-primary;
-
-    &:hover,
-    &:active {
-      background-color: transparent;
-      color: darken($co-idp-primary, 8%);
-      border-color: darken($co-idp-primary, 8%);
-    }
-  }
-
-  .usa-button__idp-logo {
-    display: inline-block;
-    // intrinsic size of idp-logo.svg
-    width: 31px;
-    height: 24px;
-    -webkit-mask-image: url('/images/states/co/idp-logo.svg');
-    mask-image: url('/images/states/co/idp-logo.svg');
   }
 }
 

@@ -63,6 +63,7 @@ design/fonts.ts
 # Generated USWDS Theme Files (auto-generated from design/states/*.json)
 design/sass/_uswds-theme-*.scss
 design/sass/_uswds-settings.scss
+design/sass/_uswds-state.scss
 !design/sass/_uswds-theme.scss
 !design/sass/_uswds-theme-custom-styles.scss
 

@@ -102,10 +102,22 @@ describe('compileStateTheme', () => {
     })
 
     expect(css).toBe('.compiled{}')
-    expect(compiled.semantic).toContain('Source: design/states/co.json')
+    expect(compiled.semantic).toContain('Source: design/shared.json + design/states/co.json')
     expect(compiled.workDir.startsWith(sharedSassDir)).toBe(false)
     expect(compiled.loadPaths).toEqual([compiled.workDir, '/deps'])
     expect(existsSync(compiled.workDir)).toBe(false)
     expect(readPartials(sharedSassDir)).toEqual(before)
+  })
+})
+
+describe('a state with no token file', () => {
+  const appRoot = resolve(designSystemRoot, '../../apps/portal/src/SEBT.Portal.Web')
+
+  it('gets the shared theme fonts as self-hosted faces', () => {
+    const { css, preload } = fontCss('no-such-state', appRoot)
+
+    expect(css).toContain("--font-primary:'Source Sans Pro'")
+    expect(css).toContain("--font-heading:'Merriweather'")
+    expect(preload.length).toBeGreaterThan(0)
   })
 })

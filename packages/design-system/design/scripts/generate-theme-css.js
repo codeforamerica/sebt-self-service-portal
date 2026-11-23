@@ -18,13 +18,14 @@
  * compiles from them while this runs.
  */
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { LOCAL_FONTS_MAP, assertLocalFontFilesExist, extractFonts } from './generate-fonts.js'
+import { loadStateTokens } from './load-state-tokens.js'
 import { STATE_CODES } from '../../src/lib/state.ts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -85,10 +86,7 @@ export function compileStateTheme(state, { sass, sassDir, loadPaths }) {
  * contributing little here.
  */
 export function fontCss(state, root = appRoot) {
-  const tokens = JSON.parse(
-    readFileSync(join(designSystemRoot, 'design', 'states', `${state}.json`), 'utf8')
-  )
-  const { body, heading } = extractFonts(tokens)
+  const { body, heading } = extractFonts(loadStateTokens(state))
   // Same guard generate-fonts.js applies: a token naming a font whose file is
   // missing would otherwise emit a @font-face and a preload pointing at a 404.
   assertLocalFontFilesExist([body, heading], join(root, 'design'))
@@ -151,11 +149,6 @@ function main() {
   const fontManifest = {}
   console.log('🎨 Compiling a USWDS stylesheet per state...')
   for (const state of STATE_CODES) {
-    if (!existsSync(join(designSystemRoot, 'design', 'states', `${state}.json`))) {
-      console.log(`   ${state}: no token file, skipping`)
-      continue
-    }
-
     const css = compileStateTheme(state, { sass, sassDir, loadPaths })
 
     const fonts = fontCss(state)

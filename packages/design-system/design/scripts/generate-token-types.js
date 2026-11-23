@@ -18,10 +18,11 @@
  * - Compile-time validation of token usage
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { STATE_CODES } from '../../src/lib/state.ts';
+import { loadStateTokens, tokenSourceLabel } from './load-state-tokens.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, '..', '..');
@@ -150,16 +151,11 @@ function generateTokenMap(state, properties) {
  */
 function generateTypes(state) {
   const startTime = performance.now();
-  const tokenPath = join(projectRoot, `design/states/${state}.json`);
   const outputDir = join(projectRoot, 'src/types');
   const outputPath = join(outputDir, 'design-tokens.d.ts');
 
-  if (!existsSync(tokenPath)) {
-    throw new Error(`Token file not found: ${tokenPath}`);
-  }
-
-  console.log(`Reading tokens: ${tokenPath}`);
-  const tokenData = JSON.parse(readFileSync(tokenPath, 'utf8'));
+  console.log(`Reading tokens for ${state.toUpperCase()}`);
+  const tokenData = loadStateTokens(state);
 
   if (!tokenData.theme) {
     throw new Error(`No "theme" object found in ${state}.json`);
@@ -174,7 +170,7 @@ function generateTypes(state) {
   // Generate TypeScript content
   const content = `// design-tokens.d.ts
 // Auto-generated TypeScript definitions for design tokens
-// Source: design/states/${state}.json
+// Source: ${tokenSourceLabel(state)}
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens on build
 
 ${generateInterface(state, properties)}

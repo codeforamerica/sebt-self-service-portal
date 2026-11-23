@@ -11,15 +11,16 @@
  *   STATE=co node scripts/generate-fonts.js  # Colorado state
  *
  * Workflow:
- * 1. Read design/states/{state}.json
+ * 1. Read the shared tokens with design/states/{state}.json overrides
  * 2. Extract font families from theme-font-type-sans and theme-font-type-serif
  * 3. Generate design/fonts.ts with the matching next/font/local or next/font/google imports
  */
 
 import './load-env.js'
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+import { writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
+import { loadStateTokens, tokenSourceLabel } from './load-state-tokens.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..', '..')
@@ -71,6 +72,50 @@ export const LOCAL_FONTS_MAP = {
       {
         path: '../public/fonts/urbanist/Urbanist-Variable.woff2',
         weight: '100 900',
+        style: 'normal'
+      }
+    ]
+  },
+  // USWDS's bundled typefaces, copied into public/fonts by copy-uswds-assets.mjs.
+  'source sans pro': {
+    src: [
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-regular-webfont.woff2',
+        weight: '400',
+        style: 'normal'
+      },
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-italic-webfont.woff2',
+        weight: '400',
+        style: 'italic'
+      },
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-semibold-webfont.woff2',
+        weight: '600',
+        style: 'normal'
+      },
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-bold-webfont.woff2',
+        weight: '700',
+        style: 'normal'
+      }
+    ]
+  },
+  merriweather: {
+    src: [
+      {
+        path: '../public/fonts/merriweather/Latin-Merriweather-Regular.woff2',
+        weight: '400',
+        style: 'normal'
+      },
+      {
+        path: '../public/fonts/merriweather/Latin-Merriweather-Italic.woff2',
+        weight: '400',
+        style: 'italic'
+      },
+      {
+        path: '../public/fonts/merriweather/Latin-Merriweather-Bold.woff2',
+        weight: '700',
         style: 'normal'
       }
     ]
@@ -144,7 +189,7 @@ function fileHeader(state, sourceLabel) {
  * Font Configuration - ${state.toUpperCase()}
  *
  * Auto-generated from design tokens.
- * Source: ${sourceLabel ?? `design/states/${state}.json`}
+ * Source: ${sourceLabel ?? tokenSourceLabel(state)}
  * DO NOT EDIT DIRECTLY - Regenerate with: pnpm tokens
  *
  * Generated: ${new Date().toISOString()}
@@ -273,20 +318,13 @@ export const headingFont = primaryFont`)
 function main() {
   try {
     const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
-    const tokensPath = join(rootDir, 'design', 'states', `${state}.json`)
     // Write to caller's working directory (e.g. src/SEBT.Portal.Web/design/fonts.ts)
     // so the Next.js @/ path alias resolves correctly at build time
     const outputPath = join(process.cwd(), 'design', 'fonts.ts')
 
     console.log(`🔤 Generating fonts.ts for ${state.toUpperCase()}...`)
 
-    if (!existsSync(tokensPath)) {
-      console.log(`⚠️  No token file found at: ${rel(tokensPath)}`)
-      console.log('   Skipping font generation.')
-      process.exit(0)
-    }
-
-    const tokensJson = JSON.parse(readFileSync(tokensPath, 'utf8'))
+    const tokensJson = loadStateTokens(state)
     const fonts = extractFonts(tokensJson)
 
     console.log(`✅ Body font: ${fonts.body ?? 'system'}; heading font: ${fonts.heading ?? 'system'}`)

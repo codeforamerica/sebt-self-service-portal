@@ -23,9 +23,10 @@
  */
 
 import './load-env.js'
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
+import { writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
+import { loadStateTokens, tokenSourceLabel } from './load-state-tokens.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -246,7 +247,7 @@ function generateSassContent(state, variables) {
 // ==========================================================================
 //
 // Auto-generated from Figma Tokens Studio
-// Source: design/states/${state}.json
+// Source: ${tokenSourceLabel(state)}
 // Generated: ${timestamp}
 //
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens during build
@@ -307,7 +308,7 @@ export function generateSemanticContent(state, variables, timestamp) {
 // ==========================================================================
 //
 // Auto-generated from Figma Tokens Studio
-// Source: design/states/${state}.json
+// Source: ${tokenSourceLabel(state)}
 // Generated: ${timestamp}
 //
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens during build
@@ -387,7 +388,7 @@ export function generateSettingsContent(state, variables, timestamp) {
 // ==========================================================================
 //
 // Auto-generated from Figma Tokens Studio
-// Source: design/states/${state}.json
+// Source: ${tokenSourceLabel(state)}
 // Generated: ${timestamp}
 //
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens during build
@@ -405,6 +406,13 @@ ${settingsLines.join('\n')}
 // Re-export uswds-core so other modules can access it
 @forward "uswds-core";
 `
+}
+
+/** Forwards the state's Sass partial from sass/states/, or is empty for a state without one. */
+export function generateStateContent(state, hasPartial) {
+  return hasPartial
+    ? `// DO NOT EDIT DIRECTLY - Regenerated during build\n@forward "states/${state}";\n`
+    : `// DO NOT EDIT DIRECTLY - ${state.toUpperCase()} has no state-specific styles\n`
 }
 
 /**
@@ -427,19 +435,12 @@ function main() {
   console.log(`🎨 Generating USWDS SASS variables for ${state.toUpperCase()}...`)
 
   // Paths
-  const inputPath = join(rootDir, 'design', 'states', `${state}.json`)
   // generate-theme-css.js points this at a private copy of the Sass tree.
   const outputDir = process.env.SASS_OUTPUT_DIR || join(rootDir, 'design', 'sass')
   const themeOutputPath = join(outputDir, `_uswds-theme-${state}.scss`)
   const settingsOutputPath = join(outputDir, '_uswds-settings.scss')
   const semanticOutputPath = join(outputDir, '_uswds-theme-semantic.scss')
-
-  // Check input exists
-  if (!existsSync(inputPath)) {
-    console.log(`⚠️  No token file found at: ${rel(inputPath)}`)
-    console.log('   Skipping SASS token generation.')
-    process.exit(0)
-  }
+  const stateOutputPath = join(outputDir, '_uswds-state.scss')
 
   // Ensure output directory exists
   if (!existsSync(outputDir)) {
@@ -447,8 +448,8 @@ function main() {
   }
 
   // Read and parse tokens
-  console.log(`  Reading: ${rel(inputPath)}`)
-  const stateJson = JSON.parse(readFileSync(inputPath, 'utf8'))
+  console.log(`  Reading: ${tokenSourceLabel(state)}`)
+  const stateJson = loadStateTokens(state)
 
   if (!stateJson.theme) {
     console.error(`❌ No "theme" object found in ${state}.json`)
@@ -482,6 +483,11 @@ function main() {
   const semanticContent = generateSemanticContent(state, semantic.variables, timestamp)
   writeFileAtomic(semanticOutputPath, semanticContent)
   console.log(`✅ Generated: ${rel(semanticOutputPath)} (${semantic.variables.length} semantic tokens)`)
+
+  // Generate and write the per-state styles partial
+  const hasStatePartial = existsSync(join(rootDir, 'design', 'sass', 'states', `_${state}.scss`))
+  writeFileAtomic(stateOutputPath, generateStateContent(state, hasStatePartial))
+  console.log(`✅ Generated: ${rel(stateOutputPath)}`)
 
   console.log(`✅ ${state.toUpperCase()} SASS theme files generated successfully!`)
 }

@@ -15,7 +15,7 @@
  * - Build integration: Auto-runs during predev and prebuild
  *
  * Workflow:
- * 1. Read design/states/{state}.json (source of truth from Figma)
+ * 1. Read design/shared.json plus design/states/{state}.json overrides (source of truth from Figma)
  * 2. Check if transformation needed (timestamp-based)
  * 3. Extract 'theme' object (USWDS has 'system' tokens built-in)
  * 4. Convert to CSS custom properties with semantic naming
@@ -23,9 +23,10 @@
  */
 
 import './load-env.js';
-import { readFileSync, writeFileSync, existsSync, statSync } from 'fs';
+import { writeFileSync, existsSync, statSync } from 'fs';
 import { join, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
+import { loadStateTokens, tokenSourceLabel, tokenSourcePaths } from './load-state-tokens.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,17 +38,7 @@ const USWDS_PREFIXES = new Set([
   'global', 'style', 'text'
 ]);
 
-function getStatePaths(state) {
-  const designDir = join(rootDir, 'design', 'states');
-  const designOutputDir = join(rootDir, 'design');
-
-  return {
-    input: join(designDir, `${state}.json`),
-    output: join(designOutputDir, 'tokens.css'),
-    designDir,
-    designOutputDir
-  };
-}
+const outputPath = join(rootDir, 'design', 'tokens.css');
 
 function shouldInjectColorPrefix(tokenName, tokenType) {
   if (!tokenName.startsWith('theme-') || tokenType !== 'color') {
@@ -112,15 +103,14 @@ function processThemeObject(obj, prefix = '') {
   return variables;
 }
 
-function needsRegeneration(inputPath, outputPath) {
+function needsRegeneration(inputPaths, outputPath) {
   if (!existsSync(outputPath)) {
     return true;
   }
 
-  const inputStats = statSync(inputPath);
-  const outputStats = statSync(outputPath);
+  const outputMtime = statSync(outputPath).mtimeMs;
 
-  return inputStats.mtimeMs > outputStats.mtimeMs;
+  return inputPaths.some(path => statSync(path).mtimeMs > outputMtime);
 }
 
 function formatCssVariable({ name, value, description }) {
@@ -131,32 +121,17 @@ function formatCssVariable({ name, value, description }) {
 }
 
 function processState(state) {
-  const paths = getStatePaths(state);
+  const inputPaths = tokenSourcePaths(state);
+  const inputLabel = inputPaths.map(rel).join(' + ');
 
-  // Check if design tokens directory exists
-  if (!existsSync(paths.designDir)) {
-    console.log('⚠️  No design/states/ directory found.');
-    console.log('   Skipping token generation. Add design tokens when ready.\n');
-    return { state, skipped: true, success: true };
-  }
-
-  // Check if state token file exists
-  if (!existsSync(paths.input)) {
-    console.log(`⚠️  No token file found for ${state.toUpperCase()} at:`);
-    console.log(`   ${rel(paths.input)}`);
-    console.log('   Skipping token generation.');
-    return { state, skipped: true, success: true };
-  }
-
-  // Check if regeneration needed
-  if (!needsRegeneration(paths.input, paths.output)) {
+  if (!needsRegeneration(inputPaths, outputPath)) {
     console.log(`⚡ Tokens unchanged for ${state.toUpperCase()}`);
-    console.log(`   ${rel(paths.input)} → ${rel(paths.output)}`);
+    console.log(`   ${inputLabel} → ${rel(outputPath)}`);
     return { state, cached: true, success: true };
   }
 
-  console.log(`  Reading: ${rel(paths.input)}`);
-  const stateJson = JSON.parse(readFileSync(paths.input, 'utf8'));
+  console.log(`  Reading: ${inputLabel}`);
+  const stateJson = loadStateTokens(state);
 
   if (!stateJson.theme) {
     throw new Error(`No "theme" object found in ${state}.json`);
@@ -173,7 +148,7 @@ function processState(state) {
  * State-Specific Design Tokens - ${state.toUpperCase()}
  *
  * Auto-generated from Figma Tokens Studio
- * Source: design/states/${state}.json (theme object only)
+ * Source: ${tokenSourceLabel(state)} (theme object only)
  * DO NOT EDIT DIRECTLY - This file is regenerated from design tokens
  *
  * Generated: ${new Date().toISOString()}
@@ -200,10 +175,10 @@ a {
 }
 `;
 
-  writeFileSync(paths.output, cssContent, 'utf8');
+  writeFileSync(outputPath, cssContent, 'utf8');
 
   console.log(`✅ Generated ${variables.length} CSS custom properties for ${state.toUpperCase()}`);
-  console.log(`   ${rel(paths.output)}`);
+  console.log(`   ${rel(outputPath)}`);
 
   return { state, cached: false, success: true, count: variables.length };
 }

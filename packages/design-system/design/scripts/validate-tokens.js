@@ -22,13 +22,8 @@
  *   1 - Validation errors found
  */
 
-import { readFileSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { STATE_CODES } from '../../src/lib/state.ts';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const projectRoot = join(__dirname, '..', '..');
+import { loadStateTokens } from './load-state-tokens.js';
 
 // USWDS color palette (subset for validation)
 const USWDS_COLORS = new Set([
@@ -265,17 +260,10 @@ class TokenValidator {
 }
 
 function validateState(state) {
-  const tokenPath = join(projectRoot, `design/states/${state}.json`);
-
-  if (!existsSync(tokenPath)) {
-    console.error(`❌ Token file not found: ${tokenPath}`);
-    return { success: false };
-  }
-
-  console.log(`Validating: ${tokenPath}`);
+  console.log(`Validating: ${state}`);
 
   try {
-    const tokenData = JSON.parse(readFileSync(tokenPath, 'utf8'));
+    const tokenData = loadStateTokens(state);
     const validator = new TokenValidator(state);
     const results = validator.validate(tokenData);
 
