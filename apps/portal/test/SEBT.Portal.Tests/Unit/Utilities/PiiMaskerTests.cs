@@ -37,6 +37,16 @@ public class PiiMaskerTests
         Assert.DoesNotContain("notanemail", result);
     }
 
+    [Theory]
+    [InlineData("a@x.com\r\nFAKE ENTRY", "a***@x.comFAKE ENTRY")]
+    [InlineData("a@x.com\nFAKE ENTRY", "a***@x.comFAKE ENTRY")]
+    [InlineData("a@x.com\rFAKE ENTRY", "a***@x.comFAKE ENTRY")]
+    [InlineData("\na@x.com", "a***@x.com")]
+    public void MaskEmail_StripsLineBreaks(string input, string expected)
+    {
+        Assert.Equal(expected, PiiMasker.MaskEmail(input));
+    }
+
     // ── Phone masking ──
 
     [Theory]
