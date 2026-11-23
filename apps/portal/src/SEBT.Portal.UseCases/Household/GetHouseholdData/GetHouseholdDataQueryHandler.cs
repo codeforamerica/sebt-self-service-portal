@@ -27,6 +27,7 @@ public class GetHouseholdDataQueryHandler(
     ICardReplacementRequestRepository cardReplacementRepo,
     IIdentifierHasher identifierHasher,
     CoLoadedCohortFilterSettings coLoadedCohortFilter,
+    CoLoadedHouseholdLookupSettings coLoadedHouseholdLookup,
     IFeatureManager featureManager,
     ILogger<GetHouseholdDataQueryHandler> logger)
     : IQueryHandler<GetHouseholdDataQuery, HouseholdData>
@@ -62,7 +63,8 @@ public class GetHouseholdDataQueryHandler(
             includeCardService,
             cancellationToken);
 
-        if (householdData == null
+        if (coLoadedHouseholdLookup.FallbackToBenefitIdAndDob
+            && householdData == null
             && identifier.Type == PreferredHouseholdIdType.Email)
         {
             if (portalUserId != null)
@@ -73,7 +75,7 @@ public class GetHouseholdDataQueryHandler(
                     && user.DateOfBirth is { } verifiedDob
                     && !string.IsNullOrWhiteSpace(benefitIc))
                 {
-                    // DC's data team correlates warehouse calls against Socure records;
+                    // Passed through so the state backend can correlate lookups against Socure records if needed;
                     // absent (null) when the user never reached a Socure session.
                     var socureReferenceId = await docVerificationChallengeRepository
                         .GetLatestSocureReferenceIdByUserIdAsync(portalUserId.Value, cancellationToken);
