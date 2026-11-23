@@ -208,7 +208,7 @@ variable "vpc_id" {
 
 variable "waf_log_group" {
   type        = string
-  description = "Name of the CloudWatch log group for WAF logs."
+  description = "ARN of the CloudWatch log group for WAF logs."
 }
 
 variable "web_cpu" {

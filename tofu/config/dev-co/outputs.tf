@@ -37,8 +37,3 @@ output "web_repository_url" {
   description = "ECR repository URL for the Web service."
   value       = module.app.web_repository_url
 }
-
-output "bastion_instance_id" {
-  description = "ID of the SSM bastion EC2 instance."
-  value       = module.bastion.instance_id
-}

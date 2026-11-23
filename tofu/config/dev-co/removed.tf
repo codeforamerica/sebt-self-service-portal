@@ -1,5 +1,27 @@
-# The RDS instance and Keycloak moved to dev-co-shared, which imports them.
-# Forget them here without destroying anything.
+# The network, logging, bastion, RDS instance and Keycloak moved to
+# dev-co-shared, whose state was seeded with these entries. Forget them here
+# without destroying anything.
+
+removed {
+  from = module.logging
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = module.vpc
+  lifecycle {
+    destroy = false
+  }
+}
+
+removed {
+  from = module.bastion
+  lifecycle {
+    destroy = false
+  }
+}
 
 removed {
   from = module.app.module.database.aws_kms_key.database

@@ -16,41 +16,13 @@ provider "doppler" {}
 
 # The unbranded demo: Colorado's conventions (Keycloak OIDC, the CO connector on
 # mock data) under its own state code. It runs in the CO development account on
-# dev-co's network and logging and dev-co-shared's RDS instance and Keycloak,
-# looked up here by the names those configs give them.
+# the platform and Keycloak that dev-co-shared owns.
+module "platform" {
+  source = "../../modules/sebt_platform_lookup"
 
-data "aws_vpc" "main" {
-  tags = { Name = "${var.project}-co-${var.environment}" }
-}
-
-data "aws_subnets" "private" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.main.id]
-  }
-
-  tags = { use = "private" }
-}
-
-data "aws_subnets" "public" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.main.id]
-  }
-
-  tags = { use = "public" }
-}
-
-data "aws_kms_alias" "logging" {
-  name = "alias/${var.project}-co/${var.environment}/logs"
-}
-
-data "aws_s3_bucket" "logging" {
-  bucket = "${var.project}-co-${var.environment}-logs"
-}
-
-data "aws_cloudwatch_log_group" "waf" {
-  name = "aws-waf-logs-cfa/${var.project}-co/${var.environment}"
+  project     = var.project
+  state       = "co"
+  environment = var.environment
 }
 
 # The demo deploys the images dev-co's pipeline pushes.
@@ -65,15 +37,6 @@ data "aws_ecr_repository" "web" {
 # Created by bootstrap.
 data "aws_route53_zone" "main" {
   name = var.domain
-}
-
-data "aws_db_instance" "shared" {
-  db_instance_identifier = "${var.project}-co-${var.environment}-db"
-}
-
-data "aws_security_group" "database" {
-  vpc_id = data.aws_vpc.main.id
-  tags   = { Name = "${var.project}-co-${var.environment}-database" }
 }
 
 # Store the demo's secrets in Secrets Manager, synced from Doppler.
@@ -154,15 +117,15 @@ module "app" {
   hosted_zone_id             = data.aws_route53_zone.main.zone_id
   environment                = var.environment
   image_tag                  = var.image_tag
-  logging_key_id             = data.aws_kms_alias.logging.target_key_arn
-  logging_bucket_domain_name = data.aws_s3_bucket.logging.bucket_domain_name
-  private_subnets            = sort(data.aws_subnets.private.ids)
-  public_subnets             = sort(data.aws_subnets.public.ids)
-  vpc_id                     = data.aws_vpc.main.id
+  logging_key_id             = module.platform.logging_key_arn
+  logging_bucket_domain_name = module.platform.logging_bucket_domain_name
+  private_subnets            = module.platform.private_subnets
+  public_subnets             = module.platform.public_subnets
+  vpc_id                     = module.platform.vpc_id
   project                    = var.project
   sender_email               = var.sender_email
   state                      = var.state
-  waf_log_group              = data.aws_cloudwatch_log_group.waf.name
+  waf_log_group              = module.platform.waf_log_group_arn
   passive_waf                = true
   enable_appconfig           = false
   log_as_json                = true
@@ -171,12 +134,7 @@ module "app" {
   # would collide with dev-co's in this account.
   project_short = "sebt-demo"
 
-  database = {
-    host              = data.aws_db_instance.shared.address
-    port              = data.aws_db_instance.shared.port
-    admin_secret_arn  = data.aws_db_instance.shared.master_user_secret[0].secret_arn
-    security_group_id = data.aws_security_group.database.id
-  }
+  database     = module.platform.database
   db_name      = "SebtPortalDemo"
   db_app_users = ["demoappuser", "demoappuser_clone"]
 

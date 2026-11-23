@@ -21,8 +21,9 @@ const MARKDOWN_OVERHEAD_PER_SECTION = 60; // "## Plan output — dev-xx\n\n```\n
 const TRUNCATION_NOTICE = "\n\n... (truncated — see the full output in the workflow run)";
 const PLAN_LINE = "Plan: (?:\\d+ to import, )?\\d+ to add, \\d+ to change, \\d+ to destroy(?:, \\d+ to forget)?\\.";
 
-// In apply order: dev-co-shared before the dev-co and dev-demo configs that use it.
+// In apply order: each account's shared config before the configs that use it.
 const PLANS = [
+  { label: "dev-dc-shared", env: "DC_SHARED_PLAN" },
   { label: "dev-dc", env: "DC_PLAN" },
   { label: "dev-co-shared", env: "CO_SHARED_PLAN" },
   { label: "dev-co", env: "CO_PLAN" },

@@ -14,39 +14,13 @@ terraform {
 # configuring its own instance and re-using a single-use OIDC token.
 provider "doppler" {}
 
-# Create an S3 bucket and KMS key for logging.
-module "logging" {
-  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.2.0"
+# The network, logging, bastion and RDS instance are owned by dev-co-shared.
+module "platform" {
+  source = "../../modules/sebt_platform_lookup"
 
-  project     = "${var.project}-${var.state}"
+  project     = var.project
+  state       = var.state
   environment = var.environment
-  log_groups = {
-    "waf" = {
-      name = "aws-waf-logs-cfa/${var.project}-${var.state}/${var.environment}"
-      tags = {
-        source = "waf"
-        webacl = "${var.project}-${var.state}-${var.environment}"
-        domain = var.domain
-      }
-    }
-  }
-
-  log_groups_to_datadog = true
-}
-
-# Create a VPC with public and private subnets. Since this is a dev
-# environment, we'll use a single NAT gateway to reduce costs.
-module "vpc" {
-  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.2.1"
-
-  project            = "${var.project}-${var.state}"
-  environment        = var.environment
-  single_nat_gateway = true
-  logging_key_id     = module.logging.kms_key_arn
-
-  cidr            = var.vpc_cidr
-  private_subnets = var.private_subnets
-  public_subnets  = var.public_subnets
 }
 
 # Look up ECR repositories created by bootstrap.
@@ -139,17 +113,6 @@ data "aws_route53_zone" "enrollment_checker" {
   name = "co.sebt-enrollment.codeforamerica.app"
 }
 
-# Look up the RDS instance owned by dev-co-shared. module.app creates the API's
-# login on it.
-data "aws_db_instance" "shared" {
-  db_instance_identifier = "${var.project}-${var.state}-${var.environment}-db"
-}
-
-data "aws_security_group" "database" {
-  vpc_id = module.vpc.vpc_id
-  tags   = { Name = "${var.project}-${var.state}-${var.environment}-database" }
-}
-
 # Deploy the application services (API + Web) using the shared wrapper module.
 module "app" {
   source    = "../../modules/sebt_application"
@@ -164,24 +127,20 @@ module "app" {
   hosted_zone_id             = data.aws_route53_zone.main.zone_id
   environment                = var.environment
   image_tag                  = var.image_tag
-  logging_key_id             = module.logging.kms_key_arn
-  logging_bucket_domain_name = module.logging.bucket_domain_name
-  private_subnets            = module.vpc.private_subnets
-  public_subnets             = module.vpc.public_subnets
-  vpc_id                     = module.vpc.vpc_id
+  logging_key_id             = module.platform.logging_key_arn
+  logging_bucket_domain_name = module.platform.logging_bucket_domain_name
+  private_subnets            = module.platform.private_subnets
+  public_subnets             = module.platform.public_subnets
+  vpc_id                     = module.platform.vpc_id
   project                    = var.project
   sender_email               = var.sender_email
   state                      = var.state
-  waf_log_group              = module.logging.log_groups["waf"]
+  waf_log_group              = module.platform.waf_log_group_arn
   passive_waf                = true
   log_as_json                = true
 
-  database = {
-    host              = data.aws_db_instance.shared.address
-    port              = data.aws_db_instance.shared.port
-    admin_secret_arn  = data.aws_db_instance.shared.master_user_secret[0].secret_arn
-    security_group_id = data.aws_security_group.database.id
-  }
+  # module.app creates the API's login on the shared instance.
+  database = module.platform.database
 
   api_image_url      = data.aws_ecr_repository.api.repository_url
   api_repository_arn = data.aws_ecr_repository.api.arn
@@ -251,19 +210,6 @@ module "app" {
   }
 }
 
-# SSM bastion for developer DB access. Uses pure-SSM port forwarding;
-# no PEM distribution, no SSH. Access is IAM-gated via SSO.
-module "bastion" {
-  source = "github.com/codeforamerica/tofu-modules-aws-ssm-bastion?ref=1.1.0"
-
-  project                 = "${var.project}-${var.state}"
-  environment             = var.environment
-  private_subnet_ids      = module.vpc.private_subnets
-  vpc_id                  = module.vpc.vpc_id
-  kms_key_recovery_period = 7
-  instance_profile        = null
-}
-
 # Deploy the enrollment checker as a static site behind CloudFront.
 module "enrollment_checker" {
   source = "../../modules/sebt_enrollment_checker"
@@ -273,7 +219,7 @@ module "enrollment_checker" {
   environment                = var.environment
   domain                     = "dev.co.sebt-enrollment.codeforamerica.app"
   hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
-  logging_bucket_domain_name = module.logging.bucket_domain_name
-  logging_bucket_name        = module.logging.bucket
+  logging_bucket_domain_name = module.platform.logging_bucket_domain_name
+  logging_bucket_name        = module.platform.logging_bucket
   force_delete               = true
 }

@@ -41,6 +41,15 @@ jobs:
             tofu:
               - 'tofu/**'
 
+  plan-dc-shared:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-dc
+      config: dev-dc-shared
+    secrets: inherit
+
   plan-dc:
     needs: check-infra-changes
     if: needs.check-infra-changes.outputs.changed == 'true'
@@ -83,8 +92,8 @@ jobs:
     secrets: inherit
 
   plan-comment:
-    needs: [plan-dc, plan-co-shared, plan-co, plan-demo]
-    if: always() && (needs.plan-dc.outputs.plan || needs.plan-co-shared.outputs.plan || needs.plan-co.outputs.plan || needs.plan-demo.outputs.plan)
+    needs: [plan-dc-shared, plan-dc, plan-co-shared, plan-co, plan-demo]
+    if: always() && (needs.plan-dc-shared.outputs.plan || needs.plan-dc.outputs.plan || needs.plan-co-shared.outputs.plan || needs.plan-co.outputs.plan || needs.plan-demo.outputs.plan)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -93,6 +102,7 @@ jobs:
       - name: Post plan to PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          DC_SHARED_PLAN: ${{ needs.plan-dc-shared.outputs.plan }}
           DC_PLAN: ${{ needs.plan-dc.outputs.plan }}
           CO_SHARED_PLAN: ${{ needs.plan-co-shared.outputs.plan }}
           CO_PLAN: ${{ needs.plan-co.outputs.plan }}
@@ -258,9 +268,50 @@ jobs:
           path: /tmp/docker-images.tar
           retention-days: 1
 
+  # The network, logging, bastion and RDS instance shared by the deployments in
+  # the DC account. Applies before the configs that look them up.
+  deploy-dc-shared:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: dev-dc
+    env:
+      AWS_REGION: us-east-1
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: "1.10.0"
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/dev-dc-shared
+        run: tofu init -upgrade
+
+      - name: OpenTofu Plan
+        working-directory: tofu/config/dev-dc-shared
+        run: tofu plan -input=false -out=tfplan
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/dev-dc-shared
+        run: tofu apply tfplan
+
   deploy-dc:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, deploy-dc-shared]
     runs-on: ubuntu-latest
     environment: dev-dc
     outputs:
@@ -270,9 +321,6 @@ jobs:
       DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
-      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
-      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
-      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
       # Browser-facing web config, set on the container at request time rather than
       # passed to the image build (docs/adr/0023-runtime-client-config.md).
       TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
@@ -382,8 +430,8 @@ jobs:
           echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
           echo "Deployment URL: $WEB_URL"
 
-  # The RDS instance and Keycloak shared by the deployments in the CO account.
-  # Applies before the configs that look them up.
+  # The network, logging, bastion, RDS instance and Keycloak shared by the
+  # deployments in the CO account. Applies before the configs that look them up.
   deploy-co-shared:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -391,6 +439,9 @@ jobs:
     env:
       AWS_REGION: us-east-1
       TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
 
     steps:
       - name: Checkout
@@ -432,9 +483,6 @@ jobs:
       DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
       TF_VAR_domain: ${{ vars.DOMAIN }}
       TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
-      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
-      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
-      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
       # Browser-facing web config, set on the container at request time rather than
       # passed to the image build (docs/adr/0023-runtime-client-config.md).
       TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}

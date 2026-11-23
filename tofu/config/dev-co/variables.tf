@@ -27,16 +27,6 @@ variable "oidc_authorization_endpoint" {
   default     = "https://auth.pingone.com/e8e64475-39e1-43de-964b-3bc2e835a2f5/as/authorize"
 }
 
-variable "private_subnets" {
-  type        = list(string)
-  description = "List of private subnet CIDR blocks."
-}
-
-variable "public_subnets" {
-  type        = list(string)
-  description = "List of public subnet CIDR blocks."
-}
-
 variable "sender_email" {
   type        = string
   description = "Email address used as the sender for OTP emails."
@@ -52,11 +42,6 @@ variable "state" {
   type        = string
   description = "State abbreviation (e.g. co, dc)."
   default     = "co"
-}
-
-variable "vpc_cidr" {
-  type        = string
-  description = "IPv4 CIDR block for the VPC."
 }
 
 variable "amplitude_api_key" {
