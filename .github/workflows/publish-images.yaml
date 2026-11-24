@@ -1,0 +1,83 @@
+name: Publish images
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'GitHub environment holding the ECR repository secrets'
+        required: true
+        type: string
+      image_tag:
+        description: 'Tag to push both images under'
+        required: true
+        type: string
+      dc_connector_sha:
+        description: 'dc-connector commit baked into the web image. Omit for a state without one.'
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: us-east-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download Docker images
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: docker-images
+          path: /tmp
+
+      - name: Load Docker images
+        run: docker load -i /tmp/docker-images.tar
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
+
+      - name: Build Web image
+        # State-agnostic: STATE is supplied by the ECS task definition at runtime,
+        # so this image is identical for every state and can be promoted between them.
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DC_CONNECTOR_SHA: ${{ inputs.dc_connector_sha }}
+        run: |
+          BUILD_ARGS=(--build-arg "NEXT_PUBLIC_BUILD_SHA=${GITHUB_SHA}")
+          if [ -n "$DC_CONNECTOR_SHA" ]; then
+            BUILD_ARGS+=(--build-arg "NEXT_PUBLIC_DC_CONNECTOR_SHA=${DC_CONNECTOR_SHA}")
+          fi
+
+          docker build \
+            --platform linux/amd64 \
+            -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
+            "${BUILD_ARGS[@]}" \
+            -t "sebt-portal-web:${IMAGE_TAG}" \
+            .
+
+      - name: Push images to ECR
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          API_REPO: ${{ secrets.ECR_API_REPOSITORY_URL }}
+          WEB_REPO: ${{ secrets.ECR_WEB_REPOSITORY_URL }}
+        run: |
+          docker tag "sebt-portal-api:${IMAGE_TAG}" "${API_REPO}:${IMAGE_TAG}"
+          docker tag "sebt-portal-web:${IMAGE_TAG}" "${WEB_REPO}:${IMAGE_TAG}"
+
+          docker push "${API_REPO}:${IMAGE_TAG}"
+          docker push "${WEB_REPO}:${IMAGE_TAG}"
