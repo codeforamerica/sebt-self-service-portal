@@ -23,6 +23,11 @@ output "logging_key_arn" {
   value       = data.aws_kms_alias.logging.target_key_arn
 }
 
+output "name_prefix" {
+  description = "Prefix the platform's resources are named with: project-state-environment."
+  value       = local.prefix
+}
+
 output "private_subnets" {
   description = "IDs of the VPC's private subnets."
   value       = sort(data.aws_subnets.private.ids)

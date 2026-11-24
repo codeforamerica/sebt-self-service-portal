@@ -24,23 +24,23 @@ module "api" {
 
   domain           = var.domain
   subdomain        = "api"
-  hosted_zone_id   = var.hosted_zone_id
+  hosted_zone_id   = data.aws_route53_zone.main.zone_id
   certificate_sans = var.certificate_sans
 
   public          = false
   create_endpoint = true
 
-  vpc_id          = var.vpc_id
-  private_subnets = var.private_subnets
+  vpc_id          = var.platform.vpc_id
+  private_subnets = var.platform.private_subnets
 
-  logging_key_id = var.logging_key_id
+  logging_key_id = var.platform.logging_key_arn
 
   container_port    = 8080
   health_check_path = "/health"
 
   create_repository = false
-  image_url         = var.api_image_url
-  repository_arn    = var.api_repository_arn
+  image_url         = data.aws_ecr_repository.api.repository_url
+  repository_arn    = data.aws_ecr_repository.api.arn
   image_tag         = var.image_tag
 
   cpu    = var.api_cpu
@@ -64,9 +64,9 @@ module "api" {
     ASPNETCORE_ENVIRONMENT                       = var.environment
     LOG_FORMAT                                   = var.log_as_json ? "json" : "text"
     STATE                                        = var.state
-    DB_HOST                                      = var.database.host
+    DB_HOST                                      = var.platform.database.host
     DB_NAME                                      = var.db_name
-    DB_PORT                                      = tostring(var.database.port)
+    DB_PORT                                      = tostring(var.platform.database.port)
     "Redis__Host"                                = module.redis.primary_endpoint
     "Redis__Port"                                = tostring(module.redis.port)
     "Redis__Ssl"                                 = "true"
@@ -97,7 +97,7 @@ module "api" {
     "SmtpClientSettings__Password" = "${module.ses.secret_arn}:password"
     "Smarty__AuthId"               = module.secrets.secrets["SMARTY_AUTH_ID"].secret_arn
     "Smarty__AuthToken"            = module.secrets.secrets["SMARTY_AUTH_TOKEN"].secret_arn
-  }, var.state_api_environment_secrets)
+  }, local.api_state_secrets)
 
   # Forward application traces to Datadog APM when the integration API key is
   # available. Metrics pipelines are unchanged from the default ADOT config.
@@ -122,24 +122,24 @@ module "web" {
 
   domain                  = var.domain
   subdomain               = "origin"
-  hosted_zone_id          = var.hosted_zone_id
+  hosted_zone_id          = data.aws_route53_zone.main.zone_id
   ingress_prefix_list_ids = [data.aws_ec2_managed_prefix_list.cloudfront.id]
 
   public          = false
   create_endpoint = true
 
-  vpc_id          = var.vpc_id
-  private_subnets = var.private_subnets
-  public_subnets  = var.public_subnets
+  vpc_id          = var.platform.vpc_id
+  private_subnets = var.platform.private_subnets
+  public_subnets  = var.platform.public_subnets
 
-  logging_key_id = var.logging_key_id
+  logging_key_id = var.platform.logging_key_arn
 
   container_port    = 3000
   health_check_path = "/"
 
   create_repository = false
-  image_url         = var.web_image_url
-  repository_arn    = var.web_repository_arn
+  image_url         = data.aws_ecr_repository.web.repository_url
+  repository_arn    = data.aws_ecr_repository.web.arn
   image_tag         = var.image_tag
 
   cpu    = var.web_cpu
@@ -160,7 +160,7 @@ module "web" {
     OTEL_DEPLOYMENT_ENVIRONMENT = var.environment
   }, var.state_web_environment_variables)
 
-  environment_secrets = var.state_web_environment_secrets
+  environment_secrets = local.web_state_secrets
 
   # ADOT collector sidecar, mirroring module.api (forwards traces to Datadog APM
   # when the integration key is present).
@@ -212,26 +212,66 @@ module "doppler" {
   service     = "api"
 
   kms_key_arns             = [module.secrets.kms_key_arn]
-  doppler_project          = "safety-net-sebt-self-service-portal"
+  doppler_project          = local.doppler.project
   doppler_environment_slug = "dev"
-  doppler_workspace_id     = "08430c37e2a2889dc220"
+  doppler_workspace_id     = local.doppler.workspace_id
 }
 
-# Create the API's rotating database login on the RDS instance in var.database.
+# Store the state-specific secrets in Secrets Manager. The JWT and identifier
+# hashing secrets are always created; var.state_secrets adds the rest.
+module "state_secrets" {
+  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=1880642d0546106d0c1f568304c0326b32b8cdbb" # 2.1.1
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+  service     = "state-secrets"
+
+  # Doppler's AWS Secrets Manager sync creates its own target secret named
+  # "{path}/{DOPPLER_KEY}" (uppercase, exact match) rather than writing into
+  # a pre-existing ARN — so these keys and add_suffix=false must make our
+  # secret's name match exactly what Doppler will create, or Doppler ends up
+  # populating an entirely separate, unreferenced secret.
+  add_suffix = false
+
+  secrets = {
+    for name, description in merge(local.default_state_secrets, var.state_secrets) :
+    name => {
+      description     = description
+      recovery_window = var.secret_recovery_period
+    }
+  }
+}
+
+# Sync the state-specific secrets to Doppler.
+module "state_secrets_doppler" {
+  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=e8ba5edac1eaf156702c89e0c9cd84f86dcafbfc" # 1.1.0
+  depends_on = [module.state_secrets]
+
+  project     = "${var.project}-${var.state}"
+  environment = var.environment
+  service     = "state-secrets"
+
+  kms_key_arns             = [module.state_secrets.kms_key_arn]
+  doppler_project          = local.doppler.project
+  doppler_environment_slug = var.state_secrets_doppler_config
+  doppler_workspace_id     = local.doppler.workspace_id
+}
+
+# Create the API's rotating database login on the platform's RDS instance.
 module "app_user" {
   source = "../sebt_database_app_user"
 
   project         = "${var.project}-${var.state}"
   project_short   = var.project_short
   environment     = var.environment
-  vpc_id          = var.vpc_id
-  subnets         = var.private_subnets
-  logging_key_arn = var.logging_key_id
+  vpc_id          = var.platform.vpc_id
+  subnets         = var.platform.private_subnets
+  logging_key_arn = var.platform.logging_key_arn
 
-  host                       = var.database.host
-  port                       = var.database.port
-  admin_secret_arn           = var.database.admin_secret_arn
-  database_security_group_id = var.database.security_group_id
+  host                       = var.platform.database.host
+  port                       = var.platform.database.port
+  admin_secret_arn           = var.platform.database.admin_secret_arn
+  database_security_group_id = var.platform.database.security_group_id
 
   app_users           = var.db_app_users
   db_name             = var.db_name
@@ -249,8 +289,8 @@ module "redis" {
   project       = "${var.project}-${var.state}"
   project_short = var.project_short
   environment   = var.environment
-  vpc_id        = var.vpc_id
-  subnets       = var.private_subnets
+  vpc_id        = var.platform.vpc_id
+  subnets       = var.platform.private_subnets
 
   ingress_security_groups = [module.api.security_group_id]
 
@@ -270,7 +310,7 @@ module "ses" {
   project        = "${var.project}-${var.state}"
   environment    = var.environment
   domain         = var.domain
-  hosted_zone_id = var.hosted_zone_id
+  hosted_zone_id = data.aws_route53_zone.main.zone_id
 
   sender_email       = var.sender_email
   allowed_recipients = var.ses_allowed_recipients
@@ -290,10 +330,10 @@ module "cloudfront_waf" {
   certificate_sans = var.certificate_sans
   extra_aliases    = var.cloudfront_extra_aliases
   origin_alb_arn   = module.web.load_balancer_arn
-  log_bucket       = var.logging_bucket_domain_name
-  log_group        = var.waf_log_group
+  log_bucket       = var.platform.logging_bucket_domain_name
+  log_group        = var.platform.waf_log_group_arn
   passive          = var.passive_waf
-  hosted_zone_id   = var.hosted_zone_id
+  hosted_zone_id   = data.aws_route53_zone.main.zone_id
 
   # AWS Security Agent penetration test bypass (development only). Evaluated
   # before the rate-limit rule so the test's traffic is allowed and terminating.

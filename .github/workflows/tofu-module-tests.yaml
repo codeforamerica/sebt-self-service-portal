@@ -7,12 +7,18 @@ on:
       - "tofu/modules/sebt_database_app_user/lambda/**"
       - "tofu/modules/sebt_ses/lambda/**"
       - "tofu/modules/sebt_enrollment_checker/functions/**"
+      - "tofu/modules/sebt_database/**"
+      - "tofu/modules/sebt_platform/**"
+      - "tofu/modules/sebt_platform_lookup/**"
   pull_request:
     branches: ["main"]
     paths:
       - "tofu/modules/sebt_database_app_user/lambda/**"
       - "tofu/modules/sebt_ses/lambda/**"
       - "tofu/modules/sebt_enrollment_checker/functions/**"
+      - "tofu/modules/sebt_database/**"
+      - "tofu/modules/sebt_platform/**"
+      - "tofu/modules/sebt_platform_lookup/**"
 
 permissions:
   contents: read
@@ -71,3 +77,27 @@ jobs:
 
       - name: Run tests
         run: node --test tofu/modules/sebt_enrollment_checker/functions/rewrite-static-export-uri.test.mjs
+
+  # The platform and database modules create the names that the lookup module
+  # searches for; each module's tests assert the same names so they cannot
+  # drift apart.
+  test-platform-naming:
+    name: Platform naming contract tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: [sebt_database, sebt_platform, sebt_platform_lookup]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: "1.10.0"
+
+      - name: Run tests
+        working-directory: tofu/modules/${{ matrix.module }}
+        run: |
+          tofu init -backend=false
+          tofu test

@@ -28,6 +28,11 @@ output "logging_key_arn" {
   value       = module.logging.kms_key_arn
 }
 
+output "name_prefix" {
+  description = "Prefix the platform's resources are named with: project-state-environment."
+  value       = local.name_prefix
+}
+
 output "private_subnets" {
   description = "IDs of the VPC's private subnets."
   value       = module.vpc.private_subnets

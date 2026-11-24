@@ -1,3 +1,11 @@
+data "aws_ecr_repository" "api" {
+  name = "${var.platform.name_prefix}-api"
+}
+
+data "aws_ecr_repository" "web" {
+  name = "${var.platform.name_prefix}-web"
+}
+
 # Prefix lists can be used in security group rules to allow traffic from
 # known AWS service IP ranges without needing to hardcode them. Here, we look
 # up the managed prefix list for CloudFront origin-facing IPs so that we can
@@ -26,4 +34,8 @@ data "aws_secretsmanager_secret" "datadog_key" {
   for_each = length(data.aws_secretsmanager_secrets.datadog_key.arns) > 0 ? toset(["this"]) : toset([])
 
   arn = one(data.aws_secretsmanager_secrets.datadog_key.arns)
+}
+
+data "aws_route53_zone" "main" {
+  name = var.hosted_zone_name
 }

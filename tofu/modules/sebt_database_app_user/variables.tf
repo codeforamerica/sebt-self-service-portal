@@ -70,7 +70,7 @@ variable "project" {
 variable "project_short" {
   type        = string
   description = "Abbreviated project name for resource naming."
-  default     = ""
+  default     = null
 }
 
 variable "rotation_interval_days" {

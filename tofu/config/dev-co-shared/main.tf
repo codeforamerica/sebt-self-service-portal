@@ -22,15 +22,6 @@ module "platform" {
   public_subnets  = var.public_subnets
 }
 
-# Look up the Keycloak ECR repository created by dev-co's bootstrap.
-data "aws_ecr_repository" "keycloak" {
-  name = "${var.project}-${var.state}-${var.environment}-keycloak"
-}
-
-data "aws_route53_zone" "main" {
-  name = "co.sebt-portal.codeforamerica.app"
-}
-
 # Shared Keycloak IdP for the non-production OIDC deployments in this account.
 # Push an image before the first apply: ./scripts/preview/build-keycloak.sh
 module "keycloak" {

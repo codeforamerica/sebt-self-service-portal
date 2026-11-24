@@ -20,91 +20,10 @@ provider "doppler" {}
 module "platform" {
   source = "../../modules/sebt_platform_lookup"
 
-  project     = var.project
+  project = var.project
+  # The demo runs in the CO account, so its platform is named for CO.
   state       = "co"
   environment = var.environment
-}
-
-# The demo deploys the images dev-co's pipeline pushes.
-data "aws_ecr_repository" "api" {
-  name = "${var.project}-co-${var.environment}-api"
-}
-
-data "aws_ecr_repository" "web" {
-  name = "${var.project}-co-${var.environment}-web"
-}
-
-# Created by bootstrap.
-data "aws_route53_zone" "main" {
-  name = var.domain
-}
-
-# Store the demo's secrets in Secrets Manager, synced from Doppler.
-module "state_secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=1880642d0546106d0c1f568304c0326b32b8cdbb" # 2.1.1
-
-  project     = "${var.project}-${var.state}"
-  environment = var.environment
-  service     = "state-secrets"
-
-  # Doppler's AWS Secrets Manager sync creates its own target secret named
-  # "{path}/{DOPPLER_KEY}" (uppercase, exact match) rather than writing into
-  # a pre-existing ARN — so these keys and add_suffix=false must make our
-  # secret's name match exactly what Doppler will create, or Doppler ends up
-  # populating an entirely separate, unreferenced secret.
-  add_suffix = false
-
-  secrets = {
-    "JWT_SECRET_KEY" = {
-      description     = "JWT signing secret for the SEBT Portal API."
-      recovery_window = 7
-    }
-    "IDENTIFIER_HASHER_SECRET_KEY" = {
-      description     = "Identifier hashing secret for the SEBT Portal API."
-      recovery_window = 7
-    }
-    "OIDC_CLIENT_ID" = {
-      description     = "Keycloak OIDC client ID for authentication."
-      recovery_window = 7
-    }
-    "OIDC_CLIENT_SECRET" = {
-      description     = "Keycloak OIDC client secret for authentication."
-      recovery_window = 7
-    }
-    "OIDC_STEP_UP_CLIENT_ID" = {
-      description     = "Keycloak OIDC step-up client ID for authentication."
-      recovery_window = 7
-    }
-    "OIDC_STEP_UP_CLIENT_SECRET" = {
-      description     = "Keycloak OIDC step-up client secret for authentication."
-      recovery_window = 7
-    }
-    "OIDC_COMPLETE_LOGIN_SIGNING_KEY" = {
-      description     = "Signing key for completing OIDC login."
-      recovery_window = 7
-    }
-  }
-}
-
-module "state_secrets_doppler" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=e8ba5edac1eaf156702c89e0c9cd84f86dcafbfc" # 1.1.0
-  depends_on = [module.state_secrets]
-
-  project     = "${var.project}-${var.state}"
-  environment = var.environment
-  service     = "state-secrets"
-
-  kms_key_arns             = [module.state_secrets.kms_key_arn]
-  doppler_project          = "safety-net-sebt-self-service-portal"
-  doppler_environment_slug = "dev_demo_state_secrets"
-  doppler_workspace_id     = "08430c37e2a2889dc220"
-}
-
-locals {
-  keycloak_realm     = "${var.keycloak_hostname}/realms/sebt"
-  keycloak_discovery = "${local.keycloak_realm}/.well-known/openid-configuration"
-  keycloak_authorize = "${local.keycloak_realm}/protocol/openid-connect/auth"
-  oidc_callback      = "https://${var.domain}/callback"
 }
 
 # Deploy the application services (API + Web) using the shared wrapper module.
@@ -112,36 +31,25 @@ module "app" {
   source    = "../../modules/sebt_application"
   providers = { doppler = doppler }
 
-  apply_immediately          = true
-  domain                     = var.domain
-  hosted_zone_id             = data.aws_route53_zone.main.zone_id
-  environment                = var.environment
-  image_tag                  = var.image_tag
-  logging_key_id             = module.platform.logging_key_arn
-  logging_bucket_domain_name = module.platform.logging_bucket_domain_name
-  private_subnets            = module.platform.private_subnets
-  public_subnets             = module.platform.public_subnets
-  vpc_id                     = module.platform.vpc_id
-  project                    = var.project
-  sender_email               = var.sender_email
-  state                      = var.state
-  waf_log_group              = module.platform.waf_log_group_arn
-  passive_waf                = true
-  enable_appconfig           = false
-  log_as_json                = true
+  apply_immediately = true
+  domain            = var.domain
+  hosted_zone_name  = var.domain
+  environment       = var.environment
+  image_tag         = var.image_tag
+  platform          = module.platform
+  project           = var.project
+  sender_email      = var.sender_email
+  state             = var.state
+  passive_waf       = true
+  enable_appconfig  = false
+  log_as_json       = true
 
   # Load balancer and target group names leave out the state, so the default
   # would collide with dev-co's in this account.
   project_short = "sebt-demo"
 
-  database     = module.platform.database
   db_name      = "SebtPortalDemo"
   db_app_users = ["demoappuser", "demoappuser_clone"]
-
-  api_image_url      = data.aws_ecr_repository.api.repository_url
-  api_repository_arn = data.aws_ecr_repository.api.arn
-  web_image_url      = data.aws_ecr_repository.web.repository_url
-  web_repository_arn = data.aws_ecr_repository.web.arn
 
   force_delete           = true
   image_tags_mutable     = true
@@ -155,6 +63,16 @@ module "app" {
   # Matches the Keycloak fixture users' emails.
   seeding_enabled       = "true"
   seeding_email_pattern = "sebt.co+{0}@codeforamerica.org"
+
+  state_secrets_doppler_config = "dev_demo_state_secrets"
+
+  state_secrets = {
+    "OIDC_CLIENT_ID"                  = "Keycloak OIDC client ID for authentication."
+    "OIDC_CLIENT_SECRET"              = "Keycloak OIDC client secret for authentication."
+    "OIDC_STEP_UP_CLIENT_ID"          = "Keycloak OIDC step-up client ID for authentication."
+    "OIDC_STEP_UP_CLIENT_SECRET"      = "Keycloak OIDC step-up client secret for authentication."
+    "OIDC_COMPLETE_LOGIN_SIGNING_KEY" = "Signing key for completing OIDC login."
+  }
 
   state_api_environment_variables = {
     # Like the CO previews: no development-only behavior on a public link.
@@ -184,14 +102,12 @@ module "app" {
     "Oidc__VerificationClaims__FallbackDateClaimName"  = "myCoIdVerificationDate"
   }
 
-  state_api_environment_secrets = {
-    "JwtSettings__SecretKey"        = module.state_secrets.secrets["JWT_SECRET_KEY"].secret_arn
-    "IdentifierHasher__SecretKey"   = module.state_secrets.secrets["IDENTIFIER_HASHER_SECRET_KEY"].secret_arn
-    "Oidc__ClientId"                = module.state_secrets.secrets["OIDC_CLIENT_ID"].secret_arn
-    "Oidc__ClientSecret"            = module.state_secrets.secrets["OIDC_CLIENT_SECRET"].secret_arn
-    "Oidc__StepUp__ClientId"        = module.state_secrets.secrets["OIDC_STEP_UP_CLIENT_ID"].secret_arn
-    "Oidc__StepUp__ClientSecret"    = module.state_secrets.secrets["OIDC_STEP_UP_CLIENT_SECRET"].secret_arn
-    "Oidc__CompleteLoginSigningKey" = module.state_secrets.secrets["OIDC_COMPLETE_LOGIN_SIGNING_KEY"].secret_arn
+  state_api_secrets = {
+    "Oidc__ClientId"                = "OIDC_CLIENT_ID"
+    "Oidc__ClientSecret"            = "OIDC_CLIENT_SECRET"
+    "Oidc__StepUp__ClientId"        = "OIDC_STEP_UP_CLIENT_ID"
+    "Oidc__StepUp__ClientSecret"    = "OIDC_STEP_UP_CLIENT_SECRET"
+    "Oidc__CompleteLoginSigningKey" = "OIDC_COMPLETE_LOGIN_SIGNING_KEY"
   }
 
   state_web_environment_variables = {
@@ -202,9 +118,9 @@ module "app" {
     OIDC_ISSUER_ORIGIN = var.keycloak_hostname
   }
 
-  state_web_environment_secrets = {
-    OIDC_CLIENT_ID                  = module.state_secrets.secrets["OIDC_CLIENT_ID"].secret_arn
-    OIDC_CLIENT_SECRET              = module.state_secrets.secrets["OIDC_CLIENT_SECRET"].secret_arn
-    OIDC_COMPLETE_LOGIN_SIGNING_KEY = module.state_secrets.secrets["OIDC_COMPLETE_LOGIN_SIGNING_KEY"].secret_arn
+  state_web_secrets = {
+    OIDC_CLIENT_ID                  = "OIDC_CLIENT_ID"
+    OIDC_CLIENT_SECRET              = "OIDC_CLIENT_SECRET"
+    OIDC_COMPLETE_LOGIN_SIGNING_KEY = "OIDC_COMPLETE_LOGIN_SIGNING_KEY"
   }
 }
