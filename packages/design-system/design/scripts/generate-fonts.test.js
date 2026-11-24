@@ -92,6 +92,16 @@ describe('generateFontsTs', () => {
     expect(out).not.toContain("from 'next/font/google'")
     expect(out).not.toContain("from 'next/font/local'")
   })
+
+  it('names the in-repo token file as its source by default', () => {
+    const out = generateFontsTs({ body: 'urbanist', heading: 'urbanist' }, 'co')
+    expect(out).toContain(' * Source: design/states/co.json\n')
+  })
+
+  it('names the given source when tokens come from elsewhere', () => {
+    const out = generateFontsTs({ body: 'urbanist', heading: 'urbanist' }, 'co', '$EXTERNAL_TOKENS_DIR_CO/co.json')
+    expect(out).toContain(' * Source: $EXTERNAL_TOKENS_DIR_CO/co.json\n')
+  })
 })
 
 describe('assertLocalFontFilesExist', () => {

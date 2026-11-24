@@ -12,11 +12,15 @@
  * resolve from:
  *   node ../../../../packages/design-system/design/scripts/generate-theme-css.js
  *
+ * Every state with tokens available is compiled, so one build can run as any state.
+ * Tokens for the state being built (STATE) are required; any other state's are optional.
+ *
  * The per-state Sass partials this depends on are produced by
  * generate-sass-tokens.js. This script compiles each state from a private copy of
  * the Sass tree and never writes the shared partials, because the enrollment checker
  * compiles from them while this runs.
  */
+import './load-env.js'
 import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -25,6 +29,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { LOCAL_FONTS_MAP, assertLocalFontFilesExist, extractFonts } from './generate-fonts.js'
+import { resolveStateTokens } from './state-token-source.js'
 import { STATE_CODES } from '../../src/lib/state.ts'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -85,9 +90,7 @@ export function compileStateTheme(state, { sass, sassDir, loadPaths }) {
  * contributing little here.
  */
 export function fontCss(state, root = appRoot) {
-  const tokens = JSON.parse(
-    readFileSync(join(designSystemRoot, 'design', 'states', `${state}.json`), 'utf8')
-  )
+  const tokens = JSON.parse(readFileSync(resolveStateTokens(state).path, 'utf8'))
   const { body, heading } = extractFonts(tokens)
   // Same guard generate-fonts.js applies: a token naming a font whose file is
   // missing would otherwise emit a @font-face and a preload pointing at a 404.
@@ -130,7 +133,19 @@ export function fontCss(state, root = appRoot) {
   return { css, preload: [...new Set(preload)] }
 }
 
+/**
+ * Picks the states to compile from those with tokens available.
+ * @param {(state: string) => boolean} hasTokens
+ */
+export function selectThemeStates(buildState, states, hasTokens) {
+  if (!hasTokens(buildState)) {
+    throw new Error(`No design tokens found for ${buildState.toUpperCase()}, the state being built`)
+  }
+  return states.filter(hasTokens)
+}
+
 function main() {
+  const buildState = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
   const sass = loadSass()
 
   const sassDir = join(designSystemRoot, 'design', 'sass')
@@ -148,14 +163,20 @@ function main() {
     join(appRoot, 'node_modules')
   ]
 
+  let states
+  try {
+    states = selectThemeStates(buildState, STATE_CODES, (state) => existsSync(resolveStateTokens(state).path))
+  } catch (error) {
+    console.error(`❌ ${error.message}`)
+    process.exit(1)
+  }
+  for (const state of STATE_CODES.filter((s) => !states.includes(s))) {
+    console.log(`   ${state}: no token file, skipping`)
+  }
+
   const fontManifest = {}
   console.log('🎨 Compiling a USWDS stylesheet per state...')
-  for (const state of STATE_CODES) {
-    if (!existsSync(join(designSystemRoot, 'design', 'states', `${state}.json`))) {
-      console.log(`   ${state}: no token file, skipping`)
-      continue
-    }
-
+  for (const state of states) {
     const css = compileStateTheme(state, { sass, sassDir, loadPaths })
 
     const fonts = fontCss(state)
