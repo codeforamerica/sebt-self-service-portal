@@ -202,6 +202,73 @@ namespace SEBT.Portal.Infrastructure.Migrations
                     b.ToTable("EnrollmentCheckSubmissions", (string)null);
                 });
 
+            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.UserActionEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ApplicationId")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ApplicationIdHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ApplicationStudentId")
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ApplicationStudentIdHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("CaseId")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("CaseIdHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("SpanId")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("TraceId")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("IX_UserActions_User_CreatedAt");
+
+                    b.ToTable("UserActions", (string)null);
+                });
+
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.UserCaseEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -438,6 +505,17 @@ namespace SEBT.Portal.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.DocVerificationChallengeEntity", b =>
+                {
+                    b.HasOne("SEBT.Portal.Infrastructure.Data.Entities.UserEntity", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("SEBT.Portal.Infrastructure.Data.Entities.UserActionEntity", b =>
                 {
                     b.HasOne("SEBT.Portal.Infrastructure.Data.Entities.UserEntity", "User")
                         .WithMany()

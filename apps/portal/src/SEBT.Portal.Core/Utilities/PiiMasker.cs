@@ -10,6 +10,7 @@ public static partial class PiiMasker
 {
     /// <summary>
     /// Masks an email address, preserving the first character of the local part and the full domain.
+    /// Line breaks are removed so the result is safe to write to logs.
     /// Example: "jane@example.com" → "j***@example.com"
     /// </summary>
     /// <param name="email">The email address to mask.</param>
@@ -20,6 +21,8 @@ public static partial class PiiMasker
         {
             return null;
         }
+
+        email = email.Replace("\r", "").Replace("\n", "");
 
         var atIndex = email.IndexOf('@');
         if (atIndex < 1)

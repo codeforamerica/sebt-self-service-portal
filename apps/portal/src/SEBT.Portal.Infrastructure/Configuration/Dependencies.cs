@@ -14,6 +14,7 @@ internal static class Dependencies
         services.AddPortalOptions<AddressValidationDataSettings>();
         services.AddPortalOptions<CheckerFeaturesRateLimitSettings>();
         services.AddPortalOptions<CoLoadedCohortFilterSettings>();
+        services.AddPortalOptions<CoLoadedHouseholdLookupSettings>();
         services.AddPortalOptions<EmailOtpSenderServiceSettings>();
         services.AddPortalOptions<EnrollmentCheckerSettings>();
         services.AddPortalOptions<EnrollmentCheckRateLimitSettings>();
@@ -37,8 +38,9 @@ internal static class Dependencies
         services.AddPortalOptions<StateHouseholdIdSettings>();
         services.AddPortalOptions<WebhookRateLimitSettings>();
 
-        // Add scoped raw value for CoLoadedCohortFilterSettings
+        // Add scoped raw values for settings injected directly into handlers
         services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<CoLoadedCohortFilterSettings>>().Value);
+        services.AddScoped(sp => sp.GetRequiredService<IOptionsSnapshot<CoLoadedHouseholdLookupSettings>>().Value);
 
         return services;
     }
