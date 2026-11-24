@@ -11,7 +11,8 @@ import path from 'node:path'
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { CHECKER_ASSETS, CHECKER_STATES, getCheckerAssetPath } from './checkerAssetPath'
+import { CHECKER_ASSETS, getCheckerAssetPath } from './checkerAssetPath'
+import { CHECKER_STATES } from './checkerStateConfig'
 
 afterEach(() => {
   vi.unstubAllEnvs()

@@ -10,6 +10,8 @@
  * Card lifecycle fields live on SummerEbtCase, not Application — see DC-256.
  */
 
+import { getStateConfig } from '@sebt/design-system/src/lib/state'
+
 import { currentState, type StateCode } from './state'
 
 /**
@@ -190,7 +192,7 @@ export function makeSummerEbtCase(overrides: SummerEbtCaseOptions = {}): MockSum
 
 // ─── HouseholdData factory ─────────────────────────────────────────────────
 
-const ADDRESS_DEFAULTS: Record<StateCode, MockAddress> = {
+export const ADDRESS_DEFAULTS: Record<StateCode, MockAddress> = {
   dc: {
     streetAddress1: '1350 Pennsylvania Ave NW',
     streetAddress2: 'Suite 400',
@@ -206,6 +208,12 @@ const ADDRESS_DEFAULTS: Record<StateCode, MockAddress> = {
     postalCode: '80203'
   }
 }
+
+/** Text in the replacement-confirmation heading: the card names the child (DC) or its last four digits (CO). */
+export const REPLACED_CARD_HEADING =
+  getStateConfig(currentState).cardIdentifier === 'cardLastFour'
+    ? 'the card ending in 1234'
+    : 'John Doe card will be sent'
 
 interface HouseholdDataOptions {
   summerEbtCases?: MockSummerEbtCase[]

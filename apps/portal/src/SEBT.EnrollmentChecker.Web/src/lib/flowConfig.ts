@@ -1,4 +1,4 @@
-import { getState, type StateCode } from '@sebt/design-system/src/lib/state'
+import { getCheckerStateConfig } from './checkerStateConfig'
 
 // Per-state shape of the check flow.
 
@@ -36,16 +36,9 @@ export interface FlowConfig {
 
 export type ResultsLayout = 'household' | 'singleOutcome'
 
-const flowConfigs: Record<StateCode, FlowConfig> = {
-  dc: { useReviewStep: false, distinguishNoResults: false, resultsLayout: 'singleOutcome' },
-  co: { useReviewStep: true, distinguishNoResults: true, resultsLayout: 'household' }
-}
-
 /** Flow config for the active state. */
 export function getFlowConfig(): FlowConfig {
-  const state = getState()
-  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  return flowConfigs[state]
+  return getCheckerStateConfig().flow
 }
 
 /**

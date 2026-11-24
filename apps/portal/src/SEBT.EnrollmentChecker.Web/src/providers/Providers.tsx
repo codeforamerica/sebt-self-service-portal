@@ -2,6 +2,7 @@
 
 import { EnrollmentProvider } from '@/features/enrollment/context/EnrollmentContext'
 import { enrollmentCheckerRoutes } from '@/lib/analytics-routes'
+import { CHECKER_DEFAULT_STATE } from '@/lib/checkerState'
 import { namespaces, stateResources } from '@/lib/generated-locale-resources'
 import { DataLayerProvider } from '@sebt/analytics'
 import type { StateResources } from '@sebt/design-system'
@@ -9,7 +10,11 @@ import { initI18n, I18nProvider } from '@sebt/design-system/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useRef, useState, type ReactNode } from 'react'
 
-const state = (process.env.NEXT_PUBLIC_STATE || process.env.STATE || 'co').toLowerCase()
+const state = (
+  process.env.NEXT_PUBLIC_STATE ||
+  process.env.STATE ||
+  CHECKER_DEFAULT_STATE
+).toLowerCase()
 
 export function Providers({ children }: { children: ReactNode }) {
   // Initialize i18n once, lazily inside the component to avoid

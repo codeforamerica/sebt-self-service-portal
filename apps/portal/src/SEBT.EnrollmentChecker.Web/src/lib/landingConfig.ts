@@ -1,12 +1,13 @@
 import {
   getState,
   getStateConfig,
-  type StateCode,
   type SupportedLanguage
 } from '@sebt/design-system/src/lib/state'
 
-// Per-state structure of the landing page. Declared here rather than branched on
-// inside the component, so adding a state is a data change.
+import { getCheckerStateConfig } from './checkerStateConfig'
+
+// Per-state structure of the landing page. Each state's values live in the checker registry
+// rather than in branches inside the component, so adding a state is a data change.
 
 export interface LandingConfig {
   /**
@@ -16,11 +17,6 @@ export interface LandingConfig {
    * `accordionTitle` in their content, so enabling it would render a raw key.
    */
   useAccordion: boolean
-}
-
-const landingConfigs: Record<StateCode, LandingConfig> = {
-  dc: { useAccordion: false },
-  co: { useAccordion: true }
 }
 
 /**
@@ -66,9 +62,7 @@ export interface LandingAction {
 
 /** Landing config for the active state. */
 export function getLandingConfig(): LandingConfig {
-  const state = getState()
-  // eslint-disable-next-line security/detect-object-injection -- state is typed StateCode
-  return landingConfigs[state]
+  return getCheckerStateConfig().landing
 }
 
 /**

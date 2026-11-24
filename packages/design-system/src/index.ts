@@ -50,7 +50,7 @@ export type { OutageFlagCache } from './lib/outageFlagCache'
 export { SkipNav } from './components/layout/SkipNav'
 
 // State configuration
-export type { LoginMode, StateCode, StateConfig } from './lib/state'
+export type { LoginMode, StateCode, StateConfig, StateLinks } from './lib/state'
 export {
   STATE_CODES,
   getState,
@@ -64,7 +64,7 @@ export {
 export { formatPersonName } from './lib/names'
 
 // External links
-export type { StateLinks, LinkItem } from './lib/links'
+export type { LinkItem } from './lib/links'
 export { getStateLinks, getFooterLinks, getHelpLinks } from './lib/links'
 
 // i18n types only (no runtime dependency on react-i18next)

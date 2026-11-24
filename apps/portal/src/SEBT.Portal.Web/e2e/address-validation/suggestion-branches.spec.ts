@@ -4,17 +4,37 @@ import { fillAndSubmitAddressForm } from '../fixtures/address-form'
 import { setupApiRoutes } from '../fixtures/api-routes'
 import { injectAuth } from '../fixtures/auth'
 import { makeHouseholdData } from '../fixtures/household-data'
-import { currentState } from '../fixtures/state'
+import { forCurrentState, type StateCode } from '../fixtures/state'
 
-const ENTERED =
-  currentState === 'co'
-    ? { street: '200 E Colfax Ave', city: 'Denver', state: 'CO', zip: '80203' }
-    : { street: '456 Oak Avenue NW', city: 'Washington', state: 'DC', zip: '20002' }
+const ENTERED_BY_STATE: Record<
+  StateCode,
+  { street: string; city: string; state: string; zip: string }
+> = {
+  dc: { street: '456 Oak Avenue NW', city: 'Washington', state: 'DC', zip: '20002' },
+  co: { street: '200 E Colfax Ave', city: 'Denver', state: 'CO', zip: '80203' }
+}
+const ENTERED = forCurrentState(ENTERED_BY_STATE)
 
-const SUGGESTED =
-  currentState === 'co'
-    ? { streetAddress1: '200 East Colfax Avenue', streetAddress2: null, city: 'Denver', state: 'CO', postalCode: '80203-1716' }
-    : { streetAddress1: '456 Oak Ave NW', streetAddress2: null, city: 'Washington', state: 'DC', postalCode: '20002-1122' }
+const SUGGESTED_BY_STATE: Record<
+  StateCode,
+  { streetAddress1: string; streetAddress2: null; city: string; state: string; postalCode: string }
+> = {
+  dc: {
+    streetAddress1: '456 Oak Ave NW',
+    streetAddress2: null,
+    city: 'Washington',
+    state: 'DC',
+    postalCode: '20002-1122'
+  },
+  co: {
+    streetAddress1: '200 East Colfax Avenue',
+    streetAddress2: null,
+    city: 'Denver',
+    state: 'CO',
+    postalCode: '80203-1716'
+  }
+}
+const SUGGESTED = forCurrentState(SUGGESTED_BY_STATE)
 
 /**
  * Registers a PUT /household/address handler where the first submit returns a
@@ -36,7 +56,11 @@ async function mockSuggestionThenValid(page: Page): Promise<Array<Record<string,
       return route.fulfill({
         status: 422,
         contentType: 'application/json',
-        body: JSON.stringify({ status: 'suggestion', reason: 'suggested', suggestedAddress: SUGGESTED })
+        body: JSON.stringify({
+          status: 'suggestion',
+          reason: 'suggested',
+          suggestedAddress: SUGGESTED
+        })
       })
     }
     followUpBodies.push(route.request().postDataJSON() as Record<string, unknown>)

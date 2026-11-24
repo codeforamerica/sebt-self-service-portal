@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { STATE_CODES } from '../../src/lib/state.ts'
 import { compileStateTheme, fontCss } from './generate-theme-css.js'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
@@ -31,7 +32,7 @@ describe('theme font contract', () => {
   // woff2 files are vendored in the portal rather than the design system.
   const appRoot = resolve(designSystemRoot, '../../apps/portal/src/SEBT.Portal.Web')
 
-  for (const state of ['dc', 'co']) {
+  for (const state of STATE_CODES) {
     it(`${state}: emits every font variable the SCSS references`, () => {
       const { css } = fontCss(state, appRoot)
 

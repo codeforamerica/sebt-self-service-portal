@@ -71,6 +71,41 @@ interface StateAssets {
   }
 }
 
+/** External links, per state, for the footer, help section, and other pages. */
+export interface StateLinks {
+  /** Footer navigation links */
+  footer: {
+    publicNotifications: string
+    accessibility: string
+    privacyAndSecurity: string
+    googleTranslateDisclaimer: string
+    about: string
+    termsAndConditions: string
+    /** CO-specific: Colorado Transparency Online Project */
+    transparencyOnline?: string
+    /** CO-specific: Colorado General Notices page */
+    generalNotices?: string
+    /** CO-specific: Digital Accessibility Statement */
+    digitalAccessibility?: string
+  }
+  /** Help section links */
+  help: {
+    faqs: string
+    contactUs: string
+    /** State's main SEBT website; shown verbatim in maintenance-page button labels */
+    sebtMainSite: string
+    /** CO-specific: Help desk email (mailto: link) */
+    helpDeskEmail?: string
+  }
+  /** Other external links used throughout the app */
+  external: {
+    contactUsAssistance: string
+  }
+}
+
+/** Maintenance page action buttons: 'stacked' is a column with a full-width outline button, 'row' keeps both at content width side by side. */
+type MaintenanceActionLayout = 'stacked' | 'row'
+
 export interface StateConfig {
   /** Full display name (e.g., 'District of Columbia') */
   name: string
@@ -105,27 +140,35 @@ export interface StateConfig {
   actionButtonText: string
   /** USWDS text color utility class for the `h1` that titles a page */
   pageTitleText: string
+  links: StateLinks
+  maintenanceActionLayout: MaintenanceActionLayout
   assets: StateAssets
 }
 
 /**
  * What a state must declare itself: everything without a state-agnostic default, so a new state
- * that omits identity or behavior values fails to compile. Shared values are optional to override.
+ * that omits identity, links or behavior values fails to compile. Shared values are optional to override.
  */
-interface StateOverride extends Omit<StateConfig, 'assets'> {
+interface StateOverride extends Omit<StateConfig, 'assets' | 'maintenanceActionLayout'> {
+  maintenanceActionLayout?: MaintenanceActionLayout
   assets: Pick<StateAssets, 'logo' | 'seal'> & {
     icons?: Partial<StateAssets['icons']>
   }
 }
 
 /**
- * Icons every state shares unless it overrides them. A value belongs here only when all states
+ * Values every state shares unless it overrides them. A value belongs here only when all states
  * have the same one; anything that differs, and every identity value, lives in `stateOverrides`.
  */
-const sharedIcons: StateAssets['icons'] = {
-  translate: '/images/shared/icons/translate_Rounded.svg',
-  faqs: '/images/shared/icons/faqs-icon.svg',
-  contact: '/images/shared/icons/contact-icon.svg'
+const sharedDefaults: Pick<StateConfig, 'maintenanceActionLayout'> & {
+  icons: StateAssets['icons']
+} = {
+  maintenanceActionLayout: 'row',
+  icons: {
+    translate: '/images/shared/icons/translate_Rounded.svg',
+    faqs: '/images/shared/icons/faqs-icon.svg',
+    contact: '/images/shared/icons/contact-icon.svg'
+  }
 }
 
 /** Public URL of a file in a state's own image folder. */
@@ -160,6 +203,24 @@ const stateOverrides: Record<StateCode, StateOverride> = {
     actionButtonBg: 'bg-secondary',
     actionButtonText: 'text-ink',
     pageTitleText: 'text-ink',
+    links: {
+      footer: {
+        publicNotifications: 'https://sunbucks.dc.gov/page/public-notifications',
+        accessibility: 'https://dc.gov/node/298582',
+        privacyAndSecurity: 'https://dc.gov/node/298592',
+        googleTranslateDisclaimer: 'https://dc.gov/page/google-translate-disclaimer',
+        about: 'https://dc.gov/node/819092',
+        termsAndConditions: 'https://dc.gov/node/900572'
+      },
+      help: {
+        faqs: 'https://sunbucks.dc.gov/page/sun-bucks-frequently-asked-questions',
+        contactUs: 'https://sunbucks.dc.gov/page/contact-us',
+        sebtMainSite: 'https://sunbucks.dc.gov'
+      },
+      external: {
+        contactUsAssistance: 'https://sunbucks.dc.gov/page/contact-us'
+      }
+    },
     assets: {
       logo: {
         src: getStateAssetPath('dc', 'logo.svg'),
@@ -197,6 +258,29 @@ const stateOverrides: Record<StateCode, StateOverride> = {
     actionButtonBg: 'bg-primary',
     actionButtonText: 'text-white',
     pageTitleText: 'text-primary',
+    maintenanceActionLayout: 'stacked',
+    links: {
+      footer: {
+        publicNotifications: '#',
+        accessibility: '#',
+        privacyAndSecurity: '#',
+        googleTranslateDisclaimer: '#',
+        about: '#',
+        termsAndConditions: '#',
+        transparencyOnline: 'https://data.colorado.gov/stories/s/fjyf-bdat',
+        generalNotices: 'https://www.colorado.gov/general-notices',
+        digitalAccessibility: 'https://cdhs.colorado.gov/accessibility-at-cdhs'
+      },
+      help: {
+        faqs: 'https://cdhs.colorado.gov/summer-ebt-faq',
+        contactUs: 'mailto:cdhs_sebt_supportcenter@state.co.us',
+        sebtMainSite: 'https://cdhs.colorado.gov/summer-ebt',
+        helpDeskEmail: 'mailto:cdhs_sebt_supportcenter@state.co.us'
+      },
+      external: {
+        contactUsAssistance: 'https://mycolorado.state.co.us/customer-support'
+      }
+    },
     assets: {
       logo: {
         src: getStateAssetPath('co', 'logo.svg'),
@@ -215,18 +299,21 @@ const stateOverrides: Record<StateCode, StateOverride> = {
   }
 }
 
+function withSharedDefaults(override: StateOverride): StateConfig {
+  return {
+    ...override,
+    maintenanceActionLayout:
+      override.maintenanceActionLayout ?? sharedDefaults.maintenanceActionLayout,
+    assets: {
+      ...override.assets,
+      icons: { ...sharedDefaults.icons, ...override.assets.icons }
+    }
+  }
+}
+
 /** Each state's overrides over the shared values. Components read it via getStateConfig(). */
 const stateConfigs = Object.fromEntries(
-  Object.entries(stateOverrides).map(([code, override]) => [
-    code,
-    {
-      ...override,
-      assets: {
-        ...override.assets,
-        icons: { ...sharedIcons, ...override.assets.icons }
-      }
-    }
-  ])
+  Object.entries(stateOverrides).map(([code, override]) => [code, withSharedDefaults(override)])
 ) as Record<StateCode, StateConfig>
 
 function isKnownStateCode(value: string): value is StateCode {

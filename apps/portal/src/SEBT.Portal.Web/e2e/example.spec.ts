@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-import { getSiteDisplayName } from '@sebt/design-system/src/lib/state'
+import { getSiteDisplayName, STATE_CODES } from '@sebt/design-system/src/lib/state'
 
 import { currentState } from './fixtures/state'
 
@@ -34,7 +34,7 @@ test.describe('Homepage', () => {
 
     const html = page.locator('html')
     const stateAttr = await html.getAttribute('data-state')
-    expect(['dc', 'co']).toContain(stateAttr)
+    expect(STATE_CODES as readonly (string | null)[]).toContain(stateAttr)
   })
 
   test('should be accessible', async ({ page }) => {

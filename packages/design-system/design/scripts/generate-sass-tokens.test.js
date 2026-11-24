@@ -13,6 +13,7 @@ import {
   processThemeTokens,
   writeFileAtomic
 } from './generate-sass-tokens.js'
+import { STATE_CODES } from '../../src/lib/state.ts'
 import { loadStateTokens } from './load-state-tokens.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -124,7 +125,7 @@ describe('generateSemanticContent', () => {
 })
 
 describe('real state token files', () => {
-  it.each(['dc', 'co'])('%s.json produces USWDS settings without semantic leakage', state => {
+  it.each(STATE_CODES)('%s.json produces USWDS settings without semantic leakage', state => {
     const stateJson = loadStateTokens(state)
     const variables = processThemeTokens(stateJson.theme)
     const names = variables.map(v => v.name)

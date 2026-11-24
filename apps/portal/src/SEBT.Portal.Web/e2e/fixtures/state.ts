@@ -24,3 +24,9 @@ export function skipUnlessLoginMode(expected: LoginMode): void {
     `Requires ${expected} login mode (running ${currentState}, ${currentLoginMode})`
   )
 }
+
+/** Picks the fixture value for the state under test. */
+export function forCurrentState<T>(values: Record<StateCode, T>): T {
+  // eslint-disable-next-line security/detect-object-injection -- currentState is a validated StateCode
+  return values[currentState]
+}

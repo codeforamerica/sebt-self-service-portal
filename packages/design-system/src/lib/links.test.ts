@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { getStateLinks } from './links'
-import type { StateCode } from './state'
+import { getStateConfig, STATE_CODES, type StateCode } from './state'
 
 // Pins the shared link values the maintenance page's action buttons depend on.
 // The button labels are literal URLs, so the hrefs must match the copy exactly.
@@ -14,13 +14,17 @@ describe('getStateLinks', () => {
     expect(getStateLinks('co').help.sebtMainSite).toBe('https://cdhs.colorado.gov/summer-ebt')
   })
 
-  it.each(['dc', 'co'] as const)('provides a non-empty %s contact destination', (state) => {
+  it.each(STATE_CODES)('provides a non-empty %s contact destination', (state) => {
     expect(getStateLinks(state).help.contactUs).toBeTruthy()
   })
 
   it('routes the CO contact destination to the help desk mailbox', () => {
     const co = getStateLinks('co').help
     expect(co.contactUs).toBe(co.helpDeskEmail)
+  })
+
+  it.each(STATE_CODES)('reads %s links from the state config', (state) => {
+    expect(getStateLinks(state)).toBe(getStateConfig(state).links)
   })
 
   it('throws for a code that is not in the registry', () => {
