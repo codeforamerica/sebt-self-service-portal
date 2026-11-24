@@ -1,11 +1,11 @@
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { compileStateTheme, fontCss } from './generate-theme-css.js'
+import { compileStateTheme, fontCss, selectThemeStates } from './generate-theme-css.js'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const designSystemRoot = resolve(scriptDir, '../..')
@@ -53,6 +53,44 @@ describe('theme font contract', () => {
       }
     })
   }
+
+  describe('with tokens from an external directory', () => {
+    let externalDir
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
+      rmSync(externalDir, { recursive: true, force: true })
+    })
+
+    it('reads the state fonts from EXTERNAL_TOKENS_DIR_{STATE}', () => {
+      externalDir = mkdtempSync(join(tmpdir(), 'theme-css-external-'))
+      const coTokens = JSON.parse(readFileSync(resolve(designSystemRoot, 'design/states/co.json'), 'utf8'))
+      coTokens.theme['theme-font-type-sans'].$value = 'urbanist'
+      coTokens.theme['theme-font-type-serif'].$value = 'urbanist'
+      writeFileSync(join(externalDir, 'co.json'), JSON.stringify(coTokens))
+      vi.stubEnv('EXTERNAL_TOKENS_DIR_CO', externalDir)
+
+      expect(fontCss('co', appRoot).css).toContain("--font-primary:'Urbanist'")
+    })
+  })
+})
+
+describe('selectThemeStates', () => {
+  const available = (...states) => (state) => states.includes(state)
+
+  it('compiles every state that has tokens', () => {
+    expect(selectThemeStates('dc', ['dc', 'co'], available('dc', 'co'))).toEqual(['dc', 'co'])
+  })
+
+  it('skips another state whose tokens are not available', () => {
+    expect(selectThemeStates('co', ['dc', 'co'], available('co'))).toEqual(['co'])
+  })
+
+  it('fails when the state being built has no tokens', () => {
+    expect(() => selectThemeStates('co', ['dc', 'co'], available('dc'))).toThrow(
+      /No design tokens found for CO, the state being built/
+    )
+  })
 })
 
 /**
