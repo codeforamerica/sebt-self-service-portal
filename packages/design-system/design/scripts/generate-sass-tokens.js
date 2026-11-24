@@ -10,7 +10,7 @@
  *   STATE=co node scripts/generate-sass-tokens.js  # Colorado state
  *
  * Workflow:
- * 1. Read design/states/{state}.json (source of truth from Figma)
+ * 1. Read the state's token file (see state-token-source.js)
  * 2. Extract 'theme' object with USWDS settings
  * 3. Convert to SASS variables ($theme-color-primary: 'mint-cool-60v')
  * 4. Output to design/sass/_uswds-theme-{state}.scss
@@ -23,10 +23,10 @@
  */
 
 import './load-env.js'
-import { writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
-import { loadStateTokens, tokenSourceLabel } from './load-state-tokens.js'
+import { resolveStateTokens } from './state-token-source.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -234,7 +234,7 @@ function formatSassVariable({ name, value, description }) {
 /**
  * Generate legacy SASS variable file content (for backward compatibility)
  */
-function generateSassContent(state, variables) {
+function generateSassContent(state, variables, sourceLabel) {
   const timestamp = new Date().toISOString()
 
   // Group variables by category
@@ -247,7 +247,7 @@ function generateSassContent(state, variables) {
 // ==========================================================================
 //
 // Auto-generated from Figma Tokens Studio
-// Source: ${tokenSourceLabel(state)}
+// Source: ${sourceLabel}
 // Generated: ${timestamp}
 //
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens during build
@@ -297,7 +297,7 @@ ${otherVars.map(formatSassVariable).join('\n')}
  * Plain SASS variables (not USWDS settings) holding USWDS color-token names,
  * consumed by component SCSS via @use + color().
  */
-export function generateSemanticContent(state, variables, timestamp) {
+export function generateSemanticContent(state, variables, timestamp, sourceLabel) {
   const body =
     variables.length > 0
       ? variables.map(v => `${v.name}: ${v.value};`).join('\n')
@@ -308,7 +308,7 @@ export function generateSemanticContent(state, variables, timestamp) {
 // ==========================================================================
 //
 // Auto-generated from Figma Tokens Studio
-// Source: ${tokenSourceLabel(state)}
+// Source: ${sourceLabel}
 // Generated: ${timestamp}
 //
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens during build
@@ -326,7 +326,7 @@ ${body}
  * Generate USWDS settings file using @use ... with () syntax for SASS modules
  * This is required for USWDS 3.x proper theme configuration
  */
-export function generateSettingsContent(state, variables, timestamp) {
+export function generateSettingsContent(state, variables, timestamp, sourceLabel) {
   // Build the settings map for @use ... with ()
   const settingsLines = []
 
@@ -388,7 +388,7 @@ export function generateSettingsContent(state, variables, timestamp) {
 // ==========================================================================
 //
 // Auto-generated from Figma Tokens Studio
-// Source: ${tokenSourceLabel(state)}
+// Source: ${sourceLabel}
 // Generated: ${timestamp}
 //
 // DO NOT EDIT DIRECTLY - Regenerated from design tokens during build
@@ -408,13 +408,6 @@ ${settingsLines.join('\n')}
 `
 }
 
-/** Forwards the state's Sass partial from sass/states/, or is empty for a state without one. */
-export function generateStateContent(state, hasPartial) {
-  return hasPartial
-    ? `// DO NOT EDIT DIRECTLY - Regenerated during build\n@forward "states/${state}";\n`
-    : `// DO NOT EDIT DIRECTLY - ${state.toUpperCase()} has no state-specific styles\n`
-}
-
 /**
  * Writes through a temp file and a rename, so a Sass compile that reads the file at the
  * same time sees the old content or the new content, never a partial write.
@@ -423,6 +416,13 @@ export function writeFileAtomic(path, content) {
   const tempPath = `${path}.${process.pid}.tmp`
   writeFileSync(tempPath, content, 'utf8')
   renameSync(tempPath, path)
+}
+
+/** Forwards the state's Sass partial from sass/states/, or is empty for a state without one. */
+export function generateStateContent(state, hasPartial) {
+  return hasPartial
+    ? `// DO NOT EDIT DIRECTLY - Regenerated during build\n@forward "states/${state}";\n`
+    : `// DO NOT EDIT DIRECTLY - ${state.toUpperCase()} has no state-specific styles\n`
 }
 
 /**
@@ -434,7 +434,16 @@ function main() {
 
   console.log(`🎨 Generating USWDS SASS variables for ${state.toUpperCase()}...`)
 
+  let source
+  try {
+    source = resolveStateTokens(state)
+  } catch (error) {
+    console.error(`❌ ${error.message}`)
+    process.exit(1)
+  }
+
   // Paths
+  const inputPath = source.path
   // generate-theme-css.js points this at a private copy of the Sass tree.
   const outputDir = process.env.SASS_OUTPUT_DIR || join(rootDir, 'design', 'sass')
   const themeOutputPath = join(outputDir, `_uswds-theme-${state}.scss`)
@@ -442,14 +451,21 @@ function main() {
   const semanticOutputPath = join(outputDir, '_uswds-theme-semantic.scss')
   const stateOutputPath = join(outputDir, '_uswds-state.scss')
 
+  // Check input exists
+  if (!existsSync(inputPath)) {
+    console.log(`⚠️  No token file found at: ${rel(inputPath)}`)
+    console.log('   Skipping SASS token generation.')
+    process.exit(0)
+  }
+
   // Ensure output directory exists
   if (!existsSync(outputDir)) {
     mkdirSync(outputDir, { recursive: true })
   }
 
   // Read and parse tokens
-  console.log(`  Reading: ${tokenSourceLabel(state)}`)
-  const stateJson = loadStateTokens(state)
+  console.log(`  Reading: ${rel(inputPath)}`)
+  const stateJson = JSON.parse(readFileSync(inputPath, 'utf8'))
 
   if (!stateJson.theme) {
     console.error(`❌ No "theme" object found in ${state}.json`)
@@ -470,17 +486,17 @@ function main() {
   }
 
   // Generate and write legacy SASS variables file (for backward compatibility)
-  const sassContent = generateSassContent(state, variables)
+  const sassContent = generateSassContent(state, variables, source.label)
   writeFileAtomic(themeOutputPath, sassContent)
   console.log(`✅ Generated: ${rel(themeOutputPath)}`)
 
   // Generate and write USWDS settings file (for SASS module system)
-  const settingsContent = generateSettingsContent(state, variables, timestamp)
+  const settingsContent = generateSettingsContent(state, variables, timestamp, source.label)
   writeFileAtomic(settingsOutputPath, settingsContent)
   console.log(`✅ Generated: ${rel(settingsOutputPath)}`)
 
   // Generate and write semantic component token partial
-  const semanticContent = generateSemanticContent(state, semantic.variables, timestamp)
+  const semanticContent = generateSemanticContent(state, semantic.variables, timestamp, source.label)
   writeFileAtomic(semanticOutputPath, semanticContent)
   console.log(`✅ Generated: ${rel(semanticOutputPath)} (${semantic.variables.length} semantic tokens)`)
 

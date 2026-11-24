@@ -11,16 +11,16 @@
  *   STATE=co node scripts/generate-fonts.js  # Colorado state
  *
  * Workflow:
- * 1. Read the shared tokens with design/states/{state}.json overrides
+ * 1. Read the state's token file (see state-token-source.js)
  * 2. Extract font families from theme-font-type-sans and theme-font-type-serif
  * 3. Generate design/fonts.ts with the matching next/font/local or next/font/google imports
  */
 
 import './load-env.js'
-import { writeFileSync, existsSync, mkdirSync } from 'fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname, relative } from 'path'
 import { fileURLToPath } from 'url'
-import { loadStateTokens, tokenSourceLabel } from './load-state-tokens.js'
+import { resolveStateTokens } from './state-token-source.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const rootDir = join(__dirname, '..', '..')
@@ -189,7 +189,7 @@ function fileHeader(state, sourceLabel) {
  * Font Configuration - ${state.toUpperCase()}
  *
  * Auto-generated from design tokens.
- * Source: ${sourceLabel ?? tokenSourceLabel(state)}
+ * Source: ${sourceLabel ?? `design/states/${state}.json`}
  * DO NOT EDIT DIRECTLY - Regenerate with: pnpm tokens
  *
  * Generated: ${new Date().toISOString()}
@@ -269,10 +269,10 @@ export const ${exportName} = {
  * heading fonts. When they match (single-font states like DC), `headingFont`
  * aliases `primaryFont` — nothing is loaded twice and importers always get both.
  */
-export function generateFontsTs({ body, heading }, state) {
+export function generateFontsTs({ body, heading }, state, sourceLabel) {
   if (!body && !heading) {
     // No custom fonts - use system fonts only
-    return `${fileHeader(state)}
+    return `${fileHeader(state, sourceLabel)}
 
 // No custom fonts defined in design tokens - using system fonts
 export const primaryFont = {
@@ -306,7 +306,7 @@ export const headingFont = primaryFont`)
     blocks.push(headingLoader.declaration)
   }
 
-  const sections = [fileHeader(state)]
+  const sections = [fileHeader(state, sourceLabel)]
   if (imports.size) {
     sections.push([...imports].join('\n'))
   }
@@ -318,20 +318,28 @@ export const headingFont = primaryFont`)
 function main() {
   try {
     const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase()
+    const source = resolveStateTokens(state)
+    const tokensPath = source.path
     // Write to caller's working directory (e.g. src/SEBT.Portal.Web/design/fonts.ts)
     // so the Next.js @/ path alias resolves correctly at build time
     const outputPath = join(process.cwd(), 'design', 'fonts.ts')
 
     console.log(`🔤 Generating fonts.ts for ${state.toUpperCase()}...`)
 
-    const tokensJson = loadStateTokens(state)
+    if (!existsSync(tokensPath)) {
+      console.log(`⚠️  No token file found at: ${rel(tokensPath)}`)
+      console.log('   Skipping font generation.')
+      process.exit(0)
+    }
+
+    const tokensJson = JSON.parse(readFileSync(tokensPath, 'utf8'))
     const fonts = extractFonts(tokensJson)
 
     console.log(`✅ Body font: ${fonts.body ?? 'system'}; heading font: ${fonts.heading ?? 'system'}`)
 
     assertLocalFontFilesExist([fonts.body, fonts.heading], dirname(outputPath))
 
-    const fontsTs = generateFontsTs(fonts, state)
+    const fontsTs = generateFontsTs(fonts, state, source.label)
     mkdirSync(dirname(outputPath), { recursive: true })
     writeFileSync(outputPath, fontsTs, 'utf8')
 

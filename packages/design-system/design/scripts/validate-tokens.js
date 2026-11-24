@@ -22,8 +22,9 @@
  *   1 - Validation errors found
  */
 
+import { readFileSync, existsSync } from 'fs';
+import { resolveStateTokens } from './state-token-source.js';
 import { STATE_CODES } from '../../src/lib/state.ts';
-import { loadStateTokens } from './load-state-tokens.js';
 
 // USWDS color palette (subset for validation)
 const USWDS_COLORS = new Set([
@@ -260,10 +261,23 @@ class TokenValidator {
 }
 
 function validateState(state) {
-  console.log(`Validating: ${state}`);
+  let tokenPath;
+  try {
+    tokenPath = resolveStateTokens(state).path;
+  } catch (error) {
+    console.error(`❌ ${error.message}`);
+    return { success: false };
+  }
+
+  if (!existsSync(tokenPath)) {
+    console.error(`❌ Token file not found: ${tokenPath}`);
+    return { success: false };
+  }
+
+  console.log(`Validating: ${tokenPath}`);
 
   try {
-    const tokenData = loadStateTokens(state);
+    const tokenData = JSON.parse(readFileSync(tokenPath, 'utf8'));
     const validator = new TokenValidator(state);
     const results = validator.validate(tokenData);
 

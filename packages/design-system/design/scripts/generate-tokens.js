@@ -15,18 +15,18 @@
  * - Build integration: Auto-runs during predev and prebuild
  *
  * Workflow:
- * 1. Read design/shared.json plus design/states/{state}.json overrides (source of truth from Figma)
- * 2. Check if transformation needed (timestamp-based)
+ * 1. Read the state's token file (see state-token-source.js)
+ * 2. Check if transformation needed (timestamp and source based)
  * 3. Extract 'theme' object (USWDS has 'system' tokens built-in)
  * 4. Convert to CSS custom properties with semantic naming
  * 5. Output to design/tokens.css (imported in layout.tsx)
  */
 
 import './load-env.js';
-import { writeFileSync, existsSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, statSync } from 'fs';
 import { join, dirname, relative } from 'path';
 import { fileURLToPath } from 'url';
-import { loadStateTokens, tokenSourceLabel, tokenSourcePaths } from './load-state-tokens.js';
+import { resolveStateTokens } from './state-token-source.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -38,7 +38,15 @@ const USWDS_PREFIXES = new Set([
   'global', 'style', 'text'
 ]);
 
-const outputPath = join(rootDir, 'design', 'tokens.css');
+function getStatePaths(state) {
+  const source = resolveStateTokens(state);
+
+  return {
+    input: source.path,
+    sourceLabel: source.label,
+    output: join(rootDir, 'design', 'tokens.css')
+  };
+}
 
 function shouldInjectColorPrefix(tokenName, tokenType) {
   if (!tokenName.startsWith('theme-') || tokenType !== 'color') {
@@ -103,14 +111,24 @@ function processThemeObject(obj, prefix = '') {
   return variables;
 }
 
-function needsRegeneration(inputPaths, outputPath) {
+function sourceLine(sourceLabel) {
+  return ` * Source: ${sourceLabel} (theme object only)`;
+}
+
+/**
+ * Timestamps alone can't tell when tokens.css came from another state or token
+ * source, so the source recorded in its header must match too.
+ */
+export function needsRegeneration(inputPath, outputPath, sourceLabel) {
   if (!existsSync(outputPath)) {
     return true;
   }
 
-  const outputMtime = statSync(outputPath).mtimeMs;
+  if (!readFileSync(outputPath, 'utf8').includes(sourceLine(sourceLabel))) {
+    return true;
+  }
 
-  return inputPaths.some(path => statSync(path).mtimeMs > outputMtime);
+  return statSync(inputPath).mtimeMs > statSync(outputPath).mtimeMs;
 }
 
 function formatCssVariable({ name, value, description }) {
@@ -121,17 +139,25 @@ function formatCssVariable({ name, value, description }) {
 }
 
 function processState(state) {
-  const inputPaths = tokenSourcePaths(state);
-  const inputLabel = inputPaths.map(rel).join(' + ');
+  const paths = getStatePaths(state);
 
-  if (!needsRegeneration(inputPaths, outputPath)) {
+  // Check if state token file exists
+  if (!existsSync(paths.input)) {
+    console.log(`⚠️  No token file found for ${state.toUpperCase()} at:`);
+    console.log(`   ${rel(paths.input)}`);
+    console.log('   Skipping token generation.');
+    return { state, skipped: true, success: true };
+  }
+
+  // Check if regeneration needed
+  if (!needsRegeneration(paths.input, paths.output, paths.sourceLabel)) {
     console.log(`⚡ Tokens unchanged for ${state.toUpperCase()}`);
-    console.log(`   ${inputLabel} → ${rel(outputPath)}`);
+    console.log(`   ${rel(paths.input)} → ${rel(paths.output)}`);
     return { state, cached: true, success: true };
   }
 
-  console.log(`  Reading: ${inputLabel}`);
-  const stateJson = loadStateTokens(state);
+  console.log(`  Reading: ${rel(paths.input)}`);
+  const stateJson = JSON.parse(readFileSync(paths.input, 'utf8'));
 
   if (!stateJson.theme) {
     throw new Error(`No "theme" object found in ${state}.json`);
@@ -148,7 +174,7 @@ function processState(state) {
  * State-Specific Design Tokens - ${state.toUpperCase()}
  *
  * Auto-generated from Figma Tokens Studio
- * Source: ${tokenSourceLabel(state)} (theme object only)
+${sourceLine(paths.sourceLabel)}
  * DO NOT EDIT DIRECTLY - This file is regenerated from design tokens
  *
  * Generated: ${new Date().toISOString()}
@@ -175,18 +201,18 @@ a {
 }
 `;
 
-  writeFileSync(outputPath, cssContent, 'utf8');
+  writeFileSync(paths.output, cssContent, 'utf8');
 
   console.log(`✅ Generated ${variables.length} CSS custom properties for ${state.toUpperCase()}`);
-  console.log(`   ${rel(outputPath)}`);
+  console.log(`   ${rel(paths.output)}`);
 
   return { state, cached: false, success: true, count: variables.length };
 }
 
 function main() {
-  try {
-    const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase();
+  const state = (process.env.STATE || process.env.NEXT_PUBLIC_STATE || 'dc').toLowerCase();
 
+  try {
     console.log(`🎨 Generating design tokens for ${state.toUpperCase()}...`);
 
     const result = processState(state);
@@ -207,4 +233,7 @@ function main() {
   }
 }
 
-main();
+// Only auto-run when invoked as a script, not when imported by tests.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main();
+}

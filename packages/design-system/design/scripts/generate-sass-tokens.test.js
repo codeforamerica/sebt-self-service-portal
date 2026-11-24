@@ -14,9 +14,11 @@ import {
   writeFileAtomic
 } from './generate-sass-tokens.js'
 import { STATE_CODES } from '../../src/lib/state.ts'
-import { loadStateTokens } from './load-state-tokens.js'
+import { resolveStateTokens } from './state-token-source.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+const loadTokens = state => JSON.parse(readFileSync(resolveStateTokens(state).path, 'utf8'))
 
 const color = value => ({ $type: 'color', $value: value })
 
@@ -68,9 +70,14 @@ describe('generateSettingsContent', () => {
       'theme-primary': color('{cyan-50}'),
       ...fullSemanticSet
     })
-    const content = generateSettingsContent('dc', variables, 'test-timestamp')
+    const content = generateSettingsContent('dc', variables, 'test-timestamp', 'design/states/dc.json')
     expect(content).toContain("$theme-color-primary: 'cyan-50'")
     expect(content).not.toContain('theme-button-bg')
+  })
+
+  it('names the given source when tokens come from elsewhere', () => {
+    const content = generateSettingsContent('co', [], 'test-timestamp', '$EXTERNAL_TOKENS_DIR_CO/co.json')
+    expect(content).toContain('// Source: $EXTERNAL_TOKENS_DIR_CO/co.json\n')
   })
 })
 
@@ -116,17 +123,21 @@ describe('extractSemanticTokens', () => {
 describe('generateSemanticContent', () => {
   it('emits one SASS variable per token with a do-not-edit header', () => {
     const { variables } = extractSemanticTokens(fullSemanticSet)
-    const content = generateSemanticContent('dc', variables, 'test-timestamp')
+    const content = generateSemanticContent('dc', variables, 'test-timestamp', 'design/states/dc.json')
     expect(content).toContain('DO NOT EDIT DIRECTLY')
     expect(content).toContain("$theme-button-bg: 'secondary';")
     expect(content).toContain("$theme-button-outline-bg-active: 'secondary-light';")
   })
 
+  it('names the given source when tokens come from elsewhere', () => {
+    const content = generateSemanticContent('co', [], 'test-timestamp', '$EXTERNAL_TOKENS_DIR_CO/co.json')
+    expect(content).toContain('// Source: $EXTERNAL_TOKENS_DIR_CO/co.json\n')
+  })
 })
 
 describe('real state token files', () => {
   it.each(STATE_CODES)('%s.json produces USWDS settings without semantic leakage', state => {
-    const stateJson = loadStateTokens(state)
+    const stateJson = loadTokens(state)
     const variables = processThemeTokens(stateJson.theme)
     const names = variables.map(v => v.name)
     expect(names).toContain('$theme-color-secondary')
@@ -134,7 +145,7 @@ describe('real state token files', () => {
   })
 
   it('dc.json defines the complete semantic set following the secondary ladder', () => {
-    const { variables, missing } = extractSemanticTokens(loadStateTokens('dc').theme)
+    const { variables, missing } = extractSemanticTokens(loadTokens('dc').theme)
     expect(missing).toEqual([])
     const byName = Object.fromEntries(variables.map(v => [v.name, v.value]))
     expect(byName['$theme-button-bg']).toBe("'secondary'")
@@ -143,7 +154,7 @@ describe('real state token files', () => {
   })
 
   it('co.json defines the complete semantic set following the primary ladder', () => {
-    const { variables, missing } = extractSemanticTokens(loadStateTokens('co').theme)
+    const { variables, missing } = extractSemanticTokens(loadTokens('co').theme)
     expect(missing).toEqual([])
     const byName = Object.fromEntries(variables.map(v => [v.name, v.value]))
     expect(byName['$theme-button-bg']).toBe("'primary'")
@@ -189,7 +200,7 @@ describe('output', () => {
       '_uswds-theme-semantic.scss'
     ])
     expect(readFileSync(join(dir, '_uswds-theme-semantic.scss'), 'utf8')).toContain(
-      'Source: design/shared.json + design/states/co.json'
+      'Source: design/states/co.json'
     )
     expect(readFileSync(join(dir, '_uswds-state.scss'), 'utf8')).toContain('@forward "states/co";')
   })
