@@ -162,8 +162,8 @@ export async function composeGraph(
   await apply({ api }, "telemetry", telemetryCapability.requirements);
 
   // This is last, because it is the one part of the wiring that reads the endpoint of
-  // the portal. The realm of CO redirects back to that endpoint. Thus neither side can
-  // hold a fixed port.
+  // the portal. The IdP of CO redirects back to that endpoint. Keycloak takes any port, and
+  // MyColorado accepts registered ports only, so its provider sets portalPort.
   if (signInCapability.bindPortal) {
     await apply(
       { api, portal: apps.web },
