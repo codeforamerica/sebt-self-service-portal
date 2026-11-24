@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 
 import type { AppHostConfig, CoSignIn, SupportedState } from "../../config.mjs";
+import type { DeveloperSecrets } from "./doppler.mjs";
 import {
   assertNoCapabilityOverlap,
   assertSignInSecrets,
@@ -43,6 +44,20 @@ function configFor(state: SupportedState, coSignIn: CoSignIn = "keycloak"): AppH
 
 const coKeycloak = configFor("co");
 const coMyColorado = configFor("co", "mycolorado");
+
+const fromDoppler: DeveloperSecrets = {
+  source: "doppler",
+  project: "the-project",
+  config: "local_personal",
+  values: new Map(),
+};
+const dopplerNotSetUp: DeveloperSecrets = {
+  source: "local-files",
+  reason: "not-set-up",
+  expectedProject: "the-project",
+};
+const dopplerDisabled: DeveloperSecrets = { source: "local-files", reason: "disabled" };
+const noneRouted = { api: [], web: [], notForwarded: [] };
 
 describe("forwardedSecrets", () => {
   it("sends the browser keys to the portal, not the API", () => {
@@ -132,13 +147,13 @@ describe("routeSecrets", () => {
 describe("assertSignInSecrets", () => {
   it("passes when MyColorado sign-in has each client key", () => {
     const routed = routeSecrets(valuesFor(myColoradoDopplerKeys), coMyColorado);
-    assert.doesNotThrow(() => assertSignInSecrets(routed, coMyColorado));
+    assert.doesNotThrow(() => assertSignInSecrets(fromDoppler, routed, coMyColorado));
   });
 
   it("stops MyColorado sign-in and names each missing Doppler key", () => {
     const routed = routeSecrets(valuesFor(["OIDC__CLIENTID"]), coMyColorado);
     assert.throws(
-      () => assertSignInSecrets(routed, coMyColorado),
+      () => assertSignInSecrets(fromDoppler, routed, coMyColorado),
       (error: Error) =>
         ["OIDC__CLIENTSECRET", "OIDC__STEPUP__CLIENTID", "OIDC__STEPUP__CLIENTSECRET"].every(
           (key) => error.message.includes(key),
@@ -146,10 +161,29 @@ describe("assertSignInSecrets", () => {
     );
   });
 
-  it("asks nothing of Keycloak sign-in", () => {
-    const routed = routeSecrets(new Map(), coKeycloak);
-    assert.doesNotThrow(() => assertSignInSecrets(routed, coKeycloak));
+  it("tells MyColorado sign-in to set up Doppler when the repo has no Doppler setup", () => {
+    assert.throws(
+      () => assertSignInSecrets(dopplerNotSetUp, noneRouted, coMyColorado),
+      (error: Error) =>
+        error.message.includes("doppler setup --no-interactive") &&
+        !error.message.includes("OIDC__CLIENTID"),
+    );
   });
+
+  it("tells MyColorado sign-in that USE_DOPPLER turned Doppler off", () => {
+    assert.throws(
+      () => assertSignInSecrets(dopplerDisabled, noneRouted, coMyColorado),
+      (error: Error) =>
+        error.message.includes("USE_DOPPLER") && !error.message.includes("doppler setup"),
+    );
+  });
+
+  for (const secrets of [fromDoppler, dopplerNotSetUp, dopplerDisabled]) {
+    const label = secrets.source === "doppler" ? "Doppler" : secrets.reason;
+    it(`asks nothing of Keycloak sign-in when the secret source is ${label}`, () => {
+      assert.doesNotThrow(() => assertSignInSecrets(secrets, noneRouted, coKeycloak));
+    });
+  }
 });
 
 describe("assertNoCapabilityOverlap", () => {

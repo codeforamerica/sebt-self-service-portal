@@ -113,7 +113,7 @@ export async function composeGraph(
   };
 
   const routed = routeDeveloperSecrets(developerSecrets, config);
-  assertSignInSecrets(routed, config);
+  assertSignInSecrets(developerSecrets, routed, config);
   const secretSettings = await developerSecretSettings(builder, routed);
 
   const database = await addPortalDatabase(builder, config);

@@ -4,6 +4,7 @@
 // A Doppler key that is not listed is reported in the startup log instead of dropped quietly.
 
 import type { AppHostConfig } from "../../config.mjs";
+import type { DeveloperSecrets } from "./doppler.mjs";
 
 /** The application that receives a secret. */
 export type SecretTarget = "api" | "web";
@@ -176,9 +177,22 @@ export function routeSecrets(
  * Stops MyColorado sign-in when Doppler did not give each client key. Without them the
  * graph starts, and the first login fails with no clear cause.
  */
-export function assertSignInSecrets(routed: RoutedSecrets, config: AppHostConfig): void {
+export function assertSignInSecrets(
+  developerSecrets: DeveloperSecrets,
+  routed: RoutedSecrets,
+  config: AppHostConfig,
+): void {
   if (!signsInWithMyColorado(config)) {
     return;
+  }
+
+  const keycloakRemedy = "or run `pnpm aspire:co` to sign in with Keycloak.";
+  if (developerSecrets.source !== "doppler") {
+    const fix =
+      developerSecrets.reason === "disabled"
+        ? "USE_DOPPLER turns it off. Unset USE_DOPPLER,"
+        : "it isn't set up for this repo. Run `doppler setup --no-interactive` from the repo root,";
+    throw new Error(`MyColorado sign-in needs its client keys from Doppler, but ${fix} ${keycloakRemedy}`);
   }
 
   const routedKeys = new Set(routed.api.map((secret) => secret.appKey));
@@ -189,7 +203,7 @@ export function assertSignInSecrets(routed: RoutedSecrets, config: AppHostConfig
   if (missing.length > 0) {
     throw new Error(
       `MyColorado sign-in needs these keys in your Doppler config: ${missing.join(", ")}. ` +
-        "Add them to your local config, or run `pnpm aspire:co` to sign in with Keycloak.",
+        `Add them to your local config, ${keycloakRemedy}`,
     );
   }
 }
