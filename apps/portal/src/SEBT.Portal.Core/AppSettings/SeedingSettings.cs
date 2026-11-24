@@ -31,6 +31,13 @@ public class SeedingSettings : IHaveConfigSectionName
     public bool Enabled { get; set; }
 
     /// <summary>
+    /// When true, startup deletes every user (and their cascaded data) before re-seeding,
+    /// including users adopted by an identity provider. For disposable demo databases only; startup fails in Production.
+    /// Default: false.
+    /// </summary>
+    public bool ClearDataOnStartup { get; set; }
+
+    /// <summary>
     /// When true, exposes local/CI-only diagnostic endpoints such as
     /// <c>POST /api/dev/seed/reseed/{scenarioName}</c>.
     /// Default: false. Enable only for localhost and CI; never on deployed hosts,

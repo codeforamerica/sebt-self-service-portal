@@ -80,6 +80,8 @@ module "app" {
     "FeatureManagement__use_mock_household_data" = "true"
     "FeatureManagement__use_mock_cbms_responses" = "true"
     "FeatureManagement__bypass_otp"              = "false"
+    # Every start (a deploy, scaling up, or power.sh reset) is a fresh demo.
+    "Seeding__ClearDataOnStartup" = "true"
     # The demo state has no connector of its own; it runs Colorado's on mock data.
     "PluginAssemblyPaths__0"                           = "plugins-co"
     "Socure__Enabled"                                  = "false"

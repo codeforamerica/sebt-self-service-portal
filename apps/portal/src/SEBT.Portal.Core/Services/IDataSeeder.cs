@@ -38,6 +38,11 @@ public interface IDataSeeder
     Task RemoveUserOptInsByEmailAsync(IEnumerable<string> emails, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Removes every user and opt-in from the database, regardless of email.
+    /// </summary>
+    Task RemoveAllUsersAndOptInsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Saves changes to the database.
     /// </summary>
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
