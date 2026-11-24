@@ -859,10 +859,10 @@
       },
       "Microsoft.Kiota.Abstractions": {
         "type": "Transitive",
-        "resolved": "1.22.2",
-        "contentHash": "xktJuKVMXfcX9LJR0QH8gwbZ2WO+WrqTujCPtN13Y6GfLaB7wV0v1pv3hdO1Fek2/vKRpALhbdRYmFNoyzO1Sg==",
+        "resolved": "2.2.0",
+        "contentHash": "+vjSqwrskOyNlCbgdLKf4YZGObP4I7e3lVNN1hXnl+B0T2jEThi4tqIJWUaiN4QBywwTwH7L8HBrX/Mw5YQfPg==",
         "dependencies": {
-          "Std.UriTemplate": "2.0.8"
+          "Std.UriTemplate": "2.0.13"
         }
       },
       "Microsoft.OpenApi": {
@@ -1078,8 +1078,8 @@
       },
       "Std.UriTemplate": {
         "type": "Transitive",
-        "resolved": "2.0.8",
-        "contentHash": "IAR4gJlLVD4r/FsU/rDb1+9sbB3/tCFVZz5IzlbM2yHoiUisBi5Ek/KXRUF7RcqNARka79EoaOz9INnXvQ/O6w=="
+        "resolved": "2.0.13",
+        "contentHash": "nEqle0VabSdmxlxQzyAYwqAs4hwGVdIu2G6xk1fA77QcqsTBlXV/2K8IwH+nPfx0ePmv8yQre05ObUdT/kGhIA=="
       },
       "Swashbuckle.AspNetCore": {
         "type": "Transitive",
@@ -1276,7 +1276,7 @@
           "Microsoft.FeatureManagement.AspNetCore": "[4.8.0, )",
           "Microsoft.IdentityModel.JsonWebTokens": "[8.23.0, )",
           "Microsoft.IdentityModel.Tokens": "[8.23.0, )",
-          "Microsoft.Kiota.Abstractions": "[1.22.2, )",
+          "Microsoft.Kiota.Abstractions": "[2.2.0, )",
           "OpenTelemetry.Exporter.Console": "[1.21.0, )",
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.21.0, )",
           "OpenTelemetry.Extensions.Hosting": "[1.21.0, )",
