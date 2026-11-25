@@ -86,6 +86,11 @@ jobs:
             echo "::error::Invalid image_tag: $IMAGE_TAG"
             exit 1
           fi
+          # An unset variable reaches tofu as "", which overrides a config's default domain.
+          if [[ -z "$TF_VAR_domain" ]]; then
+            echo "::error::The DOMAIN variable is not set on this GitHub environment"
+            exit 1
+          fi
 
       - name: Get an OIDC token for Doppler
         run: |
