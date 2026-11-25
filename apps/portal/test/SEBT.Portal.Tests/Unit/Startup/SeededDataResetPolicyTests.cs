@@ -37,6 +37,17 @@ public class SeededDataResetPolicyTests
     }
 
     [Fact]
+    public void Decide_WhenClearDataOnStartupWithoutSeedingOutsideDevelopment_Throws()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            SeededDataResetPolicy.Decide(
+                new SeedingSettings { Enabled = false, ClearDataOnStartup = true },
+                EnvironmentNamed(Environments.Staging)));
+
+        Assert.Contains("Seeding:Enabled", exception.Message);
+    }
+
+    [Fact]
     public void Decide_WhenDevelopmentWithoutFlag_ReturnsSeededUsers()
     {
         Assert.Equal(SeededDataReset.SeededUsers, SeededDataResetPolicy.Decide(
