@@ -1,4 +1,4 @@
-import { type StateCode } from '@sebt/design-system'
+import { STATE_CODES, type StateCode } from '@sebt/design-system'
 import { describe, expect, it } from 'vitest'
 
 import { stateResources } from '@/lib/generated-locale-resources'
@@ -19,14 +19,14 @@ import { PROFILE_STATUS_LABEL_KEYS } from './HouseholdSummary/HouseholdSummary'
  * relax the test.
  */
 
-const STATES: readonly StateCode[] = ['dc', 'co']
+const STATES: readonly StateCode[] = STATE_CODES
 
 const STATUS_LABEL_KEYS = [...Object.values(APPLICATION_STATUS_KEYS), ...PROFILE_STATUS_LABEL_KEYS]
 
 const PROVISIONAL_DASHBOARD_KEYS = Object.keys(PROVISIONAL_EN.dashboard)
 
 function authoredEnglishKeys(state: StateCode): string[] {
-  // eslint-disable-next-line security/detect-object-injection -- state comes from the STATES literal
+  // eslint-disable-next-line security/detect-object-injection -- state comes from STATE_CODES
   const bundles = stateResources[state] as Record<string, Record<string, object>> | undefined
   return Object.keys(bundles?.en?.dashboard ?? {})
 }

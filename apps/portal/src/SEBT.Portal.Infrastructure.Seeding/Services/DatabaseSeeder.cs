@@ -562,6 +562,13 @@ public class DatabaseSeeder : Core.Services.IDatabaseSeeder
     }
 
     /// <inheritdoc />
+    public async Task ClearAllUserDataAsync(CancellationToken cancellationToken = default)
+    {
+        await _dataSeeder.RemoveAllUsersAndOptInsAsync(cancellationToken);
+        await _dataSeeder.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task ReseedUserScenarioAsync(
         string scenarioName,
         bool useMockHouseholdData,

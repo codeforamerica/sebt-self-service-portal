@@ -1,0 +1,153 @@
+name: Deploy infrastructure config
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'GitHub environment for secrets'
+        required: true
+        type: string
+      config:
+        description: 'The OpenTofu configuration to apply'
+        required: true
+        type: string
+      image_tag:
+        description: 'Image tag variable for the apply. Omit for a config that deploys no images.'
+        required: false
+        type: string
+        default: ''
+      register_keycloak_host:
+        description: "Register the config's Keycloak hostname as a redirect host after applying"
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      web_url:
+        description: "The deployed web endpoint, empty when the config has none"
+        value: ${{ jobs.deploy.outputs.web_url }}
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      web_url: ${{ steps.deploy-url.outputs.url }}
+    env:
+      AWS_REGION: us-east-1
+      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
+      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
+      # Browser-facing web config, set on the container at request time rather than
+      # passed to the image build (docs/adr/0023-runtime-client-config.md). A config
+      # that does not declare one (dev-co has no Socure DI) ignores it.
+      TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
+      TF_VAR_application_url: ${{ vars.APPLICATION_URL }}
+      TF_VAR_application_url_peak_params: ${{ vars.APPLICATION_URL_PEAK_PARAMS }}
+      TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
+      TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
+      TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
+      TF_VAR_socure_di_sdk_key: ${{ vars.SOCURE_DI_SDK_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DB rotation Lambda dependencies
+        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
+        with:
+          tofu_version: "1.10.0"
+
+      - name: Validate inputs
+        env:
+          CONFIG: ${{ inputs.config }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          if [[ ! "$CONFIG" =~ ^[a-z0-9-]+$ ]]; then
+            echo "::error::Invalid config: $CONFIG"
+            exit 1
+          fi
+          if [[ -n "$IMAGE_TAG" && ! "$IMAGE_TAG" =~ ^[A-Za-z0-9._-]+$ ]]; then
+            echo "::error::Invalid image_tag: $IMAGE_TAG"
+            exit 1
+          fi
+          # An unset variable reaches tofu as "", which overrides a config's default domain.
+          if [[ -z "$TF_VAR_domain" ]]; then
+            echo "::error::The DOMAIN variable is not set on this GitHub environment"
+            exit 1
+          fi
+
+      - name: OpenTofu Init
+        working-directory: tofu/config/${{ inputs.config }}
+        run: tofu init -upgrade
+
+      # Doppler OIDC tokens are single-use. Plan and apply each need their own
+      # provider authentication, so each gets its own freshly-fetched token —
+      # reusing one token for both fails with "This OIDC token was used
+      # previously".
+      - name: Get an OIDC token for Doppler (plan)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> "$GITHUB_ENV"
+
+      - name: OpenTofu Plan
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        working-directory: tofu/config/${{ inputs.config }}
+        run: tofu plan -input=false -out=tfplan ${IMAGE_TAG:+"-var=image_tag=${IMAGE_TAG}"}
+
+      - name: Get an OIDC token for Doppler (apply)
+        run: |
+          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
+          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> "$GITHUB_ENV"
+
+      - name: OpenTofu Apply
+        working-directory: tofu/config/${{ inputs.config }}
+        run: tofu apply tfplan
+
+      - name: Get deployment URL
+        id: deploy-url
+        working-directory: tofu/config/${{ inputs.config }}
+        run: |
+          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
+          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
+          echo "Deployment URL: $WEB_URL"
+
+      # The shared realm's clients need each host as a valid redirect URI.
+      # Idempotent, so it runs on every deploy.
+      - name: Register the host with Keycloak
+        if: inputs.register_keycloak_host
+        env:
+          CONFIG: ${{ inputs.config }}
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_ID }}
+          PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET: ${{ secrets.PREVIEW_KEYCLOAK_DEPLOY_CLIENT_SECRET }}
+          PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_DEPLOY_SECRET_ID }}
+          PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID: ${{ vars.PREVIEW_KEYCLOAK_ADMIN_BYPASS_SECRET_ID }}
+        run: |
+          KEYCLOAK_HOSTNAME="$(tofu -chdir="tofu/config/${CONFIG}" output -raw keycloak_hostname)"
+          source scripts/preview/common.sh
+          source scripts/preview/keycloak.sh
+          ensure_keycloak_preview_host_redirects \
+            "${KEYCLOAK_HOSTNAME}" "${TF_VAR_domain}" sebt-portal sebt-portal-stepup

@@ -10,6 +10,10 @@ internal static class DatabaseStartup
 {
     public static async Task MigrateAndSeedDatabaseAsync(this WebApplication app)
     {
+        var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
+        // Evaluated outside the try so a misconfigured Production start fails instead of being swallowed.
+        var dataReset = SeededDataResetPolicy.Decide(seedingSettings, app.Environment);
+
         // Apply database migrations (non-blocking: app will start even if DB is unavailable)
         try
         {
@@ -32,7 +36,6 @@ internal static class DatabaseStartup
                 piiBackfillLogger,
                 CancellationToken.None);
 
-            var seedingSettings = app.Configuration.GetSection(SeedingSettings.SectionName).Get<SeedingSettings>();
             if (app.Environment.IsDevelopment() || seedingSettings?.Enabled == true)
             {
                 var seedLogger = scope.ServiceProvider
@@ -44,9 +47,13 @@ internal static class DatabaseStartup
                     seedLogger);
                 var databaseSeeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
 
-                // In Development, clear stale seed data before re-seeding so that scenario
-                // definition changes (e.g. IAL levels) are always reflected in the database.
-                if (app.Environment.IsDevelopment())
+                // Development clears so scenario changes (e.g. IAL levels) always reach the database;
+                // a demo clears everyone so each start is a fresh demo.
+                if (dataReset == SeededDataReset.AllUsers)
+                {
+                    await databaseSeeder.ClearAllUserDataAsync(CancellationToken.None);
+                }
+                else if (dataReset == SeededDataReset.SeededUsers)
                 {
                     await databaseSeeder.ClearSeededDataAsync(CancellationToken.None);
                 }

@@ -76,6 +76,50 @@ export const LOCAL_FONTS_MAP = {
       }
     ]
   },
+  // USWDS's bundled typefaces, copied into public/fonts by copy-uswds-assets.mjs.
+  'source sans pro': {
+    src: [
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-regular-webfont.woff2',
+        weight: '400',
+        style: 'normal'
+      },
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-italic-webfont.woff2',
+        weight: '400',
+        style: 'italic'
+      },
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-semibold-webfont.woff2',
+        weight: '600',
+        style: 'normal'
+      },
+      {
+        path: '../public/fonts/source-sans-pro/sourcesanspro-bold-webfont.woff2',
+        weight: '700',
+        style: 'normal'
+      }
+    ]
+  },
+  merriweather: {
+    src: [
+      {
+        path: '../public/fonts/merriweather/Latin-Merriweather-Regular.woff2',
+        weight: '400',
+        style: 'normal'
+      },
+      {
+        path: '../public/fonts/merriweather/Latin-Merriweather-Italic.woff2',
+        weight: '400',
+        style: 'italic'
+      },
+      {
+        path: '../public/fonts/merriweather/Latin-Merriweather-Bold.woff2',
+        weight: '700',
+        style: 'normal'
+      }
+    ]
+  },
   'atkinson hyperlegible': {
     src: [
       {

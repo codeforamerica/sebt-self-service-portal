@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { STATE_CODES } from '@sebt/design-system'
 import { i18n } from '@sebt/design-system/client'
 
 import { FeatureFlagsContext } from '@/features/feature-flags'
@@ -264,7 +265,7 @@ describe('ActionButtons', () => {
         </FeatureFlagsContext.Provider>
       )
 
-    it.each(['dc', 'co'] as const)(
+    it.each(STATE_CODES)(
       'renders the activate-card CTA in %s when enable_activate_card is on',
       (state) => {
         mockGetState.mockReturnValue(state)
@@ -274,7 +275,7 @@ describe('ActionButtons', () => {
       }
     )
 
-    it.each(['dc', 'co'] as const)(
+    it.each(STATE_CODES)(
       'hides the activate-card CTA in %s when enable_activate_card is off',
       (state) => {
         mockGetState.mockReturnValue(state)

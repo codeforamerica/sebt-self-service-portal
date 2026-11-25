@@ -68,7 +68,7 @@ export function MobileLanguageSelector({
           >
             <div>
               <Image
-                src={`/images/states/${state}/icons/translate_Rounded.svg`}
+                src={config.assets.icons.translate}
                 alt=""
                 width={16}
                 height={16}

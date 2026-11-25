@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using SEBT.Portal.Core.AppSettings;
 using SEBT.Portal.Core.Models.Auth;
+using SEBT.Portal.Core.Models.UserActions;
 using SEBT.Portal.Core.Seeding;
 using SEBT.Portal.Core.Services;
 using SEBT.Portal.Infrastructure.Data;
@@ -523,6 +524,94 @@ public class DatabaseSeederTests : IAsyncLifetime
         var users = await context.Users.ToListAsync();
         Assert.Single(users);
         Assert.Equal("production@real-domain.com", users[0].Email);
+    }
+
+    [Fact]
+    public async Task ClearSeededDataAsync_ShouldCascadeDeleteCardReplacementRequestsAndUserActions()
+    {
+        // Arrange
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var seeder = CreateSeeder(context);
+        await seeder.SeedTestUsersAsync();
+
+        var seededUser = await context.Users.FirstAsync();
+        var retainedUser = UserEntityFactory.CreateUserEntity();
+        context.Users.Add(retainedUser);
+        foreach (var owner in new[] { seededUser, retainedUser })
+        {
+            context.CardReplacementRequests.Add(new CardReplacementRequestEntity
+            {
+                HouseholdIdentifierHash = new string('a', 64),
+                CaseIdHash = new string('b', 64),
+                RequestedAt = DateTime.UtcNow,
+                RequestedByUserId = owner.Id
+            });
+            context.UserActions.Add(new UserActionEntity
+            {
+                UserId = owner.Id,
+                Action = UserActionType.RequestCardReplacement,
+                Outcome = UserActionOutcome.Succeeded,
+                CaseId = "ciphertext",
+                CaseIdHash = new string('b', 64)
+            });
+        }
+        await context.SaveChangesAsync();
+
+        // Act
+        await seeder.ClearSeededDataAsync();
+
+        // Assert - only the retained user's rows remain
+        context.ChangeTracker.Clear();
+        var requests = await context.CardReplacementRequests.ToListAsync();
+        Assert.Equal(retainedUser.Id, Assert.Single(requests).RequestedByUserId);
+        var actions = await context.UserActions.ToListAsync();
+        Assert.Equal(retainedUser.Id, Assert.Single(actions).UserId);
+    }
+
+    [Fact]
+    public async Task ClearAllUserDataAsync_ShouldDeleteOidcAdoptedUsersAndTheirCooldownAndActions()
+    {
+        // Arrange - an OIDC-adopted user has no email, only an identity provider id
+        using var context = CreateContext();
+        await CleanupDatabaseAsync(context);
+        var seeder = CreateSeeder(context);
+        await seeder.SeedTestUsersAsync();
+
+        var adoptedUser = UserEntityFactory.CreateUserEntity(e =>
+        {
+            e.Email = null;
+            e.EmailHash = null;
+            e.IdentityProviderUserId = "keycloak-subject-1";
+        });
+        context.Users.Add(adoptedUser);
+        context.CardReplacementRequests.Add(new CardReplacementRequestEntity
+        {
+            HouseholdIdentifierHash = new string('a', 64),
+            CaseIdHash = new string('b', 64),
+            RequestedAt = DateTime.UtcNow,
+            RequestedByUserId = adoptedUser.Id
+        });
+        context.UserActions.Add(new UserActionEntity
+        {
+            UserId = adoptedUser.Id,
+            Action = UserActionType.RequestCardReplacement,
+            Outcome = UserActionOutcome.Succeeded,
+            CaseId = "ciphertext",
+            CaseIdHash = new string('b', 64)
+        });
+        context.UserOptIns.Add(new UserOptInEntity { Email = "unrelated-optin", EmailOptIn = true, DobOptIn = false });
+        await context.SaveChangesAsync();
+
+        // Act
+        await seeder.ClearAllUserDataAsync();
+
+        // Assert
+        context.ChangeTracker.Clear();
+        Assert.Empty(await context.Users.ToListAsync());
+        Assert.Empty(await context.UserOptIns.ToListAsync());
+        Assert.Empty(await context.CardReplacementRequests.ToListAsync());
+        Assert.Empty(await context.UserActions.ToListAsync());
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 // Locates a state's design token file: design/states/ (where Tokens Studio syncs), unless
-// EXTERNAL_TOKENS_DIR_{STATE} points at a directory in the state's own asset repo.
+// EXTERNAL_TOKENS_DIR_{STATE} points at a directory in the state's own asset repo. A state with
+// neither uses design/shared.json, the state-agnostic default theme, whole.
 import { existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -19,11 +20,10 @@ export function resolveStateTokens(state, env = process.env) {
   const externalDir = env[envVar]
 
   if (!externalDir) {
-    return {
-      path: join(designSystemRoot, 'design', 'states', `${state}.json`),
-      label: `design/states/${state}.json`,
-      external: false
-    }
+    const statePath = join(designSystemRoot, 'design', 'states', `${state}.json`)
+    return existsSync(statePath)
+      ? { path: statePath, label: `design/states/${state}.json`, external: false }
+      : { path: join(designSystemRoot, 'design', 'shared.json'), label: 'design/shared.json', external: false }
   }
 
   const path = resolve(repoRoot, externalDir, `${state}.json`)

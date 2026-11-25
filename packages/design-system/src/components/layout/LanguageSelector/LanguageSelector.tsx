@@ -11,7 +11,7 @@ import { MobileLanguageSelector } from './MobileLanguageSelector'
 
 /** Main language selector component - renders both desktop and mobile versions */
 export function LanguageSelector({
-  state = 'dc',
+  state,
   languages = supportedLanguages
 }: LanguageSelectorProps) {
   const { t, i18n } = useTranslation('common')

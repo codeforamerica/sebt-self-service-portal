@@ -3343,28 +3343,28 @@
     {
       "rule": "ai-slop/narrative-comment",
       "engine": "ai-slop",
-      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "file": "tofu/modules/sebt_database_app_user/lambda/rotate_db_credentials.py",
       "fingerprint": "5c4688e3c1ee3aec",
       "count": 1
     },
     {
       "rule": "ai-slop/python-repetitive-dispatch",
       "engine": "ai-slop",
-      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "file": "tofu/modules/sebt_database_app_user/lambda/rotate_db_credentials.py",
       "fingerprint": "92f72dde3471d1cf",
       "count": 1
     },
     {
       "rule": "ai-slop/silent-recovery",
       "engine": "ai-slop",
-      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "file": "tofu/modules/sebt_database_app_user/lambda/rotate_db_credentials.py",
       "fingerprint": "85b4be696c5303bd",
       "count": 1
     },
     {
       "rule": "python-formatting",
       "engine": "format",
-      "file": "tofu/modules/sebt_database/lambda/rotate_db_credentials.py",
+      "file": "tofu/modules/sebt_database_app_user/lambda/rotate_db_credentials.py",
       "fingerprint": "message:eb8329b770c7842a",
       "count": 1
     },

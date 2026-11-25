@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CHECKER_STATES } from './checkerAssetPath'
+import { CHECKER_STATES } from './checkerStateConfig'
 import type { IncomeEligibility } from './incomeEligibility'
 import {
   AUTHORED_FIGURE,

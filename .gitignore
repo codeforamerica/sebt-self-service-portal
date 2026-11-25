@@ -479,11 +479,11 @@ output
 **/crash.*.log
 # Lambda zip artifacts created by the archive_file data source during tofu plan/apply
 tofu/modules/sebt_ses/lambda/*.zip
-tofu/modules/sebt_database/lambda/.venv/
-tofu/modules/sebt_database/lambda/pymssql/
-tofu/modules/sebt_database/lambda/pymssql-*.dist-info/
-tofu/modules/sebt_database/lambda/pymssql.libs/
-tofu/modules/sebt_database/*.zip
+tofu/modules/sebt_database_app_user/lambda/.venv/
+tofu/modules/sebt_database_app_user/lambda/pymssql/
+tofu/modules/sebt_database_app_user/lambda/pymssql-*.dist-info/
+tofu/modules/sebt_database_app_user/lambda/pymssql.libs/
+tofu/modules/sebt_database_app_user/*.zip
 
 
 # Superpowers brainstorm artifacts
@@ -505,6 +505,7 @@ packages/design-system/design/fonts.ts
 packages/design-system/design/sass/_uswds-theme-*.scss
 !packages/design-system/design/sass/_uswds-theme-custom-styles.scss
 packages/design-system/design/sass/_uswds-settings.scss
+packages/design-system/design/sass/_uswds-state.scss
 
 # JetBrains IDE configuration
 .idea/

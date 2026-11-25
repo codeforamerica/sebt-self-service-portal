@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { STATE_CODES } from '@sebt/design-system'
+
 import { getApplyHref } from './applyHref'
 
 const PEAK_URL = 'https://peak.my.site.com/SEBT/s/apply-for-sebt-starting-page'
@@ -23,7 +25,7 @@ describe('getApplyHref', () => {
   })
 
   describe('with peakParams off', () => {
-    it.each(['dc', 'co', 'xx'])('returns the URL unchanged in state %s', (state) => {
+    it.each([...STATE_CODES, 'xx'])('returns the URL unchanged in state %s', (state) => {
       mockState = state
       expect(getApplyHref('en', { applicationUrl: PEAK_URL, peakParams: false })).toBe(PEAK_URL)
     })

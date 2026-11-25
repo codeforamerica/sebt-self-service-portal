@@ -276,6 +276,12 @@ public class DataSeeder : IDataSeeder
         _dbContext.UserOptIns.RemoveRange(optInsToRemove);
     }
 
+    public async Task RemoveAllUsersAndOptInsAsync(CancellationToken cancellationToken = default)
+    {
+        _dbContext.UserOptIns.RemoveRange(await _dbContext.UserOptIns.ToListAsync(cancellationToken));
+        _dbContext.Users.RemoveRange(await _dbContext.Users.ToListAsync(cancellationToken));
+    }
+
     public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         await _dbContext.SaveChangesAsync(cancellationToken);

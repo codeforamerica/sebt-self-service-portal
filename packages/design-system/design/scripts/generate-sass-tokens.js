@@ -418,6 +418,13 @@ export function writeFileAtomic(path, content) {
   renameSync(tempPath, path)
 }
 
+/** Forwards the state's Sass partial from sass/states/, or is empty for a state without one. */
+export function generateStateContent(state, hasPartial) {
+  return hasPartial
+    ? `// DO NOT EDIT DIRECTLY - Regenerated during build\n@forward "states/${state}";\n`
+    : `// DO NOT EDIT DIRECTLY - ${state.toUpperCase()} has no state-specific styles\n`
+}
+
 /**
  * Main entry point
  */
@@ -442,6 +449,7 @@ function main() {
   const themeOutputPath = join(outputDir, `_uswds-theme-${state}.scss`)
   const settingsOutputPath = join(outputDir, '_uswds-settings.scss')
   const semanticOutputPath = join(outputDir, '_uswds-theme-semantic.scss')
+  const stateOutputPath = join(outputDir, '_uswds-state.scss')
 
   // Check input exists
   if (!existsSync(inputPath)) {
@@ -491,6 +499,11 @@ function main() {
   const semanticContent = generateSemanticContent(state, semantic.variables, timestamp, source.label)
   writeFileAtomic(semanticOutputPath, semanticContent)
   console.log(`✅ Generated: ${rel(semanticOutputPath)} (${semantic.variables.length} semantic tokens)`)
+
+  // Generate and write the per-state styles partial
+  const hasStatePartial = existsSync(join(rootDir, 'design', 'sass', 'states', `_${state}.scss`))
+  writeFileAtomic(stateOutputPath, generateStateContent(state, hasStatePartial))
+  console.log(`✅ Generated: ${rel(stateOutputPath)}`)
 
   console.log(`✅ ${state.toUpperCase()} SASS theme files generated successfully!`)
 }

@@ -31,6 +31,20 @@ describe('resolveStateTokens', () => {
     })
   })
 
+  it('uses the shared default theme, whole, for a state with no token file of its own', () => {
+    expect(resolveStateTokens('zz', {})).toEqual({
+      path: join(designSystemRoot, 'design', 'shared.json'),
+      label: 'design/shared.json',
+      external: false
+    })
+  })
+
+  it('never falls back to the shared theme when an external directory is configured', () => {
+    expect(() => resolveStateTokens('zz', { EXTERNAL_TOKENS_DIR_ZZ: externalDir })).toThrow(
+      /EXTERNAL_TOKENS_DIR_ZZ/
+    )
+  })
+
   it('uses the directory named by EXTERNAL_TOKENS_DIR_{STATE} when it is set', () => {
     expect(resolveStateTokens('co', { EXTERNAL_TOKENS_DIR_CO: externalDir })).toEqual({
       path: join(externalDir, 'co.json'),

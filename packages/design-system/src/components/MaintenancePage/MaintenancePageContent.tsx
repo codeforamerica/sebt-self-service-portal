@@ -4,19 +4,7 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
 import { getStateLinks } from '../../lib/links'
-import type { StateCode } from '../../lib/state'
-
-/**
- * How each state's S.11 mockups arrange the two action buttons: 'stacked' puts
- * them in a column with a full-width outline button (capped at desktop widths,
- * where the mockups don't reach); 'row' keeps both at content width side by
- * side. The exhaustive Record makes adding a StateCode a compile error until
- * the new state declares its layout.
- */
-const actionLayoutByState: Record<StateCode, 'stacked' | 'row'> = {
-  co: 'stacked',
-  dc: 'row',
-}
+import { getStateConfig, type StateCode } from '../../lib/state'
 
 export interface MaintenancePageContentProps {
   /**
@@ -36,7 +24,7 @@ export interface MaintenancePageContentProps {
 export function MaintenancePageContent({ namespace, state }: MaintenancePageContentProps) {
   const { t } = useTranslation(namespace)
   const links = getStateLinks(state)
-  const stacked = actionLayoutByState[state] === 'stacked'
+  const stacked = getStateConfig(state).maintenanceActionLayout === 'stacked'
 
   return (
     <section className="usa-section">

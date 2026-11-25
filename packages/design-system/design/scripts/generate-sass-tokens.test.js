@@ -8,14 +8,17 @@ import {
   SEMANTIC_COMPONENT_TOKENS,
   extractSemanticTokens,
   generateSemanticContent,
+  generateStateContent,
   generateSettingsContent,
   processThemeTokens,
   writeFileAtomic
 } from './generate-sass-tokens.js'
+import { STATE_CODES } from '../../src/lib/state.ts'
+import { resolveStateTokens } from './state-token-source.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-const loadStateJson = state =>
-  JSON.parse(readFileSync(join(__dirname, '..', 'states', `${state}.json`), 'utf8'))
+
+const loadTokens = state => JSON.parse(readFileSync(resolveStateTokens(state).path, 'utf8'))
 
 const color = value => ({ $type: 'color', $value: value })
 
@@ -133,8 +136,8 @@ describe('generateSemanticContent', () => {
 })
 
 describe('real state token files', () => {
-  it.each(['dc', 'co'])('%s.json produces USWDS settings without semantic leakage', state => {
-    const stateJson = loadStateJson(state)
+  it.each(STATE_CODES)('%s.json produces USWDS settings without semantic leakage', state => {
+    const stateJson = loadTokens(state)
     const variables = processThemeTokens(stateJson.theme)
     const names = variables.map(v => v.name)
     expect(names).toContain('$theme-color-secondary')
@@ -142,7 +145,7 @@ describe('real state token files', () => {
   })
 
   it('dc.json defines the complete semantic set following the secondary ladder', () => {
-    const { variables, missing } = extractSemanticTokens(loadStateJson('dc').theme)
+    const { variables, missing } = extractSemanticTokens(loadTokens('dc').theme)
     expect(missing).toEqual([])
     const byName = Object.fromEntries(variables.map(v => [v.name, v.value]))
     expect(byName['$theme-button-bg']).toBe("'secondary'")
@@ -151,7 +154,7 @@ describe('real state token files', () => {
   })
 
   it('co.json defines the complete semantic set following the primary ladder', () => {
-    const { variables, missing } = extractSemanticTokens(loadStateJson('co').theme)
+    const { variables, missing } = extractSemanticTokens(loadTokens('co').theme)
     expect(missing).toEqual([])
     const byName = Object.fromEntries(variables.map(v => [v.name, v.value]))
     expect(byName['$theme-button-bg']).toBe("'primary'")
@@ -192,11 +195,23 @@ describe('output', () => {
 
     expect(readdirSync(dir).sort()).toEqual([
       '_uswds-settings.scss',
+      '_uswds-state.scss',
       '_uswds-theme-co.scss',
       '_uswds-theme-semantic.scss'
     ])
     expect(readFileSync(join(dir, '_uswds-theme-semantic.scss'), 'utf8')).toContain(
       'Source: design/states/co.json'
     )
+    expect(readFileSync(join(dir, '_uswds-state.scss'), 'utf8')).toContain('@forward "states/co";')
+  })
+})
+
+describe('generateStateContent', () => {
+  it('forwards the state partial when the state has one', () => {
+    expect(generateStateContent('co', true)).toContain('@forward "states/co";')
+  })
+
+  it('emits no rules for a state without a partial', () => {
+    expect(generateStateContent('demo', false)).not.toContain('@forward')
   })
 })

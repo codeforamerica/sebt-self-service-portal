@@ -47,7 +47,7 @@ describe('getPortalMetadataDescription', () => {
     )
   })
 
-  it.each(['dc', 'co'] as const)('keeps SEO copy free of application references for %s', (state) => {
+  it.each(STATE_CODES)('keeps SEO copy free of application references for %s', (state) => {
     expect(getPortalMetadataDescription(state).toLowerCase()).not.toMatch(/apply|application/)
   })
 })
@@ -97,11 +97,56 @@ describe('getStateConfig — address', () => {
 })
 
 describe('STATE_CODES', () => {
-  it('lists every state with a registry entry', () => {
-    expect(STATE_CODES).toEqual(['dc', 'co'])
-    for (const state of STATE_CODES) {
-      expect(getStateConfig(state).name).toBeTruthy()
-    }
+  it.each(STATE_CODES)('has a complete registry entry for %s', (state) => {
+    const config = getStateConfig(state)
+    expect(config.name).toBeTruthy()
+    expect(config.links.help.sebtMainSite).toBeTruthy()
+    expect(config.assets.logo.src).toContain(`/images/states/${state}/`)
+    expect(config.assets.icons.translate).toBeTruthy()
+  })
+})
+
+describe('getStateConfig links', () => {
+  it('holds the DC help links', () => {
+    expect(getStateConfig('dc').links.help.faqs).toBe(
+      'https://sunbucks.dc.gov/page/sun-bucks-frequently-asked-questions'
+    )
+  })
+
+  it('holds the CO-only footer links', () => {
+    expect(getStateConfig('co').links.footer.generalNotices).toBe(
+      'https://www.colorado.gov/general-notices'
+    )
+  })
+})
+
+describe('getStateConfig maintenanceActionLayout', () => {
+  it('defaults to a row of buttons for DC', () => {
+    expect(getStateConfig('dc').maintenanceActionLayout).toBe('row')
+  })
+
+  it('stacks the buttons for CO', () => {
+    expect(getStateConfig('co').maintenanceActionLayout).toBe('stacked')
+  })
+})
+
+describe('getStateConfig shared icons', () => {
+  it('falls back to the shared translate icon when a state has none of its own', () => {
+    expect(getStateConfig('dc').assets.icons.translate).toBe(
+      '/images/shared/icons/translate_Rounded.svg'
+    )
+  })
+
+  it('uses the state translate icon when overridden', () => {
+    expect(getStateConfig('co').assets.icons.translate).toBe(
+      '/images/states/co/icons/translate_Rounded.svg'
+    )
+  })
+
+  it.each(STATE_CODES)('shares the FAQ and contact icons for %s', (state) => {
+    const { icons } = getStateConfig(state).assets
+    expect(icons.faqs).toBe('/images/shared/icons/faqs-icon.svg')
+    expect(icons.contact).toBe('/images/shared/icons/contact-icon.svg')
   })
 })
 

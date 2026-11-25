@@ -4,20 +4,10 @@ variable "api_cpu" {
   default     = 512
 }
 
-variable "api_image_url" {
-  type        = string
-  description = "ECR repository URL for the API image. When set, disables ECR repo creation in the fargate module."
-}
-
 variable "api_memory" {
   type        = number
   description = "Memory (in MiB) for the API service container."
   default     = 1024
-}
-
-variable "api_repository_arn" {
-  type        = string
-  description = "ARN of the ECR repository for the API image."
 }
 
 variable "apply_immediately" {
@@ -26,10 +16,16 @@ variable "apply_immediately" {
   default     = false
 }
 
-variable "db_ingress_cidrs" {
+variable "db_app_users" {
   type        = list(string)
-  description = "Extra CIDR blocks allowed to connect to the database on TCP 1433. Used to grant VPC-internal clients (e.g. the SSM bastion) access without plumbing security groups."
-  default     = []
+  description = "Pair of SQL Server logins that alternate as the API's credential. Must differ from every other deployment on the same RDS instance."
+  default     = ["appuser", "appuser_clone"]
+}
+
+variable "db_name" {
+  type        = string
+  description = "Name of the API's database on the RDS instance. Created on first credential rotation if missing."
+  default     = "SebtPortal"
 }
 
 variable "desired_containers" {
@@ -93,6 +89,11 @@ variable "force_delete" {
   default     = false
 }
 
+variable "hosted_zone_name" {
+  type        = string
+  description = "Name of the Route 53 hosted zone for DNS records (e.g. co.sebt-portal.codeforamerica.app)."
+}
+
 variable "image_tag" {
   type        = string
   description = "Docker image tag to deploy."
@@ -105,25 +106,34 @@ variable "image_tags_mutable" {
   default     = false
 }
 
-variable "logging_bucket_domain_name" {
-  type        = string
-  description = "Domain name of the S3 bucket for logging (e.g. my-bucket.s3.amazonaws.com)."
-}
-
-variable "logging_key_id" {
-  type        = string
-  description = "KMS key ARN for encrypting logs."
-}
-
 variable "passive_waf" {
   type        = bool
   description = "Enable passive mode for the WAF, counting all requests rather than blocking."
   default     = false
 }
 
-variable "private_subnets" {
-  type        = list(string)
-  description = "List of private subnet IDs."
+variable "platform" {
+  type = object({
+    database = object({
+      host              = string
+      port              = number
+      admin_secret_arn  = string
+      security_group_id = string
+    })
+    logging_bucket_domain_name = string
+    logging_key_arn            = string
+    name_prefix                = string
+    private_subnets            = list(string)
+    public_subnets             = list(string)
+    vpc_id                     = string
+    waf_log_group_arn          = string
+  })
+  description = <<-EOT
+    The shared platform this deployment runs on: pass the outputs of
+    sebt_platform or sebt_platform_lookup. The module names its ECR
+    repositories from name_prefix, and creates its own rotating login on
+    the database, using the master credentials in database.admin_secret_arn.
+    EOT
 }
 
 variable "project" {
@@ -136,11 +146,6 @@ variable "project_short" {
   type        = string
   description = "Abbreviated project name for resource naming."
   default     = "sebt"
-}
-
-variable "public_subnets" {
-  type        = list(string)
-  description = "List of public subnet IDs."
 }
 
 variable "rate_limit_requests" {
@@ -180,25 +185,9 @@ variable "ses_allowed_recipients" {
   default     = []
 }
 
-variable "skip_final_snapshot" {
-  type        = bool
-  description = "Skip final snapshot when destroying the database."
-  default     = false
-}
-
 variable "state" {
   type        = string
   description = "State abbreviation (e.g. DC, CO)."
-}
-
-variable "vpc_id" {
-  type        = string
-  description = "VPC ID where resources will be created."
-}
-
-variable "waf_log_group" {
-  type        = string
-  description = "Name of the CloudWatch log group for WAF logs."
 }
 
 variable "web_cpu" {
@@ -207,20 +196,10 @@ variable "web_cpu" {
   default     = 512
 }
 
-variable "web_image_url" {
-  type        = string
-  description = "ECR repository URL for the web image. When set, disables ECR repo creation in the fargate module."
-}
-
 variable "web_memory" {
   type        = number
   description = "Memory (in MiB) for the web service container."
   default     = 1024
-}
-
-variable "web_repository_arn" {
-  type        = string
-  description = "ARN of the ECR repository for the web image."
 }
 
 variable "seeding_enabled" {
@@ -253,21 +232,9 @@ variable "state_api_environment_variables" {
   default     = {}
 }
 
-variable "state_api_environment_secrets" {
-  type        = map(string)
-  description = "State-specific secrets to inject into the API container environment."
-  default     = {}
-}
-
 variable "state_web_environment_variables" {
   type        = map(string)
   description = "State-specific environment variables to inject into the Web container."
-  default     = {}
-}
-
-variable "state_web_environment_secrets" {
-  type        = map(string)
-  description = "State-specific secrets to inject into the Web container environment."
   default     = {}
 }
 
@@ -275,12 +242,6 @@ variable "secret_recovery_period" {
   type        = number
   description = "Number of days to retain a secret before permanent deletion."
   default     = 7
-}
-
-variable "hosted_zone_id" {
-  type        = string
-  description = "Route 53 hosted zone ID for DNS records. Required when the zone name doesn't exactly match the domain."
-  default     = ""
 }
 
 variable "redis_node_type" {
@@ -307,3 +268,25 @@ variable "redis_automatic_failover_enabled" {
   default     = true
 }
 
+variable "state_api_secrets" {
+  type        = map(string)
+  description = "State-specific secrets to inject into the API container environment, as environment variable name => key in state_secrets."
+  default     = {}
+}
+
+variable "state_secrets" {
+  type        = map(string)
+  description = "State-specific secrets to create, as name => description. JWT_SECRET_KEY and IDENTIFIER_HASHER_SECRET_KEY always exist and are wired into the API."
+  default     = {}
+}
+
+variable "state_secrets_doppler_config" {
+  type        = string
+  description = "Doppler config the state-specific secrets are synced from (e.g. dev_co_state_secrets)."
+}
+
+variable "state_web_secrets" {
+  type        = map(string)
+  description = "State-specific secrets to inject into the Web container environment, as environment variable name => key in state_secrets."
+  default     = {}
+}

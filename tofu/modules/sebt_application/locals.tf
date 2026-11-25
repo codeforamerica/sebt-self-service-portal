@@ -1,16 +1,26 @@
 locals {
-  # Find the Datadog Forwarder Lambda by its CloudFormation naming convention.
-  datadog_lambda = [
-    for lambda in data.aws_lambda_functions.all.function_names :
-    lambda if length(regexall("^DatadogIntegration-ForwarderStack-", lambda)) > 0
-  ]
+  # Shared with module.doppler and module.state_secrets_doppler.
+  doppler = {
+    project      = "safety-net-sebt-self-service-portal"
+    workspace_id = "08430c37e2a2889dc220"
+  }
 
-  # CloudWatch log groups to subscribe to the Datadog Forwarder. Only RDS log
-  # groups are listed here — the Datadog AWS integration auto-subscribes to
-  # ECS and Lambda log groups, but not RDS instance logs.
-  datadog_log_groups = {
-    database-error = module.database.log_group_names["error"]
-    database-agent = module.database.log_group_names["agent"]
+  default_state_secrets = {
+    "JWT_SECRET_KEY"               = "JWT signing secret for the SEBT Portal API."
+    "IDENTIFIER_HASHER_SECRET_KEY" = "Identifier hashing secret for the SEBT Portal API."
+  }
+
+  api_state_secrets = {
+    for env_var, name in merge({
+      "JwtSettings__SecretKey"      = "JWT_SECRET_KEY"
+      "IdentifierHasher__SecretKey" = "IDENTIFIER_HASHER_SECRET_KEY"
+    }, var.state_api_secrets) :
+    env_var => module.state_secrets.secrets[name].secret_arn
+  }
+
+  web_state_secrets = {
+    for env_var, name in var.state_web_secrets :
+    env_var => module.state_secrets.secrets[name].secret_arn
   }
 
   # Datadog does not ingest OpenTelemetry traces from AWS X-Ray. When the

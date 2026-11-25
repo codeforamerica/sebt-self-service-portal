@@ -55,7 +55,7 @@ updates:
           - "patch"
 
   - package-ecosystem: "pip"
-    directory: "tofu/modules/sebt_database/lambda"
+    directory: "tofu/modules/sebt_database_app_user/lambda"
     schedule:
       interval: "weekly"
     cooldown:

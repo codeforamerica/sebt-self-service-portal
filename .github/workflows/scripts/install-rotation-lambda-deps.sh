@@ -12,7 +12,7 @@ set -e  # Exit on error
 set -u  # Exit on undefined variable
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "$0" )" &> /dev/null && pwd -P )
-LAMBDA_DIR="$SCRIPT_DIR/../../../tofu/modules/sebt_database/lambda"
+LAMBDA_DIR="$SCRIPT_DIR/../../../tofu/modules/sebt_database_app_user/lambda"
 
 pip install \
   --platform manylinux_2_28_x86_64 \

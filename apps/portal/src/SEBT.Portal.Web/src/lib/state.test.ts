@@ -102,6 +102,34 @@ describe('state', () => {
     })
   })
 
+  describe('assets', () => {
+    it('gives each state its own logo and seal at the dimensions its layout uses', () => {
+      expect(getStateConfig('dc').assets.logo).toEqual({
+        src: '/images/states/dc/logo.svg',
+        width: 122,
+        height: 52
+      })
+      expect(getStateConfig('co').assets.seal).toEqual({
+        src: '/images/states/co/seal.svg',
+        width: 136,
+        height: 28
+      })
+    })
+
+    it('falls back to the shared icons unless the state overrides them', () => {
+      expect(getStateConfig('dc').assets.icons).toEqual({
+        translate: '/images/shared/icons/translate_Rounded.svg',
+        faqs: '/images/shared/icons/faqs-icon.svg',
+        contact: '/images/shared/icons/contact-icon.svg'
+      })
+      expect(getStateConfig('co').assets.icons).toEqual({
+        translate: '/images/states/co/icons/translate_Rounded.svg',
+        faqs: '/images/shared/icons/faqs-icon.svg',
+        contact: '/images/shared/icons/contact-icon.svg'
+      })
+    })
+  })
+
   describe('getStateName', () => {
     it('returns full name for dc', () => {
       expect(getStateName('dc')).toBe('District of Columbia')

@@ -3,27 +3,30 @@ import { expect, test } from '@playwright/test'
 import { setupApiRoutes } from '../fixtures/api-routes'
 import { injectAuth } from '../fixtures/auth'
 import {
+  ADDRESS_DEFAULTS,
   makeApplication,
   makeHouseholdData,
   makeSummerEbtCase,
-  OLD_CARD_DATE
+  OLD_CARD_DATE,
+  REPLACED_CARD_HEADING
 } from '../fixtures/household-data'
-import { currentState } from '../fixtures/state'
+import { forCurrentState, type StateCode } from '../fixtures/state'
 
-const ADDRESS_FORM_DATA =
-  currentState === 'co'
-    ? { street: '200 E Colfax Ave', city: 'Denver', state: 'CO', zip: '80203' }
-    : {
-        street: '456 Oak Avenue NW',
-        city: 'Washington',
-        state: 'DC',
-        zip: '20002'
-      }
+const ADDRESS_FORM_DATA_BY_STATE: Record<
+  StateCode,
+  { street: string; city: string; state: string; zip: string }
+> = {
+  dc: { street: '456 Oak Avenue NW', city: 'Washington', state: 'DC', zip: '20002' },
+  co: { street: '200 E Colfax Ave', city: 'Denver', state: 'CO', zip: '80203' }
+}
+const ADDRESS_FORM_DATA = forCurrentState(ADDRESS_FORM_DATA_BY_STATE)
 
-const EXPECTED_PREFILL =
-  currentState === 'co'
-    ? { street: '200 E Colfax Ave', city: 'Denver', zip: '80203' }
-    : { street: '1350 Pennsylvania Ave NW', city: 'Washington', zip: '20004' }
+const onFile = forCurrentState(ADDRESS_DEFAULTS)
+const EXPECTED_PREFILL = {
+  street: onFile.streetAddress1,
+  city: onFile.city,
+  zip: onFile.postalCode
+}
 
 /**
  * Fills and submits the address form with valid data.
@@ -155,10 +158,8 @@ test.describe('Address update flow', () => {
       ).toBeVisible()
       // The confirm screen hands the replaced card off in memory (PII never rides
       // the URL); the heading names the child (DC) or the card digits (CO).
-      const expectedHeading =
-        currentState === 'co' ? 'the card ending in 1234' : 'John Doe card will be sent'
       await expect(
-        page.locator('.usa-alert--success .usa-alert__heading', { hasText: expectedHeading })
+        page.locator('.usa-alert--success .usa-alert__heading', { hasText: REPLACED_CARD_HEADING })
       ).toBeVisible()
     })
   })

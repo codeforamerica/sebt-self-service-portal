@@ -26,11 +26,18 @@ public interface IDatabaseSeeder
     Task SeedTestUsersAsync(bool useMockHouseholdData, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Clears all seeded data from the database.
-    /// WARNING: This will delete all users and opt-ins. Use with caution.
+    /// Deletes the seed-scenario users matched by email, along with their opt-ins.
+    /// Users who signed in through an identity provider no longer carry an email and are not matched.
     /// </summary>
     /// <param name="cancellationToken">A token to cancel the operation.</param>
     Task ClearSeededDataAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes every user and opt-in, whatever its email; cascades remove their dependent rows.
+    /// For disposable demo databases only.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    Task ClearAllUserDataAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes and recreates a single known seed scenario user so mutable E2E suites

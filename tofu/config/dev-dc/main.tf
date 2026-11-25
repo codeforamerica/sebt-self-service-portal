@@ -14,117 +14,13 @@ terraform {
 # configuring its own instance and re-using a single-use OIDC token.
 provider "doppler" {}
 
-# Create an S3 bucket and KMS key for logging.
-module "logging" {
-  source = "github.com/codeforamerica/tofu-modules-aws-logging?ref=2.2.0"
+# The network, logging, bastion and RDS instance are owned by dev-dc-shared.
+module "platform" {
+  source = "../../modules/sebt_platform_lookup"
 
-  project     = "${var.project}-${var.state}"
+  project     = var.project
+  state       = var.state
   environment = var.environment
-  log_groups = {
-    "waf" = {
-      name = "aws-waf-logs-cfa/${var.project}-${var.state}/${var.environment}"
-      tags = {
-        source = "waf"
-        webacl = "${var.project}-${var.state}-${var.environment}"
-        domain = var.domain
-      }
-    }
-  }
-
-  log_groups_to_datadog = true
-}
-
-# Create a VPC with public and private subnets. Since this is a dev
-# environment, we'll use a single NAT gateway to reduce costs.
-module "vpc" {
-  source = "github.com/codeforamerica/tofu-modules-aws-vpc?ref=1.2.1"
-
-  project            = "${var.project}-${var.state}"
-  environment        = var.environment
-  single_nat_gateway = true
-  logging_key_id     = module.logging.kms_key_arn
-
-  cidr            = var.vpc_cidr
-  private_subnets = var.private_subnets
-  public_subnets  = var.public_subnets
-}
-
-# Look up ECR repositories created by bootstrap.
-data "aws_ecr_repository" "api" {
-  name = "${var.project}-${var.state}-${var.environment}-api"
-}
-
-data "aws_ecr_repository" "web" {
-  name = "${var.project}-${var.state}-${var.environment}-web"
-}
-
-# Look up the hosted zone for DNS records.
-data "aws_route53_zone" "main" {
-  name = "dc.sebt-portal.codeforamerica.app"
-}
-
-# Look up the enrollment checker hosted zone (created by bootstrap).
-data "aws_route53_zone" "enrollment_checker" {
-  name = "dc.sebt-enrollment.codeforamerica.app"
-}
-
-# Store DC-specific secrets in Secrets Manager. Each key represents a
-# separate secret for a specific service or integration.
-module "state_secrets" {
-  source = "github.com/codeforamerica/tofu-modules-aws-secrets?ref=1880642d0546106d0c1f568304c0326b32b8cdbb" # 2.1.1
-
-  project     = "${var.project}-${var.state}"
-  environment = var.environment
-  service     = "state-secrets"
-
-  # Doppler's AWS Secrets Manager sync creates its own target secret named
-  # "{path}/{DOPPLER_KEY}" (uppercase, exact match) rather than writing into
-  # a pre-existing ARN — so these keys and add_suffix=false must make our
-  # secret's name match exactly what Doppler will create, or Doppler ends up
-  # populating an entirely separate, unreferenced secret.
-  add_suffix = false
-
-  secrets = {
-    "JWT_SECRET_KEY" = {
-      description     = "JWT signing secret for the SEBT Portal API."
-      recovery_window = 7
-    }
-    "IDENTIFIER_HASHER_SECRET_KEY" = {
-      description     = "Identifier hashing secret for the SEBT Portal API."
-      recovery_window = 7
-    }
-    "SOCURE_API_KEY" = {
-      description     = "Socure API key for identity verification."
-      recovery_window = 7
-    }
-    "SOCURE_WEBHOOK_SECRET" = {
-      description     = "Socure webhook signing secret for identity verification."
-      recovery_window = 7
-    }
-    "PII_ENCRYPTION_KEY_ID" = {
-      description     = "Active PII encryption key ID for the SEBT Portal API (AES-256-GCM)."
-      recovery_window = 7
-    }
-    "PII_ENCRYPTION_KEY_MATERIAL_BASE64" = {
-      description     = "Active PII encryption key material for the SEBT Portal API (AES-256-GCM)."
-      recovery_window = 7
-    }
-  }
-}
-
-# Sync DC's state-specific secrets to Doppler.
-module "state_secrets_doppler" {
-  source     = "github.com/codeforamerica/tofu-modules-aws-doppler?ref=e8ba5edac1eaf156702c89e0c9cd84f86dcafbfc" # 1.1.0
-  depends_on = [module.state_secrets]
-
-  project     = "${var.project}-${var.state}"
-  environment = var.environment
-  service     = "state-secrets"
-
-  kms_key_arns             = [module.state_secrets.kms_key_arn]
-  doppler_project          = "safety-net-sebt-self-service-portal"
-  doppler_environment_slug = "dev_dc_state_secrets"
-  doppler_workspace_id     = "08430c37e2a2889dc220"
 }
 
 # Deploy the application services (API + Web) using the shared wrapper module.
@@ -132,30 +28,18 @@ module "app" {
   source    = "../../modules/sebt_application"
   providers = { doppler = doppler }
 
-  apply_immediately          = true
-  domain                     = var.domain
-  hosted_zone_id             = data.aws_route53_zone.main.zone_id
-  environment                = var.environment
-  image_tag                  = var.image_tag
-  logging_key_id             = module.logging.kms_key_arn
-  logging_bucket_domain_name = module.logging.bucket_domain_name
-  private_subnets            = module.vpc.private_subnets
-  public_subnets             = module.vpc.public_subnets
-  vpc_id                     = module.vpc.vpc_id
-  db_ingress_cidrs           = [var.vpc_cidr]
-  project                    = var.project
-  sender_email               = var.sender_email
-  skip_final_snapshot        = true
-  state                      = var.state
-  waf_log_group              = module.logging.log_groups["waf"]
-  passive_waf                = true
-  enable_appconfig           = true
-  log_as_json                = true
-
-  api_image_url      = data.aws_ecr_repository.api.repository_url
-  api_repository_arn = data.aws_ecr_repository.api.arn
-  web_image_url      = data.aws_ecr_repository.web.repository_url
-  web_repository_arn = data.aws_ecr_repository.web.arn
+  apply_immediately = true
+  domain            = var.domain
+  hosted_zone_name  = "dc.sebt-portal.codeforamerica.app"
+  environment       = var.environment
+  image_tag         = var.image_tag
+  platform          = module.platform
+  project           = var.project
+  sender_email      = var.sender_email
+  state             = var.state
+  passive_waf       = true
+  enable_appconfig  = true
+  log_as_json       = true
 
   force_delete           = true
   image_tags_mutable     = true
@@ -166,19 +50,26 @@ module "app" {
   seeding_email_pattern = "sebt.dc+{0}@codeforamerica.org"
   dc_source_db_name     = "DcSource"
 
+  state_secrets_doppler_config = "dev_dc_state_secrets"
+
+  state_secrets = {
+    "SOCURE_API_KEY"                     = "Socure API key for identity verification."
+    "SOCURE_WEBHOOK_SECRET"              = "Socure webhook signing secret for identity verification."
+    "PII_ENCRYPTION_KEY_ID"              = "Active PII encryption key ID for the SEBT Portal API (AES-256-GCM)."
+    "PII_ENCRYPTION_KEY_MATERIAL_BASE64" = "Active PII encryption key material for the SEBT Portal API (AES-256-GCM)."
+  }
+
   state_api_environment_variables = {
     "IdProofingRequirements__household+view__application"        = "IAL1"
     "IdProofingRequirements__household+view__coloadedStreamline" = "IAL1"
     "IdProofingRequirements__household+view__streamline"         = "IAL1plus"
   }
 
-  state_api_environment_secrets = {
-    "JwtSettings__SecretKey"                    = module.state_secrets.secrets["JWT_SECRET_KEY"].secret_arn
-    "IdentifierHasher__SecretKey"               = module.state_secrets.secrets["IDENTIFIER_HASHER_SECRET_KEY"].secret_arn
-    "Socure__ApiKey"                            = module.state_secrets.secrets["SOCURE_API_KEY"].secret_arn
-    "Socure__WebhookSecret"                     = module.state_secrets.secrets["SOCURE_WEBHOOK_SECRET"].secret_arn
-    "PiiEncryption__Keys__0__KeyId"             = module.state_secrets.secrets["PII_ENCRYPTION_KEY_ID"].secret_arn
-    "PiiEncryption__Keys__0__KeyMaterialBase64" = module.state_secrets.secrets["PII_ENCRYPTION_KEY_MATERIAL_BASE64"].secret_arn
+  state_api_secrets = {
+    "Socure__ApiKey"                            = "SOCURE_API_KEY"
+    "Socure__WebhookSecret"                     = "SOCURE_WEBHOOK_SECRET"
+    "PiiEncryption__Keys__0__KeyId"             = "PII_ENCRYPTION_KEY_ID"
+    "PiiEncryption__Keys__0__KeyMaterialBase64" = "PII_ENCRYPTION_KEY_MATERIAL_BASE64"
   }
 
   state_web_environment_variables = {
@@ -196,20 +87,6 @@ module "app" {
     SMARTY_EMBEDDED_KEY         = var.smarty_embedded_key
     SOCURE_DI_SDK_KEY           = var.socure_di_sdk_key
   }
-  state_web_environment_secrets = {}
-}
-
-# SSM bastion for developer DB access. Uses pure-SSM port forwarding;
-# no PEM distribution, no SSH. Access is IAM-gated via SSO.
-module "bastion" {
-  source = "github.com/codeforamerica/tofu-modules-aws-ssm-bastion?ref=1.1.0"
-
-  project                 = "${var.project}-${var.state}"
-  environment             = var.environment
-  private_subnet_ids      = module.vpc.private_subnets
-  vpc_id                  = module.vpc.vpc_id
-  kms_key_recovery_period = 7
-  instance_profile        = null
 }
 
 # DC-only: ECS task definition + IAM role for one-off DcSource seed runs.
@@ -221,11 +98,11 @@ module "dc_source_seed" {
   project           = "${var.project}-${var.state}"
   environment       = var.environment
   cluster_name      = module.app.api_cluster_name
-  subnet_ids        = module.vpc.private_subnets
+  subnet_ids        = module.platform.private_subnets
   security_group_id = module.app.api_security_group_id
-  db_endpoint       = module.app.database_endpoint
-  db_secret_arn     = module.app.database_secret_arn
-  logging_key_arn   = module.logging.kms_key_arn
+  db_endpoint       = module.platform.database.host
+  db_secret_arn     = module.platform.database.admin_secret_arn
+  logging_key_arn   = module.platform.logging_key_arn
 }
 
 # Deploy the enrollment checker as a static site behind CloudFront.
@@ -237,7 +114,7 @@ module "enrollment_checker" {
   environment                = var.environment
   domain                     = "dev.dc.sebt-enrollment.codeforamerica.app"
   hosted_zone_id             = data.aws_route53_zone.enrollment_checker.zone_id
-  logging_bucket_domain_name = module.logging.bucket_domain_name
-  logging_bucket_name        = module.logging.bucket
+  logging_bucket_domain_name = module.platform.logging_bucket_domain_name
+  logging_bucket_name        = module.platform.logging_bucket
   force_delete               = true
 }

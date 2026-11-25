@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { CHECKER_STATES } from '@/lib/checkerAssetPath'
+import { CHECKER_STATES } from '@/lib/checkerStateConfig'
 import { allowsSequentialChecks } from '@/lib/flowConfig'
 import { EnrollmentProvider } from '../context/EnrollmentContext'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'

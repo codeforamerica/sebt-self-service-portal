@@ -41,6 +41,15 @@ jobs:
             tofu:
               - 'tofu/**'
 
+  plan-dc-shared:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-dc
+      config: dev-dc-shared
+    secrets: inherit
+
   plan-dc:
     needs: check-infra-changes
     if: needs.check-infra-changes.outputs.changed == 'true'
@@ -51,6 +60,15 @@ jobs:
       image_tag: ${{ github.sha }}
     secrets: inherit
   
+  plan-co-shared:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-co
+      config: dev-co-shared
+    secrets: inherit
+
   plan-co:
     needs: check-infra-changes
     if: needs.check-infra-changes.outputs.changed == 'true'
@@ -61,9 +79,21 @@ jobs:
       image_tag: ${{ github.sha }}
     secrets: inherit
 
+  # Off until the repository variable DEMO_ENABLED is 'true': the dev-demo
+  # GitHub environment, Doppler config and DNS zone are set up by hand first.
+  plan-demo:
+    needs: check-infra-changes
+    if: needs.check-infra-changes.outputs.changed == 'true' && vars.DEMO_ENABLED == 'true'
+    uses: ./.github/workflows/plan.yaml
+    with:
+      environment: dev-demo
+      config: dev-demo
+      image_tag: ${{ github.sha }}
+    secrets: inherit
+
   plan-comment:
-    needs: [plan-dc, plan-co]
-    if: always() && (needs.plan-dc.outputs.plan || needs.plan-co.outputs.plan)
+    needs: [plan-dc-shared, plan-dc, plan-co-shared, plan-co, plan-demo]
+    if: always() && (needs.plan-dc-shared.outputs.plan || needs.plan-dc.outputs.plan || needs.plan-co-shared.outputs.plan || needs.plan-co.outputs.plan || needs.plan-demo.outputs.plan)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -72,8 +102,11 @@ jobs:
       - name: Post plan to PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          DC_SHARED_PLAN: ${{ needs.plan-dc-shared.outputs.plan }}
           DC_PLAN: ${{ needs.plan-dc.outputs.plan }}
+          CO_SHARED_PLAN: ${{ needs.plan-co-shared.outputs.plan }}
           CO_PLAN: ${{ needs.plan-co.outputs.plan }}
+          DEMO_PLAN: ${{ needs.plan-demo.outputs.plan }}
         with:
           script: |
             const postPlanComment = require('./.github/workflows/scripts/post-plan-comment.js');
@@ -235,318 +268,127 @@ jobs:
           path: /tmp/docker-images.tar
           retention-days: 1
 
-  deploy-dc:
+  # The network, logging, bastion and RDS instance shared by the deployments in
+  # the DC account. Applies before the configs that look them up.
+  deploy-dc-shared:
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/deploy-config.yaml
+    with:
+      environment: dev-dc
+      config: dev-dc-shared
+    secrets: inherit
+
+  publish-dc:
     if: github.event_name != 'pull_request'
     needs: build
-    runs-on: ubuntu-latest
-    environment: dev-dc
-    outputs:
-      web_url: ${{ steps.deploy-url.outputs.url }}
-    env:
-      AWS_REGION: us-east-1
-      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
-      TF_VAR_domain: ${{ vars.DOMAIN }}
-      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
-      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
-      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
-      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
-      # Browser-facing web config, set on the container at request time rather than
-      # passed to the image build (docs/adr/0023-runtime-client-config.md).
-      TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
-      TF_VAR_application_url: ${{ vars.APPLICATION_URL }}
-      TF_VAR_application_url_peak_params: ${{ vars.APPLICATION_URL_PEAK_PARAMS }}
-      TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
-      TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
-      TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
-      TF_VAR_socure_di_sdk_key: ${{ vars.SOCURE_DI_SDK_KEY }}
+    uses: ./.github/workflows/publish-images.yaml
+    with:
+      environment: dev-dc
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      dc_connector_sha: ${{ needs.build.outputs.dc_connector_sha }}
+    secrets: inherit
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+  deploy-dc:
+    if: github.event_name != 'pull_request'
+    needs: [build, publish-dc, deploy-dc-shared]
+    uses: ./.github/workflows/deploy-config.yaml
+    with:
+      environment: dev-dc
+      config: dev-dc
+      image_tag: ${{ needs.build.outputs.image_tag }}
+    secrets: inherit
 
-      - name: Download Docker images
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: docker-images
-          path: /tmp
+  # The network, logging, bastion, RDS instance and Keycloak shared by the
+  # deployments in the CO account. Applies before the configs that look them up.
+  deploy-co-shared:
+    if: github.event_name != 'pull_request'
+    uses: ./.github/workflows/deploy-config.yaml
+    with:
+      environment: dev-co
+      config: dev-co-shared
+    secrets: inherit
 
-      - name: Load Docker images
-        run: docker load -i /tmp/docker-images.tar
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
-
-      - name: Build Web image
-        # State-agnostic: STATE is supplied by the ECS task definition at runtime,
-        # so this image is identical for every state and can be promoted between them.
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
-            --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
-            --build-arg NEXT_PUBLIC_DC_CONNECTOR_SHA=${{ needs.build.outputs.dc_connector_sha }} \
-            -t sebt-portal-web:${{ needs.build.outputs.image_tag }} \
-            .
-
-      - name: Push images to ECR
-        run: |
-          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
-          API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
-          WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
-
-          docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
-          docker tag sebt-portal-web:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
-
-          docker push ${API_REPO}:${IMAGE_TAG}
-          docker push ${WEB_REPO}:${IMAGE_TAG}
-
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: "3.12"
-
-      - name: Install DB rotation Lambda dependencies
-        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
-
-      - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
-        with:
-          tofu_version: "1.10.0"
-
-      - name: OpenTofu Init
-        working-directory: tofu/config/dev-dc
-        run: tofu init -upgrade
-
-      # Doppler OIDC tokens are single-use. Plan and apply each need their own
-      # provider authentication, so each gets its own freshly-fetched token —
-      # reusing one token for both fails with "This OIDC token was used
-      # previously".
-      - name: Get an OIDC token for Doppler (plan)
-        run: |
-          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
-          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
-
-      - name: OpenTofu Plan
-        working-directory: tofu/config/dev-dc
-        run: |
-          tofu plan -input=false -out=tfplan \
-            -var="image_tag=${{ needs.build.outputs.image_tag }}"
-
-      - name: Get an OIDC token for Doppler (apply)
-        run: |
-          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
-          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
-
-      - name: OpenTofu Apply
-        working-directory: tofu/config/dev-dc
-        run: tofu apply tfplan
-
-      - name: Get deployment URL
-        id: deploy-url
-        working-directory: tofu/config/dev-dc
-        run: |
-          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
-          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
-          echo "Deployment URL: $WEB_URL"
+  publish-co:
+    if: github.event_name != 'pull_request'
+    needs: build
+    uses: ./.github/workflows/publish-images.yaml
+    with:
+      environment: dev-co
+      image_tag: ${{ needs.build.outputs.image_tag }}
+    secrets: inherit
 
   deploy-co:
     if: github.event_name != 'pull_request'
-    needs: build
-    runs-on: ubuntu-latest
-    environment: dev-co
-    outputs:
-      web_url: ${{ steps.deploy-url.outputs.url }}
-    env:
-      AWS_REGION: us-east-1
-      DOPPLER_OIDC_IDENTITY: ${{ secrets.DOPPLER_OIDC_IDENTITY }}
-      TF_VAR_domain: ${{ vars.DOMAIN }}
-      TF_VAR_sender_email: ${{ vars.SENDER_EMAIL }}
-      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
-      TF_VAR_private_subnets: ${{ vars.PRIVATE_SUBNETS }}
-      TF_VAR_public_subnets: ${{ vars.PUBLIC_SUBNETS }}
-      # Browser-facing web config, set on the container at request time rather than
-      # passed to the image build (docs/adr/0023-runtime-client-config.md).
-      TF_VAR_amplitude_api_key: ${{ vars.AMPLITUDE_API_KEY }}
-      TF_VAR_application_url: ${{ vars.APPLICATION_URL }}
-      TF_VAR_application_url_peak_params: ${{ vars.APPLICATION_URL_PEAK_PARAMS }}
-      TF_VAR_mixpanel_token: ${{ vars.MIXPANEL_TOKEN }}
-      TF_VAR_siteimprove_id: ${{ vars.SITEIMPROVE_ID }}
-      TF_VAR_smarty_embedded_key: ${{ vars.SMARTY_EMBEDDED_KEY }}
+    needs: [build, publish-co, deploy-co-shared]
+    uses: ./.github/workflows/deploy-config.yaml
+    with:
+      environment: dev-co
+      config: dev-co
+      image_tag: ${{ needs.build.outputs.image_tag }}
+    secrets: inherit
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-
-      - name: Download Docker images
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: docker-images
-          path: /tmp
-
-      - name: Load Docker images
-        run: docker load -i /tmp/docker-images.tar
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
-
-      - name: Build Web image
-        # State-agnostic: STATE is supplied by the ECS task definition at runtime,
-        # so this image is identical for every state and can be promoted between them.
-        run: |
-          docker build \
-            --platform linux/amd64 \
-            -f apps/portal/src/SEBT.Portal.Web/Dockerfile \
-            --build-arg NEXT_PUBLIC_BUILD_SHA=${{ github.sha }} \
-            -t sebt-portal-web:${{ needs.build.outputs.image_tag }} \
-            .
-
-      - name: Push images to ECR
-        run: |
-          IMAGE_TAG="${{ needs.build.outputs.image_tag }}"
-          API_REPO="${{ secrets.ECR_API_REPOSITORY_URL }}"
-          WEB_REPO="${{ secrets.ECR_WEB_REPOSITORY_URL }}"
-
-          docker tag sebt-portal-api:${IMAGE_TAG} ${API_REPO}:${IMAGE_TAG}
-          docker tag sebt-portal-web:${IMAGE_TAG} ${WEB_REPO}:${IMAGE_TAG}
-
-          docker push ${API_REPO}:${IMAGE_TAG}
-          docker push ${WEB_REPO}:${IMAGE_TAG}
-
-      - name: Set up Python
-        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-        with:
-          python-version: "3.12"
-
-      - name: Install DB rotation Lambda dependencies
-        run: ./.github/workflows/scripts/install-rotation-lambda-deps.sh
-
-      - name: Install OpenTofu
-        uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
-        with:
-          tofu_version: "1.10.0"
-
-      - name: OpenTofu Init
-        working-directory: tofu/config/dev-co
-        run: tofu init -upgrade
-
-      # Doppler OIDC tokens are single-use. Plan and apply each need their own
-      # provider authentication, so each gets its own freshly-fetched token —
-      # reusing one token for both fails with "This OIDC token was used
-      # previously".
-      - name: Get an OIDC token for Doppler (plan)
-        run: |
-          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
-          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
-
-      - name: OpenTofu Plan
-        working-directory: tofu/config/dev-co
-        run: |
-          tofu plan -input=false -out=tfplan \
-            -var="image_tag=${{ needs.build.outputs.image_tag }}"
-
-      - name: Get an OIDC token for Doppler (apply)
-        run: |
-          DOPPLER_OIDC_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/$GITHUB_REPOSITORY_OWNER" | jq -r '.value')
-          echo "DOPPLER_OIDC_TOKEN=$DOPPLER_OIDC_TOKEN" >> $GITHUB_ENV
-
-      - name: OpenTofu Apply
-        working-directory: tofu/config/dev-co
-        run: tofu apply tfplan
-
-      - name: Get deployment URL
-        id: deploy-url
-        working-directory: tofu/config/dev-co
-        run: |
-          WEB_URL=$(tofu output -raw web_endpoint_url 2>/dev/null || echo "")
-          echo "url=$WEB_URL" >> "$GITHUB_OUTPUT"
-          echo "Deployment URL: $WEB_URL"
+  # The unbranded demo. Deploys the images publish-co pushed to the CO account's
+  # ECR repositories, so it runs after deploy-co.
+  deploy-demo:
+    if: github.event_name != 'pull_request' && vars.DEMO_ENABLED == 'true'
+    needs: [build, publish-co, deploy-co]
+    uses: ./.github/workflows/deploy-config.yaml
+    with:
+      environment: dev-demo
+      config: dev-demo
+      image_tag: ${{ needs.build.outputs.image_tag }}
+      register_keycloak_host: true
+    secrets: inherit
 
   create-deployment-record:
-    needs: [deploy-dc, deploy-co]
-    if: always() && (needs.deploy-dc.result == 'success' || needs.deploy-co.result == 'success')
+    needs: [deploy-dc, deploy-co, deploy-demo]
+    if: always() && (needs.deploy-dc.result == 'success' || needs.deploy-co.result == 'success' || needs.deploy-demo.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       deployments: write
       contents: read
     steps:
-      - name: Create GitHub deployment for DC
-        if: needs.deploy-dc.result == 'success'
+      - name: Create GitHub deployments
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          DEPLOY_JOBS: ${{ toJSON(needs) }}
         with:
           script: |
-            const rawUrl = '${{ needs.deploy-dc.outputs.web_url }}';
-            const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+            const environmentByJob = {
+              'deploy-dc': 'dev-dc',
+              'deploy-co': 'dev-co',
+              'deploy-demo': 'dev-demo',
+            };
+            const jobs = JSON.parse(process.env.DEPLOY_JOBS);
             const ref = context.sha;
 
-            const deployment = await github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref,
-              environment: 'dev-dc',
-              auto_merge: false,
-              required_contexts: [],
-              description: `Deploy dev-dc (${ref.slice(0, 7)})`
-            });
+            for (const [job, environment] of Object.entries(environmentByJob)) {
+              if (jobs[job]?.result !== 'success') {
+                continue;
+              }
 
-            const deploymentId = deployment.data.id;
-            if (deploymentId) {
-              await github.rest.repos.createDeploymentStatus({
+              const rawUrl = jobs[job].outputs?.web_url ?? '';
+              const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
+
+              const deployment = await github.rest.repos.createDeployment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                deployment_id: deploymentId,
-                state: 'success',
-                environment_url: webUrl || undefined,
-                description: 'Deployment finished successfully'
+                ref,
+                environment,
+                auto_merge: false,
+                required_contexts: [],
+                description: `Deploy ${environment} (${ref.slice(0, 7)})`
               });
-            }
 
-      - name: Create GitHub deployment for CO
-        if: needs.deploy-co.result == 'success'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const rawUrl = '${{ needs.deploy-co.outputs.web_url }}';
-            const webUrl = rawUrl && !rawUrl.startsWith('http') ? `https://${rawUrl}` : rawUrl;
-            const ref = context.sha;
-
-            const deployment = await github.rest.repos.createDeployment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref,
-              environment: 'dev-co',
-              auto_merge: false,
-              required_contexts: [],
-              description: `Deploy dev-co (${ref.slice(0, 7)})`
-            });
-
-            const deploymentId = deployment.data.id;
-            if (deploymentId) {
-              await github.rest.repos.createDeploymentStatus({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                deployment_id: deploymentId,
-                state: 'success',
-                environment_url: webUrl || undefined,
-                description: 'Deployment finished successfully'
-              });
+              const deploymentId = deployment.data.id;
+              if (deploymentId) {
+                await github.rest.repos.createDeploymentStatus({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  deployment_id: deploymentId,
+                  state: 'success',
+                  environment_url: webUrl || undefined,
+                  description: 'Deployment finished successfully'
+                });
+              }
             }

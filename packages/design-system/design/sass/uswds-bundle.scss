@@ -25,3 +25,6 @@
 
 // Custom project styles (loaded after USWDS)
 @use 'uswds-theme-custom-styles';
+
+// Current state's overrides, forwarded by the generated partial (empty when the state has none)
+@use 'uswds-state';
