@@ -162,10 +162,14 @@ The DC connector is a private repository. If you cannot access it, the script wi
 ### Using Aspire for local development
 
 - Aspire does not require you to create local `.env` and `appsettings` files. The AppHost provides every value that the API needs at startup. If you have local `appsettings` files, the values from the AppHost win, because an environment variable has a higher priority than a JSON file
+    - Exception for Colorado: if `apps/portal/src/SEBT.Portal.Api/appsettings.co.json` exists, Aspire leaves the choice of household data to it. Without that file, Aspire uses mock data. The dashboard's Household data notification says which applies.
+    - To use CBMS UAT, set `FeatureManagement:use_mock_household_data` and `FeatureManagement:use_mock_cbms_responses` to `false`. The CBMS credentials come from [Doppler](#using-doppler-with-aspire), or from the `Cbms` section of the file.
+    - `DevelopmentPhoneOverride:Phone` picks which CBMS test account's data loads, for example `7198004382` for largefamily2.
+    - With the connector's saved responses (`use_mock_cbms_responses: true` and `use_mock_household_data: false`), Keycloak users get no household unless the phone override is set to one of the phones in `apps/connectors/co/src/SEBT.Portal.StatePlugins.CO.CbmsApi/TestData/CbmsMocks/mock-manifest.json`.
 - Aspire selects the host ports for each run, so the URL you use to access the portal and enrollment checker may vary each time you restart
 - The API does not have hot reloading, so after you change C# code, run `aspire resource api rebuild`. The portal web and enrollment checker web applications keep hot reload from their own development servers.
 - To control just one resource, run `aspire resource <name> stop`, `start`, or `rebuild`. The other running resources will not be affected
-- Currently, running the Colorado app with Aspire only supports Keycloak for the login, not MyColorado OIDC. Read the [Keycloak guide](./docs/development/keycloak-oidc.md) for info about users and passwords. To use MyColorado and test with CBMS, please follow the manual install steps below.
+- Currently, running the Colorado app with Aspire only supports Keycloak for the login, not MyColorado OIDC. Read the [Keycloak guide](./docs/development/keycloak-oidc.md) for info about users and passwords. To use MyColorado, please follow the manual install steps below.
 
 Some other helpful CLI commands:
 
@@ -468,7 +472,7 @@ A local Keycloak stand-in is available for local development. For more details, 
 
 ### Development phone override (local development only)
 
-For states that use phone number as the primary household identifier for OIDC auth, local development sometimes requires bypassing MFA. You can override the phone number for the household lookup in `appsettings.Development.json`.
+For states that use phone number as the primary household identifier for OIDC auth, local development sometimes requires bypassing MFA. You can override the phone number for the household lookup in `appsettings.Development.json` or each states `appsettings.{state}.json` file.
 
 **This override is active only when `ASPNETCORE_ENVIRONMENT=Development`.** Example:
 
