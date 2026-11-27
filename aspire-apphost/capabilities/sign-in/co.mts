@@ -218,16 +218,7 @@ async function provision({ builder }: SignInContext): Promise<SignInCapability> 
           value: "sebt.co+{0}@codeforamerica.org",
           why: "Makes the seeded households have the addresses that the 3 users of the realm sign in with.",
         },
-        // Step 3 of the guide. A phone override from a different flow loads a household
-        // that does not belong to the user who signed in. This looks like a fault in the
-        // data, and not a fault in the configuration.
-        {
-          key: "DevelopmentPhoneOverride__Phone",
-          value: "",
-          why: "An override that stays would load a household that the user who signed in does not own.",
-          kind: "neutralize",
-        },
-        // This is the same risk as the phone override. This value changes the address of
+        // This value changes the address of
         // the co-loaded seed user. Thus a value in the appsettings.Development.json of a
         // developer would break one of the 3 Keycloak logins, and the other 2 would
         // continue to work.

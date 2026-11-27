@@ -17,7 +17,7 @@ import type {
 } from "../../.aspire/modules/aspire.mjs";
 import type { AppHostConfig, SupportedState } from "../../config.mjs";
 import type { Preflight, Requirements } from "../requirements.mjs";
-import { coMockCbms } from "./co.mjs";
+import { coHouseholdSource } from "./co.mjs";
 import { dcSourceDatabase } from "./dc.mjs";
 
 export interface HouseholdSourceContext {
@@ -55,7 +55,7 @@ export interface HouseholdSourceProvider {
 // household source.
 const providers: Record<SupportedState, HouseholdSourceProvider> = {
   dc: dcSourceDatabase,
-  co: coMockCbms,
+  co: coHouseholdSource,
 };
 
 export function householdSourceProviderFor(
