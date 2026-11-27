@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 import coResult from '@/content/locales/en/co/result.json'
@@ -486,9 +486,11 @@ describe('single-outcome results — closed season', () => {
     expect(heading()).toBe('streamlinedEnrolledClosedTitle')
   })
 
+  // A single-outcome tab keeps this heading on its `Closed - Body 3` row. CO
+  // ships that row, so its text shows here rather than the key.
   it('reports the not-enrolled outcome in the past tense', () => {
     renderResults('NonMatch')
-    expect(heading()).toBe('applyForSebtClosedTitle')
+    expect(heading()).toBe(coResult.applyForSebtClosedBody3)
   })
 
   // The heading is the whole answer: there is no application left to explain and
@@ -512,8 +514,12 @@ describe('single-outcome results — closed season', () => {
   it('still offers the next check, in the season’s wording', () => {
     renderResults('NonMatch')
 
-    expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
-    expect(screen.getByText('applyForSebtClosedCard2Body')).toBeInTheDocument()
+    // The prompt sits on the `Closed - Body 4` row, which CO also ships.
+    expect(
+      within(screen.getByTestId('check-another-child')).getByText(
+        coResult.applyForSebtClosedBody4.replace(/\*\*/g, '')
+      )
+    ).toBeInTheDocument()
   })
 
   // An alert marks something to act on. A closed season's enrolled result is a

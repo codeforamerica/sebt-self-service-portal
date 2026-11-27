@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import coResult from '@/content/locales/en/co/result.json'
@@ -84,6 +84,18 @@ describe('ErrorResultPage — closed season', () => {
     vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
     renderErrorPage()
     expect(screen.getByTestId('check-another-child')).toBeInTheDocument()
+  })
+
+  // The prompt sits on the `Closed - Body 4` row. CO ships that row, so its
+  // text shows here rather than the key.
+  it('words the next check for a season that is over', () => {
+    vi.stubEnv('NEXT_PUBLIC_STATE', 'dc')
+    renderErrorPage()
+    expect(
+      within(screen.getByTestId('check-another-child')).getByText(
+        coResult.applyForSebtClosedBody4.replace(/\*\*/g, '')
+      )
+    ).toBeInTheDocument()
   })
 
   // A flow with a review step collects the whole household before submitting, so

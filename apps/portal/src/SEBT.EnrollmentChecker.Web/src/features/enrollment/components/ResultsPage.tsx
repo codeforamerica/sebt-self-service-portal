@@ -7,6 +7,10 @@ import { useApplyHref } from '@/lib/useApplyHref'
 import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
+import {
+  CLOSED_CHECK_ANOTHER_BODY_KEY,
+  CLOSED_NOT_ENROLLED_TITLE_KEY
+} from '../copy/closedSeasonKeys'
 import type { ChildCheckApiResponse } from '../schemas/enrollmentSchema'
 
 import { RichText } from '@sebt/design-system'
@@ -144,7 +148,9 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
   // A household summary covers several outcomes at once, so it keeps one
   // neutral heading and names each child below it. A single-outcome flow has
   // one answer to give, and that answer is the heading.
-  const titleKey = summarizesHousehold ? 'title' : singleOutcomeKey('Title')
+  const singleOutcomeTitleKey =
+    isClosed && enrolled.length === 0 ? CLOSED_NOT_ENROLLED_TITLE_KEY : singleOutcomeKey('Title')
+  const titleKey = summarizesHousehold ? 'title' : singleOutcomeTitleKey
 
   // The outcome-to-artwork mapping is state-specific, so it lives in the asset
   // manifest rather than in filenames chosen here.
@@ -346,7 +352,7 @@ export function ResultsPage({ results, portalUrl }: ResultsPageProps) {
         {allowsSequentialChecks() && (
           <CheckAnotherChildCard
             copy={enrolled.length > 0 ? 'streamlinedEnrolledCard2' : 'applyForSebtCard2'}
-            {...(isClosed && { bodyKey: 'applyForSebtClosedCard2Body' })}
+            {...(isClosed && { bodyKey: CLOSED_CHECK_ANOTHER_BODY_KEY })}
           />
         )}
 
