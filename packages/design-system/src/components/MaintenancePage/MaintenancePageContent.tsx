@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 
+import { PageColumn } from '../layout/PageColumn'
 import { getStateLinks } from '../../lib/links'
 import type { StateCode } from '../../lib/state'
 
@@ -39,33 +40,31 @@ export function MaintenancePageContent({ namespace, state }: MaintenancePageCont
   const stacked = actionLayoutByState[state] === 'stacked'
 
   return (
-    <section className="usa-section">
-      <div className="grid-container">
-        <h1>{t('title')}</h1>
-        <p>{t('body1')}</p>
-        <div
-          className={
-            stacked
-              ? 'display-flex flex-column flex-align-start margin-top-4'
-              : 'display-flex flex-wrap flex-align-center margin-top-4'
-          }
+    <PageColumn>
+      <h1>{t('title')}</h1>
+      <p>{t('body1')}</p>
+      <div
+        className={
+          stacked
+            ? 'display-flex flex-column flex-align-start margin-top-4'
+            : 'display-flex flex-wrap flex-align-center margin-top-4'
+        }
+      >
+        <Link
+          href={links.help.sebtMainSite}
+          className={`usa-button usa-button--outline${stacked ? ' width-full desktop:width-auto' : ' margin-right-2'}`}
         >
-          <Link
-            href={links.help.sebtMainSite}
-            className={`usa-button usa-button--outline${stacked ? ' width-full desktop:width-auto' : ' margin-right-2'}`}
-          >
-            {t('action1')}
-          </Link>
-          <Link
-            href={links.help.contactUs}
-            // margin-right-0 clears the usa-button default trailing margin, which
-            // otherwise pushes the row past a 375px viewport and wraps this button
-            className={`usa-button${stacked ? ' margin-top-2' : ' margin-right-0'}`}
-          >
-            {t('action2')}
-          </Link>
-        </div>
+          {t('action1')}
+        </Link>
+        <Link
+          href={links.help.contactUs}
+          // margin-right-0 clears the usa-button default trailing margin, which
+          // otherwise pushes the row past a 375px viewport and wraps this button
+          className={`usa-button${stacked ? ' margin-top-2' : ' margin-right-0'}`}
+        >
+          {t('action2')}
+        </Link>
       </div>
-    </section>
+    </PageColumn>
   )
 }

@@ -88,7 +88,7 @@ describe('ClosedPage — flat tail', () => {
     const { container } = renderClosedPage()
 
     // The body copy is the other .usa-prose block; the notes are the last one.
-    const proseBlocks = container.querySelectorAll('.grid-container > .usa-prose')
+    const proseBlocks = container.querySelectorAll('.usa-prose')
     const tail = proseBlocks[proseBlocks.length - 1]
 
     expect(proseBlocks).toHaveLength(2)

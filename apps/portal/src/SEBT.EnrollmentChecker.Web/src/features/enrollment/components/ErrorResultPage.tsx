@@ -6,7 +6,7 @@ import { useEnrollmentSeason } from '@/lib/useEnrollmentSeason'
 import Image from 'next/image'
 import { useTranslation } from 'react-i18next'
 
-import { RichText } from '@sebt/design-system'
+import { PageColumn, RichText } from '@sebt/design-system'
 import { getState, getStateConfig } from '@sebt/design-system/src/lib/state'
 import { CheckAnotherChildCard } from './CheckAnotherChildCard'
 
@@ -33,71 +33,69 @@ export function ErrorResultPage({ portalUrl }: ErrorResultPageProps) {
   const alertKey = (suffix: string) => `streamlinedEnrolled${isClosed ? 'Closed' : ''}${suffix}`
 
   return (
-    <div className="usa-section">
-      <div className="grid-container">
-        {errorCard && (
-          <Image
-            src={errorCard}
-            alt=""
-            width={100}
-            height={75}
-            aria-hidden="true"
-          />
-        )}
-        <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>{t('errorTitle')}</h1>
-        <p>{t('errorBody')}</p>
+    <PageColumn>
+      {errorCard && (
+        <Image
+          src={errorCard}
+          alt=""
+          width={100}
+          height={75}
+          aria-hidden="true"
+        />
+      )}
+      <h1 className={`font-family-sans font-sans-xl ${pageTitleText} margin-top-1`}>{t('errorTitle')}</h1>
+      <p>{t('errorBody')}</p>
 
-        <section data-testid="next-step-portal">
-          {isClosed ? (
-            /* Past season: the portal pointer is a link at the head of the
-               explanation rather than a heading above it. Without a portal URL
-               the pointer still reads, it just isn't a dead link. */
-            <div className="usa-prose margin-top-4">
-              <p>
-                {portalUrl ? (
-                  <a
-                    href={portalUrl}
-                    className="text-bold"
-                    data-testid="portal-alert-link"
-                  >
-                    {t(alertKey('AlertTitle'))}
-                  </a>
-                ) : (
-                  <strong>{t(alertKey('AlertTitle'))}</strong>
-                )}
-              </p>
+      <section data-testid="next-step-portal">
+        {isClosed ? (
+          /* Past season: the portal pointer is a link at the head of the
+             explanation rather than a heading above it. Without a portal URL
+             the pointer still reads, it just isn't a dead link. */
+          <div className="usa-prose margin-top-4">
+            <p>
+              {portalUrl ? (
+                <a
+                  href={portalUrl}
+                  className="text-bold"
+                  data-testid="portal-alert-link"
+                >
+                  {t(alertKey('AlertTitle'))}
+                </a>
+              ) : (
+                <strong>{t(alertKey('AlertTitle'))}</strong>
+              )}
+            </p>
+            <RichText>{t(alertKey('AlertBody'))}</RichText>
+          </div>
+        ) : (
+          <>
+            <h2 className="font-family-sans margin-top-4">{t(alertKey('AlertTitle'))}</h2>
+            <div className="margin-top-2">
               <RichText>{t(alertKey('AlertBody'))}</RichText>
             </div>
-          ) : (
-            <>
-              <h2 className="font-family-sans margin-top-4">{t(alertKey('AlertTitle'))}</h2>
-              <div className="margin-top-2">
-                <RichText>{t(alertKey('AlertBody'))}</RichText>
-              </div>
-            </>
-          )}
-          {portalUrl && (
-            <p>
-              <a
-                href={portalUrl}
-                className="usa-button"
-                data-testid="portal-link"
-              >
-                {t('streamlinedEnrolledAction')}
-              </a>
-            </p>
-          )}
-        </section>
-
-        {/* A failed check in a closed season is otherwise a dead end — there is no
-            application to fall back on, so the only move left is another check. */}
-        {isClosed && allowsSequentialChecks() && (
-          <CheckAnotherChildCard
-            copy="streamlinedEnrolledCard2"
-            bodyKey="applyForSebtClosedCard2Body"
-          />
+          </>
         )}
-      </div>
-    </div>
+        {portalUrl && (
+          <p>
+            <a
+              href={portalUrl}
+              className="usa-button"
+              data-testid="portal-link"
+            >
+              {t('streamlinedEnrolledAction')}
+            </a>
+          </p>
+        )}
+      </section>
+
+      {/* A failed check in a closed season is otherwise a dead end — there is no
+          application to fall back on, so the only move left is another check. */}
+      {isClosed && allowsSequentialChecks() && (
+        <CheckAnotherChildCard
+          copy="streamlinedEnrolledCard2"
+          bodyKey="applyForSebtClosedCard2Body"
+        />
+      )}
+    </PageColumn>
   )
 }
