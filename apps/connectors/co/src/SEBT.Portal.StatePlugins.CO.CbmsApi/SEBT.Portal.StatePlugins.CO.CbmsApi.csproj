@@ -11,6 +11,7 @@
         <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.15" />
         <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.15" />
+        <PackageReference Include="Microsoft.Kiota.Abstractions" Version="2.2.0" />
         <PackageReference Include="Microsoft.Kiota.Bundle" Version="1.22.2" />
     </ItemGroup>
 
