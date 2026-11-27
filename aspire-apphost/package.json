@@ -12,6 +12,7 @@
     "aspire:start": "aspire run",
     "aspire:dc": "STATE=dc aspire run",
     "aspire:co": "STATE=co aspire run",
+    "aspire:co:myco": "STATE=co CO_SIGN_IN=mycolorado aspire run",
     "aspire:stop": "aspire stop",
     "aspire:stop:all": "aspire stop --all",
     "aspire:status": "aspire describe",

@@ -3,6 +3,9 @@
 // The list is explicit, so a secret reaches an application only when a line here says why.
 // A Doppler key that is not listed is reported in the startup log instead of dropped quietly.
 
+import type { AppHostConfig } from "../../config.mjs";
+import type { DeveloperSecrets } from "./doppler.mjs";
+
 /** The application that receives a secret. */
 export type SecretTarget = "api" | "web";
 
@@ -14,10 +17,17 @@ export interface ForwardedSecret {
   target: SecretTarget;
   /** Why the application needs the value. Write one line. */
   why: string;
+  /** Forwards the secret only in the modes where this returns true. Without it, every mode gets it. */
+  onlyWhen?: (config: AppHostConfig) => boolean;
 }
 
 /** The API key that shared/apps.mts otherwise fills with a generated value. */
 export const jwtSecretKey = "JwtSettings__SecretKey";
+
+/** In the other modes a capability sets these keys, or the state does not use OIDC. */
+function signsInWithMyColorado(config: AppHostConfig): boolean {
+  return config.state === "co" && config.coSignIn === "mycolorado";
+}
 
 export const forwardedSecrets: readonly ForwardedSecret[] = [
   {
@@ -37,6 +47,34 @@ export const forwardedSecrets: readonly ForwardedSecret[] = [
     appKey: "Oidc__CompleteLoginSigningKey",
     target: "api",
     why: "Signs the handoff that completes an OIDC sign-in.",
+  },
+  {
+    dopplerKey: "OIDC__CLIENTID",
+    appKey: "Oidc__ClientId",
+    target: "api",
+    why: "Identifies the portal to the MyColorado dev tenant.",
+    onlyWhen: signsInWithMyColorado,
+  },
+  {
+    dopplerKey: "OIDC__CLIENTSECRET",
+    appKey: "Oidc__ClientSecret",
+    target: "api",
+    why: "Authenticates the code exchange with the MyColorado dev tenant.",
+    onlyWhen: signsInWithMyColorado,
+  },
+  {
+    dopplerKey: "OIDC__STEPUP__CLIENTID",
+    appKey: "Oidc__StepUp__ClientId",
+    target: "api",
+    why: "Identifies the step-up client to the MyColorado dev tenant.",
+    onlyWhen: signsInWithMyColorado,
+  },
+  {
+    dopplerKey: "OIDC__STEPUP__CLIENTSECRET",
+    appKey: "Oidc__StepUp__ClientSecret",
+    target: "api",
+    why: "Authenticates the step-up code exchange with the MyColorado dev tenant.",
+    onlyWhen: signsInWithMyColorado,
   },
   {
     dopplerKey: "SMARTY__AUTHID",
@@ -107,13 +145,19 @@ function parameterNameFor(appKey: string): string {
   return `doppler-${appKey.toLowerCase().replace(/_+/g, "-")}`;
 }
 
-/** Sorts the Doppler values into the secrets each application gets. An empty value is skipped. */
-export function routeSecrets(values: ReadonlyMap<string, string>): RoutedSecrets {
+/**
+ * Sorts the Doppler values into the secrets each application gets. An empty value is
+ * skipped, and so is a secret whose `onlyWhen` excludes this mode.
+ */
+export function routeSecrets(
+  values: ReadonlyMap<string, string>,
+  config: AppHostConfig,
+): RoutedSecrets {
   const routed: RoutedSecrets = { api: [], web: [], notForwarded: [] };
 
   for (const secret of forwardedSecrets) {
     const value = values.get(secret.dopplerKey);
-    if (!value) {
+    if (!value || (secret.onlyWhen && !secret.onlyWhen(config))) {
       continue;
     }
     routed[secret.target].push({
@@ -127,6 +171,41 @@ export function routeSecrets(values: ReadonlyMap<string, string>): RoutedSecrets
   const listed = new Set(forwardedSecrets.map((secret) => secret.dopplerKey));
   routed.notForwarded = [...values.keys()].filter((key) => !listed.has(key)).sort();
   return routed;
+}
+
+/**
+ * Stops MyColorado sign-in when Doppler did not give each client key. Without them the
+ * graph starts, and the first login fails with no clear cause.
+ */
+export function assertSignInSecrets(
+  developerSecrets: DeveloperSecrets,
+  routed: RoutedSecrets,
+  config: AppHostConfig,
+): void {
+  if (!signsInWithMyColorado(config)) {
+    return;
+  }
+
+  const keycloakRemedy = "or run `pnpm aspire:co` to sign in with Keycloak.";
+  if (developerSecrets.source !== "doppler") {
+    const fix =
+      developerSecrets.reason === "disabled"
+        ? "USE_DOPPLER turns it off. Unset USE_DOPPLER,"
+        : "it isn't set up for this repo. Run `doppler setup --no-interactive` from the repo root,";
+    throw new Error(`MyColorado sign-in needs its client keys from Doppler, but ${fix} ${keycloakRemedy}`);
+  }
+
+  const routedKeys = new Set(routed.api.map((secret) => secret.appKey));
+  const missing = forwardedSecrets
+    .filter((secret) => secret.onlyWhen === signsInWithMyColorado && !routedKeys.has(secret.appKey))
+    .map((secret) => secret.dopplerKey);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `MyColorado sign-in needs these keys in your Doppler config: ${missing.join(", ")}. ` +
+        `Add them to your local config, ${keycloakRemedy}`,
+    );
+  }
 }
 
 /** Stops the AppHost when a Doppler secret would override a key that a capability sets on purpose. */

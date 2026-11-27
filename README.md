@@ -162,15 +162,16 @@ The DC connector is a private repository. If you cannot access it, the script wi
 ### Using Aspire for local development
 
 - Aspire does not require you to create local `.env` and `appsettings` files. The AppHost provides every value that the API needs at startup. If you have local `appsettings` files, the values from the AppHost win, because an environment variable has a higher priority than a JSON file
-- Aspire selects the host ports for each run, so the URL you use to access the portal and enrollment checker may vary each time you restart
+- Aspire selects the host ports for each run, so the URL you use to access the portal and enrollment checker may vary each time you restart. However, when running Colorado with MyColorado using `pnpm aspire:co:myco`, the portal is pinned to `http://localhost:3000`, because that's the only local redirect URI PingOne accepts. If another process is using port 3000, startup stops and tells you.
 - The API does not have hot reloading, so after you change C# code, run `aspire resource api rebuild`. The portal web and enrollment checker web applications keep hot reload from their own development servers.
 - To control just one resource, run `aspire resource <name> stop`, `start`, or `rebuild`. The other running resources will not be affected
-- Currently, running the Colorado app with Aspire only supports Keycloak for the login, not MyColorado OIDC. Read the [Keycloak guide](./docs/development/keycloak-oidc.md) for info about users and passwords. To use MyColorado and test with CBMS, please follow the manual install steps below.
+- When running the Colorado application you can choose to either use `pnpm aspire:co` which will launch the application with Keycloak active or you can use `pnpm aspire:co:myco`, which signs in with the MyColorado dev environment and needs [Doppler](#using-doppler-with-aspire) set up. Read the [Keycloak guide](./docs/development/keycloak-oidc.md) for info about users and passwords. To test with real CBMS data, follow the manual install steps below.
 
 Some other helpful CLI commands:
 
 - `pnpm aspire:status` to show the graph and address of each resource
 - `pnpm aspire:stop` to stop all running resources
+- `pnpm aspire:co:myco` to run the Colorado portal and enrollment checker with MyColorado OIDC instead of Keycloak.
 
 ### Using Doppler with Aspire
 

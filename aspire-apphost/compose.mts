@@ -15,6 +15,7 @@ import type { HouseholdSourceProvider } from "./capabilities/household-source/co
 import type { DeveloperSecrets } from "./capabilities/developer-secrets/doppler.mjs";
 import {
   assertNoCapabilityOverlap,
+  assertSignInSecrets,
   jwtSecretKey,
   routeSecrets,
 } from "./capabilities/developer-secrets/routing.mjs";
@@ -32,7 +33,7 @@ import { signInProviderFor } from "./capabilities/sign-in/contract.mjs";
 import type { SignInProvider } from "./capabilities/sign-in/contract.mjs";
 import { telemetryProviderFor } from "./capabilities/telemetry/contract.mjs";
 import type { TelemetryProvider } from "./capabilities/telemetry/contract.mjs";
-import type { AppHostConfig, SupportedState } from "./config.mjs";
+import type { AppHostConfig } from "./config.mjs";
 import { addApi, addWebApps } from "./shared/apps.mjs";
 import { addPortalDatabase } from "./shared/database.mjs";
 
@@ -45,12 +46,13 @@ export interface StateCapabilities {
   telemetry: TelemetryProvider;
 }
 
-export function capabilitiesFor(state: SupportedState): StateCapabilities {
+export function capabilitiesFor(config: AppHostConfig): StateCapabilities {
+  const { state } = config;
   return {
     cache: cacheProviderFor(state),
     connectorBuild: connectorBuildProviderFor(state),
     householdSource: householdSourceProviderFor(state),
-    signIn: signInProviderFor(state),
+    signIn: signInProviderFor(config),
     telemetry: telemetryProviderFor(state),
   };
 }
@@ -58,7 +60,7 @@ export function capabilitiesFor(state: SupportedState): StateCapabilities {
 /** Prints how this state answers each capability, and what a developer does with it. */
 export function announceCapabilities(config: AppHostConfig): void {
   const { cache, connectorBuild, householdSource, signIn, telemetry } =
-    capabilitiesFor(config.state);
+    capabilitiesFor(config);
   console.log(`[cache] ${cache.name}. ${cache.cacheHint}`);
   console.log(`[connector-build] ${connectorBuild.name}. ${connectorBuild.buildHint}`);
   console.log(`[household-source] ${householdSource.name}. ${householdSource.dataHint}`);
@@ -76,7 +78,7 @@ export async function runCapabilityPreflight(
   config: AppHostConfig,
 ): Promise<void> {
   const { cache, connectorBuild, householdSource, signIn, telemetry } =
-    capabilitiesFor(config.state);
+    capabilitiesFor(config);
   await runPreflight("cache", cache.preflight(config));
   await runPreflight("connector-build", connectorBuild.preflight(config));
   await runPreflight("household-source", householdSource.preflight(config));
@@ -95,7 +97,7 @@ export async function composeGraph(
   developerSecrets: DeveloperSecrets,
 ): Promise<void> {
   const { cache, connectorBuild, householdSource, signIn, telemetry } =
-    capabilitiesFor(config.state);
+    capabilitiesFor(config);
 
   // Each key a capability sets, so the Doppler secrets can be checked against them.
   const capabilityKeys: string[] = [];
@@ -110,7 +112,8 @@ export async function composeGraph(
     await applyRequirements(targets, capability, requirements);
   };
 
-  const routed = routeDeveloperSecrets(developerSecrets);
+  const routed = routeDeveloperSecrets(developerSecrets, config);
+  assertSignInSecrets(developerSecrets, routed, config);
   const secretSettings = await developerSecretSettings(builder, routed);
 
   const database = await addPortalDatabase(builder, config);
@@ -145,7 +148,9 @@ export async function composeGraph(
   const signInCapability = await signIn.provision({ builder, config });
   await apply({ api }, "sign-in", signInCapability.requirements);
 
-  const apps = await addWebApps(builder, config, api);
+  const apps = await addWebApps(builder, config, api, {
+    portalPort: signIn.portalPort,
+  });
 
   // Telemetry comes after the applications, because all 3 of them export.
   const telemetryCapability = await telemetry.provision({
@@ -157,8 +162,8 @@ export async function composeGraph(
   await apply({ api }, "telemetry", telemetryCapability.requirements);
 
   // This is last, because it is the one part of the wiring that reads the endpoint of
-  // the portal. The realm of CO redirects back to that endpoint. Thus neither side can
-  // hold a fixed port.
+  // the portal. The IdP of CO redirects back to that endpoint. Keycloak takes any port, and
+  // MyColorado accepts registered ports only, so its provider sets portalPort.
   if (signInCapability.bindPortal) {
     await apply(
       { api, portal: apps.web },
@@ -178,12 +183,15 @@ export async function composeGraph(
   }
 }
 
-function routeDeveloperSecrets(developerSecrets: DeveloperSecrets): RoutedSecrets {
+function routeDeveloperSecrets(
+  developerSecrets: DeveloperSecrets,
+  config: AppHostConfig,
+): RoutedSecrets {
   if (developerSecrets.source !== "doppler") {
     return { api: [], web: [], notForwarded: [] };
   }
 
-  const routed = routeSecrets(developerSecrets.values);
+  const routed = routeSecrets(developerSecrets.values, config);
   if (routed.notForwarded.length > 0) {
     console.log(
       `[secrets] Doppler keys not forwarded (add them to capabilities/developer-secrets/routing.mts to use them): ${routed.notForwarded.join(", ")}`,
